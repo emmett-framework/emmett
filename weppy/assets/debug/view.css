@@ -1,0 +1,53 @@
+body, html {
+	margin: 0;
+	font-family: arial, sans-serif
+}
+
+.header {
+	background-color: orange;
+	margin: 0;
+	padding: 1%;
+	color: #fff;
+	font-size: 26px;
+	font-weight: 600;
+}
+
+.container {
+	padding: 1%;
+}
+
+h3, h5 {
+	color: orange;
+}
+
+.traceback {
+	border: 1px solid #ddd;
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+
+a, a:active, a:hover, a:visited {
+	text-decoration: none;
+	color: black;
+}
+
+.frameList {
+	list-style: none;
+}
+
+.framefile {
+	margin-top: 45px;
+	border-bottom: 1px solid #ddd;
+} 
+
+.frameth {
+	border-right: 1px solid #ddd;
+	padding-right:10px;
+}
+
+.frametd {
+	padding-left: 10px;
+	display: block;
+	width:90%;
+	word-wrap: break-word;
+}
