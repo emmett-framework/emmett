@@ -171,7 +171,7 @@ class Expose(object):
             self.path
         )
         #self.application.log.info("exposing '%s' as '%s'" % (self.name, self.path))
-        self.application.log.info("exposing '%s': %s" % self.name, logstr)
+        self.application.log.info("exposing '%s': %s" % (self.name, logstr))
         Expose._routing_stack.pop()
         return func
 
