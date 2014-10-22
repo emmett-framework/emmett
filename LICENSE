@@ -31,7 +31,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-Due to the original license limitations, some of the weppy components are distributed under LGPLv3 license, in particular:
+Due to the original license limitations, some of the weppy components are
+distributed under LGPLv3 license, in particular:
 
     * weppy/dal
     * weppy/language
@@ -42,4 +43,5 @@ Due to the original license limitations, some of the weppy components are distri
     * weppy/tools/mail.py
 
 
-weppy also contains third party software in the 'libs' directory, each file/module in this directory is distributed under its original license.
+weppy also contains third party software in the 'libs' directory, each
+file/module in this directory is distributed under its original license.
