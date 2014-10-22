@@ -14,7 +14,7 @@ from string import maketrans
 
 from .cache import clear_cache, getcfs
 from ..libs.portalocker import read_locked, LockedFile
-from ..libs import Utf8
+from ..libs.utf8 import Utf8
 
 
 regex_backslash = re.compile(r"\\([\\{}%])")
