@@ -5,10 +5,11 @@
 
     Miscellaneous security helping methods.
 
-    Part of the code comes from web2py
-    by Massimo Di Pierro <mdipierro@cs.depaul.edu>
-
     :copyright: (c) 2014 by Giovanni Barillari
+
+    Based on the code of web2py (http://www.web2py.com)
+    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 

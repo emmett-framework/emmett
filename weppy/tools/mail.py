@@ -5,9 +5,9 @@
 
     provide a mailing system
 
-    adapted from the original code of web2py
-    by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+    adapted from the original code of web2py (http://www.web2py.com)
 
+    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 

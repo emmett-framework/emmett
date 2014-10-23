@@ -31,17 +31,27 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-Due to the original license limitations, some of the weppy components are
+Some of the weppy components are derived from web2py framework,
+and contains the original copyright credits:
+    Copyrighted (c) by Massimo Di Pierro (2007-2013)
+
+Due to the original license limitations, some of these components are
 distributed under LGPLv3 license, in particular:
 
-    * weppy/dal
     * weppy/language
-    * weppy/security.py
-    * weppy/validators.py
-    * weppy/templating.py
     * weppy/tools/auth.py
     * weppy/tools/mail.py
+    * weppy/security.py
+    * weppy/validators.py
+
+Other derived components are distributed under BSD license, in particular:
+
+    * weppy/dal
+    * weppy/templating.py
+
+For futher details, check out the web2py's license:
+    https://github.com/web2py/web2py/blob/master/LICENSE
 
 
-weppy also contains third party software in the 'libs' directory, each
+weppy also contains third party software in the 'libs' directory: each
 file/module in this directory is distributed under its original license.

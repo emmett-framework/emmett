@@ -3,8 +3,10 @@
     weppy.language.cache
     --------------------
 
-    :copyright: (c) 2014 by Giovanni Barillari
-    :license: BSD, see LICENSE for more details.
+    Adapted from the web2py's code (http://www.web2py.com)
+
+    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+    :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
 from threading import RLock

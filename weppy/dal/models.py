@@ -1,6 +1,15 @@
+"""
+    weppy.dal.models
+    ----------------
+
+    Provides a models layer upon the web2py's DAL.
+
+    :copyright: (c) 2014 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
+
 from .base import DAL, Field
 from ..tools import Auth
-from ..storage import Storage
 
 
 class ModelsDAL(DAL):
@@ -8,16 +17,10 @@ class ModelsDAL(DAL):
         self._LAZY_TABLES = dict()
         self._tables = dict()
         self.config = app.config.db
-        #DAL.__init__(self, adapter_args=adapter_args, **self.config.db or Storage())
         DAL.__init__(self, app)
         self.define_datamodels(datamodels or [])
 
     def define_datamodels(self, datamodels):
-        # Datamodels will define tables
-        # datamodel ClassName becomes db attribute
-        # so you can do
-        # db.MyEntity.insert(**values)
-        # db.MyEntity(value="some")
         for datamodel in datamodels:
             if not hasattr(self, datamodel.__name__):
                 # store actual db instance in model

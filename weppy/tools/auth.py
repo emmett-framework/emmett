@@ -5,10 +5,11 @@
 
     Provides the authorization system.
 
-    Based on the web2py's auth module
-    by Massimo Di Pierro <mdipierro@cs.depaul.edu>
-
     :copyright: (c) 2014 by Giovanni Barillari
+
+    Based on the web2py's auth module (http://www.web2py.com)
+    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 

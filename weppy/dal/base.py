@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
-
 """
-| This file is part of the web2py Web Framework
-| Copyrighted by Massimo Di Pierro <mdipierro@cs.depaul.edu>
-| License: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
-|
+    weppy.dal.base
+    --------------
+
+    Provides the DAL for weppy.
+
+    Adapted from the original code of web2py (http://www.web2py.com)
+
+    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+    :license: BSD, see LICENSE for more details.
+
 
 Thanks to
 

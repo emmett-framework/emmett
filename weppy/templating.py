@@ -3,13 +3,14 @@
     weppy.templating
     ----------------
 
-    Provide the templating system for weppy.
-
-    Based on the web2py's templating system
-    by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+    Provides the templating system for weppy.
 
     :copyright: (c) 2014 by Giovanni Barillari
-    :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
+
+    Based on the web2py's templating system (http://www.web2py.com)
+    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+
+    :license: BSD, see LICENSE for more details.
 """
 
 import os

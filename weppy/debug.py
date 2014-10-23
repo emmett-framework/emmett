@@ -4,9 +4,12 @@
     -----------
 
     Provides debugging utilities.
-    Quite a lot of magic here comes from Flask by Armin Ronacher.
 
     :copyright: (c) 2014 by Giovanni Barillari
+
+    Quite a lot of magic comes from Flask (http://flask.pocoo.org)
+    :copyright: (c) 2014 by Armin Ronacher.
+
     :license: BSD, see LICENSE for more details.
 """
 

@@ -5,10 +5,11 @@
 
     The translator main logic.
 
-    Based on the web2py's templating system
-    by Massimo Di Pierro <mdipierro@cs.depaul.edu>
-
     :copyright: (c) 2014 by Giovanni Barillari
+
+    Based on the web2py's translation system (http://www.web2py.com)
+    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
