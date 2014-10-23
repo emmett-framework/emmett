@@ -54,8 +54,8 @@ def streamer(environ, static_file, version=None, headers=None,
         mtime = time.strftime(
             '%a, %d %b %Y %H:%M:%S GMT', time.gmtime(modified))
         headers['Content-Type'] = contenttype(static_file)
-            # check if file to be served as an attachment
-        if environ.get('QUERY_STRING').startswith('attachment'):
+        # check if file has to be served as an attachment
+        if environ.get('QUERY_STRING', '').startswith('attachment'):
             headers['Content-Disposition'] = 'attachment; filename="%s"' % \
                 static_file
         # check if file modified since or not
@@ -90,7 +90,7 @@ def streamer(environ, static_file, version=None, headers=None,
                     headers['Content-Encoding'] = 'gzip'
                     headers['Vary'] = 'Accept-Encoding'
                     stream = open(static_file, 'rb')
-            headers['Content-Length'] = fsize
+            headers['Content-Length'] = str(fsize)
     except IOError:
         if sys.exc_info()[1][0] in (errno.EISDIR, errno.EACCES):
             return HTTP(403)
