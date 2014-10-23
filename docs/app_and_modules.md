@@ -65,7 +65,7 @@ and *app.yml* looking something like this:
 foo: bar
 Haml:
   set_as_default: True
-``
+```
 
 and *db.yml* looking like this:
 
