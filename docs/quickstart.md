@@ -241,7 +241,7 @@ The output will be a JSON object with the converted content of your python dicti
 The `service` module has other helpers, like *xml* format: go further in the [Services chapter](#) of the documentation.
 
 Dealing with requests
---------------------------
+---------------------
 Now let's try to go somewhere deeper in weppy core logic.
 
 > – How can my application react to requests of a client?   
