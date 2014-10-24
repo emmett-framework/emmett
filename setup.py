@@ -1,38 +1,11 @@
 """
-Weppy
+weppy
 -----
 
-Weppy is a web framework for Python based on web2py and inspired to Flask.
+weppy is a full-stack python framework that includes everything needed
+to easily create fast, scalable and secure web applications.
 
-
-Weppy is simple
----------------
-
-Save in a hello.py:
-
-.. code:: python
-
-    from weppy import App
-    app = App(__name__)
-
-    @app.expose("/")
-    def hello():
-        return "Hello World!"
-
-    if __name__ == "__main__":
-        app.run()
-
-
-And Easy to Setup
------------------
-
-And run it:
-
-.. code:: bash
-
-    $ pip install weppy
-    $ python hello.py
-     * Running on http://localhost:8000/
+It's based on web2py and inspired by Flask.
 
 
 Links
@@ -49,11 +22,11 @@ setup(
     name='weppy',
     version='0.1',
     url='http://github.com/gi0baro/weppy/',
-    license='GPLv3',
+    license='BSD',
     author='Giovanni Barillari',
     author_email='gi0baro@d4net.org',
     description='The web framework for humans',
-    #long_description=__doc__,
+    long_description=__doc__,
     packages=['weppy', 'weppy.dal', 'weppy.dal.adapters', 'weppy.dal.helpers',
               'weppy.language', 'weppy.language.plurals', 'weppy.tools',
               'weppy.libs'],
@@ -72,6 +45,7 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
@@ -79,6 +53,4 @@ setup(
         [console_scripts]
         weppy=weppy.cli:main
     ''',
-    #cmdclass={'audit': run_audit},
-    #test_suite=''
 )
