@@ -243,14 +243,15 @@ class DAL(object):
 
     """
 
-    def __new__(cls, config=Storage(uri='sqlite://dummy.db'), *args, **kwargs):
+    def __new__(cls, app, *args, **kwargs):
+        config = app.config.db
         uri = config.uri or DAL.uri_from_config(config)
-        if not hasattr(THREAD_LOCAL,'db_instances'):
+        if not hasattr(THREAD_LOCAL, 'db_instances'):
             THREAD_LOCAL.db_instances = {}
-        if not hasattr(THREAD_LOCAL,'db_instances_zombie'):
+        if not hasattr(THREAD_LOCAL, 'db_instances_zombie'):
             THREAD_LOCAL.db_instances_zombie = {}
         if uri == '<zombie>':
-            db_uid = kwargs['db_uid'] # a zombie must have a db_uid!
+            db_uid = kwargs['db_uid']  # a zombie must have a db_uid!
             if db_uid in THREAD_LOCAL.db_instances:
                 db_group = THREAD_LOCAL.db_instances[db_uid]
                 db = db_group[-1]
@@ -260,13 +261,13 @@ class DAL(object):
                 db = super(DAL, cls).__new__(cls)
                 THREAD_LOCAL.db_instances_zombie[db_uid] = db
         else:
-            db_uid = kwargs.get('db_uid',hashlib_md5(repr(uri)).hexdigest())
+            db_uid = kwargs.get('db_uid', hashlib_md5(repr(uri)).hexdigest())
             if db_uid in THREAD_LOCAL.db_instances_zombie:
                 db = THREAD_LOCAL.db_instances_zombie[db_uid]
                 del THREAD_LOCAL.db_instances_zombie[db_uid]
             else:
                 db = super(DAL, cls).__new__(cls)
-            db_group = THREAD_LOCAL.db_instances.get(db_uid,[])
+            db_group = THREAD_LOCAL.db_instances.get(db_uid, [])
             db_group.append(db)
             THREAD_LOCAL.db_instances[db_uid] = db_group
         db._db_uid = db_uid
@@ -1124,7 +1125,9 @@ class DAL(object):
 
 
 def DAL_unpickler(db_uid):
-    return DAL(Storage(adapter='<zombie>'), db_uid=db_uid)
+    fake_app_obj = Storage(config=Storage(db=Storage()))
+    fake_app_obj.config.db.adapter = '<zombie>'
+    return DAL(fake_app_obj, db_uid=db_uid)
 
 
 def DAL_pickler(db):
@@ -1134,13 +1137,16 @@ copyreg.pickle(DAL, DAL_pickler, DAL_unpickler)
 
 
 class DALHandler(Handler):
-    def __init__(self,db):
+    def __init__(self, db):
         self.db = db
+
     def on_start(self):
         self.db._adapter.reconnect()
+
     def on_success(self):
         self.db.commit()
         #self.db._adapter.close()
+
     def on_failure(self):
         self.db.rollback()
         #self.db._adapter.close()
