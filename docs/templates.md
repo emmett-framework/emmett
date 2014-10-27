@@ -105,7 +105,7 @@ and *layout.html* like this:
 </html>
 ```
 
-as you have guessed, the contents of the extended template's block are ovrridden by the called template. Moreover, if you want to include the parent's content you can add a `{{super}}` directive.
+as you have guessed, the contents of the extended template's block are overwritten by the called template. Moreover, if you want to include the parent's content you can add a `{{super}}` directive.
 
 Included helpers
 ----------------
@@ -124,7 +124,7 @@ There are other statements you can use in weppy templates: `include_static`, `in
 
 `include_meta` adds to the *head* the meta you define in the `response` object, for more details about it check out the [appropriate chapter](#) of the documentation.
 
-`include_helpers` adds to your template *jQuery* and an helping javascript from weppy. This javascript does 2 thigs:
+`include_helpers` adds to your template *jQuery* and an helping javascript from weppy. This javascript does 2 things:
 
 * allow you to use the `load_component()` function described next
 * adds a useful `ajax` javascript function to your template
@@ -159,7 +159,7 @@ You will se the 'something' content inside the div.
 Basic context
 -------------
 
-weppy adds some useful context to your templates, first of all the `current` object. This allows you to access the global objects of weppy and the language translator from your templates:
+weppy adds some useful python elements to your templates' base context, first of all the `current` object. This allows you to access the global objects of weppy and the language translator from your templates:
 
 ```python
 current.request
@@ -170,13 +170,21 @@ current.T
 
 Moreover, the templating system adds the `url()`, `asis()` and `load_component()` methods, where the `url()` is the same weppy method you've encountered to create urls for routed functions.
 
-The `asis()` method allows you to put something in the template without escaping it to html. It's useful, for example, when you need to write javascript objects from python, like an array.
+The `asis()` method allows you to put something in the template without escaping it to html. It's useful, for example, when you need to write javascript objects from python, like an array:
+
+```html
+<script type="text/javascript">
+    var mylist = {{=asis([myvar, my2ndvar, my3rdvar])}};
+</script>
+```
+
+where `myvar`, `my2ndvar` and `my3rdvar` comes from your python exposed function.
 
 The `load_component()` method is useful to load some components via ajax in your template. For instance, if you have an exposed function in your application you want to load with ajax inside another one, you can just put in the template:
 
 ```html
 <div id="ajaxcontainer">
-    {{=load_component(url('ajaxf'), 'ajaxcontainer')}}
+    {{=load_component(url('my_ajaxf'), 'ajaxcontainer')}}
 </div>
 ```
 
