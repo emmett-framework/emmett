@@ -100,7 +100,7 @@ If you have no idea of what an HTTP method is, don't worry, [Wikipedia has good 
 
 > – Ok, I got it. What else can I do with expose?
 
-Since this is a *quick overview* over weppy, you would check out the [appropriate chapter](#) of the documentation for the complete list of parameters accepted by the `expose()` decorator.
+Since this is a *quick overview* over weppy, you would check out the [appropriate chapter](./routing) of the documentation for the complete list of parameters accepted by the `expose()` decorator.
 
 Let's we see how to build urls on our routing rules.
 
@@ -152,7 +152,7 @@ that will point to the file in *static/js/common.js*
 
 > – but maybe I can write directly */static/js/common.js* instead of using `url()` function?
 
-Obviously you can. But weppy provide some useful stuffs on static files urls, like languages and versioning which are automatically applied based on you application configuration. You can find more information in the [appropriate chapter](#) of the documentation.
+Obviously you can. But weppy provide some useful stuffs on static files urls, like languages and versioning which are automatically applied based on you application configuration. You can find more information in the [appropriate chapter](./routing) of the documentation.
 
 Rendering the output
 --------------------
@@ -204,7 +204,7 @@ In addition, since everything you write inside `{{ }}` brackets is evaluated as 
 ```
 As you can see the only difference between the weppy template and a pure python code is that you have to write `pass` after the statements to tell weppy where the python block ends – normally we have indentation under python, but we can't have it under HTML.
 
-The templating system has many more features: explore them in the [appropriate chapter](#) of the documentation.
+The templating system has many more features: explore them in the [appropriate chapter](./templates) of the documentation.
 
 ### Other rendering options
 Quite often you would need to render output of your functions in different formats than HTML, for example JSON.

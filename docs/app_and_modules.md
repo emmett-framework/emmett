@@ -151,18 +151,4 @@ This is the complete list of parameters accepted by `AppModule`:
 
 As you can see with the `hostname` parameter we can bind the module to a specific host, instead of using the url prefix. Considering our blog example we can bind it to *blog.ourhost.tld*.
 
-### URLs with application modules
-As we seen above, the `name` parameter of `AppModule` object is used by weppy for the *namespacing* of the urls. What does it mean?   
-When you call the weppy `url()` helper, you send as first parameter the name of the function you have exposed. But if you have and `index` function in your main application file, and another `index` function in your module, what will you pass to the `url()`? This is why `AppModule` requires the `name` parameter, as it will be used for the module functions urls.
-
-In fact, when you have modules in your application there are two additional notations for the `url()` function:
-
-| call | end point |
-| --- | --- |
-| `url('index')` | `index function in the main application file |
-| `url('blog.index')` | index function in the module with `name="blog"` |
-| `url('.index')` | index function of the same module where you call `url()` |
-
-We need to clarify that the third notation can be used only during the *request flow*, which translates into this statement:
-
-> You can use `url()` dot notation only inside exposed methods (or methods invoked by these) and templates
+We wrote that the `name` parameter of `AppModule` object is instead used by weppy for the *namespacing* of the urls. To completely understand this and to dive more in subsequents considerations, we remind you to the [Routing](./routing) chapter.
