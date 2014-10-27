@@ -9,9 +9,9 @@ Exposing functions
 The `expose` method of the `App` object accepts several parameters, as you can see from the source code:
 
 ```python
-def __init__(self, path=None, name=None, template=None, handlers=None,
-             helpers=None, schemes=None, hostname=None, methods=None,
-             prefix=None, template_folder=None, template_path=None):
+def expose(self, path=None, name=None, template=None, handlers=None,
+           helpers=None, schemes=None, hostname=None, methods=None,
+           prefix=None, template_folder=None, template_path=None):
 ```
 
 Let's see them in detail.
@@ -82,7 +82,7 @@ will search for the *profile.html* template in your application's *template* fol
 ```
 
 ### Methods
-HTTP knows different methods for accessing URLs. By default, a weppy route only answers to GET and POST requests, but that can be changed easy:
+HTTP knows different methods for accessing URLs. By default, a weppy route only answers to GET and POST requests, but that can be changed easily:
 
 ```python
 @app.expose("/onlyget", methods="get")
