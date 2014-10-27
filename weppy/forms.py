@@ -264,23 +264,23 @@ class FormStyle(object):
 
     @staticmethod
     def widget_integer(attr, field, value, _class='integer', _id=None):
-        return FormStyle.widget_string(field, value, _class, _id)
+        return FormStyle.widget_string(attr, field, value, _class, _id)
 
     @staticmethod
     def widget_double(attr, field, value, _class='double', _id=None):
-        return FormStyle.widget_string(field, value, _class, _id)
+        return FormStyle.widget_string(attr, field, value, _class, _id)
 
     @staticmethod
     def widget_date(attr, field, value, _class='date', _id=None):
-        return FormStyle.widget_string(field, value, _class, _id)
+        return FormStyle.widget_string(attr, field, value, _class, _id)
 
     @staticmethod
     def widget_time(attr, field, value, _class='time', _id=None):
-        return FormStyle.widget_string(field, value, _class, _id)
+        return FormStyle.widget_string(attr, field, value, _class, _id)
 
     @staticmethod
     def widget_datetime(attr, field, value, _class='datetime', _id=None):
-        return FormStyle.widget_string(field, value, _class, _id)
+        return FormStyle.widget_string(attr, field, value, _class, _id)
 
     @staticmethod
     def widget_password(attr, field, value, _class='password', _id=None):
@@ -304,7 +304,7 @@ class FormStyle(object):
             isinstance(field.requires, (list, tuple)) else \
             field.requires.options()
         if field.requires.multiple:
-            return FormStyle.widget_multiple(field, value, options,
+            return FormStyle.widget_multiple(attr, field, value, options,
                                              _class=_class, _id=_id)
         option_items = [tag.option(n, _value=k, _selected=selected(k))
                         for k, n in options]
@@ -367,7 +367,7 @@ class FormStyle(object):
 
     @staticmethod
     def widget_json(attr, field, value, _id=None):
-        return FormStyle.widget_text(field, value, _id=_id or field.name)
+        return FormStyle.widget_text(attr, field, value, _id=_id or field.name)
 
     def __init__(self, attributes):
         self.attr = attributes
