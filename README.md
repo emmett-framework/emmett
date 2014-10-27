@@ -14,6 +14,10 @@ You can install weppy using pip:
 
 The documentation is available at [http://weppy.org/docs](http://weppy.org/docs). The sources are available under the *docs* folder.
 
+## Examples
+
+Examples will be soon available on this repository. In the meantime take a look at [H-Funding](https://github.com/gi0baro/h-funding), which can give you a deepen view on weppy and its features.
+
 ## Status of the project
 
 weppy is currently released in alpha stage.   
