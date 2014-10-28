@@ -1,7 +1,4 @@
 """
-weppy
------
-
 weppy is a full-stack python framework that includes everything needed
 to easily create fast, scalable and secure web applications.
 
@@ -20,7 +17,7 @@ Links
 from setuptools import setup
 setup(
     name='weppy',
-    version='0.1.3',
+    version='0.1.4',
     url='http://github.com/gi0baro/weppy/',
     license='BSD',
     author='Giovanni Barillari',
