@@ -7,7 +7,10 @@ from ._globals import LOGGER
 
 
 # verify presence of modules
-from collections import OrderedDict
+try:
+    from collections import OrderedDict
+except:
+    from .helpers.ordereddict import OrderedDict
 
 try:
     from ..security import uuid as web2py_uuid
