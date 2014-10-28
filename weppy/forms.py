@@ -380,6 +380,8 @@ class FormStyle(object):
         wtype = field.type.split(":")[0]
         if hasattr(field.requires, 'options'):
             wtype = 'select'
+        if wtype.startswith('reference'):
+            wtype = 'integer'
         widget_id = self.attr["id_prefix"] + field.name
         try:
             return getattr(self, "widget_"+wtype)(
