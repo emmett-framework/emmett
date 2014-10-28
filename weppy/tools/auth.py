@@ -241,12 +241,9 @@ class Auth(object):
                                    for k, v in vars.iteritems())
         return u
 
-    def __init__(self, app=None, db=None, mailer=True,
-                 hmac_key=None, hmac_key_file=None,
-                 cas_provider=None, signature=True,
-                 base_url=None,
-                 #secure=False,
-                 csrf_prevention=True):
+    def __init__(self, app=None, db=None, mailer=True, hmac_key=None,
+                 hmac_key_file=None, signature=True, base_url=None,
+                 csrf_prevention=True, define_tables=True, **kwargs):
         """
         auth=Auth(app, db)
 
@@ -281,7 +278,7 @@ class Auth(object):
             download_url="/download",
             mailer=(mailer == True) and Mail() or mailer,
             on_failed_authorization = url_index+"/not_authorized",
-            login_next = url_index,
+            login_next = url_index+"/profile",
             login_methods = [self],
             login_form = self,
             logout_next = url_index,
@@ -320,6 +317,13 @@ class Auth(object):
         for k in default_actions:
             if k not in self.settings.actions_disabled:
                 self.register_action(k, getattr(self, k))
+
+        #: define tables if requested
+        if define_tables:
+            use_signature = kwargs.get('use_signature')
+            migrate = kwargs.get('migrate')
+            fake_migrate = kwargs.get('fake_migrate')
+            self.define_tables(use_signature, migrate, fake_migrate)
 
     @property
     def _auth(self):
@@ -901,14 +905,15 @@ class Auth(object):
         if not issubclass(handler, AuthLoginHandler):
             raise RuntimeError('Provided handler for login is invalid')
 
-        handler = handler(self, env)
         settings = self.settings
-
         passfield = settings.password_field
-        try:
-            self.table_user[passfield].requires[-1].min_length = 0
-        except:
-            pass
+        log = self.messages['login_log']
+
+        # redirect user if it's already logged in
+        if self.user:
+            redirect(settings.login_next)
+
+        handler = handler(self, env)
 
         # use session for federated login
         snext = self.get_vars_next()
@@ -932,8 +937,6 @@ class Auth(object):
                 unext = user_next
         else:
             unext = handler.next
-
-        log = self.messages['login_log']
 
         #: try to call handler's form
         loginform = None
@@ -2013,13 +2016,17 @@ class AuthManager(Handler):
 
 
 class ModelsAuth(Auth):
-    def __init__(self, app, db, usermodel, **params):
-        Auth.__init__(self, app, db, **params)
+    def __init__(self, app, db, usermodel, **kwargs):
+        # init auth without defining tables
+        kwargs['define_tables'] = False
+        Auth.__init__(self, app, db, **kwargs)
+        # load the user Model
+        _use_signature = kwargs.get('use_signature')
+        _migrate = kwargs.get('migrate')
+        _fake_migrate = kwargs.get('fake_migrate')
         usermodel.auth = self
         usermodel.db = self.db
-        #user = UserModel(self)
-        user = usermodel()
-        #user.entity = self.settings.table_user
+        user = usermodel(_migrate, _fake_migrate, _use_signature)
         user.entity = self.table_user
         # load user's definitions
         getattr(user, '_AuthModel__define')()

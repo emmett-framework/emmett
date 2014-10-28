@@ -286,14 +286,14 @@ class AuthModel(Model):
     register_visibility = {}
     profile_visibility = {}
 
-    def __init__(self, migrate=None):
+    def __init__(self, migrate=None, fake_migrate=None, signature=None):
         if migrate is not None:
             self.migrate = migrate
         if not hasattr(self, 'migrate'):
             self.migrate = self.config.get('db', {}).get('migrate', True)
         self.__super_method('define_virtuals')()
         self.__define_extra_fields()
-        self.auth.define_tables(migrate=self.migrate)
+        self.auth.define_tables(signature, self.migrate, fake_migrate)
 
     def __super_method(self, name):
         return getattr(super(AuthModel, self), '_Model__'+name)
