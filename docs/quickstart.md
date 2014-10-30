@@ -284,7 +284,7 @@ Now, when a client call the url */post/123?editor=markdown*, the `editor` parame
 
 Simple, the attribute will be `None`, so it's completely safe to call it, it wont raise an exception.
 
-More information about the `request` object could be found in the [Request chapter](#) of the documentation.
+More information about the `request` object could be found in the [Request chapter](./request) of the documentation.
 
 ### Handlers: perfoming operations with requests
 
@@ -317,10 +317,10 @@ def f():
 And if you need to register your handler to all your application functions, you can omit the handler from the `expose()` decorator writing instead:
 
 ```python
-app.common_handlers = [MyHandler()]
+app.expose.common_handlers = [MyHandler()]
 ```
 
-weppy also provides a Helper handler, which is designed to add helping methods to the templates. Explore the [Handlers chapter](#) of documentation for more informations.
+weppy also provides a Helper handler, which is designed to add helping methods to the templates. Explore the [Handlers chapter](./request#handlers-and-helpers) of documentation for more informations.
 
 ### Redirects and errors
 Taking again the example given for the `request.vars`, we can add a redirect on the missing url param:
@@ -359,7 +359,7 @@ def post(id):
     else:
         abort(404)
 ```
-As you can see weppy applications can handle specific actions on HTTP errors. For more informations, checkout the [Error handling chapter](#) of the documentation.
+As you can see weppy applications can handle specific actions on HTTP errors. For more informations, checkout the [Error handling chapter](./request#errors-and-redirects) of the documentation.
 
 Sessions
 --------
