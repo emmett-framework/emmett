@@ -384,9 +384,9 @@ The above code is quite simple: the app increments the counter every time the us
 So basically, you can store a value to the user session and retrieve it whenever the session is kept.
 
 > – and if I try to access an attribute not existent in session?   
-> – *same as `response.vars`: the attribute will be `None` and you don't have to catch any exception*
+> – *same as `request.vars`: the attribute will be `None` and you don't have to catch any exception*
 
-More information and storing systems are available in the [Session chapter](#) of the documentation.
+More information and storing systems are available in the [Session chapter](./sessions) of the documentation.
 
 Using a database
 -----------------

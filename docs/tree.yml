@@ -6,4 +6,6 @@
 - routing
 - templates
 - request
+- response
+- sessions
 - extensions

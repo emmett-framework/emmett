@@ -4,7 +4,7 @@ Handling requests
 weppy provides several instruments to help you dealing with requests in your application. Let's see them. 
 
 The request object
-----------------------
+------------------
 When a request comes from a client, weppy binds useful informations about it on the `request` object, which can be accessed just with an import:
 
 ```python
@@ -91,7 +91,7 @@ on the url */post/123?editor=markdown* ? Simple: the three `request` attributes 
 so you can always access the variables you need.
 
 Handlers and Helpers
--------------------------
+--------------------
 Quite often your application needs to perform operations before and after the request is actually processed by weppy using your exposed function.   
 weppy helps you doing this with the Hanlders:
 
@@ -160,7 +160,7 @@ and you can access your `prettydate` function in every template.
 So basically, the `Helper` class of weppy adds everything you define inside it (functions and attributes) into your exposed function returning *dict*.
 
 Errors and redirects
------------------------
+--------------------
 Now, talking about handling requests, you would like to perform actions on errors.
 
 If we look again at the given example for the `request.vars`, what happens when the user call the url without passing the `editor` query parameter?
