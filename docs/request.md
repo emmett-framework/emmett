@@ -118,7 +118,7 @@ def f():
 And if you need to register your handler to all your application functions, you can omit the handler from the `expose()` decorator writing instead:
 
 ```python
-app.common_handlers = [MyHandler()]
+app.expose.common_handlers = [MyHandler()]
 ```
 
 ### A peculiar Handler: the Helper class
