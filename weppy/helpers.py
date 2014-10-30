@@ -35,54 +35,25 @@ def stream_file(db, name):
 
 
 def flash(message, category='message'):
-    """Flashes a message to the next request.  In order to remove the
-    flashed message from the session and to display it to the user,
-    the template has to call :func:`get_flashed_messages`.
-
-    .. versionchanged:: 0.3
-       `category` parameter added.
-
-    :param message: the message to be flashed.
-    :param category: the category for the message.  The following values
-                     are recommended: ``'message'`` for any kind of message,
-                     ``'error'`` for errors, ``'info'`` for information
-                     messages and ``'warning'`` for warnings.  However any
-                     kind of string can be used as category.
-    """
+    #: Flashes a message to the next request.
     from .globals import session
-    #flashes = session.get('_flashes', [])
     if session._flashes is None:
         session._flashes = []
     session._flashes.append((category, message))
-    #session['_flashes'] = flashes
 
 
 def get_flashed_messages(with_categories=False, category_filter=[]):
-    """Pulls all flashed messages from the session and returns them.
-    Further calls in the same request to the function will return
-    the same messages.  By default just the messages are returned,
-    but when `with_categories` is set to `True`, the return value will
-    be a list of tuples in the form ``(category, message)`` instead.
-
-    Filter the flashed messages to one or more categories by providing those
-    categories in `category_filter`.  This allows rendering categories in
-    separate html blocks.  The `with_categories` and `category_filter`
-    arguments are distinct:
-
-    * `with_categories` controls whether categories are returned with message
-      text (`True` gives a tuple, where `False` gives just the message text).
-    * `category_filter` filters the messages down to only those matching the
-      provided categories.
-
-    :param with_categories: set to `True` to also receive categories.
-    :param category_filter: whitelist of categories to limit return values
-    """
+    #: Pulls flashed messages from the session and returns them.
+    #  By default just the messages are returned, but when `with_categories`
+    #  is set to `True`, the return value will be a list of tuples in the
+    #  form `(category, message)` instead.
     from .globals import session
     try:
         flashes = session._flashes or []
         if category_filter:
             flashes = list(filter(lambda f: f[0] in category_filter, flashes))
-        del session._flashes
+        for el in flashes:
+            session._flashes.remove(el)
         if not with_categories:
             return [x[1] for x in flashes]
     except:
@@ -93,9 +64,7 @@ def get_flashed_messages(with_categories=False, category_filter=[]):
 def load_component(url, target=None, content='loading...'):
     from .tags import tag
     attr = {}
-    #target = target or 'c'+str(random.random())[2:]
     if target:
         attr['_id'] = target
-    #component = "$.weppy.component('%s','%s');" % (url, target)
     attr['_data-wpp_remote'] = url
     return tag.div(content, **attr)
