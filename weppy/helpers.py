@@ -49,7 +49,7 @@ def get_flashed_messages(with_categories=False, category_filter=[]):
     #  form `(category, message)` instead.
     from .globals import session
     try:
-        flashes = session._flashes or []
+        flashes = list(session._flashes or [])
         if category_filter:
             flashes = list(filter(lambda f: f[0] in category_filter, flashes))
         for el in flashes:
