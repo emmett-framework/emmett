@@ -245,7 +245,7 @@ class DAL(object):
     """
 
     def __new__(cls, app, *args, **kwargs):
-        config = app.config.db
+        config = kwargs.get('config', Storage()) or app.config.db
         uri = config.uri or DAL.uri_from_config(config)
         if not hasattr(THREAD_LOCAL, 'db_instances'):
             THREAD_LOCAL.db_instances = {}
@@ -361,19 +361,17 @@ class DAL(object):
             uri += "/"+config.database
         return uri
 
-    def __init__(self, app,
-                 pool_size=0, folder=None,
-                 db_codec='UTF-8', check_reserved=None,
-                 migrate=True, fake_migrate=False,
-                 migrate_enabled=True, fake_migrate_all=False,
-                 decode_credentials=False, driver_args=None,
-                 adapter_args=None, attempts=5, auto_import=False,
-                 bigint_id=False, debug=False, lazy_tables=False,
-                 db_uid=None, do_connect=True,
+    def __init__(self, app, config=Storage(), pool_size=0, folder=None,
+                 db_codec='UTF-8', check_reserved=None, migrate=True,
+                 fake_migrate=False, migrate_enabled=True,
+                 fake_migrate_all=False, decode_credentials=False,
+                 driver_args=None, adapter_args=None, attempts=5,
+                 auto_import=False, bigint_id=False, debug=False,
+                 lazy_tables=False, db_uid=None, do_connect=True,
                  after_connection=None, tables=None, ignore_field_case=True,
                  entity_quoting=False, table_hash=None):
 
-        config = app.config.db
+        config = config or app.config.db
         if not config.uri:
             uri = self.uri_from_config(config)
 
