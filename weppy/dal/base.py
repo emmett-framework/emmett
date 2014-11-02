@@ -140,6 +140,7 @@ For more info::
 
 """
 
+import os
 import threading
 import socket
 import urllib
@@ -388,10 +389,14 @@ class DAL(object):
         fake_migrate_all = config.fake_migrate_all or fake_migrate_all
         driver_args = config.driver_args or driver_args
         adapter_args = config.adapter_args or adapter_args
-        #
-        self._folder = folder
-        if folder:
-            self.set_folder(folder)
+
+        #: set directory
+        folder = folder or 'databases'
+        self._folder = os.path.join(app.root_path, folder)
+        if not os.path.exists(self._folder):
+            os.mkdir(self._folder)
+
+        #: init params
         self._uri = uri
         self._pool_size = pool_size
         self._db_codec = db_codec
