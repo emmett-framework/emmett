@@ -395,6 +395,7 @@ class DAL(object):
         self._folder = os.path.join(app.root_path, folder)
         if not os.path.exists(self._folder):
             os.mkdir(self._folder)
+        self.set_folder(self._folder)
 
         #: init params
         self._uri = uri
