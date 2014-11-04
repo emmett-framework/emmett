@@ -12,6 +12,7 @@
 
 import cgi
 import copy
+import json
 import threading
 
 from ._compat import SimpleCookie
@@ -49,10 +50,21 @@ class Request(object):
     def _parse_post_vars(self):
         environ = self.environ
         post_vars = self._post_vars = Storage()
-        if self.input and environ.get('REQUEST_METHOD') in ('POST', 'PUT', 'BOTH'):
+        if self.environ.get('CONTENT_TYPE', '')[:16] == 'application/json':
+            try:
+                json_vars = json.load(self.input)
+            except:
+                json_vars = {}
+            post_vars.update(json_vars)
+            return
+        if self.input and environ.get('REQUEST_METHOD') in ('POST', 'PUT', 'DELETE', 'BOTH'):
             dpost = cgi.FieldStorage(fp=self.input, environ=environ,
                                      keep_blank_values=1)
-            for key in sorted(dpost):
+            try:
+                keys = sorted(dpost)
+            except:
+                keys = []
+            for key in keys:
                 dpk = dpost[key]
                 if not isinstance(dpk, list):
                     dpk = [dpk]
