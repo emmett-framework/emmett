@@ -285,7 +285,7 @@ class DiskCache(BaseCache):
                 fd, tmp = tempfile.mkstemp(suffix=self._fs_transaction_suffix,
                                            dir=self._path)
                 with os.fdopen(fd, 'wb') as f:
-                    pickle.dump(int(now + dt), f, 1)
+                    pickle.dump(dt, f, 1)
                     pickle.dump(value, f, pickle.HIGHEST_PROTOCOL)
                 os.rename(tmp, filename)
                 os.chmod(filename, self._fs_mode)
