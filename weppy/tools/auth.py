@@ -787,7 +787,7 @@ class Auth(object):
             if self.settings.everybody_group_id:
                 self.add_membership(self.settings.everybody_group_id, user_id)
             if login:
-                self.user = user
+                self.login_user(user)
         return user
 
     def basic(self, basic_auth_realm=False):
