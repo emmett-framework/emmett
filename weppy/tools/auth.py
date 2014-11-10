@@ -923,18 +923,9 @@ class Auth(object):
             snext = session._auth_next
 
         if handler.next is None:
-            # important for security
             unext = settings.login_next
-            user_next = snext
-            if user_next:
-                #external = user_next.split('://')
-                #if external[0].lower() in ['http', 'https', 'ftp']:
-                #   host_next = user_next.split('//', 1)[-1].split('/')[0]
-                #   if host_next in settings.cas_domains:
-                #       next = user_next
-                #else:
-                #   next = user_next
-                unext = user_next
+            if snext:
+                unext = snext
         else:
             unext = handler.next
 
@@ -956,8 +947,6 @@ class Auth(object):
             return loginform
         #: use external login url
         else:
-            ## TODO: update next line
-            unext = self.url('login')
             redirect(handler.login_url(unext))
 
         #: process authenticated users
