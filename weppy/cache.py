@@ -17,6 +17,7 @@ import tempfile
 from hashlib import md5
 
 from ._compat import pickle, integer_types
+from .libs.portalocker import LockedFile
 
 __all__ = ['Cache']
 
@@ -137,8 +138,6 @@ class RamCache(BaseCache):
 
 class DiskCache(BaseCache):
     lock = threading.RLock()
-    _heap_exp = []
-    _heap_acc = []
     _fs_transaction_suffix = '.__wp_cache'
     _fs_mode = 0o600
 
@@ -147,12 +146,9 @@ class DiskCache(BaseCache):
         self._threshold = threshold
         from .expose import Expose
         self._path = os.path.join(Expose.application.root_path, cache_dir)
-        self._map_file = os.path.join(self._path, '__map_wp_cache')
         #: create required paths if needed
         if not os.path.exists(self._path):
             os.mkdir(self._path)
-        if not os.path.exists(self._map_file):
-            self._init_acc()
 
     def __call__(self, key, function=None, dt='default'):
         now = time.time()
@@ -174,52 +170,34 @@ class DiskCache(BaseCache):
             if key is not None:
                 filename = self._get_filename(key)
                 try:
-                    with open(filename, 'rb') as f:
-                        exp = pickle.load(f)
-                    acc = self._get_acc(key)
-                    self._del_acc(key)
-                    self._heap_acc.remove((acc, key))
-                    self._heap_exp.remove((exp, key))
                     os.remove(filename)
                     return
                 except:
                     return
             for name in self._list_dir():
                 self._del_file(name)
-            self._heap_acc = []
-            self._heap_exp = []
-            self._init_acc()
 
     def _list_dir(self):
         return [os.path.join(self._path, fn) for fn in os.listdir(self._path)
                 if not fn.endswith(self._fs_transaction_suffix)]
 
     def _prune(self):
-        now = time.time()
-        # remove expired items
-        while self._heap_exp:
-            exp, rk = heapq.heappop(self._heap_exp)
-            if exp < now:
-                filename = self._get_filename(rk)
-                acc = self._get_acc(rk)
-                self._del_acc(rk)
-                self._heap_acc.remove((acc, rk))
-                self._del_file(filename)
-            else:
-                heapq.heappush(self._heap_exp, (exp, rk))
-                break
-        # remove threshold exceding elements
-        while len(self._list_dir()) > self._threshold:
-            rk = heapq.heappop(self._heap_acc)[1]
-            filename = self._get_filename(rk)
-            try:
-                self._del_acc(rk)
-                with open(filename, 'rb') as f:
-                    exp = pickle.load(f)
-                self._heap_exp.remove((exp, rk))
-                os.remove(filename)
-            except:
-                pass
+        with self.lock:
+            entries = self._list_dir()
+            if len(entries) > self.threshold:
+                now = time.time()
+                try:
+                    for i, fpath in enumerate(entries):
+                        remove = False
+                        f = LockedFile(fpath, 'rb')
+                        #with open(fpath, 'rb') as f:
+                        exp = pickle.load(f.file)
+                        f.close()
+                        remove = exp <= now or i % 3 == 0
+                        if remove:
+                            self._del_file(fpath)
+                except:
+                    pass
 
     def _get_filename(self, key):
         if isinstance(key, unicode):
@@ -233,65 +211,35 @@ class DiskCache(BaseCache):
         except:
             pass
 
-    def _init_acc(self):
-        with open(self._map_file, 'wb') as f:
-            pickle.dump({}, f, pickle.HIGHEST_PROTOCOL)
-
-    def _get_acc(self, key=None):
-        with open(self._map_file, 'rb') as f:
-            data = pickle.load(f)
-        if key is not None:
-            return data[key]
-        return data
-
-    def _write_acc(self, data):
-        with open(self._map_file, 'wb') as f:
-            pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
-
-    def _set_acc(self, key, acc):
-        data = self._get_acc()
-        data[key] = acc
-        self._write_acc(data)
-
-    def _del_acc(self, key):
-        data = self._get_acc()
-        del data[key]
-        self._write_acc(data)
-
     def _get(self, key):
         filename = self._get_filename(key)
         try:
             with self.lock:
                 now = time.time()
-                with open(filename, 'rb') as f:
-                    exp = pickle.load(f)
-                    if exp < now:
-                        return None
-                    val = pickle.load(f)
-                    acc = self._get_acc(key)
-                    self._heap_acc.remove((acc, key))
-                    self._set_acc(key, now)
-                    heapq.heappush(self._heap_acc, (now, key))
+                f = LockedFile(filename, 'rb')
+                #with open(filename, 'rb') as f:
+                exp = pickle.load(f.file)
+                if exp < now:
+                    f.close()
+                    return None
+                val = pickle.load(f.file)
+                f.close()
         except:
             return None
         return val
 
-    def _set(self, key, value, dt):
+    def _set(self, key, value, exp):
         filename = self._get_filename(key)
         with self.lock:
             self._prune()
-            now = time.time()
             try:
                 fd, tmp = tempfile.mkstemp(suffix=self._fs_transaction_suffix,
                                            dir=self._path)
                 with os.fdopen(fd, 'wb') as f:
-                    pickle.dump(dt, f, 1)
+                    pickle.dump(exp, f, 1)
                     pickle.dump(value, f, pickle.HIGHEST_PROTOCOL)
                 os.rename(tmp, filename)
                 os.chmod(filename, self._fs_mode)
-                self._set_acc(key, now)
-                heapq.heappush(self._heap_exp, (dt, key))
-                heapq.heappush(self._heap_acc, (now, key))
             except:
                 pass
 
