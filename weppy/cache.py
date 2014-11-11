@@ -184,7 +184,7 @@ class DiskCache(BaseCache):
     def _prune(self):
         with self.lock:
             entries = self._list_dir()
-            if len(entries) > self.threshold:
+            if len(entries) > self._threshold:
                 now = time.time()
                 try:
                     for i, fpath in enumerate(entries):
