@@ -28,6 +28,7 @@ import urllib
 from datetime import datetime, timedelta
 
 from ..globals import request, response, session
+from ..current import current
 from ..storage import Storage
 from ..http import HTTP, redirect
 from ..forms import Form, DALForm
@@ -664,7 +665,8 @@ class Auth(object):
                       default=lambda: datetime.now(),
                       label=self.messages.label_time_stamp),
                 Field('client_ip',
-                      default=lambda: request.client,
+                      default=lambda: request.client if
+                      hasattr(current, 'request') else 'unavailable',
                       label=self.messages.label_client_ip),
                 Field('user_id', reference_table_user, default=None,
                       label=self.messages.label_user_id),
