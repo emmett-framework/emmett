@@ -27,8 +27,7 @@
 import urllib
 from datetime import datetime, timedelta
 
-from ..globals import request, response, session
-from ..current import current
+from ..globals import current, request, response, session
 from ..storage import Storage
 from ..http import HTTP, redirect
 from ..forms import Form, DALForm
