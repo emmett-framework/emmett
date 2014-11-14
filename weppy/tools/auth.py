@@ -331,7 +331,11 @@ class Auth(object):
 
     @property
     def user(self):
-        return session.auth.user if session.auth else None
+        try:
+            u = session.auth.user if session.auth.user else None
+        except:
+            u = None
+        return u
 
     def get_vars_next(self):
         next = request.vars._next
