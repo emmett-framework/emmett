@@ -271,7 +271,7 @@ class FormStyle(object):
         options = field.requires[0].options() if \
             isinstance(field.requires, (list, tuple)) else \
             field.requires.options()
-        option_items = [(k, FormStyle._represent_value(n)) for k, n in options]
+        option_items = [(k, FormStyle._represent_value(field, n)) for k, n in options]
         return option_items
 
     @staticmethod
@@ -397,7 +397,7 @@ class FormStyle(object):
     #: returns the widget for the field and a boolean (True if widget is
     #  defined by user, False if it comes from styler default ones)
     def _get_widget(self, field, value):
-        value = FormStyle._represent_value(value)
+        value = FormStyle._represent_value(field, value)
         if field.widget:
             return field.widget(field, value), True
         wtype = field.type.split(":")[0]
