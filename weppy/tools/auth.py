@@ -934,10 +934,6 @@ class Auth(object):
         else:
             unext = handler.next
 
-        #: try to call handler's form
-        loginform = None
-        if hasattr(handler, 'login_form'):
-            loginform = handler.login_form()
         #: get user from handler
         user = handler.get_user()
         if user:
@@ -948,29 +944,25 @@ class Auth(object):
                     self.table_user._filter_fields(user),
                     settings.update_fields)
         #: return form if required
-        elif loginform is not None:
-            return loginform
+        elif hasattr(handler, 'login_form'):
+            return handler.login_form()
         #: use external login url
         else:
             redirect(handler.login_url(unext))
 
         #: process authenticated users
-        if user:
-            user = Row(self.table_user._filter_fields(user, id=True))
-            self.login_user(user)
-            #: use the right session expiration
-            session.auth.expiration = \
-                request.vars.get('remember', False) and \
-                settings.long_expiration or \
-                settings.expiration
-            session.auth.remember = 'remember' in request.vars
-            #: log and flash
-            self.log_event(log, user)
-            #flash(self.messages.logged_in)
-            #: handler callback
-            handler.onsuccess()
-        else:
-            handler.onfail()
+        user = Row(self.table_user._filter_fields(user, id=True))
+        self.login_user(user)
+        #: use the right session expiration
+        session.auth.expiration = \
+            request.vars.get('remember', False) and \
+            settings.long_expiration or \
+            settings.expiration
+        session.auth.remember = 'remember' in request.vars
+        #: log login
+        self.log_event(log, user)
+        #: handler callback
+        handler.onsuccess()
 
         #: clean session next
         if unext == session._auth_next:
@@ -1858,9 +1850,6 @@ class AuthLoginHandler(object):
     def onsuccess(self):
         pass
 
-    def onfail(self):
-        pass
-
     def get_user(self):
         return None
 
@@ -1903,6 +1892,8 @@ class DefaultLoginHandler(AuthLoginHandler):
             if form.vars.get(passfield, '') == temp_user[passfield]:
                 # success
                 self.user = temp_user
+        if not self.user:
+            self.onfail()
 
     def onsuccess(self):
         flash(self.auth.messages.logged_in)
