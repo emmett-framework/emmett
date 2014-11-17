@@ -261,6 +261,20 @@ class FormStyle(object):
     parent = None
 
     @staticmethod
+    def _represent_value(field, value):
+        if field.represent:
+            return field.represent(value)
+        return value
+
+    @staticmethod
+    def _field_options(field):
+        options = field.requires[0].options() if \
+            isinstance(field.requires, (list, tuple)) else \
+            field.requires.options()
+        option_items = [(k, FormStyle._represent_value(n)) for k, n in options]
+        return option_items
+
+    @staticmethod
     def widget_string(attr, field, value, _class='string', _id=None):
         return tag.input(
             _type='text', _name=field.name, _value=value or '',
@@ -310,9 +324,7 @@ class FormStyle(object):
         def selected(k):
             return 'selected' if str(value) == str(k) else None
 
-        options = field.requires[0].options() if \
-            isinstance(field.requires, (list, tuple)) else \
-            field.requires.options()
+        options = FormStyle._field_options(field)
         if field.requires.multiple:
             return FormStyle.widget_multiple(attr, field, value, options,
                                              _class=_class, _id=_id)
@@ -385,6 +397,8 @@ class FormStyle(object):
     #: returns the widget for the field and a boolean (True if widget is
     #  defined by user, False if it comes from styler default ones)
     def _get_widget(self, field, value):
+        if field.represent:
+            value = field.represent(value)
         if field.widget:
             return field.widget(field, value), True
         wtype = field.type.split(":")[0]
