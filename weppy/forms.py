@@ -262,7 +262,7 @@ class FormStyle(object):
 
     @staticmethod
     def _represent_value(field, value):
-        if field.represent:
+        if value and field.represent:
             return field.represent(value)
         return value
 
@@ -397,8 +397,7 @@ class FormStyle(object):
     #: returns the widget for the field and a boolean (True if widget is
     #  defined by user, False if it comes from styler default ones)
     def _get_widget(self, field, value):
-        if field.represent:
-            value = field.represent(value)
+        value = FormStyle._represent_value(value)
         if field.widget:
             return field.widget(field, value), True
         wtype = field.type.split(":")[0]
