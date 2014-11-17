@@ -13,7 +13,7 @@ import uuid
 
 from .tags import tag, TAG, cat, asis
 from .storage import Storage
-from .globals import current
+from .globals import current, request, session
 
 __all__ = ['Form', 'DALForm']
 
@@ -63,23 +63,33 @@ class Form(TAG):
         return _csrf is True or (_csrf == 'auto' and
                                  self.attributes['_method'] == 'POST')
 
+    def _load_csrf(self):
+        if not self.csrf:
+            return
+        if not hasattr(current, "session"):
+            raise RuntimeError("You need sessions to use csrf in forms.")
+        session._csrf_tokens = session._csrf_tokens or {}
+        #: some clean up of session
+        if len(session._csrf_tokens) > 10:
+            session._csrf_tokens = {}
+
     def _validate_field(self, field, value):
         return field.validate(value)
 
     @property
     def _submitted(self):
         if self.csrf:
-            return self.input_vars._csrf_token in current.session._csrf_tokens
+            return self.input_vars._csrf_token in session._csrf_tokens
         return self.input_vars._csrf_token is 'undef'
 
     def _process(self):
+        self._load_csrf()
         method = self.attributes['_method']
-        current.session._csrf_tokens = current.session._csrf_tokens or {}
         # get appropriate input variables
         if method is "POST":
-            self.input_vars = Storage(current.request.post_vars)
+            self.input_vars = Storage(request.post_vars)
         else:
-            self.input_vars = Storage(current.request.get_vars)
+            self.input_vars = Storage(request.get_vars)
         # run processing if needed
         if self._submitted:
             self.processed = True
@@ -97,12 +107,12 @@ class Form(TAG):
             # end of validation
             if not self.errors:
                 self.accepted = True
-                del current.session._csrf_tokens
+                if self.csrf:
+                    del session._csrf_tokens[self.input_vars._csrf_token]
         # CRSF protection logic
         if self.csrf and not self.accepted:
-            #current.session._csrf_tokens = {}
             token = str(uuid.uuid4())
-            current.session._csrf_tokens[token] = 1
+            session._csrf_tokens[token] = 1
             self.formkey = token
         # reset default values in form
         if not self.processed or (self.accepted and not self.keepvalues):
