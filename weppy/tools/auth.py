@@ -934,6 +934,12 @@ class Auth(object):
         else:
             unext = handler.next
 
+        #: init handler form if required
+        #  note: we need to load the form before calling `get_user()`, as the
+        #        handler could use the form itself to init the user var
+        loginform = None
+        if hasattr(handler, 'login_form'):
+            loginform = handler.login_form()
         #: get user from handler
         user = handler.get_user()
         if user:
@@ -944,8 +950,8 @@ class Auth(object):
                     self.table_user._filter_fields(user),
                     settings.update_fields)
         #: return form if required
-        elif hasattr(handler, 'login_form'):
-            return handler.login_form()
+        elif loginform is not None:
+            return loginform
         #: use external login url
         else:
             redirect(handler.login_url(unext))
