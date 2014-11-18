@@ -1,3 +1,18 @@
+weppy changelog
+===============
+
+Version 0.2
+-----------
+
+(release date to be announced, codename to be selected)
+
+- Several bugfixes
+- JSON body parsing for incoming requests with POST method and 'application/
+  json' headers
+- `widget_select()` in forms use `represent` attribute of fields to render
+  values
+
+
 Version 0.1
 -----------
 
