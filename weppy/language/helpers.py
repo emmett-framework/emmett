@@ -28,6 +28,8 @@ regex_plural_dict = re.compile(
 # %%{word[index]} or %%{word}
 regex_plural_tuple = re.compile('^{(?P<w>[^[\]()]+)(?:\[(?P<i>\d+)\])?}$')
 regex_plural_file = re.compile('^plural-[a-zA-Z]{2}(-[a-zA-Z]{2})?\.py$')
+regex_language = re.compile(
+    '([a-z]{2,3}(?:\-[a-z]{2})?(?:\-[a-z]{2})?)(?:[,;]|$)')
 
 
 DEFAULT_LANGUAGE = 'en'

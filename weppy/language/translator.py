@@ -18,10 +18,10 @@ import os
 
 from ..tags import asis, xmlescape
 from .helpers import regex_backslash, regex_plural, regex_plural_dict, \
-    regex_plural_tuple, DEFAULT_NPLURALS, DEFAULT_GET_PLURAL_ID, \
-    DEFAULT_CONSTRUCT_PLURAL_FORM, read_possible_languages, read_dict, \
-    write_dict, read_plural_dict, write_plural_dict, Utf8, ttab_in, ttab_out, \
-    upper_fun, title_fun, cap_fun
+    regex_plural_tuple, regex_language, DEFAULT_NPLURALS, \
+    DEFAULT_GET_PLURAL_ID, DEFAULT_CONSTRUCT_PLURAL_FORM, \
+    read_possible_languages, read_dict, write_dict, read_plural_dict, \
+    write_plural_dict, Utf8, ttab_in, ttab_out, upper_fun, title_fun, cap_fun
 from .cache import get_from_cache
 
 NUMBERS = (int, long, float)
@@ -256,9 +256,7 @@ class TLanguage(object):
 #  application languages
 class Translator(object):
     def __init__(self, app):
-        # can be better!
         self.app = app
-        #
         self.langpath = os.path.join(app.root_path, "languages")
         #self.is_writable = not is_gae
         self.is_writable = app.language_write
@@ -296,10 +294,7 @@ class Translator(object):
         setting one of this languages makes force() function
         turn translation off to use default language
         """
-        if len(languages) == 1 and isinstance(
-                languages[0], (tuple, list)):
-            languages = languages[0]
-        # set default language from default.py/DEFAULT_LANGUAGE
+        #: get default language info from default.py/DEFAULT_LANGUAGE
         pl_info = self.get_language_info('default')
         #: pl_info[2] is the langfile_mtime, if it equals 0 it means
         #  app doesn't have a languages/default.py
@@ -308,12 +303,14 @@ class Translator(object):
         else:
             self.default_language_file = os.path.join(self.langpath,
                                                       'default.py')
+        #: set default languages
         self.current_languages = [pl_info[0]]
         self.add_translator(pl_info[0], self.default_language_file, True)
         self.default_translator = self.TLanguages[pl_info[0]]
         for lang in languages:
             if lang not in self.current_languages:
                 self.TLanguages[lang] = self.default_translator
+                self.current_languages.append(lang)
 
     def add_translator(self, language, filename, default=False):
         writable = not default and self.is_writable
@@ -332,6 +329,7 @@ class Translator(object):
         # compare "aa-bb" | "aa" from *language* parameter
         # with strings from langlist using such alghorythm:
         # xx-yy.py -> xx.py -> xx*.py
+        found = None
         lang5 = language[:5]
         if lang5 in all_languages:
             found = lang5
@@ -343,9 +341,16 @@ class Translator(object):
                 for l in all_languages:
                     if l[:2] == lang2:
                         found = l
-        if found and language not in self.current_languages:
-            filename = os.path.join(self.langpath, found + '.py')
-            self.add_translator(found, filename)
+        if found and found not in self.current_languages:
+            #: if we can't find a translator instance for the found lang,
+            #  we build it
+            if self.TLanguages.get(found) is None:
+                filename = os.path.join(self.langpath, found + '.py')
+                self.add_translator(found, filename)
+            #: we map language with found (example: `en-us` and `en` with only
+            #  en.py file)
+            if language != found:
+                self.TLanguages[language] = self.TLanguages[found]
         else:
             self.TLanguages[language] = self.default_translator
 
@@ -493,7 +498,15 @@ class Translator(object):
         message = regex_plural.sub(sub_plural, message)
         return message
 
+    def get_best_language(self, langstr):
+        langs = regex_language.findall(langstr)
+        for lang in langs:
+            if lang not in self.current_languages:
+                return lang
+        return langs[0]
+
     def translate(self, lang, message, symbols):
+        lang = self.get_best_language(lang.lower())
         if self.TLanguages.get(lang) is None:
             self.build_translator(lang)
         message = self.TLanguages[lang].translate(message)
