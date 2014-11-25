@@ -88,7 +88,7 @@ One of the advantages of the authorization module is the simple way you can intr
 from weppy.tools import requires
 
 @app.expose()
-@requires(auth.is_logged_in, url('unauthorized_page')
+@requires(auth.is_logged_in, url('unauthorized_page'))
 def myprotected_page():
     #some code
 ```
