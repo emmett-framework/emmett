@@ -388,184 +388,31 @@ So basically, you can store a value to the user session and retrieve it whenever
 
 More information and storing systems are available in the [Session chapter](./sessions) of the documentation.
 
-Using a database
------------------
-> – Ok, what if I need to use a database in my application?   
-> – *you can use the included DAL*
-
-In fact, weppy integrates the Database Abstraction Layer (formerly *DAL*) of *web2py*, which gives you the ability to write the same code independently on which of the [available adapters](#) you want to use for deploy your app.
-Let's see how it works:
-
-```python
-from weppy import App, DAL
-
-app = App(__name__)
-app.config.db.uri = "sqlite://storage.sqlite"
-
-db = DAL(app)
-db.define_table('post',
-   Field('author'),
-   Field('title'),
-   Field('body', 'text'))
-
-app.common_handlers = [db.handler]
-
-@app.expose('/posts/<str:author>')
-def post_by(author):
-    posts = db(db.post.author == author).select()
-    return dict(posts=posts)
-```
-The above code is quite simple: the `post_by()` function list posts from a specific author.
-Let's reconstruct what we done in those simple lines:
-
-* we added an *sqlite* database to our application, stored on file *storage.sqlite*
-* we defined the table *post* and it's fields
-* we did a select on the table querying the *author* column of *post* table
-
-As you noticed, the fields defined for the table are available for queries as attributes, and calling *db* with a query as argument provides you a set on which you can do operations like the `select()`.
-
-Let's focus a bit more on tables definition, because weppy provides also another way to do it: the models.
-
-### The models layer
-weppy provides a *models* structuring layer upon the web2py's DAL; we encourage the use of models since they make easy to organize all the database entities for the applications. Also, models provides an easier syntax to use many DAL's features, like fields computations.
-
-So, how a weppy model look like? Using the upper example for the posts table in a blog, and adding more features, an example model would be like this:
-
-```python
-from markdown2 import markdown
-from weppy.dal.models import Model, computation
-from weppy.validators import IS_NOT_EMPTY
-
-class Post(Model):
-    tablename = "post"
-
-    fields = [
-        Field("author"),
-        Field("title"),
-        Field("body", "text"),
-        Field("slug")
-    ]
-
-    representation = {
-        "body": lambda row, value: markdown(value)
-    }
-
-    validators = {
-        "title": IS_NOT_EMPTY(),
-        "body": IS_NOT_EMPTY()
-    }
-
-    @computation('slug')
-    def make_slug(self, row):
-        # custom code to create the slug
-
-```
-
-As you can see, we added validators, representation rules (in this example we parse the markdown text in the database to produce html in templates), and a `computation` on the `slug` field.
-
-To see more about DAL and dive into features and commands, read the complete documentation for the DAL available in the [appropriate chapter](#).
-
 Creating forms
 --------------
-Once you have defined your data structures, you will need a method to insert and edit data in your application. The obvious once is using forms, and weppy provides two classes to help you: `Form` and `DALForm`.   
-They works in the same way: the only difference, as names suggest, is that the second use DAL tables to create forms.
+You will need quite often to build forms for your web application. weppy provides the `Form` class to help you doing that.
 
-Let's see how to use them with an example:
+Let's see how to use it with an example:
 
 ```python
-form weppy import Field, Form, DALForm
+form weppy import Field, Form
 from weppy.validators import IS_IN_SET
 
-# create a form without a database table
+# create a form
 @app.expose('/form')
 def a():
     name_field = Field('name')
+    int_field = Field('number', 'integer')
     type_field = Field('type')
     type_field.requires = IS_IN_SET(['type1', 'type2'])
     simple_form = Form([name_field, type_field])
     if simple_form.accepted:
         #do something
     return dict(form=simple_form)
-
-# create a form for db.post table
-@app.expose('/dalform')
-def b():
-    form = DALForm(db.post)
-    if form.accepted:
-        #do something
-    return dict(form=form)
 ```
 
-As you can see the `Form` class accepts a list of fields for the input, and the `DALForm` takes a table.
-
-> – Wait, and if I need to edit a record?   
-
-You can pass the record as the second argument of `DALForm`
-
-```python
-record = db(db.post.id == someid).select().first()
-form = DALForm(db.post, record)
-```
-
-or, if you prefer, you can use a record id:
-
-```python
-form = DALForm(db.post, record_id=someid)
-```
-
-weppy forms has many options, for example you can set an `onvalidation` method to run additional validation besides the fields' requirements; you can also customize the form rendering and styling. Check out the [Forms chapter](#) of the documentation and the [weppy BS3 extension](#) which add bootstrap3 style to your forms.
-
-> – Ok, so if I need a form to provide login to my users, I can write my user table or model and then use the Form class with, for example, the *email* and *password* fields?   
-> – *Yes. Or you can use the included authorization system.*
-
-The authorization layer
------------------------
-weppy includes an useful authorization system, based on the once available on *web2py*, which automatically creates required database tables, and generate forms for access control in the application.
-
-So how do you use it? Let's find out with an example:
-
-```python
-from weppy import App, DAL
-from weppy.tools import Auth
-from weppy.sessions import SessionCookieManager
-
-app = App(__name__)
-app.config.db.uri = "sqlite://storage.sqlite"
-
-db = DAL(app)
-auth = Auth(app, db, base_url='/account')
-
-app.common_handlers = [
-    SessionCookieManager('myverysecretkey'),
-    db.handler,
-    auth.handler
-]
-
-@app.expose('/account(/<str:f>)?(/<str:k>)?')
-def account(f, k):
-    form = auth(f, k)
-    return dict(form=form)
-```
-
-That's it.   
-Write a template page for the account function including the returned form and open [http://127.0.0.1:8000/account](http://127.0.0.1:8000/account) in your browser. weppy should redirect you to the login page and showing you the relative form.
-
-As you've figured out, the exposed `account` function will be responsible of the authorization flow in your app.   
-The `Auth` module of weppy exposes (with the default settings):
-
-* http://.../{baseurl}/login
-* http://.../{baseurl}/logout
-* http://.../{baseurl}/register
-* http://.../{baseurl}/verify_email
-* http://.../{baseurl}/retrieve_username
-* http://.../{baseurl}/retrieve_password
-* http://.../{baseurl}/reset_password
-* http://.../{baseurl}/change_password
-* http://.../{baseurl}/profile
-
-and it also creates all the database tables needed, from users to groups and memberships, working also with DAL models layer.
-
-You can heavily customize the module settings and the user table on your needs. Go deep and explore all the features and settings of the authorization system in the [dedicated chapter](#) of the documentation.
+As you can see the `Form` class accepts a list of fields for the input, and you can add validators to your fields. The `Form` class comes with many options, for example you can set an `onvalidation` method to run additional validation besides the fields' requirements.   
+You can also customize the form rendering and styling, or generate forms from database tables created with the integrated [DAL](./dal). Check out the [Forms chapter](#) of the documentation and the [weppy BS3 extension](#) which add bootstrap3 style to your forms.
 
 Languages and translation
 -------------------------

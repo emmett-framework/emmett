@@ -1,4 +1,4 @@
-## Welcome to weppy
+# Welcome to weppy
 
 weppy is a full-stack python framework that includes everything needed to easily create fast, scalable and secure web applications.
 
@@ -20,7 +20,7 @@ Examples will be soon available on this repository. In the meantime take a look 
 
 ## Status of the project
 
-weppy is currently released in alpha stage.   
+weppy is currently released in alpha stage.
 *What does it means?*
 
 * That the code may contain *noteworthy* bugs
