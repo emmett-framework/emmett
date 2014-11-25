@@ -8,4 +8,6 @@
 - request
 - response
 - sessions
+- dal
+- auth
 - extensions
