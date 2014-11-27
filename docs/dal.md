@@ -136,7 +136,12 @@ The `fields` attribute has to be a list of `Field` objects. These objects define
 Field('started', 'datetime', default=lambda: request.now)
 ```
 
-as you can see we defined a default value for the field. Available types for Field definition are:
+as you can see we defined a default value for the field.
+
+> **Warning:**   
+> When you define a default value, if it's evaluated on request, like the request timestamp in this example, you have to use a `lambda` function; otherwise the value will be always the same as it will be evaluated only on model definition.
+
+Available types for Field definition are:
 
 | Field type | default validators |
 | --- | --- |
@@ -162,9 +167,6 @@ as you can see we defined a default value for the field. Available types for Fie
 | big-reference | `None` |
 
 Now, for the complete list of parameters accepted by `Field` class we encourage you to take a look at the [official DAL documentation](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Field-constructor).
-
-> **Warning:**   
-> When you define a default value, if it's evaluated on request, like the request timestamp in this example, you have to use a `lambda` function; otherwise the value will be always the same as it will be evaluated only on model definition.
 
 #### Validators
 
