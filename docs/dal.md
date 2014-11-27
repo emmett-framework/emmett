@@ -152,10 +152,10 @@ as you can see we defined a default value for the field. Available types for Fie
 | datetime | `IS_DATETIME()` |
 | password | `None` |
 | upload | `None` |
-| reference <table> | `IS_IN_DB(db, table.field, format)` |
+| reference *tablename* | `IS_IN_DB(db, table.field, format)` |
 | list:string | `None` |
 | list:integer | `None` |
-| list:reference <table> | `IS_IN_DB(db, table.field, format, multiple=True)` |
+| list:reference *tablename* | `IS_IN_DB(db, table.field, format, multiple=True)` |
 | json | `IS_JSON()` |
 | bigint | `None` |
 | big-id | `None` |
