@@ -140,26 +140,26 @@ as you can see we defined a default value for the field. Available types for Fie
 
 | Field type | default validators |
 | --- | --- |
-| string | IS_LENGTH(length) default length is 512 |
-| text | IS_LENGTH(65536) |
-| blob | None |
-| boolean | None |
-| integer | IS_INT_IN_RANGE(-1e100, 1e100) |
-| double | IS_FLOAT_IN_RANGE(-1e100, 1e100) |
-| decimal(n,m) | IS_DECIMAL_IN_RANGE(-1e100, 1e100) |
-| date | IS_DATE() |
-| time | IS_TIME() |
-| datetime | IS_DATETIME() |
-| password | None |
-| upload | None |
-| reference <table>| IS_IN_DB(db,table.field,format) |
-| list:string | None |
-| list:integer | None |
-| list:reference <table> | IS_IN_DB(db,table.field,format,multiple=True) |
-| json | IS_JSON() |
-| bigint | None |
-| big-id | None |
-| big-reference | None |
+| string | `IS_LENGTH(length)` *(default length at 512)* |
+| text | `IS_LENGTH(65536)` |
+| blob | `None` |
+| boolean | `None` |
+| integer | `IS_INT_IN_RANGE(-1e100, 1e100)` |
+| double | `IS_FLOAT_IN_RANGE(-1e100, 1e100)` |
+| decimal(n,m) | `IS_DECIMAL_IN_RANGE(-1e100, 1e100)` |
+| date | `IS_DATE()` |
+| time | `IS_TIME()` |
+| datetime | `IS_DATETIME()` |
+| password | `None` |
+| upload | `None` |
+| reference <table> | `IS_IN_DB(db, table.field, format)` |
+| list:string | `None` |
+| list:integer | `None` |
+| list:reference <table> | `IS_IN_DB(db, table.field, format, multiple=True)` |
+| json | `IS_JSON()` |
+| bigint | `None` |
+| big-id | `None` |
+| big-reference | `None` |
 
 Now, for the complete list of parameters accepted by `Field` class we encourage you to take a look at the [official DAL documentation](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Field-constructor).
 
