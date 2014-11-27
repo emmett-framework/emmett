@@ -93,6 +93,7 @@ Here is the complete list of parameters accepted by `Form` class:
 | upload | `None` | define a url for download uploaded fields |
 
 `DALForm` class add some parameters to the `Form` ones:
+
 | parameter | description |
 | --- | --- |
 | record | as we seen above, set a record to edit |
