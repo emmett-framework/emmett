@@ -6,7 +6,7 @@ The Database Abstraction Layer
 
 weppy integrates the Database Abstraction Layer (formerly *DAL*) of *web2py*, which gives you the ability to use a database in your application, writing the same code and using the same syntax independently on which of the available adapters you want to use for deploy your app (you just need to install one of the supported drivers):
 
-| Supperted DBMS | python driver(s) |
+| Supported DBMS | python driver(s) |
 | --- | --- |
 | SQLite | sqlite3, pysqlite2, zxjdbc |
 | PostgreSQL | psycopg2, pg8000, zxjdbc |
@@ -27,7 +27,7 @@ weppy integrates the Database Abstraction Layer (formerly *DAL*) of *web2py*, wh
 But how do you use it? Let's see it with an example:
 
 ```python
-from weppy import App, DAL
+from weppy import App, DAL, Field
 
 app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
@@ -136,7 +136,32 @@ The `fields` attribute has to be a list of `Field` objects. These objects define
 Field('started', 'datetime', default=lambda: request.now)
 ```
 
-as you can see we defined a default value for the field. The complete list of parameters accepted by `Field` class are available in the `DAL` documentation.
+as you can see we defined a default value for the field. Available types for Field definition are:
+
+| Field type | default validators |
+| --- | --- |
+| string | IS_LENGTH(length) default length is 512 |
+| text | IS_LENGTH(65536) |
+| blob | None |
+| boolean | None |
+| integer | IS_INT_IN_RANGE(-1e100, 1e100) |
+| double | IS_FLOAT_IN_RANGE(-1e100, 1e100) |
+| decimal(n,m) | IS_DECIMAL_IN_RANGE(-1e100, 1e100) |
+| date | IS_DATE() |
+| time | IS_TIME() |
+| datetime | IS_DATETIME() |
+| password | None |
+| upload | None |
+| reference <table>| IS_IN_DB(db,table.field,format) |
+| list:string | None |
+| list:integer | None |
+| list:reference <table> | IS_IN_DB(db,table.field,format,multiple=True) |
+| json | IS_JSON() |
+| bigint | None |
+| big-id | None |
+| big-reference | None |
+
+Now, for the complete list of parameters accepted by `Field` class we encourage you to take a look at the [official DAL documentation](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Field-constructor).
 
 > **Warning:**   
 > When you define a default value, if it's evaluated on request, like the request timestamp in this example, you have to use a `lambda` function; otherwise the value will be always the same as it will be evaluated only on model definition.
@@ -401,7 +426,7 @@ Other methods pre-defined in weppy are:
 
 | method | description |
 | --- | --- |
-| validate | process the values passed (field=value) and return None if they passes the validation defined in the model or a dictionary of errors |
+| validate | process the values passed (field=value) and return None if they pass the validation defined in the model or a dictionary of errors |
 | create | insert a new record with the values passed (field=value) if they pass the validation |
 
 But how you can define your methods?   
@@ -425,4 +450,4 @@ and you're done.
 As you observed, `modelmethod` decorator requires that your method accepts `db` and `entity` as first parameters. In fact, these methods are available on the class, and you don't have the `self` access to the instance. But weppy automatically provides you a shortcut to the database and the table with these parameters.
 
 > **Note:**   
-> Accessing `Model.method()` refers to the model itself, while `db.Model.attribute` refers to the table instance you created whit your model.
+> Accessing `Model.method()` refers to the model itself, while `db.Model.attribute` refers to the table instance you created with your model.
