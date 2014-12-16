@@ -146,6 +146,7 @@ class Model(object):
         self.__define_labels()
         self.__define_comments()
         self.__define_updates()
+        self.__define_computations()
         self.__define_actions()
         self.__set()
 
@@ -160,12 +161,12 @@ class Model(object):
         self.set_updates()
 
     def __define_virtuals(self):
+        field_names = [field.name for field in self.fields]
         for name in dir(self):
             if not name.startswith("_"):
                 obj = self.__getattribute__(name)
                 if isinstance(obj, virtualfield):
-                    if any([field.name == obj.field_name
-                            for field in self.fields]):
+                    if obj.field_name in field_names:
                         raise RuntimeError('virtualfield or fieldmethod cannot have same name as an existent field!')
                     if isinstance(obj, fieldmethod):
                         f = Field.Method(obj.field_name, lambda row, obj=obj,
@@ -205,11 +206,12 @@ class Model(object):
             self.entity[field].comment = value
 
     def __define_computations(self):
+        field_names = [field.name for field in self.fields]
         for name in dir(self):
             if not name.startswith("_"):
                 obj = self.__getattribute__(name)
                 if isinstance(obj, computation):
-                    if obj.field_name not in self.entity.fields:
+                    if obj.field_name not in field_names:
                         raise RuntimeError('computations should have the name of an existing field to compute!')
                     self.entity[obj.field_name].compute = \
                         lambda row, obj=obj, self=self: obj.f(self, row)

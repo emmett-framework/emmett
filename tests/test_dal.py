@@ -80,6 +80,10 @@ class TModel(Model):
         "a": _represent_f
     }
 
+    widgets = {
+        "a": _widget_f
+    }
+
     def set_validators(self):
         self.entity.b.requires = IS_NOT_IN_DB(self.db, self.entity.b)
 
@@ -124,7 +128,7 @@ class TModel(Model):
         return db, entity, t
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def db():
     app = App(__name__)
     db = ModelsDAL(app)
@@ -190,18 +194,18 @@ def test_computations(db):
 def test_callbacks(db):
     fields = ["a", "b", "c"]
     id = 12
-    rv = db.TModel._before_insert[0](fields)
+    rv = db.TModel._before_insert[-1](fields)
     assert rv == fields[:-1]
-    rv = db.TModel._after_insert[0](fields, id)
+    rv = db.TModel._after_insert[-1](fields, id)
     assert rv[0] == fields[:-1] and rv[1] == id+1
     set = {"a": "b"}
-    rv = db.TModel._before_update[0](set, fields)
+    rv = db.TModel._before_update[-1](set, fields)
     assert rv[0] == set and rv[1] == fields[:-1]
-    rv = db.TModel._after_update[0](set, fields)
+    rv = db.TModel._after_update[-1](set, fields)
     assert rv[0] == set and rv[1] == fields[:-1]
-    rv = db.TModel._before_delete[0](set)
+    rv = db.TModel._before_delete[-1](set)
     assert rv == set
-    rv = db.TModel._after_delete[0](set)
+    rv = db.TModel._after_delete[-1](set)
     assert rv == set
 
 
