@@ -160,12 +160,12 @@ class Model(object):
         self.set_updates()
 
     def __define_virtuals(self):
-        fields = [field.name for field in self.fields]
         for name in dir(self):
             if not name.startswith("_"):
                 obj = self.__getattribute__(name)
                 if isinstance(obj, virtualfield):
-                    if obj.field_name in fields:
+                    if any([field.name == obj.field_name
+                            for field in self.fields]):
                         raise RuntimeError('virtualfield or fieldmethod cannot have same name as an existent field!')
                     if isinstance(obj, fieldmethod):
                         f = Field.Method(obj.field_name, lambda row, obj=obj,
