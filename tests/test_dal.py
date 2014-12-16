@@ -13,8 +13,35 @@ import pytest
 from weppy import App
 from weppy.dal import DAL, ModelsDAL, Field
 from weppy.dal.objects import Table
-from weppy.dal.models import Model, AuthModel
-from weppy.validators import IS_NOT_EMPTY
+from weppy.dal.models import Model, AuthModel, computation, before_insert, \
+    after_insert, before_update, after_update, before_delete, after_delete, \
+    virtualfield, fieldmethod, modelmethod
+from weppy.validators import IS_NOT_EMPTY, IS_NOT_IN_DB
+from weppy.storage import Storage
+
+
+def _represent_f(value):
+    return value
+
+
+def _widget_f(field, value):
+    return value
+
+
+def _call_bi(fields):
+    return fields[:-1]
+
+
+def _call_ai(fields, id):
+    return fields[:-1], id+1
+
+
+def _call_u(set, fields):
+    return set, fields[:-1]
+
+
+def _call_d(set):
+    return set
 
 
 class TModel(Model):
@@ -22,6 +49,10 @@ class TModel(Model):
 
     fields = [
         Field("a", "string"),
+        Field("b"),
+        Field("price", "double"),
+        Field("quantity", "integer"),
+        Field("total", "double"),
         Field("invisible")
     ]
 
@@ -40,6 +71,57 @@ class TModel(Model):
     comments = {
         "a": "A comment"
     }
+
+    updates = {
+        "a": "a_update"
+    }
+
+    representation = {
+        "a": _represent_f
+    }
+
+    def set_validators(self):
+        self.entity.b.requires = IS_NOT_IN_DB(self.db, self.entity.b)
+
+    @computation('total')
+    def eval_total(self, row):
+        return row.price*row.quantity
+
+    @before_insert
+    def bi(self, fields):
+        return _call_bi(fields)
+
+    @after_insert
+    def ai(self, fields, id):
+        return _call_ai(fields, id)
+
+    @before_update
+    def bu(self, set, fields):
+        return _call_u(set, fields)
+
+    @after_update
+    def au(self, set, fields):
+        return _call_u(set, fields)
+
+    @before_delete
+    def bd(self, set):
+        return _call_d(set)
+
+    @after_delete
+    def ad(self, set):
+        return _call_d(set)
+
+    @virtualfield('totalv')
+    def eval_total_v(self, row):
+        return row.price*row.quantity
+
+    @fieldmethod('totalm')
+    def eval_total_m(self, row):
+        return row.price*row.quantity
+
+    @modelmethod
+    def method_test(db, entity, t):
+        return db, entity, t
 
 
 @pytest.fixture
@@ -83,37 +165,55 @@ def test_comments(db):
     assert db.TModel.a.comment == "A comment"
 
 
-def test_updates():
-    pass
+def test_updates(db):
+    assert db.TModel.a.update == "a_update"
 
 
-def test_representation():
-    pass
+def test_representation(db):
+    assert db.TModel.a.represent == _represent_f
 
 
-def test_widgets():
-    pass
+def test_widgets(db):
+    assert db.TModel.a.widget == _widget_f
 
 
-def test_set_helper():
-    pass
+def test_set_helper(db):
+    assert isinstance(db.TModel.b.requires, IS_NOT_IN_DB)
 
 
-def test_computations():
-    pass
+def test_computations(db):
+    row = Storage(price=12.95, quantity=3)
+    rv = db.TModel.total.compute(row)
+    assert rv == 12.95*3
 
 
-def test_callbacks():
-    pass
+def test_callbacks(db):
+    fields = ["a", "b", "c"]
+    id = 12
+    rv = db.TModel._before_insert[0](fields)
+    assert rv == fields[:-1]
+    rv = db.TModel._after_insert[0](fields, id)
+    assert rv[0] == fields[:-1] and rv[1] == id+1
+    set = {"a": "b"}
+    rv = db.TModel._before_update[0](set, fields)
+    assert rv[0] == set and rv[1] == fields[:-1]
+    rv = db.TModel._after_update[0](set, fields)
+    assert rv[0] == set and rv[1] == fields[:-1]
+    rv = db.TModel._before_delete[0](set)
+    assert rv == set
+    rv = db.TModel._after_delete[0](set)
+    assert rv == set
 
 
-def test_virtualfields():
-    pass
+#def test_virtualfields(db):
+#    pass
 
 
-def test_fieldmethods():
-    pass
+#def test_fieldmethods(db):
+#    pass
 
 
-def test_modelmethods():
-    pass
+def test_modelmethods(db):
+    tm = "foo"
+    rv = TModel.method_test(tm)
+    assert rv[0] == db and rv[1] == db.TModel and rv[2] == tm
