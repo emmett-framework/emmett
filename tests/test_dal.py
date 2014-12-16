@@ -9,6 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import pytest
 from weppy import App
 from weppy.dal import DAL, ModelsDAL, Field
 from weppy.dal.objects import Table
@@ -41,65 +42,78 @@ class TModel(Model):
     }
 
 
-class TestDAL(object):
-    def _init_db(self):
-        self.app = App(__name__)
-        self.db = ModelsDAL(self.app)
+@pytest.fixture
+def db():
+    app = App(__name__)
+    db = ModelsDAL(app)
+    db.define_datamodels([TModel])
+    return db
 
-    def _init_tables(self):
-        self.db.define_datamodels([TModel])
 
-    def test_db_instance(self):
-        self._init_db()
-        assert isinstance(self.db, DAL)
+def test_db_instance(db):
+    assert isinstance(db, DAL)
 
-    def test_table_definition(self):
-        self._init_tables()
-        assert isinstance(self.db.TModel, Table)
-        assert isinstance(self.db[TModel.tablename], Table)
 
-    def test_fields(self):
-        assert isinstance(self.db.TModel.a, Field)
-        assert self.db.TModel.a.type == "string"
+def test_table_definition(db):
+    assert isinstance(db.TModel, Table)
+    assert isinstance(db[TModel.tablename], Table)
 
-    def test_validators(self):
-        assert isinstance(self.db.TModel.a.requires, IS_NOT_EMPTY)
 
-    def test_visibility(self):
-        assert self.db.TModel.a.readable is True
-        assert self.db.TModel.a.writable is True
-        assert self.db.TModel.invisible.readable is False
-        assert self.db.TModel.invisible.writable is False
+def test_fields(db):
+    assert isinstance(db.TModel.a, Field)
+    assert db.TModel.a.type == "string"
 
-    def test_labels(self):
-        assert self.db.TModel.a.lable == "A label"
 
-    def test_comments(self):
-        assert self.db.TModel.a.comment == "A comment"
+def test_validators(db):
+    assert isinstance(db.TModel.a.requires, IS_NOT_EMPTY)
 
-    def test_updates(self):
-        pass
 
-    def test_representation(self):
-        pass
+def test_visibility(db):
+    assert db.TModel.a.readable is True
+    assert db.TModel.a.writable is True
+    assert db.TModel.invisible.readable is False
+    assert db.TModel.invisible.writable is False
 
-    def test_widgets(self):
-        pass
 
-    def test_set_helper(self):
-        pass
+def test_labels(db):
+    assert db.TModel.a.label == "A label"
 
-    def test_computations(self):
-        pass
 
-    def test_callbacks(self):
-        pass
+def test_comments(db):
+    assert db.TModel.a.comment == "A comment"
 
-    def test_virtualfields(self):
-        pass
 
-    def test_fieldmethods(self):
-        pass
+def test_updates():
+    pass
 
-    def test_modelmethods(self):
-        pass
+
+def test_representation():
+    pass
+
+
+def test_widgets():
+    pass
+
+
+def test_set_helper():
+    pass
+
+
+def test_computations():
+    pass
+
+
+def test_callbacks():
+    pass
+
+
+def test_virtualfields():
+    pass
+
+
+def test_fieldmethods():
+    pass
+
+
+def test_modelmethods():
+    pass
