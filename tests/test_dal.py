@@ -210,6 +210,7 @@ def test_callbacks(db):
 
 
 def test_virtualfields(db):
+    db.TModel._after_insert = []
     db.TModel.insert(a="foo", b="bar", price=12.95, quantity=3)
     db.commit()
     row = db(db.TModel.id > 0).select().first()
