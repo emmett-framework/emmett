@@ -117,11 +117,11 @@ class TModel(Model):
 
     @virtualfield('totalv')
     def eval_total_v(self, row):
-        return row.price*row.quantity
+        return row.test.price*row.test.quantity
 
     @fieldmethod('totalm')
     def eval_total_m(self, row):
-        return row.price*row.quantity
+        return row.test.price*row.test.quantity
 
     @modelmethod
     def method_test(db, entity, t):
