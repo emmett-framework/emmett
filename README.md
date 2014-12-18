@@ -4,6 +4,9 @@ weppy is a full-stack python framework that includes everything needed to easily
 
 It's based on *web2py* and inspired by *Flask*.
 
+[![pip version](https://img.shields.io/pypi/v/weppy.svg?style=flat)](https://pypi.python.org/pypi/weppy) 
+[![build status](https://img.shields.io/travis/gi0baro/weppy.svg?style=flat)](https://travis-ci.org/gi0baro/weppy)
+
 ## Installation
 
 You can install weppy using pip:
