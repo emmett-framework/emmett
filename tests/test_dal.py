@@ -209,12 +209,16 @@ def test_callbacks(db):
     assert rv == set
 
 
-#def test_virtualfields(db):
-#    pass
+def test_virtualfields(db):
+    db.TModel.insert(a="foo", b="bar", price=12.95, quantity=3)
+    db.commit()
+    row = db(db.TModel.id > 0).select().first()
+    assert row.totalv == 12.95*3
 
 
-#def test_fieldmethods(db):
-#    pass
+def test_fieldmethods(db):
+    row = db(db.TModel.id > 0).select().first()
+    assert row.totalm() == 12.95*3
 
 
 def test_modelmethods(db):
