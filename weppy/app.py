@@ -14,7 +14,7 @@ import os
 import click
 from yaml import load as ymlload
 from ._internal import get_root_path, create_missing_app_folders
-from .utils import dict_to_storage
+from .utils import dict_to_sdict
 from .expose import Expose
 from .datastructures import sdict, ConfigData
 from .wsgi import error_handler
@@ -118,7 +118,7 @@ class App(object):
         rc = ymlload(rc)
         c = self.config if namespace is None else self.config[namespace]
         for key, val in rc.items():
-            c[key] = dict_to_storage(val)
+            c[key] = dict_to_sdict(val)
 
     #: Creates the extensions' environments and configs
     def __init_extension(self, ext):
