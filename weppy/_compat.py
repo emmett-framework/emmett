@@ -23,6 +23,8 @@ if PY2:
     iteritems = lambda d: d.iteritems()
     integer_types = (int, long)
 
+    implements_iterator = _identity
+
     def reraise(tp, value, tb=None):
         raise tp, value, tb
 else:
@@ -33,6 +35,11 @@ else:
     itervalues = lambda d: iter(d.values())
     iteritems = lambda d: iter(d.items())
     integer_types = (int, )
+
+    def implements_iterator(cls):
+        cls.next = cls.__next__
+        del cls.__next__
+        return cls
 
     def reraise(tp, value, tb=None):
         if value.__traceback__ is not tb:

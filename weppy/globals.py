@@ -16,7 +16,8 @@ import json
 import threading
 
 from ._compat import SimpleCookie
-from .storage import Storage, ObjectProxy
+from ._internal import ObjectProxy, LimitedStream
+from .storage import Storage
 from .helpers import get_flashed_messages
 from .tags import xmlescape
 from .libs.contenttype import contenttype
@@ -47,14 +48,25 @@ class Request(object):
             if isinstance(value, list) and len(value) == 1:
                 get_vars[key] = value[0]
 
+    def __parse_post_json(self):
+        content_length = self.environ.get('CONTENT_LENGTH')
+        try:
+            content_length = max(0, int(content_length))
+        except:
+            content_length = None
+        if content_length is None:
+            return {}
+        try:
+            json_vars = json.load(LimitedStream(self.input, content_length))
+        except:
+            json_vars = {}
+        return json_vars
+
     def _parse_post_vars(self):
         environ = self.environ
         post_vars = self._post_vars = Storage()
         if self.environ.get('CONTENT_TYPE', '')[:16] == 'application/json':
-            try:
-                json_vars = json.load(self.input)
-            except:
-                json_vars = {}
+            json_vars = self.__parse_post_json()
             post_vars.update(json_vars)
             return
         if self.input and environ.get('REQUEST_METHOD') in ('POST', 'PUT', 'DELETE', 'BOTH'):

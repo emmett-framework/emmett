@@ -13,7 +13,8 @@ import sys
 import os
 import click
 from yaml import load as ymlload
-from .utils import get_root_path, create_missing_app_folders, dict_to_storage
+from ._internal import get_root_path, create_missing_app_folders
+from .utils import dict_to_storage
 from .expose import Expose
 from .storage import Storage, ConfigStorage
 from .wsgi import error_handler
