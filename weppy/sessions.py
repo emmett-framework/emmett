@@ -14,16 +14,16 @@ import hashlib
 from .security import secure_loads, secure_dumps, uuid
 from .handlers import Handler
 from .globals import current, request, response
-from .storage import Storage
+from .datastructures import sdict
 
 
-class SessionStorage(Storage):
+class SessionStorage(sdict):
     __slots__ = ('__sid', '__hash', '__expires', '__dump')
 
     def __init__(self, initial=None, sid=None, expires=None):
-        Storage.__init__(self, initial or ())
+        sdict.__init__(self, initial or ())
         object.__setattr__(self, '_SessionStorage__dump',
-                           cPickle.dumps(Storage(self)))
+                           cPickle.dumps(sdict(self)))
         h = hashlib.md5(self._dump).hexdigest()
         object.__setattr__(self, '_SessionStorage__sid', sid)
         object.__setattr__(self, '_SessionStorage__hash', h)
@@ -35,7 +35,7 @@ class SessionStorage(Storage):
 
     @property
     def _modified(self):
-        dump = cPickle.dumps(Storage(self))
+        dump = cPickle.dumps(sdict(self))
         h = hashlib.md5(dump).hexdigest()
         if h != self.__hash:
             object.__setattr__(self, '_SessionStorage__dump', dump)
@@ -72,7 +72,7 @@ class SessionCookieManager(Handler):
         #(current.response.flash, current.session.flash) = (current.session.flash, None)
 
     def on_success(self):
-        data = secure_dumps(Storage(current.session), self.key)
+        data = secure_dumps(sdict(current.session), self.key)
         response.cookies[self.cookie_data_name] = data
         response.cookies[self.cookie_data_name]['path'] = "/"
         response.cookies[self.cookie_data_name]['expires'] = \

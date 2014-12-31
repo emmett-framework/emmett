@@ -16,7 +16,7 @@ from yaml import load as ymlload
 from ._internal import get_root_path, create_missing_app_folders
 from .utils import dict_to_storage
 from .expose import Expose
-from .storage import Storage, ConfigStorage
+from .datastructures import sdict, ConfigData
 from .wsgi import error_handler
 from .extensions import Extension, TemplateExtension
 from .templating import render_template
@@ -39,7 +39,7 @@ class App(object):
         #: The click command line context for this application.
         self.cli = click.Group(self)
         #: Init the configuration
-        self.config = ConfigStorage()
+        self.config = ConfigData()
         self.config.hostname_default = None
         self.config.static_version = None
         self.config.static_version_urls = None
@@ -61,8 +61,8 @@ class App(object):
         self.language_force_on_url = False
         self.language_write = False
         #: init extensions
-        self.ext = Storage()
-        self._extensions_env = Storage()
+        self.ext = sdict()
+        self._extensions_env = sdict()
         self.template_extensions = []
         self.template_preloaders = {}
         self.template_lexers = {}
@@ -125,7 +125,7 @@ class App(object):
         if ext.namespace is None:
             ext.namespace = ext.__name__
         if self._extensions_env[ext.namespace] is None:
-            self._extensions_env[ext.namespace] = Storage()
+            self._extensions_env[ext.namespace] = sdict()
         return self._extensions_env[ext.namespace], self.config[ext.namespace]
 
     #: Add an extension to application

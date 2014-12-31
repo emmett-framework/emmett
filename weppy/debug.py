@@ -292,8 +292,8 @@ def debug_handler(tb):
     view_source = view_file.read()
     view_file.close()
     context = {'_DummyResponse_': DummyResponse(), 'tb': tb}
-    from .storage import Storage
-    t_dict = Storage(lexers={})
+    from .datastructures import sdict
+    t_dict = sdict(lexers={})
     code = str(TemplateParser(t_dict, view_source,
                context=context, path=''))
     exec(code) in context

@@ -150,7 +150,7 @@ import traceback
 import glob
 
 from ..handlers import Handler
-from ..storage import Storage
+from ..datastructures import sdict
 
 from ._compat import pickle, hashlib_md5, pjoin, ogetattr, osetattr, copyreg
 from ._globals import GLOBAL_LOCKER, THREAD_LOCAL, LOGGER, DEFAULT
@@ -246,7 +246,7 @@ class DAL(object):
     """
 
     def __new__(cls, app, *args, **kwargs):
-        config = kwargs.get('config', Storage()) or app.config.db
+        config = kwargs.get('config', sdict()) or app.config.db
         uri = config.uri or DAL.uri_from_config(config)
         if not hasattr(THREAD_LOCAL, 'db_instances'):
             THREAD_LOCAL.db_instances = {}
@@ -351,7 +351,7 @@ class DAL(object):
     @staticmethod
     def uri_from_config(config=None):
         if config is None or config.adapter is None:
-            config = Storage(adapter="sqlite", host="dummy.db")
+            config = sdict(adapter="sqlite", host="dummy.db")
         if config.adapter == "<zombie>":
             return config.adapter
         uri = config.adapter+"://"
@@ -362,7 +362,7 @@ class DAL(object):
             uri += "/"+config.database
         return uri
 
-    def __init__(self, app, config=Storage(), pool_size=0, folder=None,
+    def __init__(self, app, config=sdict(), pool_size=0, folder=None,
                  db_codec='UTF-8', check_reserved=None, migrate=True,
                  fake_migrate=False, migrate_enabled=True,
                  fake_migrate_all=False, decode_credentials=False,
@@ -1130,7 +1130,7 @@ class DAL(object):
 
 
 def DAL_unpickler(db_uid):
-    fake_app_obj = Storage(config=Storage(db=Storage()))
+    fake_app_obj = sdict(config=sdict(db=sdict()))
     fake_app_obj.config.db.adapter = '<zombie>'
     return DAL(fake_app_obj, db_uid=db_uid)
 

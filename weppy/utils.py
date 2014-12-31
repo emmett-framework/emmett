@@ -64,14 +64,14 @@ def write_file(filename, value, mode='w'):
         f.close()
 
 
-def dict_to_storage(obj):
-    # convert dict and nested dicts to storage
-    from .storage import Storage
+def dict_to_sdict(obj):
+    # convert dict and nested dicts to odict
+    from .datastructures import sdict
     # if we have a dict, iterate over keys
-    if isinstance(obj, dict) and not isinstance(obj, Storage):
+    if isinstance(obj, dict) and not isinstance(obj, sdict):
         for k in obj:
-            obj[k] = dict_to_storage(obj[k])
-        # convert the dict to convenient Storage object
-        return Storage(obj)
+            obj[k] = dict_to_sdict(obj[k])
+        # convert the dict to convenient sdict object
+        return sdict(obj)
     # return other objects without modifications
     return obj

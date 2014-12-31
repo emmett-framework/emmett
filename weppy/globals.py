@@ -17,7 +17,7 @@ import threading
 
 from ._compat import SimpleCookie
 from ._internal import ObjectProxy, LimitedStream
-from .storage import Storage
+from .datastructures import sdict
 from .helpers import get_flashed_messages
 from .tags import xmlescape
 from .libs.contenttype import contenttype
@@ -43,7 +43,7 @@ class Request(object):
     def _parse_get_vars(self):
         query_string = self.environ.get('QUERY_STRING', '')
         dget = cgi.parse_qs(query_string, keep_blank_values=1)
-        get_vars = self._get_vars = Storage(dget)
+        get_vars = self._get_vars = sdict(dget)
         for (key, value) in get_vars.iteritems():
             if isinstance(value, list) and len(value) == 1:
                 get_vars[key] = value[0]
@@ -64,7 +64,7 @@ class Request(object):
 
     def _parse_post_vars(self):
         environ = self.environ
-        post_vars = self._post_vars = Storage()
+        post_vars = self._post_vars = sdict()
         if self.environ.get('CONTENT_TYPE', '')[:16] == 'application/json':
             json_vars = self.__parse_post_json()
             post_vars.update(json_vars)
@@ -145,7 +145,7 @@ class Request(object):
         for backward compatibility, it is slow
         """
         if not hasattr(self, '_env'):
-            self._env = Storage((k.lower().replace('.', '_'), v)
+            self._env = sdict((k.lower().replace('.', '_'), v)
                                 for (k, v) in self.environ.iteritems())
         return self._env
 
@@ -178,8 +178,8 @@ class Response(object):
         self.cookies = SimpleCookie()
         self.headers = {'Content-Type':
                         contenttype(environ['PATH_INFO'], 'text/html')}
-        self.meta = Storage()
-        self.meta_prop = Storage()
+        self.meta = sdict()
+        self.meta_prop = sdict()
 
     def alerts(self, **kwargs):
         return get_flashed_messages(**kwargs)

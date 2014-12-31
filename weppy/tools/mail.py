@@ -14,9 +14,10 @@
 import os
 import time
 import smtplib
-from email import MIMEBase, MIMEMultipart, MIMEText, Encoders, Header, message_from_string, Charset
+from email import MIMEBase, MIMEMultipart, MIMEText, Encoders, Header, \
+    message_from_string, Charset
 from ..utils import read_file
-from ..storage import Storage
+from ..datastructures import sdict
 from ..libs.contenttype import contenttype
 
 
@@ -166,7 +167,7 @@ class Mail(object):
         self.app = app
         ## read config from app
         ##
-        settings = self.settings = Storage()
+        settings = self.settings = sdict()
         settings.server = server
         settings.sender = sender
         settings.login = login

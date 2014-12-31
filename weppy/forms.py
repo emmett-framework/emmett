@@ -12,7 +12,7 @@
 import uuid
 
 from .tags import tag, TAG, cat, asis
-from .storage import Storage
+from .datastructures import sdict
 from .globals import current, request, session
 
 __all__ = ['Form', 'DALForm']
@@ -39,8 +39,8 @@ class Form(TAG):
         attributes['upload'] = attributes.get('upload')
         self.attributes = attributes
         self.fields = fields
-        self.errors = Storage()
-        self.vars = Storage()
+        self.errors = sdict()
+        self.vars = sdict()
         self.input_vars = None
         self.processed = False
         self.accepted = False
@@ -87,9 +87,9 @@ class Form(TAG):
         method = self.attributes['_method']
         # get appropriate input variables
         if method is "POST":
-            self.input_vars = Storage(request.post_vars)
+            self.input_vars = sdict(request.post_vars)
         else:
-            self.input_vars = Storage(request.get_vars)
+            self.input_vars = sdict(request.get_vars)
         # run processing if needed
         if self._submitted:
             self.processed = True
@@ -136,12 +136,12 @@ class Form(TAG):
     def custom(self):
         if not hasattr(self, '_custom'):
             # init
-            self._custom = custom = Storage()
-            custom.dspval = Storage()
-            custom.inpval = Storage()
-            custom.label = Storage()
-            custom.comment = Storage()
-            custom.widget = Storage()
+            self._custom = custom = sdict()
+            custom.dspval = sdict()
+            custom.inpval = sdict()
+            custom.label = sdict()
+            custom.comment = sdict()
+            custom.widget = sdict()
             # load selected styler
             styler = self.attributes['formstyle'](self.attributes)
             styler.on_start()
@@ -413,7 +413,7 @@ class FormStyle(object):
 
     def _proc_element(self, field, value, error):
         widget, wfield = self._get_widget(field, value)
-        self._stack.append(Storage(widget=widget, _wffield=wfield))
+        self._stack.append(sdict(widget=widget, _wffield=wfield))
         self._add_element(field.label, field.comment, error)
         self._stack.pop(-1)
 

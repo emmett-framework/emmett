@@ -18,7 +18,7 @@ import os
 from threading import Lock
 from logging import getLogger, StreamHandler, Formatter, getLoggerClass, DEBUG
 from logging.handlers import RotatingFileHandler
-from weppy.storage import Storage
+from .datastructures import sdict
 
 _logger_lock = Lock()
 
@@ -30,8 +30,8 @@ _levels = {
     'critical': 50
 }
 
-_def_log_config = Storage(
-    production=Storage(
+_def_log_config = sdict(
+    production=sdict(
         max_size=5*1024*1024,
         file_no=4,
         level='warning',

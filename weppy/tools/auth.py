@@ -28,7 +28,7 @@ import urllib
 from datetime import datetime, timedelta
 
 from ..globals import current, request, response, session
-from ..storage import Storage
+from ..datastructures import sdict
 from ..http import HTTP, redirect
 from ..forms import Form, DALForm
 from ..dal.objects import Table, Field, Row, Set, Query
@@ -262,7 +262,7 @@ class Auth(object):
         url_index = base_url or "/account"
         url_login = url_index + "/login"
 
-        settings = self.settings = Storage()
+        settings = self.settings = sdict()
         settings.update(default_settings)
         settings.update(
             base_url=url_index,
@@ -298,7 +298,7 @@ class Auth(object):
                 self.settings[key] = value
 
         # ## these are messages that can be customized
-        messages = self.messages = Storage()
+        messages = self.messages = sdict()
         messages.update(default_messages)
 
         if signature:
@@ -845,7 +845,7 @@ class Auth(object):
         for key, value in user.items():
             if callable(value) or key == 'password':
                 delattr(user, key)
-        session.auth = Storage(
+        session.auth = sdict(
             user=user,
             last_visit=request.now,
             expiration=self.settings.expiration,
@@ -856,7 +856,7 @@ class Auth(object):
         userfield = self.settings.login_userfield or 'username' \
             if 'username' in self.table_user.fields else 'email'
         passfield = self.settings.password_field
-        return Storage({"table_user": self.table_user,
+        return sdict({"table_user": self.table_user,
                         "userfield": userfield,
                         "passfield": passfield})
 
@@ -1481,7 +1481,7 @@ class Auth(object):
     def run_login_onaccept(self):
         onaccept = self.settings.login_onaccept
         if onaccept:
-            form = Storage(dict(vars=self.user))
+            form = sdict(dict(vars=self.user))
             if not isinstance(onaccept, (list, tuple)):
                 onaccept = [onaccept]
             for callback in onaccept:

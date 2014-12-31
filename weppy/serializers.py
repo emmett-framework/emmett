@@ -11,7 +11,7 @@ import datetime
 import decimal
 from .language.translator import TElement
 from .tags import TAG, tag, xmlescape
-from .storage import Storage
+from .datastructures import sdict
 
 try:
     import simplejson as json_parser
@@ -52,7 +52,7 @@ def json(value, default=_custom_json):
 def _xml_rec(value, key, quote=True):
     if hasattr(value, 'custom_xml') and callable(value.custom_xml):
         return value.custom_xml()
-    elif isinstance(value, (dict, Storage)):
+    elif isinstance(value, (dict, sdict)):
         return tag[key](*[tag[k](_xml_rec(v, '', quote))
                           for k, v in value.items()])
     elif isinstance(value, list):
