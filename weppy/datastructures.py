@@ -9,6 +9,9 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import hashlib
+from ._compat import pickle
+
 
 class sdict(dict):
     #: like a dictionary except `obj.foo` can be used in addition to
@@ -33,3 +36,41 @@ class ConfigData(sdict):
 
     __getitem__ = lambda o, v: o._get(v)
     __getattr__ = lambda o, v: o._get(v)
+
+
+class SessionData(sdict):
+    __slots__ = ('__sid', '__hash', '__expires', '__dump')
+
+    def __init__(self, initial=None, sid=None, expires=None):
+        sdict.__init__(self, initial or ())
+        object.__setattr__(self, '_SessionData__dump',
+                           pickle.dumps(sdict(self)))
+        h = hashlib.md5(self._dump).hexdigest()
+        object.__setattr__(self, '_SessionData__sid', sid)
+        object.__setattr__(self, '_SessionData__hash', h)
+        object.__setattr__(self, '_SessionData__expires', expires)
+
+    @property
+    def _sid(self):
+        return self.__sid
+
+    @property
+    def _modified(self):
+        dump = pickle.dumps(sdict(self))
+        h = hashlib.md5(dump).hexdigest()
+        if h != self.__hash:
+            object.__setattr__(self, '_SessionData__dump', dump)
+            return True
+        return False
+
+    @property
+    def _expiration(self):
+        return self.__expires
+
+    @property
+    def _dump(self):
+        ## note: self.__dump is updated only on _modified call
+        return self.__dump
+
+    def _expires_after(self, value):
+        object.__setattr__(self, '_SessionData__expires', value)

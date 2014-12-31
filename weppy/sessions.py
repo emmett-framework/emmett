@@ -3,56 +3,17 @@
     weppy.sessions
     --------------
 
-    Provides session handlers and utitilites for weppy applications.
+    Provides session handlers for weppy applications.
 
     :copyright: (c) 2014 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
-import cPickle
-import hashlib
+from ._compat import pickle
 from .security import secure_loads, secure_dumps, uuid
 from .handlers import Handler
 from .globals import current, request, response
-from .datastructures import sdict
-
-
-class SessionStorage(sdict):
-    __slots__ = ('__sid', '__hash', '__expires', '__dump')
-
-    def __init__(self, initial=None, sid=None, expires=None):
-        sdict.__init__(self, initial or ())
-        object.__setattr__(self, '_SessionStorage__dump',
-                           cPickle.dumps(sdict(self)))
-        h = hashlib.md5(self._dump).hexdigest()
-        object.__setattr__(self, '_SessionStorage__sid', sid)
-        object.__setattr__(self, '_SessionStorage__hash', h)
-        object.__setattr__(self, '_SessionStorage__expires', expires)
-
-    @property
-    def _sid(self):
-        return self.__sid
-
-    @property
-    def _modified(self):
-        dump = cPickle.dumps(sdict(self))
-        h = hashlib.md5(dump).hexdigest()
-        if h != self.__hash:
-            object.__setattr__(self, '_SessionStorage__dump', dump)
-            return True
-        return False
-
-    @property
-    def _expiration(self):
-        return self.__expires
-
-    @property
-    def _dump(self):
-        ## note: self.__dump is updated only on _modified call
-        return self.__dump
-
-    def _expires_after(self, value):
-        object.__setattr__(self, '_SessionStorage__expires', value)
+from .datastructures import sdict, SessionData
 
 
 class SessionCookieManager(Handler):
@@ -65,10 +26,10 @@ class SessionCookieManager(Handler):
         self.cookie_data_name = 'wpp_session_data_%s' % request.application
         if self.cookie_data_name in request.cookies:
             cookie_data = request.cookies[self.cookie_data_name].value
-            current.session = SessionStorage(secure_loads(
+            current.session = SessionData(secure_loads(
                 cookie_data, self.key), expires=3600)
         if not current.session:
-            current.session = SessionStorage(expires=3600)
+            current.session = SessionData(expires=3600)
         #(current.response.flash, current.session.flash) = (current.session.flash, None)
 
     def on_success(self):
@@ -102,10 +63,10 @@ class SessionRedisManager(Handler):
             ## load from redis
             data = self.redis.get(self.prefix+sid)
             if data is not None:
-                current.session = SessionStorage(cPickle.loads(data), sid=sid)
+                current.session = SessionData(pickle.loads(data), sid=sid)
         if not current.session:
             sid = uuid()
-            current.session = SessionStorage(sid=sid)
+            current.session = SessionData(sid=sid)
 
     def on_success(self):
         if not current.session:
