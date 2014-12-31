@@ -10,14 +10,13 @@
 """
 
 import pytest
-from weppy import App
+from weppy import App, sdict
 from weppy.dal import DAL, ModelsDAL, Field
 from weppy.dal.objects import Table
 from weppy.dal.models import Model, AuthModel, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
     virtualfield, fieldmethod, modelmethod
 from weppy.validators import IS_NOT_EMPTY, IS_NOT_IN_DB
-from weppy.storage import Storage
 
 
 def _represent_f(value):
@@ -186,7 +185,7 @@ def test_set_helper(db):
 
 
 def test_computations(db):
-    row = Storage(price=12.95, quantity=3)
+    row = sdict(price=12.95, quantity=3)
     rv = db.TModel.total.compute(row)
     assert rv == 12.95*3
 
