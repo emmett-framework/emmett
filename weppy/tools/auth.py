@@ -241,9 +241,9 @@ class Auth(object):
                                    for k, v in vars.iteritems())
         return u
 
-    def __init__(self, app=None, db=None, mailer=True, hmac_key=None,
-                 hmac_key_file=None, signature=True, base_url=None,
-                 csrf_prevention=True, define_tables=True, **kwargs):
+    def __init__(self, app, db, mailer=True, hmac_key=None, hmac_key_file=None,
+                 signature=True, base_url=None, csrf_prevention=True,
+                 define_tables=True, **kwargs):
         """
         auth=Auth(app, db)
 
@@ -276,7 +276,7 @@ class Auth(object):
             login_url=url_login,
             logged_url=url_index+"/profile",
             download_url="/download",
-            mailer=(mailer == True) and Mail() or mailer,
+            mailer=(mailer == True) and Mail(app) or mailer,
             on_failed_authorization = url_index+"/not_authorized",
             login_next = url_index+"/profile",
             login_methods = [self],
