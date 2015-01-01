@@ -10,24 +10,8 @@
 
 from .http import HTTP
 
-__all__ = ['Handler', 'WrapWithHandlers']
 
-
-class Handler(object):
-    def on_start(self):
-        pass
-
-    def on_success(self):
-        pass
-
-    def on_failure(self):
-        pass
-
-    def wrap_call(self, func):
-        return func
-
-
-class WrapWithHandlers(object):
+class _wrapWithHandlers(object):
     def __init__(self, handlers=[]):
         self.handlers = handlers
 
@@ -52,10 +36,24 @@ class WrapWithHandlers(object):
         return f
 
 
+class Handler(object):
+    def on_start(self):
+        pass
+
+    def on_success(self):
+        pass
+
+    def on_failure(self):
+        pass
+
+    def wrap_call(self, func):
+        return func
+
+
 class RequireHandler(Handler):
     def __init__(self, condition=None, otherwise=None):
         if condition is None or otherwise is None:
-            raise SyntaxError('requires usage: @requires(condition, otherwise)')
+            raise SyntaxError('usage: @requires(condition, otherwise)')
         if not callable(otherwise) and not isinstance(otherwise, basestring):
             raise SyntaxError("'otherwise' param must be string or callable")
         self.condition = condition

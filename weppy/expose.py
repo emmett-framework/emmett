@@ -14,7 +14,7 @@ import re
 import os
 import urllib
 
-from .handlers import Handler, WrapWithHandlers
+from .handlers import Handler, _wrapWithHandlers
 from .templating import render
 from .globals import current
 from .tags import TAG
@@ -158,7 +158,7 @@ class Expose(object):
         if self.template_folder:
             self.template = self.template_folder+"/"+self.template
         self.template_path = self.template_path or self.folder
-        wrapped_func = WrapWithHandlers(self.handlers)(func)
+        wrapped_func = _wrapWithHandlers(self.handlers)(func)
         self.func = wrapped_func
         self.regex = Expose.build_regex(
             self.schemes, self.hostname, self.methods, self.path)
