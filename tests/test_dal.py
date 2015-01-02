@@ -11,11 +11,10 @@
 
 import pytest
 from weppy import App, sdict
-from weppy.dal import DAL, ModelsDAL, Field
-from weppy.dal.objects import Table
-from weppy.dal.models import Model, AuthModel, computation, before_insert, \
+from weppy.dal import DAL, Field, Model, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
     virtualfield, fieldmethod, modelmethod
+from pydal.objects import Table
 from weppy.validators import IS_NOT_EMPTY, IS_NOT_IN_DB
 
 
@@ -83,7 +82,7 @@ class TModel(Model):
         "a": _widget_f
     }
 
-    def set_validators(self):
+    def setup(self):
         self.entity.b.requires = IS_NOT_IN_DB(self.db, self.entity.b)
 
     @computation('total')
@@ -130,8 +129,8 @@ class TModel(Model):
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
-    db = ModelsDAL(app)
-    db.define_datamodels([TModel])
+    db = DAL(app)
+    db.define_models([TModel])
     return db
 
 

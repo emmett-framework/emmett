@@ -1,26 +1,95 @@
 """
-    weppy.dal.models
-    ----------------
+    weppy.dal
+    ---------
 
-    Provides a models layer upon the web2py's DAL.
+    Provides the pyDAL implementation for weppy.
 
-    :copyright: (c) 2014 by Giovanni Barillari
+    :copyright: (c) 2015 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
-from .base import DAL, Field
-from ..tools import Auth
+import os
+import copyreg
+from pydal import DAL as _pyDAL
+from pydal import Field
+from weppy import serializers as _serializers
+from .datastructures import sdict
+from .handlers import Handler
+from .security import uuid as _uuid
 
 
-class ModelsDAL(DAL):
-    def __init__(self, app, datamodels=None):
-        self._LAZY_TABLES = dict()
-        self._tables = dict()
-        self.config = app.config.db
-        DAL.__init__(self, app)
-        self.define_datamodels(datamodels or [])
+class DALHandler(Handler):
+    def __init__(self, db):
+        self.db = db
 
-    def define_datamodels(self, datamodels):
+    def on_start(self):
+        self.db._adapter.reconnect()
+
+    def on_success(self):
+        self.db.commit()
+        #self.db._adapter.close()
+
+    def on_failure(self):
+        self.db.rollback()
+        #self.db._adapter.close()
+
+
+class DAL(_pyDAL):
+    serializers = _serializers
+    #validators_method = _default_validators
+    uuid = _uuid
+
+    @staticmethod
+    def uri_from_config(config=None):
+        if config is None or config.adapter is None:
+            config = sdict(adapter="sqlite", host="dummy.db")
+        if config.adapter == "<zombie>":
+            return config.adapter
+        if config.adapter == "sqlite" and config.host == "memory":
+            return config.adapter+":"+config.host
+        uri = config.adapter+"://"
+        if config.user:
+            uri = uri+config.user+":"+config.password+"@"
+        uri = uri+config.host
+        if config.database:
+            uri += "/"+config.database
+        return uri
+
+    def __new__(cls, app, *args, **kwargs):
+        config = kwargs.get('config', sdict()) or app.config.db
+        uri = config.uri or DAL.uri_from_config(config)
+        return super(DAL, cls).__new__(cls, uri, *args, **kwargs)
+
+    def __init__(self, app, config=sdict(), pool_size=0, folder=None,
+                 **kwargs):
+        config = config or app.config.db
+        if not config.uri:
+            uri = self.uri_from_config(config)
+        #: load config data
+        kwargs['check_reserved'] = config.check_reserved or \
+            kwargs.get('check_reserved', None)
+        kwargs['migrate'] = config.migrate or kwargs.get('migrate', True)
+        kwargs['fake_migrate'] = config.fake_migrate or \
+            kwargs.get('fake_migrate', False)
+        kwargs['fake_migrate_all'] = config.fake_migrate_all or \
+            kwargs.get('fake_migrate_all', False)
+        kwargs['driver_args'] = config.driver_args or \
+            kwargs.get('driver_args', None)
+        kwargs['adapter_args'] = config.adapter_args or \
+            kwargs.get('adapter_args', None)
+        #: set directory
+        folder = folder or 'databases'
+        folder = os.path.join(app.root_path, folder)
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+        #: finally setup pyDAL instance
+        super(DAL, self).__init__(self, uri, pool_size, folder, **kwargs)
+
+    @property
+    def handler(self):
+        return DALHandler(self)
+
+    def define_models(self, datamodels=[]):
         for datamodel in datamodels:
             if not hasattr(self, datamodel.__name__):
                 # store actual db instance in model
@@ -38,6 +107,18 @@ class ModelsDAL(DAL):
                 getattr(obj, '_Model__define')()
                 # set reference in db for datamodel name
                 self.__setattr__(datamodel.__name__, obj.entity)
+
+
+def DAL_unpickler(db_uid):
+    fake_app_obj = sdict(config=sdict(db=sdict()))
+    fake_app_obj.config.db.adapter = '<zombie>'
+    return DAL(fake_app_obj, db_uid=db_uid)
+
+
+def DAL_pickler(db):
+    return DAL_unpickler, (db._db_uid,)
+
+copyreg.pickle(DAL, DAL_pickler, DAL_unpickler)
 
 
 class computation(object):
@@ -86,29 +167,32 @@ class ModelActionF(object):
     def __call__(self):
         return None
 
+
 def before_insert(f):
     return ModelActionF(f, '_before_insert')
+
 
 def after_insert(f):
     return ModelActionF(f, '_after_insert')
 
+
 def before_update(f):
     return ModelActionF(f, '_before_update')
+
 
 def after_update(f):
     return ModelActionF(f, '_after_update')
 
+
 def before_delete(f):
     return ModelActionF(f, '_before_delete')
+
 
 def after_delete(f):
     return ModelActionF(f, '_after_delete')
 
 
 class Model(object):
-    """Base Model Class
-    all define_ methods will be called, then
-    all set_ methods will be called."""
     db = None
     entity = None
 
@@ -137,6 +221,7 @@ class Model(object):
 
     def __define(self):
         if self.sign_table:
+            from .tools import Auth
             fakeauth = Auth(DAL(None))
             self.fields.extend([fakeauth.signature])
         self.__define_validators()
@@ -148,17 +233,7 @@ class Model(object):
         self.__define_updates()
         self.__define_computations()
         self.__define_actions()
-        self.__set()
-
-    def __set(self):
-        self.set_table()
-        self.set_validators()
-        self.set_visibility()
-        self.set_representation()
-        self.set_widgets()
-        self.set_labels()
-        self.set_comments()
-        self.set_updates()
+        self.setup()
 
     def __define_virtuals(self):
         field_names = [field.name for field in self.fields]
@@ -167,7 +242,9 @@ class Model(object):
                 obj = self.__getattribute__(name)
                 if isinstance(obj, virtualfield):
                     if obj.field_name in field_names:
-                        raise RuntimeError('virtualfield or fieldmethod cannot have same name as an existent field!')
+                        raise RuntimeError(
+                            'virtualfield or fieldmethod cannot have same ' +
+                            'name as an existent field!')
                     if isinstance(obj, fieldmethod):
                         f = Field.Method(obj.field_name, lambda row, obj=obj,
                                          self=self: obj.f(self, row))
@@ -212,7 +289,9 @@ class Model(object):
                 obj = self.__getattribute__(name)
                 if isinstance(obj, computation):
                     if obj.field_name not in field_names:
-                        raise RuntimeError('computations should have the name of an existing field to compute!')
+                        raise RuntimeError(
+                            'computations should have the name of an ' +
+                            'existing field to compute!')
                     self.entity[obj.field_name].compute = \
                         lambda row, obj=obj, self=self: obj.f(self, row)
 
@@ -226,7 +305,8 @@ class Model(object):
                 obj = self.__getattribute__(name)
                 if isinstance(obj, ModelActionF):
                     for t in obj.t:
-                        if t in ["_before_insert", "_before_delete", "_after_delete"]:
+                        if t in ["_before_insert", "_before_delete",
+                                 "_after_delete"]:
                             getattr(self.entity, t).append(
                                 lambda a, obj=obj, self=self: obj.f(self, a))
                         else:
@@ -234,28 +314,7 @@ class Model(object):
                                 lambda a, b, obj=obj, self=self: obj.f(
                                     self, a, b))
 
-    def set_table(self):
-        pass
-
-    def set_validators(self):
-        pass
-
-    def set_visibility(self):
-        pass
-
-    def set_representation(self):
-        pass
-
-    def set_widgets(self):
-        pass
-
-    def set_labels(self):
-        pass
-
-    def set_comments(self):
-        pass
-
-    def set_updates(self):
+    def setup(self):
         pass
 
     #@modelmethod
@@ -288,14 +347,15 @@ class AuthModel(Model):
     register_visibility = {}
     profile_visibility = {}
 
-    def __init__(self, migrate=None, fake_migrate=None, signature=None):
-        if migrate is not None:
-            self.migrate = migrate
-        if not hasattr(self, 'migrate'):
-            self.migrate = self.config.get('db', {}).get('migrate', True)
+    #def __init__(self, migrate=None, fake_migrate=None, signature=None):
+    def __init__(self):
+        #if migrate is not None:
+        #    self.migrate = migrate
+        #if not hasattr(self, 'migrate'):
+        #    self.migrate = self.config.get('db', {}).get('migrate', True)
         self.__super_method('define_virtuals')()
         self.__define_extra_fields()
-        self.auth.define_tables(signature, self.migrate, fake_migrate)
+        #self.auth.define_tables(signature, self.migrate, fake_migrate)
 
     def __super_method(self, name):
         return getattr(super(AuthModel, self), '_Model__'+name)
@@ -312,10 +372,7 @@ class AuthModel(Model):
         self.__super_method('define_comments')()
         self.__super_method('define_updates')()
         self.__super_method('define_actions')()
-        self.__set()
-
-    def __set(self):
-        self.__super_method('set')()
+        self.set()
 
     def __define_extra_fields(self):
         self.auth.settings.extra_fields['auth_user'] = self.fields

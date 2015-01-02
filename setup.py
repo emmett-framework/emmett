@@ -24,15 +24,15 @@ setup(
     author_email='gi0baro@d4net.org',
     description='The web framework for humans',
     long_description=__doc__,
-    packages=['weppy', 'weppy.dal', 'weppy.dal.adapters', 'weppy.dal.helpers',
-              'weppy.language', 'weppy.language.plurals', 'weppy.tools',
-              'weppy.libs'],
+    packages=['weppy', 'weppy.language', 'weppy.language.plurals',
+              'weppy.tools', 'weppy.libs'],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
     install_requires=[
         'click>=0.6',
         'pyaes',
+        'pyDAL',
         'pyyaml'
     ],
     classifiers=[

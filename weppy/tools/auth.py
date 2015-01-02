@@ -5,7 +5,7 @@
 
     Provides the authorization system.
 
-    :copyright: (c) 2014 by Giovanni Barillari
+    :copyright: (c) 2015 by Giovanni Barillari
 
     Based on the web2py's auth module (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
@@ -26,12 +26,11 @@
 
 import urllib
 from datetime import datetime, timedelta
-
+from pydal.objects import Table, Field, Row, Set, Query
 from ..globals import current, request, response, session
 from ..datastructures import sdict
 from ..http import HTTP, redirect
 from ..forms import Form, DALForm
-from ..dal.objects import Table, Field, Row, Set, Query
 from ..tags import tag
 from ..handlers import Handler
 from ..security import uuid
@@ -241,9 +240,26 @@ class Auth(object):
                                    for k, v in vars.iteritems())
         return u
 
-    def __init__(self, app, db, mailer=True, hmac_key=None, hmac_key_file=None,
-                 signature=True, base_url=None, csrf_prevention=True,
-                 define_tables=True, **kwargs):
+    def _init_usermodel(self, usermodel, use_signature):
+        usermodel.auth = self
+        usermodel.db = self.db
+        #user = usermodel(_migrate, _fake_migrate, _use_signature)
+        user = usermodel()
+        self.define_tables(use_signature)
+        user.entity = self.table_user
+        # load user's definitions
+        getattr(user, '_AuthModel__define')()
+        # set reference in db for datamodel name
+        setattr(self.db, usermodel.__name__, user.entity)
+        self.entity = user.entity
+        #if app.config.get('auth', {}).get('server', 'default') != "default":
+        #    self.settings.mailer.server = app.config.auth.server
+        #    self.settings.mailer.sender = app.config.auth.sender
+        #    self.settings.mailer.login = app.config.auth.login
+
+    def __init__(self, app, db, usermodel=None, mailer=True, hmac_key=None,
+                 hmac_key_file=None, signature=True, base_url=None,
+                 csrf_prevention=True, **kwargs):
         """
         auth=Auth(app, db)
 
@@ -318,12 +334,15 @@ class Auth(object):
             if k not in self.settings.actions_disabled:
                 self.register_action(k, getattr(self, k))
 
-        #: define tables if requested
-        if define_tables:
-            use_signature = kwargs.get('use_signature')
-            migrate = kwargs.get('migrate')
-            fake_migrate = kwargs.get('fake_migrate')
-            self.define_tables(use_signature, migrate, fake_migrate)
+        _use_signature = kwargs.get('sign_tables')
+        if usermodel:
+            from ..dal import AuthModel
+            if not issubclass(usermodel, AuthModel):
+                raise RuntimeError('%s is an invalid user model' %
+                                   usermodel.__name__)
+            self._init_usermodel(usermodel, _use_signature)
+        else:
+            self.define_tables(_use_signature)
 
     @property
     def _auth(self):
