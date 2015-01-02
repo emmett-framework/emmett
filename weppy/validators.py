@@ -493,7 +493,7 @@ class IS_IN_DB(Validator):
         sort=False,
         _and=None,
     ):
-        from .dal.objects import Table
+        from pydal.objects import Table
         if isinstance(field, Table):
             field = field._id
 
@@ -535,7 +535,7 @@ class IS_IN_DB(Validator):
             self._and.record_id = id
 
     def build_set(self):
-        from .dal.objects import FieldVirtual, FieldMethod
+        from pydal.objects import FieldVirtual, FieldMethod
         table = self.dbset.db[self.ktable]
         if self.fields == 'all':
             fields = [f for f in table]
@@ -591,7 +591,7 @@ class IS_IN_DB(Validator):
                 if not [v for v in values if not v in self.theset]:
                     return (values, None)
             else:
-                from .dal.adapters import GoogleDatastoreAdapter
+                from pydal.adapters import GoogleDatastoreAdapter
 
                 def count(values, s=self.dbset, f=field):
                     return s(f.belongs(map(int, values))).count()
@@ -636,7 +636,7 @@ class IS_NOT_IN_DB(Validator):
         ignore_common_filters=False,
     ):
 
-        from .dal.objects import Table
+        from pydal.objects import Table
         if isinstance(field, Table):
             field = field._id
 
