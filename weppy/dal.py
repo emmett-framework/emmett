@@ -481,7 +481,7 @@ class AuthModel(Model):
         self.__super_method('define_comments')()
         self.__super_method('define_updates')()
         self.__super_method('define_actions')()
-        self.set()
+        self.setup()
 
     def __define_extra_fields(self):
         self.auth.settings.extra_fields['auth_user'] = self.fields
