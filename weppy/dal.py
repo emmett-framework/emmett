@@ -64,7 +64,8 @@ class DAL(_pyDAL):
                  **kwargs):
         config = config or app.config.db
         if not config.uri:
-            uri = self.uri_from_config(config)
+            config.uri = self.uri_from_config(config)
+        self.config = config
         #: load config data
         kwargs['check_reserved'] = config.check_reserved or \
             kwargs.get('check_reserved', None)
@@ -83,7 +84,7 @@ class DAL(_pyDAL):
         if not os.path.exists(folder):
             os.mkdir(folder)
         #: finally setup pyDAL instance
-        super(DAL, self).__init__(uri, pool_size, folder, **kwargs)
+        super(DAL, self).__init__(self.config.uri, pool_size, folder, **kwargs)
 
     @property
     def handler(self):
@@ -211,13 +212,15 @@ class Model(object):
     def config(self):
         return self.db.config
 
-    def __init__(self, migrate=None, Format=None):
-        if migrate is not None:
-            self.migrate = migrate
+    #def __init__(self, migrate=None, Format=None):
+    def __init__(self):
+        #if migrate is not None:
+        #    self.migrate = migrate
         if not hasattr(self, 'migrate'):
-            self.migrate = self.config.get('db', {}).get('migrate', True)
-        if Format is not None or not hasattr(self, 'format'):
-            self.format = Format
+            self.migrate = self.config.get('migrate', self.db._migrate)
+        #if Format is not None or not hasattr(self, 'format'):
+        if not hasattr(self, 'format'):
+            self.format = None
 
     def __define(self):
         if self.sign_table:
