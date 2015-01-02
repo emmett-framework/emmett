@@ -63,7 +63,7 @@ class DAL(_pyDAL):
 
     def __init__(self, app, config=sdict(), pool_size=0, folder=None,
                  **kwargs):
-        self.logger = app.logger
+        self.logger = app.log
         config = config or app.config.db
         if not config.uri:
             config.uri = self.uri_from_config(config)
