@@ -9,10 +9,10 @@
 """
 
 import os
-import copyreg
 from pydal import DAL as _pyDAL
 from pydal import Field
 from weppy import serializers as _serializers
+from ._compat import copyreg
 from .datastructures import sdict
 from .handlers import Handler
 from .security import uuid as _uuid

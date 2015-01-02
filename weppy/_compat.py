@@ -18,6 +18,7 @@ if PY2:
     from Cookie import SimpleCookie
     from cStringIO import StringIO
     import cPickle as pickle
+    import copy_reg as copyreg
     iterkeys = lambda d: d.iterkeys()
     itervalues = lambda d: d.itervalues()
     iteritems = lambda d: d.iteritems()
@@ -31,6 +32,7 @@ else:
     from http.cookies import SimpleCookie
     from io import StringIO
     import pickle
+    import copyreg
     iterkeys = lambda d: iter(d.keys())
     itervalues = lambda d: iter(d.values())
     iteritems = lambda d: iter(d.items())
