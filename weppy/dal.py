@@ -83,7 +83,7 @@ class DAL(_pyDAL):
         if not os.path.exists(folder):
             os.mkdir(folder)
         #: finally setup pyDAL instance
-        super(DAL, self).__init__(self, uri, pool_size, folder, **kwargs)
+        super(DAL, self).__init__(uri, pool_size, folder, **kwargs)
 
     @property
     def handler(self):
