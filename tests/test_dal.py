@@ -10,12 +10,13 @@
 """
 
 import pytest
+from pydal.objects import Table
+
 from weppy import App, sdict
 from weppy.dal import DAL, Field, Model, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
     virtualfield, fieldmethod, modelmethod
-from pydal.objects import Table
-from weppy.validators import IS_NOT_EMPTY, IS_NOT_IN_DB
+from weppy.validators import isntEmpty, notInDb
 
 
 def _represent_f(value):
@@ -55,7 +56,7 @@ class TModel(Model):
     ]
 
     validators = {
-        "a": IS_NOT_EMPTY()
+        "a": isntEmpty()
     }
 
     visibility = {
@@ -83,7 +84,7 @@ class TModel(Model):
     }
 
     def setup(self):
-        self.entity.b.requires = IS_NOT_IN_DB(self.db, self.entity.b)
+        self.entity.b.requires = notInDb(self.db, self.entity.b)
 
     @computation('total')
     def eval_total(self, row):
@@ -149,7 +150,7 @@ def test_fields(db):
 
 
 def test_validators(db):
-    assert isinstance(db.TModel.a.requires, IS_NOT_EMPTY)
+    assert isinstance(db.TModel.a.requires, isntEmpty)
 
 
 def test_visibility(db):
@@ -180,7 +181,7 @@ def test_widgets(db):
 
 
 def test_set_helper(db):
-    assert isinstance(db.TModel.b.requires, IS_NOT_IN_DB)
+    assert isinstance(db.TModel.b.requires, notInDb)
 
 
 def test_computations(db):

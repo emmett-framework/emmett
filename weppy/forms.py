@@ -5,7 +5,7 @@
 
     Provides classes to create and style forms in weppy.
 
-    :copyright: (c) 2014 by Giovanni Barillari
+    :copyright: (c) 2015 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -375,8 +375,8 @@ class FormStyle(object):
             if not isinstance(requires, (list, tuple)):
                 requires = [requires]
             # delete checkbox
-            from .validators import IS_EMPTY_OR
-            if not requires or (isinstance(v, IS_EMPTY_OR) for v in requires):
+            from .validators import isEmptyOr
+            if not requires or (isinstance(v, isEmptyOr) for v in requires):
                 elements.append(tag.div(
                     tag.input(_type='checkbox', _class='checkbox',
                               _id=_id+'__del', _name=field.name+'__del',

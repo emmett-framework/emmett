@@ -5,7 +5,7 @@
 
     Provide the validation tools for DAL.
 
-    adapted from the original code of web2py (http://www.web2py.com)
+    adapted from the original validators of web2py (http://www.web2py.com)
 
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
@@ -21,8 +21,8 @@ import struct
 import decimal
 import unicodedata
 
-from .security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
 from ._compat import StringIO
+from .security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
 from .globals import current
 
 try:
@@ -31,46 +31,44 @@ except:
     import json
 
 __all__ = [
-    'ANY_OF',
-    'CLEANUP',
-    'CRYPT',
-    'IS_ALPHANUMERIC',
-    'IS_DATE_IN_RANGE',
-    'IS_DATE',
-    'IS_DATETIME_IN_RANGE',
-    'IS_DATETIME',
-    'IS_DECIMAL_IN_RANGE',
-    'IS_EMAIL',
-    'IS_LIST_OF_EMAILS',
-    'IS_EMPTY_OR',
-    'IS_EXPR',
-    'IS_FLOAT_IN_RANGE',
-    'IS_IMAGE',
-    'IS_IN_DB',
-    'IS_IN_SET',
-    'IS_INT_IN_RANGE',
-    'IS_IPV4',
-    'IS_IPV6',
-    'IS_IPADDRESS',
-    'IS_LENGTH',
-    'IS_LIST_OF',
-    'IS_LOWER',
-    'IS_MATCH',
-    'IS_EQUAL_TO',
-    'IS_NOT_EMPTY',
-    'IS_NOT_IN_DB',
-    'IS_NULL_OR',
-    'IS_SLUG',
-    'IS_STRONG',
-    'IS_TIME',
-    'IS_UPLOAD_FILENAME',
-    'IS_UPPER',
-    'IS_URL',
-    'IS_JSON',
+    'anyOf',
+    'Cleanup',
+    'Crypt',
+    'isAlphanumeric',
+    'isDateInRange',
+    'isDate',
+    'isDatetimeInRange',
+    'isDatetime',
+    'isDecimalInRange',
+    'isEmail',
+    'isEmailList',
+    'isEmptyOr',
+    'isFloatInRange',
+    'isImage',
+    'inDb',
+    'inSet',
+    'isIntInRange',
+    'isIPv4',
+    'isIPv6',
+    'isIP',
+    'hasLength',
+    'isListOf',
+    'Lower',
+    'Matches',
+    'Equals',
+    'isntEmpty',
+    'notInDb',
+    'Slug',
+    'isStrong',
+    'isTime',
+    'FilenameMatches',
+    'Upper',
+    'isUrl',
+    'isJSON'
 ]
 
 
-def translate(text):
+def _translate(text):
     if text is None:
         return None
     elif isinstance(text, (str, unicode)):
@@ -80,7 +78,7 @@ def translate(text):
     return str(text)
 
 
-def options_sorter(x, y):
+def _options_sorter(x, y):
     return (str(x[1]).upper() > str(y[1]).upper() and 1) or -1
 
 
@@ -93,18 +91,18 @@ class Validator(object):
 
     Here is an example of using a validator with a FORM::
 
-        INPUT(_name='a', requires=IS_INT_IN_RANGE(0, 10))
+        INPUT(_name='a', requires=isIntInRange(0, 10))
 
     Here is an example of how to require a validator for a table field::
 
         db.define_table('person', SQLField('name'))
-        db.person.name.requires=IS_NOT_EMPTY()
+        db.person.name.requires=isntEmpty()
 
     Validators are always assigned using the requires attribute of a field. A
     field can have a single validator or multiple validators. Multiple
     validators are made part of a list::
 
-        db.person.name.requires=[IS_NOT_EMPTY(), IS_NOT_IN_DB(db, 'person.id')]
+        db.person.name.requires=[isntEmpty(), notInDb(db, 'person.id')]
 
     Validators are called by the function accepts on a FORM or other HTML
     helper object that contains a form. They are always called in the order in
@@ -114,7 +112,7 @@ class Validator(object):
     message which allows you to change the default error message.
     Here is an example of a validator on a database table::
 
-        db.person.name.requires=IS_NOT_EMPTY(error_message=T('Fill this'))
+        db.person.name.requires=isntEmpty(error_message=T('Fill this'))
 
     where we have used the translation operator T to allow for
     internationalization.
@@ -134,37 +132,37 @@ class Validator(object):
         return (value, None)
 
 
-class IS_MATCH(Validator):
+class Matches(Validator):
     """
     Example:
         Used as::
 
-            INPUT(_type='text', _name='name', requires=IS_MATCH('.+'))
+            INPUT(_type='text', _name='name', requires=Matches('.+'))
 
-    The argument of IS_MATCH is a regular expression::
+    The argument of Matches is a regular expression::
 
-        >>> IS_MATCH('.+')('hello')
+        >>> Matches('.+')('hello')
         ('hello', None)
 
-        >>> IS_MATCH('hell')('hello')
+        >>> Matches('hell')('hello')
         ('hello', None)
 
-        >>> IS_MATCH('hell.*', strict=False)('hello')
+        >>> Matches('hell.*', strict=False)('hello')
         ('hello', None)
 
-        >>> IS_MATCH('hello')('shello')
+        >>> Matches('hello')('shello')
         ('shello', 'invalid expression')
 
-        >>> IS_MATCH('hello', search=True)('shello')
+        >>> Matches('hello', search=True)('shello')
         ('shello', None)
 
-        >>> IS_MATCH('hello', search=True, strict=False)('shellox')
+        >>> Matches('hello', search=True, strict=False)('shellox')
         ('shellox', None)
 
-        >>> IS_MATCH('.*hello.*', search=True, strict=False)('shellox')
+        >>> Matches('.*hello.*', search=True, strict=False)('shellox')
         ('shellox', None)
 
-        >>> IS_MATCH('.+')('')
+        >>> Matches('.+')('')
         ('', 'invalid expression')
 
     """
@@ -196,24 +194,24 @@ class IS_MATCH(Validator):
             match = self.regex.search(str(value))
         if match is not None:
             return (self.extract and match.group() or value, None)
-        return (value, translate(self.error_message))
+        return (value, _translate(self.error_message))
 
 
-class IS_EQUAL_TO(Validator):
+class Equals(Validator):
     """
     Example:
         Used as::
 
             INPUT(_type='text', _name='password')
             INPUT(_type='text', _name='password2',
-                  requires=IS_EQUAL_TO(request.vars.password))
+                  requires=Equals(request.vars.password))
 
-    The argument of IS_EQUAL_TO is a string::
+    The argument of Equals is a string::
 
-        >>> IS_EQUAL_TO('aaa')('aaa')
+        >>> Equals('aaa')('aaa')
         ('aaa', None)
 
-        >>> IS_EQUAL_TO('aaa')('aab')
+        >>> Equals('aaa')('aab')
         ('aab', 'no match')
 
     """
@@ -225,44 +223,10 @@ class IS_EQUAL_TO(Validator):
     def __call__(self, value):
         if value == self.expression:
             return (value, None)
-        return (value, translate(self.error_message))
+        return (value, _translate(self.error_message))
 
 
-class IS_EXPR(Validator):
-    """
-    Example:
-        Used as::
-
-            INPUT(_type='text', _name='name',
-                requires=IS_EXPR('5 < int(value) < 10'))
-
-    The argument of IS_EXPR must be python condition::
-
-        >>> IS_EXPR('int(value) < 2')('1')
-        ('1', None)
-
-        >>> IS_EXPR('int(value) < 2')('2')
-        ('2', 'invalid expression')
-
-    """
-
-    def __init__(self, expression, error_message='Invalid expression', environment=None):
-        self.expression = expression
-        self.error_message = error_message
-        self.environment = environment or {}
-
-    def __call__(self, value):
-        if callable(self.expression):
-            return (value, self.expression(value))
-        # for backward compatibility
-        self.environment.update(value=value)
-        exec '__ret__=' + self.expression in self.environment
-        if self.environment['__ret__']:
-            return (value, None)
-        return (value, translate(self.error_message))
-
-
-class IS_LENGTH(Validator):
+class hasLength(Validator):
     """
     Checks if length of field's value fits between given boundaries. Works
     for both text and file inputs.
@@ -274,25 +238,25 @@ class IS_LENGTH(Validator):
     Examples:
         Check if text string is shorter than 33 characters::
 
-            INPUT(_type='text', _name='name', requires=IS_LENGTH(32))
+            INPUT(_type='text', _name='name', requires=hasLength(32))
 
         Check if password string is longer than 5 characters::
 
-            INPUT(_type='password', _name='name', requires=IS_LENGTH(minsize=6))
+            INPUT(_type='password', _name='name', requires=hasLength(minsize=6))
 
         Check if uploaded file has size between 1KB and 1MB::
 
-            INPUT(_type='file', _name='name', requires=IS_LENGTH(1048576, 1024))
+            INPUT(_type='file', _name='name', requires=hasLength(1048576, 1024))
 
         Other examples::
 
-            >>> IS_LENGTH()('')
+            >>> hasLength()('')
             ('', None)
-            >>> IS_LENGTH()('1234567890')
+            >>> hasLength()('1234567890')
             ('1234567890', None)
-            >>> IS_LENGTH(maxsize=5, minsize=0)('1234567890')  # too long
+            >>> hasLength(maxsize=5, minsize=0)('1234567890')  # too long
             ('1234567890', 'enter from 0 to 5 characters')
-            >>> IS_LENGTH(maxsize=50, minsize=20)('1234567890')  # too short
+            >>> hasLength(maxsize=50, minsize=20)('1234567890')  # too short
             ('1234567890', 'enter from 20 to 50 characters')
     """
 
@@ -335,22 +299,22 @@ class IS_LENGTH(Validator):
                 return (value, None)
         elif self.minsize <= len(str(value)) <= self.maxsize:
             return (str(value), None)
-        return (value, translate(self.error_message)
+        return (value, _translate(self.error_message)
                 % dict(min=self.minsize, max=self.maxsize))
 
 
-class IS_JSON(Validator):
+class isJSON(Validator):
     """
     Example:
         Used as::
 
             INPUT(_type='text', _name='name',
-                requires=IS_JSON(error_message="This is not a valid json input")
+                requires=isJSON(error_message="This is not a valid json input")
 
-            >>> IS_JSON()('{"a": 100}')
+            >>> isJSON()('{"a": 100}')
             ({u'a': 100}, None)
 
-            >>> IS_JSON()('spam1234')
+            >>> isJSON()('spam1234')
             ('spam1234', 'invalid json')
     """
     JSONErrors = (NameError, TypeError, ValueError, AttributeError,
@@ -367,7 +331,7 @@ class IS_JSON(Validator):
                 return (value, None) #  the serialized value is not passed
             return (json.loads(value), None)
         except self.JSONErrors:
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
 
     def formatter(self,value):
         if value is None:
@@ -375,32 +339,32 @@ class IS_JSON(Validator):
         return json.dumps(value)
 
 
-class IS_IN_SET(Validator):
+class inSet(Validator):
     """
     Example:
         Used as::
 
             INPUT(_type='text', _name='name',
-                  requires=IS_IN_SET(['max', 'john'],zero=''))
+                  requires=inSet(['max', 'john'],zero=''))
 
-    The argument of IS_IN_SET must be a list or set::
+    The argument of inSet must be a list or set::
 
-        >>> IS_IN_SET(['max', 'john'])('max')
+        >>> inSet(['max', 'john'])('max')
         ('max', None)
-        >>> IS_IN_SET(['max', 'john'])('massimo')
+        >>> inSet(['max', 'john'])('massimo')
         ('massimo', 'value not allowed')
-        >>> IS_IN_SET(['max', 'john'], multiple=True)(('max', 'john'))
+        >>> inSet(['max', 'john'], multiple=True)(('max', 'john'))
         (('max', 'john'), None)
-        >>> IS_IN_SET(['max', 'john'], multiple=True)(('bill', 'john'))
+        >>> inSet(['max', 'john'], multiple=True)(('bill', 'john'))
         (('bill', 'john'), 'value not allowed')
-        >>> IS_IN_SET(('id1','id2'), ['first label','second label'])('id1') # Traditional way
+        >>> inSet(('id1','id2'), ['first label','second label'])('id1') # Traditional way
         ('id1', None)
-        >>> IS_IN_SET({'id1':'first label', 'id2':'second label'})('id1')
+        >>> inSet({'id1':'first label', 'id2':'second label'})('id1')
         ('id1', None)
         >>> import itertools
-        >>> IS_IN_SET(itertools.chain(['1','3','5'],['2','4','6']))('1')
+        >>> inSet(itertools.chain(['1','3','5'],['2','4','6']))('1')
         ('1', None)
-        >>> IS_IN_SET([('id1','first label'), ('id2','second label')])('id1') # Redundant way
+        >>> inSet([('id1','first label'), ('id2','second label')])('id1') # Redundant way
         ('id1', None)
 
     """
@@ -435,7 +399,7 @@ class IS_IN_SET(Validator):
         else:
             items = [(k, self.labels[i]) for (i, k) in enumerate(self.theset)]
         if self.sort:
-            items.sort(options_sorter)
+            items.sort(_options_sorter)
         if zero and not self.zero is None and not self.multiple:
             items.insert(0, ('', self.zero))
         return items
@@ -456,22 +420,22 @@ class IS_IN_SET(Validator):
         if failures and self.theset:
             if self.multiple and (value is None or value == ''):
                 return ([], None)
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
         if self.multiple:
             if isinstance(self.multiple, (tuple, list)) and \
                     not self.multiple[0] <= len(values) < self.multiple[1]:
-                return (values, translate(self.error_message))
+                return (values, _translate(self.error_message))
             return (values, None)
         return (value, None)
 
 
-class IS_IN_DB(Validator):
+class inDb(Validator):
     """
     Example:
         Used as::
 
             INPUT(_type='text', _name='name',
-                  requires=IS_IN_DB(db, db.mytable.myfield, zero=''))
+                  requires=inDb(db, db.mytable.myfield, zero=''))
 
     used for reference fields, rendered as a dropbox
     """
@@ -567,7 +531,7 @@ class IS_IN_DB(Validator):
         self.build_set()
         items = [(k, self.labels[i]) for (i, k) in enumerate(self.theset)]
         if self.sort:
-            items.sort(options_sorter)
+            items.sort(_options_sorter)
         if zero and not self.zero is None and not self.multiple:
             items.insert(0, ('', self.zero))
         return items
@@ -586,7 +550,7 @@ class IS_IN_DB(Validator):
                 values = []
             if isinstance(self.multiple, (tuple, list)) and \
                     not self.multiple[0] <= len(values) < self.multiple[1]:
-                return (values, translate(self.error_message))
+                return (values, _translate(self.error_message))
             if self.theset:
                 if not [v for v in values if not v in self.theset]:
                     return (values, None)
@@ -614,15 +578,15 @@ class IS_IN_DB(Validator):
                     return self._and(value)
                 else:
                     return (value, None)
-        return (value, translate(self.error_message))
+        return (value, _translate(self.error_message))
 
 
-class IS_NOT_IN_DB(Validator):
+class notInDb(Validator):
     """
     Example:
         Used as::
 
-            INPUT(_type='text', _name='name', requires=IS_NOT_IN_DB(db, db.table))
+            INPUT(_type='text', _name='name', requires=notInDb(db, db.table))
 
     makes the field unique
     """
@@ -659,7 +623,7 @@ class IS_NOT_IN_DB(Validator):
         else:
             value = str(value)
         if not value.strip():
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
         if value in self.allowed_override:
             return (value, None)
         (tablename, fieldname) = str(self.field).split('.')
@@ -672,15 +636,15 @@ class IS_NOT_IN_DB(Validator):
             fields = [table[f] for f in id]
             row = subset.select(*fields, **dict(limitby=(0, 1), orderby_on_limitby=False)).first()
             if row and any(str(row[f]) != str(id[f]) for f in id):
-                return (value, translate(self.error_message))
+                return (value, _translate(self.error_message))
         else:
             row = subset.select(table._id, field, limitby=(0, 1), orderby_on_limitby=False).first()
             if row and str(row.id) != str(id):
-                return (value, translate(self.error_message))
+                return (value, _translate(self.error_message))
         return (value, None)
 
 
-def range_error_message(error_message, what_to_enter, minimum, maximum):
+def _range_error_message(error_message, what_to_enter, minimum, maximum):
     "build the error message for the number range validators"
     if error_message is None:
         error_message = 'Enter ' + what_to_enter
@@ -692,10 +656,10 @@ def range_error_message(error_message, what_to_enter, minimum, maximum):
             error_message += ' less than or equal to %(max)g'
     if type(maximum) in [int, long]:
         maximum -= 1
-    return translate(error_message) % dict(min=minimum, max=maximum)
+    return _translate(error_message) % dict(min=minimum, max=maximum)
 
 
-class IS_INT_IN_RANGE(Validator):
+class isIntInRange(Validator):
     """
     Determines that the argument is (or can be represented as) an int,
     and that it falls within the specified range. The range is interpreted
@@ -707,31 +671,31 @@ class IS_INT_IN_RANGE(Validator):
     Example:
         Used as::
 
-            INPUT(_type='text', _name='name', requires=IS_INT_IN_RANGE(0, 10))
+            INPUT(_type='text', _name='name', requires=isIntInRange(0, 10))
 
-            >>> IS_INT_IN_RANGE(1,5)('4')
+            >>> isIntInRange(1,5)('4')
             (4, None)
-            >>> IS_INT_IN_RANGE(1,5)(4)
+            >>> isIntInRange(1,5)(4)
             (4, None)
-            >>> IS_INT_IN_RANGE(1,5)(1)
+            >>> isIntInRange(1,5)(1)
             (1, None)
-            >>> IS_INT_IN_RANGE(1,5)(5)
+            >>> isIntInRange(1,5)(5)
             (5, 'enter an integer between 1 and 4')
-            >>> IS_INT_IN_RANGE(1,5)(5)
+            >>> isIntInRange(1,5)(5)
             (5, 'enter an integer between 1 and 4')
-            >>> IS_INT_IN_RANGE(1,5)(3.5)
+            >>> isIntInRange(1,5)(3.5)
             (3.5, 'enter an integer between 1 and 4')
-            >>> IS_INT_IN_RANGE(None,5)('4')
+            >>> isIntInRange(None,5)('4')
             (4, None)
-            >>> IS_INT_IN_RANGE(None,5)('6')
+            >>> isIntInRange(None,5)('6')
             ('6', 'enter an integer less than or equal to 4')
-            >>> IS_INT_IN_RANGE(1,None)('4')
+            >>> isIntInRange(1,None)('4')
             (4, None)
-            >>> IS_INT_IN_RANGE(1,None)('0')
+            >>> isIntInRange(1,None)('0')
             ('0', 'enter an integer greater than or equal to 1')
-            >>> IS_INT_IN_RANGE()(6)
+            >>> isIntInRange()(6)
             (6, None)
-            >>> IS_INT_IN_RANGE()('abc')
+            >>> isIntInRange()('abc')
             ('abc', 'enter an integer')
     """
     regex_isint = re.compile('^[+-]?\d+$')
@@ -744,7 +708,7 @@ class IS_INT_IN_RANGE(Validator):
     ):
         self.minimum = int(minimum) if minimum is not None else None
         self.maximum = int(maximum) if maximum is not None else None
-        self.error_message = range_error_message(
+        self.error_message = _range_error_message(
             error_message, 'an integer', self.minimum, self.maximum)
 
     def __call__(self, value):
@@ -756,7 +720,7 @@ class IS_INT_IN_RANGE(Validator):
         return (value, self.error_message)
 
 
-def str2dec(number):
+def _str2dec(number):
     s = str(number)
     if not '.' in s:
         s += '.00'
@@ -765,7 +729,7 @@ def str2dec(number):
     return s
 
 
-class IS_FLOAT_IN_RANGE(Validator):
+class isFloatInRange(Validator):
     """
     Determines that the argument is (or can be represented as) a float,
     and that it falls within the specified inclusive range.
@@ -777,31 +741,31 @@ class IS_FLOAT_IN_RANGE(Validator):
     Example:
         Used as::
 
-            INPUT(_type='text', _name='name', requires=IS_FLOAT_IN_RANGE(0, 10))
+            INPUT(_type='text', _name='name', requires=isFloatInRange(0, 10))
 
-            >>> IS_FLOAT_IN_RANGE(1,5)('4')
+            >>> isFloatInRange(1,5)('4')
             (4.0, None)
-            >>> IS_FLOAT_IN_RANGE(1,5)(4)
+            >>> isFloatInRange(1,5)(4)
             (4.0, None)
-            >>> IS_FLOAT_IN_RANGE(1,5)(1)
+            >>> isFloatInRange(1,5)(1)
             (1.0, None)
-            >>> IS_FLOAT_IN_RANGE(1,5)(5.25)
+            >>> isFloatInRange(1,5)(5.25)
             (5.25, 'enter a number between 1 and 5')
-            >>> IS_FLOAT_IN_RANGE(1,5)(6.0)
+            >>> isFloatInRange(1,5)(6.0)
             (6.0, 'enter a number between 1 and 5')
-            >>> IS_FLOAT_IN_RANGE(1,5)(3.5)
+            >>> isFloatInRange(1,5)(3.5)
             (3.5, None)
-            >>> IS_FLOAT_IN_RANGE(1,None)(3.5)
+            >>> isFloatInRange(1,None)(3.5)
             (3.5, None)
-            >>> IS_FLOAT_IN_RANGE(None,5)(3.5)
+            >>> isFloatInRange(None,5)(3.5)
             (3.5, None)
-            >>> IS_FLOAT_IN_RANGE(1,None)(0.5)
+            >>> isFloatInRange(1,None)(0.5)
             (0.5, 'enter a number greater than or equal to 1')
-            >>> IS_FLOAT_IN_RANGE(None,5)(6.5)
+            >>> isFloatInRange(None,5)(6.5)
             (6.5, 'enter a number less than or equal to 5')
-            >>> IS_FLOAT_IN_RANGE()(6.5)
+            >>> isFloatInRange()(6.5)
             (6.5, None)
-            >>> IS_FLOAT_IN_RANGE()('abc')
+            >>> isFloatInRange()('abc')
             ('abc', 'enter a number')
     """
 
@@ -815,7 +779,7 @@ class IS_FLOAT_IN_RANGE(Validator):
         self.minimum = float(minimum) if minimum is not None else None
         self.maximum = float(maximum) if maximum is not None else None
         self.dot = str(dot)
-        self.error_message = range_error_message(
+        self.error_message = _range_error_message(
             error_message, 'a number', self.minimum, self.maximum)
 
     def __call__(self, value):
@@ -834,10 +798,10 @@ class IS_FLOAT_IN_RANGE(Validator):
     def formatter(self, value):
         if value is None:
             return None
-        return str2dec(value).replace('.', self.dot)
+        return _str2dec(value).replace('.', self.dot)
 
 
-class IS_DECIMAL_IN_RANGE(Validator):
+class isDecimalInRange(Validator):
     """
     Determines that the argument is (or can be represented as) a Python Decimal,
     and that it falls within the specified inclusive range.
@@ -849,45 +813,45 @@ class IS_DECIMAL_IN_RANGE(Validator):
     Example:
         Used as::
 
-            INPUT(_type='text', _name='name', requires=IS_DECIMAL_IN_RANGE(0, 10))
+            INPUT(_type='text', _name='name', requires=isDecimalInRange(0, 10))
 
-            >>> IS_DECIMAL_IN_RANGE(1,5)('4')
+            >>> isDecimalInRange(1,5)('4')
             (Decimal('4'), None)
-            >>> IS_DECIMAL_IN_RANGE(1,5)(4)
+            >>> isDecimalInRange(1,5)(4)
             (Decimal('4'), None)
-            >>> IS_DECIMAL_IN_RANGE(1,5)(1)
+            >>> isDecimalInRange(1,5)(1)
             (Decimal('1'), None)
-            >>> IS_DECIMAL_IN_RANGE(1,5)(5.25)
+            >>> isDecimalInRange(1,5)(5.25)
             (5.25, 'enter a number between 1 and 5')
-            >>> IS_DECIMAL_IN_RANGE(5.25,6)(5.25)
+            >>> isDecimalInRange(5.25,6)(5.25)
             (Decimal('5.25'), None)
-            >>> IS_DECIMAL_IN_RANGE(5.25,6)('5.25')
+            >>> isDecimalInRange(5.25,6)('5.25')
             (Decimal('5.25'), None)
-            >>> IS_DECIMAL_IN_RANGE(1,5)(6.0)
+            >>> isDecimalInRange(1,5)(6.0)
             (6.0, 'enter a number between 1 and 5')
-            >>> IS_DECIMAL_IN_RANGE(1,5)(3.5)
+            >>> isDecimalInRange(1,5)(3.5)
             (Decimal('3.5'), None)
-            >>> IS_DECIMAL_IN_RANGE(1.5,5.5)(3.5)
+            >>> isDecimalInRange(1.5,5.5)(3.5)
             (Decimal('3.5'), None)
-            >>> IS_DECIMAL_IN_RANGE(1.5,5.5)(6.5)
+            >>> isDecimalInRange(1.5,5.5)(6.5)
             (6.5, 'enter a number between 1.5 and 5.5')
-            >>> IS_DECIMAL_IN_RANGE(1.5,None)(6.5)
+            >>> isDecimalInRange(1.5,None)(6.5)
             (Decimal('6.5'), None)
-            >>> IS_DECIMAL_IN_RANGE(1.5,None)(0.5)
+            >>> isDecimalInRange(1.5,None)(0.5)
             (0.5, 'enter a number greater than or equal to 1.5')
-            >>> IS_DECIMAL_IN_RANGE(None,5.5)(4.5)
+            >>> isDecimalInRange(None,5.5)(4.5)
             (Decimal('4.5'), None)
-            >>> IS_DECIMAL_IN_RANGE(None,5.5)(6.5)
+            >>> isDecimalInRange(None,5.5)(6.5)
             (6.5, 'enter a number less than or equal to 5.5')
-            >>> IS_DECIMAL_IN_RANGE()(6.5)
+            >>> isDecimalInRange()(6.5)
             (Decimal('6.5'), None)
-            >>> IS_DECIMAL_IN_RANGE(0,99)(123.123)
+            >>> isDecimalInRange(0,99)(123.123)
             (123.123, 'enter a number between 0 and 99')
-            >>> IS_DECIMAL_IN_RANGE(0,99)('123.123')
+            >>> isDecimalInRange(0,99)('123.123')
             ('123.123', 'enter a number between 0 and 99')
-            >>> IS_DECIMAL_IN_RANGE(0,99)('12.34')
+            >>> isDecimalInRange(0,99)('12.34')
             (Decimal('12.34'), None)
-            >>> IS_DECIMAL_IN_RANGE()('abc')
+            >>> isDecimalInRange()('abc')
             ('abc', 'enter a number')
     """
 
@@ -901,7 +865,7 @@ class IS_DECIMAL_IN_RANGE(Validator):
         self.minimum = decimal.Decimal(str(minimum)) if minimum is not None else None
         self.maximum = decimal.Decimal(str(maximum)) if maximum is not None else None
         self.dot = str(dot)
-        self.error_message = range_error_message(
+        self.error_message = _range_error_message(
             error_message, 'a number', self.minimum, self.maximum)
 
     def __call__(self, value):
@@ -920,10 +884,10 @@ class IS_DECIMAL_IN_RANGE(Validator):
     def formatter(self, value):
         if value is None:
             return None
-        return str2dec(value).replace('.', self.dot)
+        return _str2dec(value).replace('.', self.dot)
 
 
-def is_empty(value, empty_regex=None):
+def _is_empty(value, empty_regex=None):
     "test empty field"
     if isinstance(value, (str, unicode)):
         value = value.strip()
@@ -934,36 +898,36 @@ def is_empty(value, empty_regex=None):
     return (value, False)
 
 
-class IS_NOT_EMPTY(Validator):
+class isntEmpty(Validator):
     """
     Example:
         Used as::
 
-            INPUT(_type='text', _name='name', requires=IS_NOT_EMPTY())
+            INPUT(_type='text', _name='name', requires=isntEmpty())
 
-            >>> IS_NOT_EMPTY()(1)
+            >>> isntEmpty()(1)
             (1, None)
-            >>> IS_NOT_EMPTY()(0)
+            >>> isntEmpty()(0)
             (0, None)
-            >>> IS_NOT_EMPTY()('x')
+            >>> isntEmpty()('x')
             ('x', None)
-            >>> IS_NOT_EMPTY()(' x ')
+            >>> isntEmpty()(' x ')
             ('x', None)
-            >>> IS_NOT_EMPTY()(None)
+            >>> isntEmpty()(None)
             (None, 'enter a value')
-            >>> IS_NOT_EMPTY()('')
+            >>> isntEmpty()('')
             ('', 'enter a value')
-            >>> IS_NOT_EMPTY()('  ')
+            >>> isntEmpty()('  ')
             ('', 'enter a value')
-            >>> IS_NOT_EMPTY()(' \\n\\t')
+            >>> isntEmpty()(' \\n\\t')
             ('', 'enter a value')
-            >>> IS_NOT_EMPTY()([])
+            >>> isntEmpty()([])
             ([], 'enter a value')
-            >>> IS_NOT_EMPTY(empty_regex='def')('def')
+            >>> isntEmpty(empty_regex='def')('def')
             ('', 'enter a value')
-            >>> IS_NOT_EMPTY(empty_regex='de[fg]')('deg')
+            >>> isntEmpty(empty_regex='de[fg]')('deg')
             ('', 'enter a value')
-            >>> IS_NOT_EMPTY(empty_regex='def')('abc')
+            >>> isntEmpty(empty_regex='def')('abc')
             ('abc', None)
     """
 
@@ -975,34 +939,34 @@ class IS_NOT_EMPTY(Validator):
             self.empty_regex = None
 
     def __call__(self, value):
-        value, empty = is_empty(value, empty_regex=self.empty_regex)
+        value, empty = _is_empty(value, empty_regex=self.empty_regex)
         if empty:
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
         return (value, None)
 
 
-class IS_ALPHANUMERIC(IS_MATCH):
+class isAlphanumeric(Matches):
     """
     Example:
         Used as::
 
-            INPUT(_type='text', _name='name', requires=IS_ALPHANUMERIC())
+            INPUT(_type='text', _name='name', requires=isAlphanumeric())
 
-            >>> IS_ALPHANUMERIC()('1')
+            >>> isAlphanumeric()('1')
             ('1', None)
-            >>> IS_ALPHANUMERIC()('')
+            >>> isAlphanumeric()('')
             ('', None)
-            >>> IS_ALPHANUMERIC()('A_a')
+            >>> isAlphanumeric()('A_a')
             ('A_a', None)
-            >>> IS_ALPHANUMERIC()('!')
+            >>> isAlphanumeric()('!')
             ('!', 'enter only letters, numbers, and underscore')
     """
 
     def __init__(self, error_message='Enter only letters, numbers, and underscore'):
-        IS_MATCH.__init__(self, '^[\w]*$', error_message)
+        Matches.__init__(self, '^[\w]*$', error_message)
 
 
-class IS_EMAIL(Validator):
+class isEmail(Validator):
     """
     Checks if field's value is a valid email address. Can be set to disallow
     or force addresses from certain domain(s).
@@ -1022,71 +986,71 @@ class IS_EMAIL(Validator):
         Check for valid email address::
 
             INPUT(_type='text', _name='name',
-                requires=IS_EMAIL())
+                requires=isEmail())
 
         Check for valid email address that can't be from a .com domain::
 
             INPUT(_type='text', _name='name',
-                requires=IS_EMAIL(banned='^.*\.com(|\..*)$'))
+                requires=isEmail(banned='^.*\.com(|\..*)$'))
 
         Check for valid email address that must be from a .edu domain::
 
             INPUT(_type='text', _name='name',
-                requires=IS_EMAIL(forced='^.*\.edu(|\..*)$'))
+                requires=isEmail(forced='^.*\.edu(|\..*)$'))
 
-            >>> IS_EMAIL()('a@b.com')
+            >>> isEmail()('a@b.com')
             ('a@b.com', None)
-            >>> IS_EMAIL()('abc@def.com')
+            >>> isEmail()('abc@def.com')
             ('abc@def.com', None)
-            >>> IS_EMAIL()('abc@3def.com')
+            >>> isEmail()('abc@3def.com')
             ('abc@3def.com', None)
-            >>> IS_EMAIL()('abc@def.us')
+            >>> isEmail()('abc@def.us')
             ('abc@def.us', None)
-            >>> IS_EMAIL()('abc@d_-f.us')
+            >>> isEmail()('abc@d_-f.us')
             ('abc@d_-f.us', None)
-            >>> IS_EMAIL()('@def.com')           # missing name
+            >>> isEmail()('@def.com')           # missing name
             ('@def.com', 'enter a valid email address')
-            >>> IS_EMAIL()('"abc@def".com')      # quoted name
+            >>> isEmail()('"abc@def".com')      # quoted name
             ('"abc@def".com', 'enter a valid email address')
-            >>> IS_EMAIL()('abc+def.com')        # no @
+            >>> isEmail()('abc+def.com')        # no @
             ('abc+def.com', 'enter a valid email address')
-            >>> IS_EMAIL()('abc@def.x')          # one-char TLD
+            >>> isEmail()('abc@def.x')          # one-char TLD
             ('abc@def.x', 'enter a valid email address')
-            >>> IS_EMAIL()('abc@def.12')         # numeric TLD
+            >>> isEmail()('abc@def.12')         # numeric TLD
             ('abc@def.12', 'enter a valid email address')
-            >>> IS_EMAIL()('abc@def..com')       # double-dot in domain
+            >>> isEmail()('abc@def..com')       # double-dot in domain
             ('abc@def..com', 'enter a valid email address')
-            >>> IS_EMAIL()('abc@.def.com')       # dot starts domain
+            >>> isEmail()('abc@.def.com')       # dot starts domain
             ('abc@.def.com', 'enter a valid email address')
-            >>> IS_EMAIL()('abc@def.c_m')        # underscore in TLD
+            >>> isEmail()('abc@def.c_m')        # underscore in TLD
             ('abc@def.c_m', 'enter a valid email address')
-            >>> IS_EMAIL()('NotAnEmail')         # missing @
+            >>> isEmail()('NotAnEmail')         # missing @
             ('NotAnEmail', 'enter a valid email address')
-            >>> IS_EMAIL()('abc@NotAnEmail')     # missing TLD
+            >>> isEmail()('abc@NotAnEmail')     # missing TLD
             ('abc@NotAnEmail', 'enter a valid email address')
-            >>> IS_EMAIL()('customer/department@example.com')
+            >>> isEmail()('customer/department@example.com')
             ('customer/department@example.com', None)
-            >>> IS_EMAIL()('$A12345@example.com')
+            >>> isEmail()('$A12345@example.com')
             ('$A12345@example.com', None)
-            >>> IS_EMAIL()('!def!xyz%abc@example.com')
+            >>> isEmail()('!def!xyz%abc@example.com')
             ('!def!xyz%abc@example.com', None)
-            >>> IS_EMAIL()('_Yosemite.Sam@example.com')
+            >>> isEmail()('_Yosemite.Sam@example.com')
             ('_Yosemite.Sam@example.com', None)
-            >>> IS_EMAIL()('~@example.com')
+            >>> isEmail()('~@example.com')
             ('~@example.com', None)
-            >>> IS_EMAIL()('.wooly@example.com')       # dot starts name
+            >>> isEmail()('.wooly@example.com')       # dot starts name
             ('.wooly@example.com', 'enter a valid email address')
-            >>> IS_EMAIL()('wo..oly@example.com')      # adjacent dots in name
+            >>> isEmail()('wo..oly@example.com')      # adjacent dots in name
             ('wo..oly@example.com', 'enter a valid email address')
-            >>> IS_EMAIL()('pootietang.@example.com')  # dot ends name
+            >>> isEmail()('pootietang.@example.com')  # dot ends name
             ('pootietang.@example.com', 'enter a valid email address')
-            >>> IS_EMAIL()('.@example.com')            # name is bare dot
+            >>> isEmail()('.@example.com')            # name is bare dot
             ('.@example.com', 'enter a valid email address')
-            >>> IS_EMAIL()('Ima.Fool@example.com')
+            >>> isEmail()('Ima.Fool@example.com')
             ('Ima.Fool@example.com', None)
-            >>> IS_EMAIL()('Ima Fool@example.com')     # space in name
+            >>> isEmail()('Ima Fool@example.com')     # space in name
             ('Ima Fool@example.com', 'enter a valid email address')
-            >>> IS_EMAIL()('localguy@localhost')       # localhost as domain
+            >>> isEmail()('localguy@localhost')       # localhost as domain
             ('localguy@localhost', None)
 
     """
@@ -1137,16 +1101,17 @@ class IS_EMAIL(Validator):
             if (not self.banned or not self.banned.match(domain)) \
                     and (not self.forced or self.forced.match(domain)):
                 return (value, None)
-        return (value, translate(self.error_message))
+        return (value, _translate(self.error_message))
 
-class IS_LIST_OF_EMAILS(object):
+
+class isEmailList(object):
     """
     Example:
         Used as::
 
             Field('emails','list:string',
                   widget=SQLFORM.widgets.text.widget,
-                  requires=IS_LIST_OF_EMAILS(),
+                  requires=isEmailList(),
                   represent=lambda v,r: \
                      SPAN(*[A(x,_href='mailto:'+x) for x in (v or [])])
                   )
@@ -1158,7 +1123,7 @@ class IS_LIST_OF_EMAILS(object):
     def __call__(self, value):
         bad_emails = []
         emails = []
-        f = IS_EMAIL()
+        f = isEmail()
         for email in self.split_emails.findall(value):
             if not email in emails:
                 emails.append(email)
@@ -1169,17 +1134,17 @@ class IS_LIST_OF_EMAILS(object):
             return (value, None)
         else:
             return (value,
-                    translate(self.error_message) % ', '.join(bad_emails))
+                    _translate(self.error_message) % ', '.join(bad_emails))
 
     def formatter(self,value,row=None):
         return ', '.join(value or [])
 
 
-url_split_regex = \
+_url_split_regex = \
     re.compile('^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?')
 
 
-def escape_unicode(string):
+def _escape_unicode(string):
     '''
     Converts a unicode string into US-ASCII, using a simple conversion scheme.
     Each unicode character that does not have a US-ASCII equivalent is
@@ -1208,7 +1173,7 @@ def escape_unicode(string):
     return returnValue.getvalue()
 
 
-def unicode_to_ascii_authority(authority):
+def _unicode_to_ascii_authority(authority):
     '''
     Follows the steps in RFC 3490, Section 4 to convert a unicode authority
     string into its ASCII equivalent.
@@ -1260,7 +1225,7 @@ def unicode_to_ascii_authority(authority):
     return str(reduce(lambda x, y: x + unichr(0x002E) + y, asciiLabels))
 
 
-def unicode_to_ascii_url(url, prepend_scheme):
+def _unicode_to_ascii_url(url, prepend_scheme):
     '''
     Converts the inputed unicode url into a US-ASCII equivalent. This function
     goes a little beyond RFC 3490, which is limited in scope to the domain name
@@ -1295,12 +1260,12 @@ def unicode_to_ascii_url(url, prepend_scheme):
     #convert the authority component of the URL into an ASCII punycode string,
     #but encode the rest using the regular URI character encoding
 
-    groups = url_split_regex.match(url).groups()
+    groups = _url_split_regex.match(url).groups()
     #If no authority was found
     if not groups[3]:
         #Try appending a scheme to see if that fixes the problem
         scheme_to_prepend = prepend_scheme or 'http'
-        groups = url_split_regex.match(
+        groups = _url_split_regex.match(
             unicode(scheme_to_prepend) + u'://' + url).groups()
     #if we still can't find the authority
     if not groups[3]:
@@ -1318,11 +1283,11 @@ def unicode_to_ascii_url(url, prepend_scheme):
         scheme = str(scheme) + '://'
     else:
         scheme = ''
-    return scheme + unicode_to_ascii_authority(authority) +\
-        escape_unicode(path) + escape_unicode(query) + str(fragment)
+    return scheme + _unicode_to_ascii_authority(authority) +\
+        _escape_unicode(path) + _escape_unicode(query) + str(fragment)
 
 
-class IS_GENERIC_URL(Validator):
+class _isGenericUrl(Validator):
     """
     Rejects a URL string if any of the following is true:
        * The string is empty or None
@@ -1349,7 +1314,7 @@ class IS_GENERIC_URL(Validator):
 
     @author: Jonathan Benn
 
-        >>> IS_GENERIC_URL()('http://user@abc.com')
+        >>> _isGenericUrl()('http://user@abc.com')
         ('http://user@abc.com', None)
 
     Args:
@@ -1420,7 +1385,7 @@ class IS_GENERIC_URL(Validator):
                 if self.GENERIC_URL_VALID.match(value):
                     # Then split up the URL into its components and check on
                     # the scheme
-                    scheme = url_split_regex.match(value).group(2)
+                    scheme = _url_split_regex.match(value).group(2)
                     # Clean up the scheme before we check it
                     if not scheme is None:
                         scheme = urllib.unquote(scheme).lower()
@@ -1449,10 +1414,10 @@ class IS_GENERIC_URL(Validator):
         except:
             pass
         # else the URL is not valid
-        return (value, translate(self.error_message))
+        return (value, _translate(self.error_message))
 
 
-class IS_HTTP_URL(Validator):
+class _isHTTPUrl(Validator):
     """
     Rejects a URL string if any of the following is true:
        * The string is empty or None
@@ -1479,19 +1444,19 @@ class IS_HTTP_URL(Validator):
 
     @author: Jonathan Benn
 
-        >>> IS_HTTP_URL()('http://1.2.3.4')
+        >>> _isHTTPUrl()('http://1.2.3.4')
         ('http://1.2.3.4', None)
-        >>> IS_HTTP_URL()('http://abc.com')
+        >>> _isHTTPUrl()('http://abc.com')
         ('http://abc.com', None)
-        >>> IS_HTTP_URL()('https://abc.com')
+        >>> _isHTTPUrl()('https://abc.com')
         ('https://abc.com', None)
-        >>> IS_HTTP_URL()('httpx://abc.com')
+        >>> _isHTTPUrl()('httpx://abc.com')
         ('httpx://abc.com', 'enter a valid URL')
-        >>> IS_HTTP_URL()('http://abc.com:80')
+        >>> _isHTTPUrl()('http://abc.com:80')
         ('http://abc.com:80', None)
-        >>> IS_HTTP_URL()('http://user@abc.com')
+        >>> _isHTTPUrl()('http://user@abc.com')
         ('http://user@abc.com', None)
-        >>> IS_HTTP_URL()('http://user@1.2.3.4')
+        >>> _isHTTPUrl()('http://user@1.2.3.4')
         ('http://user@1.2.3.4', None)
 
     Args:
@@ -1575,11 +1540,11 @@ class IS_HTTP_URL(Validator):
 
         try:
             # if the URL passes generic validation
-            x = IS_GENERIC_URL(error_message=self.error_message,
+            x = _isGenericUrl(error_message=self.error_message,
                                allowed_schemes=self.allowed_schemes,
                                prepend_scheme=self.prepend_scheme)
             if x(value)[1] is None:
-                componentsMatch = url_split_regex.match(value)
+                componentsMatch = _url_split_regex.match(value)
                 authority = componentsMatch.group(4)
                 # if there is an authority component
                 if authority:
@@ -1625,10 +1590,10 @@ class IS_HTTP_URL(Validator):
         except:
             pass
         # else the HTTP URL is not valid
-        return (value, translate(self.error_message))
+        return (value, _translate(self.error_message))
 
 
-class IS_URL(Validator):
+class isUrl(Validator):
     """
     Rejects a URL string if any of the following is true:
 
@@ -1663,12 +1628,12 @@ class IS_URL(Validator):
     disabled. URLs that require prepending to parse will still be accepted,
     but the return value will not be modified.
 
-    IS_URL is compatible with the Internationalized Domain Name (IDN) standard
+    isUrl is compatible with the Internationalized Domain Name (IDN) standard
     specified in RFC 3490 (http://tools.ietf.org/html/rfc3490). As a result,
     URLs can be regular strings or unicode strings.
     If the URL's domain component (e.g. google.ca) contains non-US-ASCII
     letters, then the domain will be converted into Punycode (defined in
-    RFC 3492, http://tools.ietf.org/html/rfc3492). IS_URL goes a bit beyond
+    RFC 3492, http://tools.ietf.org/html/rfc3492). isUrl goes a bit beyond
     the standards, and allows non-US-ASCII characters to be present in the path
     and query components of the URL as well. These non-US-ASCII characters will
     be escaped using the standard '%20' type syntax. e.g. the unicode
@@ -1684,30 +1649,30 @@ class IS_URL(Validator):
 
     Code Examples::
 
-        INPUT(_type='text', _name='name', requires=IS_URL())
-        >>> IS_URL()('abc.com')
+        INPUT(_type='text', _name='name', requires=isUrl())
+        >>> isUrl()('abc.com')
         ('http://abc.com', None)
 
-        INPUT(_type='text', _name='name', requires=IS_URL(mode='generic'))
-        >>> IS_URL(mode='generic')('abc.com')
+        INPUT(_type='text', _name='name', requires=isUrl(mode='generic'))
+        >>> isUrl(mode='generic')('abc.com')
         ('abc.com', None)
 
         INPUT(_type='text', _name='name',
-            requires=IS_URL(allowed_schemes=['https'], prepend_scheme='https'))
-        >>> IS_URL(allowed_schemes=['https'], prepend_scheme='https')('https://abc.com')
+            requires=isUrl(allowed_schemes=['https'], prepend_scheme='https'))
+        >>> isUrl(allowed_schemes=['https'], prepend_scheme='https')('https://abc.com')
         ('https://abc.com', None)
 
         INPUT(_type='text', _name='name',
-            requires=IS_URL(prepend_scheme='https'))
-        >>> IS_URL(prepend_scheme='https')('abc.com')
+            requires=isUrl(prepend_scheme='https'))
+        >>> isUrl(prepend_scheme='https')('abc.com')
         ('https://abc.com', None)
 
         INPUT(_type='text', _name='name',
-            requires=IS_URL(mode='generic', allowed_schemes=['ftps', 'https'],
+            requires=isUrl(mode='generic', allowed_schemes=['ftps', 'https'],
                 prepend_scheme='https'))
-        >>> IS_URL(mode='generic', allowed_schemes=['ftps', 'https'], prepend_scheme='https')('https://abc.com')
+        >>> isUrl(mode='generic', allowed_schemes=['ftps', 'https'], prepend_scheme='https')('https://abc.com')
         ('https://abc.com', None)
-        >>> IS_URL(mode='generic', allowed_schemes=['ftps', 'https', None], prepend_scheme='https')('abc.com')
+        >>> isUrl(mode='generic', allowed_schemes=['ftps', 'https', None], prepend_scheme='https')('abc.com')
         ('abc.com', None)
 
     @author: Jonathan Benn
@@ -1724,7 +1689,7 @@ class IS_URL(Validator):
         self.error_message = error_message
         self.mode = mode.lower()
         if not self.mode in ['generic', 'http']:
-            raise SyntaxError("invalid mode '%s' in IS_URL" % self.mode)
+            raise SyntaxError("invalid mode '%s' in isUrl" % self.mode)
         self.allowed_schemes = allowed_schemes
 
         if self.allowed_schemes:
@@ -1752,25 +1717,25 @@ class IS_URL(Validator):
         """
 
         if self.mode == 'generic':
-            subMethod = IS_GENERIC_URL(error_message=self.error_message,
+            subMethod = _isGenericUrl(error_message=self.error_message,
                                        allowed_schemes=self.allowed_schemes,
                                        prepend_scheme=self.prepend_scheme)
         elif self.mode == 'http':
-            subMethod = IS_HTTP_URL(error_message=self.error_message,
+            subMethod = _isHTTPUrl(error_message=self.error_message,
                                     allowed_schemes=self.allowed_schemes,
                                     prepend_scheme=self.prepend_scheme)
         else:
-            raise SyntaxError("invalid mode '%s' in IS_URL" % self.mode)
+            raise SyntaxError("invalid mode '%s' in isUrl" % self.mode)
 
         if type(value) != unicode:
             return subMethod(value)
         else:
             try:
-                asciiValue = unicode_to_ascii_url(value, self.prepend_scheme)
+                asciiValue = _unicode_to_ascii_url(value, self.prepend_scheme)
             except Exception:
                 #If we are not able to convert the unicode url into a
                 # US-ASCII URL, then the URL is not valid
-                return (value, translate(self.error_message))
+                return (value, _translate(self.error_message))
 
             methodResult = subMethod(asciiValue)
             #if the validation of the US-ASCII version of the value failed
@@ -1781,16 +1746,16 @@ class IS_URL(Validator):
                 return methodResult
 
 
-regex_time = re.compile(
+_regex_time = re.compile(
     '((?P<h>[0-9]+))([^0-9 ]+(?P<m>[0-9 ]+))?([^0-9ap ]+(?P<s>[0-9]*))?((?P<d>[ap]m))?')
 
 
-class IS_TIME(Validator):
+class isTime(Validator):
     """
     Example:
         Use as::
 
-            INPUT(_type='text', _name='name', requires=IS_TIME())
+            INPUT(_type='text', _name='name', requires=isTime())
 
     understands the following formats
     hh:mm:ss [am/pm]
@@ -1799,31 +1764,31 @@ class IS_TIME(Validator):
 
     [am/pm] is optional, ':' can be replaced by any other non-space non-digit::
 
-        >>> IS_TIME()('21:30')
+        >>> isTime()('21:30')
         (datetime.time(21, 30), None)
-        >>> IS_TIME()('21-30')
+        >>> isTime()('21-30')
         (datetime.time(21, 30), None)
-        >>> IS_TIME()('21.30')
+        >>> isTime()('21.30')
         (datetime.time(21, 30), None)
-        >>> IS_TIME()('21:30:59')
+        >>> isTime()('21:30:59')
         (datetime.time(21, 30, 59), None)
-        >>> IS_TIME()('5:30')
+        >>> isTime()('5:30')
         (datetime.time(5, 30), None)
-        >>> IS_TIME()('5:30 am')
+        >>> isTime()('5:30 am')
         (datetime.time(5, 30), None)
-        >>> IS_TIME()('5:30 pm')
+        >>> isTime()('5:30 pm')
         (datetime.time(17, 30), None)
-        >>> IS_TIME()('5:30 whatever')
+        >>> isTime()('5:30 whatever')
         ('5:30 whatever', 'enter time as hh:mm:ss (seconds, am, pm optional)')
-        >>> IS_TIME()('5:30 20')
+        >>> isTime()('5:30 20')
         ('5:30 20', 'enter time as hh:mm:ss (seconds, am, pm optional)')
-        >>> IS_TIME()('24:30')
+        >>> isTime()('24:30')
         ('24:30', 'enter time as hh:mm:ss (seconds, am, pm optional)')
-        >>> IS_TIME()('21:60')
+        >>> isTime()('21:60')
         ('21:60', 'enter time as hh:mm:ss (seconds, am, pm optional)')
-        >>> IS_TIME()('21:30::')
+        >>> isTime()('21:30::')
         ('21:30::', 'enter time as hh:mm:ss (seconds, am, pm optional)')
-        >>> IS_TIME()('')
+        >>> isTime()('')
         ('', 'enter time as hh:mm:ss (seconds, am, pm optional)')
     """
 
@@ -1833,7 +1798,7 @@ class IS_TIME(Validator):
     def __call__(self, value):
         try:
             ivalue = value
-            value = regex_time.match(value.lower())
+            value = _regex_time.match(value.lower())
             (h, m, s) = (int(value.group('h')), 0, 0)
             if not value.group('m') is None:
                 m = int(value.group('m'))
@@ -1852,26 +1817,27 @@ class IS_TIME(Validator):
             pass
         except ValueError:
             pass
-        return (ivalue, translate(self.error_message))
+        return (ivalue, _translate(self.error_message))
 
-# A UTC class.
-class UTC(datetime.tzinfo):
+
+class _UTC(datetime.tzinfo):
     """UTC"""
     ZERO = datetime.timedelta(0)
     def utcoffset(self, dt):
-        return UTC.ZERO
+        return _UTC.ZERO
     def tzname(self, dt):
         return "UTC"
     def dst(self, dt):
-        return UTC.ZERO
-utc = UTC()
+        return _UTC.ZERO
+_utc = _UTC()
 
-class IS_DATE(Validator):
+
+class isDate(Validator):
     """
     Examples:
         Use as::
 
-            INPUT(_type='text', _name='name', requires=IS_DATE())
+            INPUT(_type='text', _name='name', requires=isDate())
 
     date has to be in the ISO8960 format YYYY-MM-DD
     timezome must be None or a pytz.timezone("America/Chicago") object
@@ -1880,7 +1846,7 @@ class IS_DATE(Validator):
     def __init__(self, format='%Y-%m-%d',
                  error_message='Enter date as %(format)s',
                  timezone = None):
-        self.format = translate(format)
+        self.format = _translate(format)
         self.error_message = str(error_message)
         self.timezone = timezone
         self.extremes = {}
@@ -1896,11 +1862,11 @@ class IS_DATE(Validator):
                 time.strptime(value, str(self.format))
             value = datetime.date(y, m, d)
             if self.timezone is not None:
-                value = self.timezone.localize(value).astimezone(utc)
+                value = self.timezone.localize(value).astimezone(_utc)
             return (value, None)
         except:
-            self.extremes.update(IS_DATETIME.nice(self.format))
-            return (ovalue, translate(self.error_message) % self.extremes)
+            self.extremes.update(isDatetime.nice(self.format))
+            return (ovalue, _translate(self.error_message) % self.extremes)
 
     def formatter(self, value):
         if value is None:
@@ -1914,18 +1880,18 @@ class IS_DATE(Validator):
             year = 2000
         if self.timezone is not None:
             d = datetime.datetime(year, value.month, value.day)
-            d = d.replace(tzinfo=utc).astimezone(self.timezone)
+            d = d.replace(tzinfo=_utc).astimezone(self.timezone)
         else:
             d = datetime.date(year, value.month, value.day)
         return d.strftime(format)
 
 
-class IS_DATETIME(Validator):
+class isDatetime(Validator):
     """
     Examples:
         Use as::
 
-            INPUT(_type='text', _name='name', requires=IS_DATETIME())
+            INPUT(_type='text', _name='name', requires=isDatetime())
 
     datetime has to be in the ISO8960 format YYYY-MM-DD hh:mm:ss
     timezome must be None or a pytz.timezone("America/Chicago") object
@@ -1953,7 +1919,7 @@ class IS_DATETIME(Validator):
     def __init__(self, format='%Y-%m-%d %H:%M:%S',
                  error_message='Enter date and time as %(format)s',
                  timezone=None):
-        self.format = translate(format)
+        self.format = _translate(format)
         self.error_message = str(error_message)
         self.extremes = {}
         self.timezone = timezone
@@ -1967,11 +1933,11 @@ class IS_DATETIME(Validator):
                 time.strptime(value, str(self.format))
             value = datetime.datetime(y, m, d, hh, mm, ss)
             if self.timezone is not None:
-                value = self.timezone.localize(value).astimezone(utc)
+                value = self.timezone.localize(value).astimezone(_utc)
             return (value, None)
         except:
-            self.extremes.update(IS_DATETIME.nice(self.format))
-            return (ovalue, translate(self.error_message) % self.extremes)
+            self.extremes.update(isDatetime.nice(self.format))
+            return (ovalue, _translate(self.error_message) % self.extremes)
 
     def formatter(self, value):
         if value is None:
@@ -1986,16 +1952,16 @@ class IS_DATETIME(Validator):
         d = datetime.datetime(year, value.month, value.day,
                               value.hour, value.minute, value.second)
         if self.timezone is not None:
-            d = d.replace(tzinfo=utc).astimezone(self.timezone)
+            d = d.replace(tzinfo=_utc).astimezone(self.timezone)
         return d.strftime(format)
 
 
-class IS_DATE_IN_RANGE(IS_DATE):
+class isDateInRange(isDate):
     """
     Examples:
         Use as::
 
-            >>> v = IS_DATE_IN_RANGE(minimum=datetime.date(2008,1,1), \
+            >>> v = isDateInRange(minimum=datetime.date(2008,1,1), \
                                      maximum=datetime.date(2009,12,31), \
                                      format="%m/%d/%Y",error_message="Oops")
 
@@ -2027,7 +1993,7 @@ class IS_DATE_IN_RANGE(IS_DATE):
                 error_message = "Enter date on or after %(min)s"
             else:
                 error_message = "Enter date in range %(min)s %(max)s"
-        IS_DATE.__init__(self,
+        isDate.__init__(self,
                          format=format,
                          error_message=error_message,
                          timezone=timezone)
@@ -2036,21 +2002,21 @@ class IS_DATE_IN_RANGE(IS_DATE):
 
     def __call__(self, value):
         ovalue = value
-        (value, msg) = IS_DATE.__call__(self, value)
+        (value, msg) = isDate.__call__(self, value)
         if msg is not None:
             return (value, msg)
         if self.minimum and self.minimum > value:
-            return (ovalue, translate(self.error_message) % self.extremes)
+            return (ovalue, _translate(self.error_message) % self.extremes)
         if self.maximum and value > self.maximum:
-            return (ovalue, translate(self.error_message) % self.extremes)
+            return (ovalue, _translate(self.error_message) % self.extremes)
         return (value, None)
 
 
-class IS_DATETIME_IN_RANGE(IS_DATETIME):
+class isDatetimeInRange(isDatetime):
     """
     Examples:
         Use as::
-            >>> v = IS_DATETIME_IN_RANGE(\
+            >>> v = isDatetimeInRange(\
                     minimum=datetime.datetime(2008,1,1,12,20), \
                     maximum=datetime.datetime(2009,12,31,12,20), \
                     format="%m/%d/%Y %H:%M",error_message="Oops")
@@ -2082,7 +2048,7 @@ class IS_DATETIME_IN_RANGE(IS_DATETIME):
                 error_message = "Enter date and time on or after %(min)s"
             else:
                 error_message = "Enter date and time in range %(min)s %(max)s"
-        IS_DATETIME.__init__(self,
+        isDatetime.__init__(self,
                              format=format,
                              error_message=error_message,
                              timezone=timezone)
@@ -2091,17 +2057,17 @@ class IS_DATETIME_IN_RANGE(IS_DATETIME):
 
     def __call__(self, value):
         ovalue = value
-        (value, msg) = IS_DATETIME.__call__(self, value)
+        (value, msg) = isDatetime.__call__(self, value)
         if msg is not None:
             return (value, msg)
         if self.minimum and self.minimum > value:
-            return (ovalue, translate(self.error_message) % self.extremes)
+            return (ovalue, _translate(self.error_message) % self.extremes)
         if self.maximum and value > self.maximum:
-            return (ovalue, translate(self.error_message) % self.extremes)
+            return (ovalue, _translate(self.error_message) % self.extremes)
         return (value, None)
 
 
-class IS_LIST_OF(Validator):
+class isListOf(Validator):
 
     def __init__(self, other=None, minimum=0, maximum=100,
                  error_message=None):
@@ -2115,9 +2081,9 @@ class IS_LIST_OF(Validator):
         if not isinstance(value, list):
             ivalue = [ivalue]
         if not self.minimum is None and len(ivalue) < self.minimum:
-            return (ivalue, translate(self.error_message) % dict(min=self.minimum, max=self.maximum))
+            return (ivalue, _translate(self.error_message) % dict(min=self.minimum, max=self.maximum))
         if not self.maximum is None and len(ivalue) > self.maximum:
-            return (ivalue, translate(self.error_message) % dict(min=self.minimum, max=self.maximum))
+            return (ivalue, _translate(self.error_message) % dict(min=self.minimum, max=self.maximum))
         new_value = []
         other = self.other
         if self.other:
@@ -2135,13 +2101,13 @@ class IS_LIST_OF(Validator):
         return (ivalue, None)
 
 
-class IS_LOWER(Validator):
+class Lower(Validator):
     """
     Converts to lower case::
 
-        >>> IS_LOWER()('ABC')
+        >>> Lower()('ABC')
         ('abc', None)
-        >>> IS_LOWER()('Ñ')
+        >>> Lower()('Ñ')
         ('\\xc3\\xb1', None)
 
     """
@@ -2150,13 +2116,13 @@ class IS_LOWER(Validator):
         return (value.decode('utf8').lower().encode('utf8'), None)
 
 
-class IS_UPPER(Validator):
+class Upper(Validator):
     """
     Converts to upper case::
 
-        >>> IS_UPPER()('abc')
+        >>> Upper()('abc')
         ('ABC', None)
-        >>> IS_UPPER()('ñ')
+        >>> Upper()('ñ')
         ('\\xc3\\x91', None)
 
     """
@@ -2165,7 +2131,7 @@ class IS_UPPER(Validator):
         return (value.decode('utf8').upper().encode('utf8'), None)
 
 
-def urlify(s, maxlen=80, keep_underscores=False):
+def _urlify(s, maxlen=80, keep_underscores=False):
     """
     Converts incoming string to a simplified ASCII subset.
     if (keep_underscores): underscores are retained in the string
@@ -2189,53 +2155,53 @@ def urlify(s, maxlen=80, keep_underscores=False):
     return s[:maxlen]                     # enforce maximum length
 
 
-class IS_SLUG(Validator):
+class Slug(Validator):
     """
     converts arbitrary text string to a slug::
 
-        >>> IS_SLUG()('abc123')
+        >>> Slug()('abc123')
         ('abc123', None)
-        >>> IS_SLUG()('ABC123')
+        >>> Slug()('ABC123')
         ('abc123', None)
-        >>> IS_SLUG()('abc-123')
+        >>> Slug()('abc-123')
         ('abc-123', None)
-        >>> IS_SLUG()('abc--123')
+        >>> Slug()('abc--123')
         ('abc-123', None)
-        >>> IS_SLUG()('abc 123')
+        >>> Slug()('abc 123')
         ('abc-123', None)
-        >>> IS_SLUG()('abc\t_123')
+        >>> Slug()('abc\t_123')
         ('abc-123', None)
-        >>> IS_SLUG()('-abc-')
+        >>> Slug()('-abc-')
         ('abc', None)
-        >>> IS_SLUG()('--a--b--_ -c--')
+        >>> Slug()('--a--b--_ -c--')
         ('a-b-c', None)
-        >>> IS_SLUG()('abc&amp;123')
+        >>> Slug()('abc&amp;123')
         ('abc123', None)
-        >>> IS_SLUG()('abc&amp;123&amp;def')
+        >>> Slug()('abc&amp;123&amp;def')
         ('abc123def', None)
-        >>> IS_SLUG()('ñ')
+        >>> Slug()('ñ')
         ('n', None)
-        >>> IS_SLUG(maxlen=4)('abc123')
+        >>> Slug(maxlen=4)('abc123')
         ('abc1', None)
-        >>> IS_SLUG()('abc_123')
+        >>> Slug()('abc_123')
         ('abc-123', None)
-        >>> IS_SLUG(keep_underscores=False)('abc_123')
+        >>> Slug(keep_underscores=False)('abc_123')
         ('abc-123', None)
-        >>> IS_SLUG(keep_underscores=True)('abc_123')
+        >>> Slug(keep_underscores=True)('abc_123')
         ('abc_123', None)
-        >>> IS_SLUG(check=False)('abc')
+        >>> Slug(check=False)('abc')
         ('abc', None)
-        >>> IS_SLUG(check=True)('abc')
+        >>> Slug(check=True)('abc')
         ('abc', None)
-        >>> IS_SLUG(check=False)('a bc')
+        >>> Slug(check=False)('a bc')
         ('a-bc', None)
-        >>> IS_SLUG(check=True)('a bc')
+        >>> Slug(check=True)('a bc')
         ('a bc', 'must be slug')
     """
 
-    @staticmethod
-    def urlify(value, maxlen=80, keep_underscores=False):
-        return urlify(value, maxlen, keep_underscores)
+    #@staticmethod
+    #def urlify(value, maxlen=80, keep_underscores=False):
+    #    return _urlify(value, maxlen, keep_underscores)
 
     def __init__(self, maxlen=80, check=False, error_message='Must be slug', keep_underscores=False):
         self.maxlen = maxlen
@@ -2244,22 +2210,22 @@ class IS_SLUG(Validator):
         self.keep_underscores = keep_underscores
 
     def __call__(self, value):
-        if self.check and value != urlify(value, self.maxlen, self.keep_underscores):
-            return (value, translate(self.error_message))
-        return (urlify(value, self.maxlen, self.keep_underscores), None)
+        if self.check and value != _urlify(value, self.maxlen, self.keep_underscores):
+            return (value, _translate(self.error_message))
+        return (_urlify(value, self.maxlen, self.keep_underscores), None)
 
 
-class ANY_OF(Validator):
+class anyOf(Validator):
     """
     Tests if any of the validators in a list returns successfully::
 
-        >>> ANY_OF([IS_EMAIL(),IS_ALPHANUMERIC()])('a@b.co')
+        >>> anyOf([isEmail(),isAlphanumeric()])('a@b.co')
         ('a@b.co', None)
-        >>> ANY_OF([IS_EMAIL(),IS_ALPHANUMERIC()])('abco')
+        >>> anyOf([isEmail(),isAlphanumeric()])('abco')
         ('abco', None)
-        >>> ANY_OF([IS_EMAIL(),IS_ALPHANUMERIC()])('@ab.co')
+        >>> anyOf([isEmail(),isAlphanumeric()])('@ab.co')
         ('@ab.co', 'enter only letters, numbers, and underscore')
-        >>> ANY_OF([IS_ALPHANUMERIC(),IS_EMAIL()])('@ab.co')
+        >>> anyOf([isAlphanumeric(),isEmail()])('@ab.co')
         ('@ab.co', 'enter a valid email address')
 
     """
@@ -2282,21 +2248,21 @@ class ANY_OF(Validator):
                 return validator.formatter(value)
 
 
-class IS_EMPTY_OR(Validator):
+class isEmptyOr(Validator):
     """
-    Dummy class for testing IS_EMPTY_OR::
+    Dummy class for testing isEmptyOr::
 
-        >>> IS_EMPTY_OR(IS_EMAIL())('abc@def.com')
+        >>> isEmptyOr(isEmail())('abc@def.com')
         ('abc@def.com', None)
-        >>> IS_EMPTY_OR(IS_EMAIL())('   ')
+        >>> isEmptyOr(isEmail())('   ')
         (None, None)
-        >>> IS_EMPTY_OR(IS_EMAIL(), null='abc')('   ')
+        >>> isEmptyOr(isEmail(), null='abc')('   ')
         ('abc', None)
-        >>> IS_EMPTY_OR(IS_EMAIL(), null='abc', empty_regex='def')('def')
+        >>> isEmptyOr(isEmail(), null='abc', empty_regex='def')('def')
         ('abc', None)
-        >>> IS_EMPTY_OR(IS_EMAIL())('abc')
+        >>> isEmptyOr(isEmail())('abc')
         ('abc', 'enter a valid email address')
-        >>> IS_EMPTY_OR(IS_EMAIL())(' abc ')
+        >>> isEmptyOr(isEmail())(' abc ')
         ('abc', 'enter a valid email address')
     """
 
@@ -2327,7 +2293,7 @@ class IS_EMPTY_OR(Validator):
                 self.other.set_self_id(id)
 
     def __call__(self, value):
-        value, empty = is_empty(value, empty_regex=self.empty_regex)
+        value, empty = _is_empty(value, empty_regex=self.empty_regex)
         if empty:
             return (self.null, None)
         if isinstance(self.other, (list, tuple)):
@@ -2345,15 +2311,13 @@ class IS_EMPTY_OR(Validator):
             return self.other.formatter(value)
         return value
 
-IS_NULL_OR = IS_EMPTY_OR    # for backward compatibility
 
-
-class CLEANUP(Validator):
+class Cleanup(Validator):
     """
     Examples:
         Use as::
 
-            INPUT(_type='text', _name='name', requires=CLEANUP())
+            INPUT(_type='text', _name='name', requires=Cleanup())
 
     removes special characters on validation
     """
@@ -2368,13 +2332,13 @@ class CLEANUP(Validator):
         return (v, None)
 
 
-class LazyCrypt(object):
+class _LazyCrypt(object):
     """
     Stores a lazy password hash
     """
     def __init__(self, crypt, password):
         """
-        crypt is an instance of the CRYPT validator,
+        crypt is an instance of the Crypt validator,
         password is the password as inserted by the user
         """
         self.crypt = crypt
@@ -2424,7 +2388,7 @@ class LazyCrypt(object):
         compares the current lazy crypted password with a stored password
         """
 
-        # LazyCrypt objects comparison
+        # _LazyCrypt objects comparison
         if isinstance(stored_password, self.__class__):
             return ((self is stored_password) or
                    ((self.crypt.key == stored_password.crypt.key) and
@@ -2456,22 +2420,22 @@ class LazyCrypt(object):
         return not self.__eq__(other)
 
 
-class CRYPT(object):
+class Crypt(object):
     """
     Examples:
         Use as::
 
-            INPUT(_type='text', _name='name', requires=CRYPT())
+            INPUT(_type='text', _name='name', requires=Crypt())
 
     encodes the value on validation with a digest.
 
-    If no arguments are provided CRYPT uses the MD5 algorithm.
+    If no arguments are provided Crypt uses the MD5 algorithm.
     If the key argument is provided the HMAC+MD5 algorithm is used.
     If the digest_alg is specified this is used to replace the
     MD5 with, for example, SHA512. The digest_alg can be
     the name of a hashlib algorithm as a string or the algorithm itself.
 
-    min_length is the minimal password length (default 4) - IS_STRONG for serious security
+    min_length is the minimal password length (default 4) - isStrong for serious security
     error_message is the message if password is too short
 
     Notice that an empty password is accepted but invalid. It will not allow login back.
@@ -2488,13 +2452,13 @@ class CRYPT(object):
 
       <algorithm>$<salt>$<hash>
 
-    Important: hashed password is returned as a LazyCrypt object and computed only if needed.
+    Important: hashed password is returned as a _LazyCrypt object and computed only if needed.
     The LasyCrypt object also knows how to compare itself with an existing salted password
 
     Supports standard algorithms
 
         >>> for alg in ('md5','sha1','sha256','sha384','sha512'):
-        ...     print str(CRYPT(digest_alg=alg,salt=True)('test')[0])
+        ...     print str(Crypt(digest_alg=alg,salt=True)('test')[0])
         md5$...$...
         sha1$...$...
         sha256$...$...
@@ -2506,32 +2470,32 @@ class CRYPT(object):
     Supports for pbkdf2
 
         >>> alg = 'pbkdf2(1000,20,sha512)'
-        >>> print str(CRYPT(digest_alg=alg,salt=True)('test')[0])
+        >>> print str(Crypt(digest_alg=alg,salt=True)('test')[0])
         pbkdf2(1000,20,sha512)$...$...
 
     An optional hmac_key can be specified and it is used as salt prefix
 
-        >>> a = str(CRYPT(digest_alg='md5',key='mykey',salt=True)('test')[0])
+        >>> a = str(Crypt(digest_alg='md5',key='mykey',salt=True)('test')[0])
         >>> print a
         md5$...$...
 
     Even if the algorithm changes the hash can still be validated
 
-        >>> CRYPT(digest_alg='sha1',key='mykey',salt=True)('test')[0] == a
+        >>> Crypt(digest_alg='sha1',key='mykey',salt=True)('test')[0] == a
         True
 
-    If no salt is specified CRYPT can guess the algorithms from length:
+    If no salt is specified Crypt can guess the algorithms from length:
 
-        >>> a = str(CRYPT(digest_alg='sha1',salt=False)('test')[0])
+        >>> a = str(Crypt(digest_alg='sha1',salt=False)('test')[0])
         >>> a
         'sha1$$a94a8fe5ccb19ba61c4c0873d391e987982fbbd3'
-        >>> CRYPT(digest_alg='sha1',salt=False)('test')[0] == a
+        >>> Crypt(digest_alg='sha1',salt=False)('test')[0] == a
         True
-        >>> CRYPT(digest_alg='sha1',salt=False)('test')[0] == a[6:]
+        >>> Crypt(digest_alg='sha1',salt=False)('test')[0] == a[6:]
         True
-        >>> CRYPT(digest_alg='md5',salt=False)('test')[0] == a
+        >>> Crypt(digest_alg='md5',salt=False)('test')[0] == a
         True
-        >>> CRYPT(digest_alg='md5',salt=False)('test')[0] == a[6:]
+        >>> Crypt(digest_alg='md5',salt=False)('test')[0] == a[6:]
         True
         """
 
@@ -2558,38 +2522,38 @@ class CRYPT(object):
     def __call__(self, value):
         value = value and value[:self.max_length]
         if len(value) < self.min_length:
-            return ('', translate(self.error_message))
-        return (LazyCrypt(self, value), None)
+            return ('', _translate(self.error_message))
+        return (_LazyCrypt(self, value), None)
 
 
-class IS_STRONG(object):
+class isStrong(object):
     """
     Examples:
         Use as::
 
             INPUT(_type='password', _name='passwd',
-            requires=IS_STRONG(min=10, special=2, upper=2))
+            requires=isStrong(min=10, special=2, upper=2))
 
     enforces complexity requirements on a field
 
-        >>> IS_STRONG(es=True)('Abcd1234')
+        >>> isStrong(es=True)('Abcd1234')
         ('Abcd1234',
          'Must include at least 1 of the following: ~!@#$%^&*()_+-=?<>,.:;{}[]|')
-        >>> IS_STRONG(es=True)('Abcd1234!')
+        >>> isStrong(es=True)('Abcd1234!')
         ('Abcd1234!', None)
-        >>> IS_STRONG(es=True, entropy=1)('a')
+        >>> isStrong(es=True, entropy=1)('a')
         ('a', None)
-        >>> IS_STRONG(es=True, entropy=1, min=2)('a')
+        >>> isStrong(es=True, entropy=1, min=2)('a')
         ('a', 'Minimum length is 2')
-        >>> IS_STRONG(es=True, entropy=100)('abc123')
+        >>> isStrong(es=True, entropy=100)('abc123')
         ('abc123', 'Entropy (32.35) less than required (100)')
-        >>> IS_STRONG(es=True, entropy=100)('and')
+        >>> isStrong(es=True, entropy=100)('and')
         ('and', 'Entropy (14.57) less than required (100)')
-        >>> IS_STRONG(es=True, entropy=100)('aaa')
+        >>> isStrong(es=True, entropy=100)('aaa')
         ('aaa', 'Entropy (14.42) less than required (100)')
-        >>> IS_STRONG(es=True, entropy=100)('a1d')
+        >>> isStrong(es=True, entropy=100)('a1d')
         ('a1d', 'Entropy (15.97) less than required (100)')
-        >>> IS_STRONG(es=True, entropy=100)('añd')
+        >>> isStrong(es=True, entropy=100)('añd')
         ('a\\xc3\\xb1d', 'Entropy (18.13) less than required (100)')
 
     """
@@ -2631,47 +2595,47 @@ class IS_STRONG(object):
         if value and len(value) == value.count('*') > 4:
             return (value, None)
         if self.entropy is not None:
-            entropy = IS_STRONG.calc_entropy(value)
+            entropy = isStrong.calc_entropy(value)
             if entropy < self.entropy:
-                failures.append(translate("Entropy (%(have)s) less than required (%(need)s)")
+                failures.append(_translate("Entropy (%(have)s) less than required (%(need)s)")
                                 % dict(have=entropy, need=self.entropy))
         if type(self.min) == int and self.min > 0:
             if not len(value) >= self.min:
-                failures.append(translate("Minimum length is %s") % self.min)
+                failures.append(_translate("Minimum length is %s") % self.min)
         if type(self.max) == int and self.max > 0:
             if not len(value) <= self.max:
-                failures.append(translate("Maximum length is %s") % self.max)
+                failures.append(_translate("Maximum length is %s") % self.max)
         if type(self.special) == int:
             all_special = [ch in value for ch in self.specials]
             if self.special > 0:
                 if not all_special.count(True) >= self.special:
-                    failures.append(translate("Must include at least %s of the following: %s")
+                    failures.append(_translate("Must include at least %s of the following: %s")
                                     % (self.special, self.specials))
         if self.invalid:
             all_invalid = [ch in value for ch in self.invalid]
             if all_invalid.count(True) > 0:
-                failures.append(translate("May not contain any of the following: %s")
+                failures.append(_translate("May not contain any of the following: %s")
                                 % self.invalid)
         if type(self.upper) == int:
             all_upper = re.findall("[A-Z]", value)
             if self.upper > 0:
                 if not len(all_upper) >= self.upper:
-                    failures.append(translate("Must include at least %s upper case")
+                    failures.append(_translate("Must include at least %s upper case")
                                     % str(self.upper))
             else:
                 if len(all_upper) > 0:
                     failures.append(
-                        translate("May not include any upper case letters"))
+                        _translate("May not include any upper case letters"))
         if type(self.lower) == int:
             all_lower = re.findall("[a-z]", value)
             if self.lower > 0:
                 if not len(all_lower) >= self.lower:
-                    failures.append(translate("Must include at least %s lower case")
+                    failures.append(_translate("Must include at least %s lower case")
                                     % str(self.lower))
             else:
                 if len(all_lower) > 0:
                     failures.append(
-                        translate("May not include any lower case letters"))
+                        _translate("May not include any lower case letters"))
         if type(self.number) == int:
             all_number = re.findall("[0-9]", value)
             if self.number > 0:
@@ -2679,11 +2643,11 @@ class IS_STRONG(object):
                 if self.number > 1:
                     numbers = "numbers"
                 if not len(all_number) >= self.number:
-                    failures.append(translate("Must include at least %s %s")
+                    failures.append(_translate("Must include at least %s %s")
                                     % (str(self.number), numbers))
             else:
                 if len(all_number) > 0:
-                    failures.append(translate("May not include any numbers"))
+                    failures.append(_translate("May not include any numbers"))
         if len(failures) == 0:
             return (value, None)
         if not self.error_message:
@@ -2692,7 +2656,7 @@ class IS_STRONG(object):
             from .templating import NOESCAPE
             return (value, NOESCAPE('<br />'.join(failures)))
         else:
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
 
     @staticmethod
     def calc_entropy(string):
@@ -2706,10 +2670,10 @@ class IS_STRONG(object):
             string = unicode(string, encoding='utf8')
         for c in string:
             # classify this character
-            inset = IS_STRONG.otherset
-            for cset in (IS_STRONG.lowerset, IS_STRONG.upperset,
-                        IS_STRONG.numberset, IS_STRONG.sym1set,
-                        IS_STRONG.sym2set):
+            inset = isStrong.otherset
+            for cset in (isStrong.lowerset, isStrong.upperset,
+                        isStrong.numberset, isStrong.sym1set,
+                        isStrong.sym2set):
                 if c in cset:
                     inset = cset
                     break
@@ -2728,27 +2692,27 @@ class IS_STRONG(object):
         return round(entropy, 2)
 
 
-class IS_IN_SUBSET(IS_IN_SET):
+class inSubSet(inSet):
 
     REGEX_W = re.compile('\w+')
 
     def __init__(self, *a, **b):
-        IS_IN_SET.__init__(self, *a, **b)
+        inSet.__init__(self, *a, **b)
 
     def __call__(self, value):
         values = self.REGEX_W.findall(str(value))
-        failures = [x for x in values if IS_IN_SET.__call__(self, x)[1]]
+        failures = [x for x in values if inSet.__call__(self, x)[1]]
         if failures:
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
         return (value, None)
 
 
-class IS_IMAGE(Validator):
+class isImage(Validator):
     """
     Checks if file uploaded through file input was saved in one of selected
     image formats and has dimensions (width and height) within given boundaries.
 
-    Does *not* check for maximum file size (use IS_LENGTH for that). Returns
+    Does *not* check for maximum file size (use hasLength for that). Returns
     validation failure if no data was uploaded.
 
     Supported file formats: BMP, GIF, JPEG, PNG.
@@ -2767,17 +2731,17 @@ class IS_IMAGE(Validator):
     Examples:
         Check if uploaded file is in any of supported image formats:
 
-            INPUT(_type='file', _name='name', requires=IS_IMAGE())
+            INPUT(_type='file', _name='name', requires=isImage())
 
         Check if uploaded file is either JPEG or PNG:
 
             INPUT(_type='file', _name='name',
-                requires=IS_IMAGE(extensions=('jpeg', 'png')))
+                requires=isImage(extensions=('jpeg', 'png')))
 
         Check if uploaded file is PNG with maximum size of 200x200 pixels:
 
             INPUT(_type='file', _name='name',
-                requires=IS_IMAGE(extensions=('png'), maxsize=(200, 200)))
+                requires=isImage(extensions=('png'), maxsize=(200, 200)))
     """
 
     def __init__(self,
@@ -2815,7 +2779,7 @@ class IS_IMAGE(Validator):
             value.file.seek(0)
             return (value, None)
         except:
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
 
     def __bmp(self, stream):
         if stream.read(2) == 'BM':
@@ -2851,7 +2815,7 @@ class IS_IMAGE(Validator):
         return (-1, -1)
 
 
-class IS_UPLOAD_FILENAME(Validator):
+class FilenameMatches(Validator):
     """
     Checks if name and extension of file uploaded through file input matches
     given criteria.
@@ -2875,19 +2839,19 @@ class IS_UPLOAD_FILENAME(Validator):
         Check if file has a pdf extension (case insensitive):
 
         INPUT(_type='file', _name='name',
-                requires=IS_UPLOAD_FILENAME(extension='pdf'))
+                requires=FilenameMatches(extension='pdf'))
 
         Check if file has a tar.gz extension and name starting with backup:
 
         INPUT(_type='file', _name='name',
-                requires=IS_UPLOAD_FILENAME(filename='backup.*',
+                requires=FilenameMatches(filename='backup.*',
                 extension='tar.gz', lastdot=False))
 
         Check if file has no extension and name matching README
         (case sensitive):
 
             INPUT(_type='file', _name='name',
-                requires=IS_UPLOAD_FILENAME(filename='^README$',
+                requires=FilenameMatches(filename='^README$',
                 extension='^$', case=0)
 
     """
@@ -2908,7 +2872,7 @@ class IS_UPLOAD_FILENAME(Validator):
         try:
             string = value.filename
         except:
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
         if self.case == 1:
             string = string.lower()
         elif self.case == 2:
@@ -2920,14 +2884,14 @@ class IS_UPLOAD_FILENAME(Validator):
         if dot == -1:
             dot = len(string)
         if self.filename and not self.filename.match(string[:dot]):
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
         elif self.extension and not self.extension.match(string[dot + 1:]):
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
         else:
             return (value, None)
 
 
-class IS_IPV4(Validator):
+class isIPv4(Validator):
     """
     Checks if field's value is an IP version 4 address in decimal form. Can
     be set to force addresses from certain range.
@@ -2967,61 +2931,61 @@ class IS_IPV4(Validator):
     Examples:
         Check for valid IPv4 address:
 
-            INPUT(_type='text', _name='name', requires=IS_IPV4())
+            INPUT(_type='text', _name='name', requires=isIPv4())
 
         Check for valid IPv4 address belonging to specific range:
 
             INPUT(_type='text', _name='name',
-                requires=IS_IPV4(minip='100.200.0.0', maxip='100.200.255.255'))
+                requires=isIPv4(minip='100.200.0.0', maxip='100.200.255.255'))
 
         Check for valid IPv4 address belonging to either 100.110.0.0 -
         100.110.255.255 or 200.50.0.0 - 200.50.0.255 address range:
 
             INPUT(_type='text', _name='name',
-                requires=IS_IPV4(minip=('100.110.0.0', '200.50.0.0'),
+                requires=isIPv4(minip=('100.110.0.0', '200.50.0.0'),
                              maxip=('100.110.255.255', '200.50.0.255')))
 
         Check for valid IPv4 address belonging to private address space:
 
-            INPUT(_type='text', _name='name', requires=IS_IPV4(is_private=True))
+            INPUT(_type='text', _name='name', requires=isIPv4(is_private=True))
 
         Check for valid IPv4 address that is not a localhost address:
 
-            INPUT(_type='text', _name='name', requires=IS_IPV4(is_localhost=False))
+            INPUT(_type='text', _name='name', requires=isIPv4(is_localhost=False))
 
-            >>> IS_IPV4()('1.2.3.4')
+            >>> isIPv4()('1.2.3.4')
             ('1.2.3.4', None)
-            >>> IS_IPV4()('255.255.255.255')
+            >>> isIPv4()('255.255.255.255')
             ('255.255.255.255', None)
-            >>> IS_IPV4()('1.2.3.4 ')
+            >>> isIPv4()('1.2.3.4 ')
             ('1.2.3.4 ', 'enter valid IPv4 address')
-            >>> IS_IPV4()('1.2.3.4.5')
+            >>> isIPv4()('1.2.3.4.5')
             ('1.2.3.4.5', 'enter valid IPv4 address')
-            >>> IS_IPV4()('123.123')
+            >>> isIPv4()('123.123')
             ('123.123', 'enter valid IPv4 address')
-            >>> IS_IPV4()('1111.2.3.4')
+            >>> isIPv4()('1111.2.3.4')
             ('1111.2.3.4', 'enter valid IPv4 address')
-            >>> IS_IPV4()('0111.2.3.4')
+            >>> isIPv4()('0111.2.3.4')
             ('0111.2.3.4', 'enter valid IPv4 address')
-            >>> IS_IPV4()('256.2.3.4')
+            >>> isIPv4()('256.2.3.4')
             ('256.2.3.4', 'enter valid IPv4 address')
-            >>> IS_IPV4()('300.2.3.4')
+            >>> isIPv4()('300.2.3.4')
             ('300.2.3.4', 'enter valid IPv4 address')
-            >>> IS_IPV4(minip='1.2.3.4', maxip='1.2.3.4')('1.2.3.4')
+            >>> isIPv4(minip='1.2.3.4', maxip='1.2.3.4')('1.2.3.4')
             ('1.2.3.4', None)
-            >>> IS_IPV4(minip='1.2.3.5', maxip='1.2.3.9', error_message='Bad ip')('1.2.3.4')
+            >>> isIPv4(minip='1.2.3.5', maxip='1.2.3.9', error_message='Bad ip')('1.2.3.4')
             ('1.2.3.4', 'bad ip')
-            >>> IS_IPV4(maxip='1.2.3.4', invert=True)('127.0.0.1')
+            >>> isIPv4(maxip='1.2.3.4', invert=True)('127.0.0.1')
             ('127.0.0.1', None)
-            >>> IS_IPV4(maxip='1.2.3.4', invert=True)('1.2.3.4')
+            >>> isIPv4(maxip='1.2.3.4', invert=True)('1.2.3.4')
             ('1.2.3.4', 'enter valid IPv4 address')
-            >>> IS_IPV4(is_localhost=True)('127.0.0.1')
+            >>> isIPv4(is_localhost=True)('127.0.0.1')
             ('127.0.0.1', None)
-            >>> IS_IPV4(is_localhost=True)('1.2.3.4')
+            >>> isIPv4(is_localhost=True)('1.2.3.4')
             ('1.2.3.4', 'enter valid IPv4 address')
-            >>> IS_IPV4(is_localhost=False)('127.0.0.1')
+            >>> isIPv4(is_localhost=False)('127.0.0.1')
             ('127.0.0.1', 'enter valid IPv4 address')
-            >>> IS_IPV4(maxip='100.0.0.0', is_localhost=True)('127.0.0.1')
+            >>> isIPv4(maxip='100.0.0.0', is_localhost=True)('127.0.0.1')
             ('127.0.0.1', 'enter valid IPv4 address')
 
     """
@@ -3091,9 +3055,9 @@ class IS_IPV4(Validator):
                     ok = False
             if ok:
                 return (value, None)
-        return (value, translate(self.error_message))
+        return (value, _translate(self.error_message))
 
-class IS_IPV6(Validator):
+class isIPv6(Validator):
     """
     Checks if field's value is an IP version 6 address. First attempts to
     use the ipaddress library and falls back to contrib/ipaddr.py from Google
@@ -3115,47 +3079,47 @@ class IS_IPV6(Validator):
     Examples:
         Check for valid IPv6 address:
 
-            INPUT(_type='text', _name='name', requires=IS_IPV6())
+            INPUT(_type='text', _name='name', requires=isIPv6())
 
         Check for valid IPv6 address is a link_local address:
 
-            INPUT(_type='text', _name='name', requires=IS_IPV6(is_link_local=True))
+            INPUT(_type='text', _name='name', requires=isIPv6(is_link_local=True))
 
         Check for valid IPv6 address that is Internet routeable:
 
-            INPUT(_type='text', _name='name', requires=IS_IPV6(is_routeable=True))
+            INPUT(_type='text', _name='name', requires=isIPv6(is_routeable=True))
 
         Check for valid IPv6 address in specified subnet:
 
-            INPUT(_type='text', _name='name', requires=IS_IPV6(subnets=['2001::/32'])
+            INPUT(_type='text', _name='name', requires=isIPv6(subnets=['2001::/32'])
 
-            >>> IS_IPV6()('fe80::126c:8ffa:fe22:b3af')
+            >>> isIPv6()('fe80::126c:8ffa:fe22:b3af')
             ('fe80::126c:8ffa:fe22:b3af', None)
-            >>> IS_IPV6()('192.168.1.1')
+            >>> isIPv6()('192.168.1.1')
             ('192.168.1.1', 'enter valid IPv6 address')
-            >>> IS_IPV6(error_message='Bad ip')('192.168.1.1')
+            >>> isIPv6(error_message='Bad ip')('192.168.1.1')
             ('192.168.1.1', 'bad ip')
-            >>> IS_IPV6(is_link_local=True)('fe80::126c:8ffa:fe22:b3af')
+            >>> isIPv6(is_link_local=True)('fe80::126c:8ffa:fe22:b3af')
             ('fe80::126c:8ffa:fe22:b3af', None)
-            >>> IS_IPV6(is_link_local=False)('fe80::126c:8ffa:fe22:b3af')
+            >>> isIPv6(is_link_local=False)('fe80::126c:8ffa:fe22:b3af')
             ('fe80::126c:8ffa:fe22:b3af', 'enter valid IPv6 address')
-            >>> IS_IPV6(is_link_local=True)('2001::126c:8ffa:fe22:b3af')
+            >>> isIPv6(is_link_local=True)('2001::126c:8ffa:fe22:b3af')
             ('2001::126c:8ffa:fe22:b3af', 'enter valid IPv6 address')
-            >>> IS_IPV6(is_multicast=True)('2001::126c:8ffa:fe22:b3af')
+            >>> isIPv6(is_multicast=True)('2001::126c:8ffa:fe22:b3af')
             ('2001::126c:8ffa:fe22:b3af', 'enter valid IPv6 address')
-            >>> IS_IPV6(is_multicast=True)('ff00::126c:8ffa:fe22:b3af')
+            >>> isIPv6(is_multicast=True)('ff00::126c:8ffa:fe22:b3af')
             ('ff00::126c:8ffa:fe22:b3af', None)
-            >>> IS_IPV6(is_routeable=True)('2001::126c:8ffa:fe22:b3af')
+            >>> isIPv6(is_routeable=True)('2001::126c:8ffa:fe22:b3af')
             ('2001::126c:8ffa:fe22:b3af', None)
-            >>> IS_IPV6(is_routeable=True)('ff00::126c:8ffa:fe22:b3af')
+            >>> isIPv6(is_routeable=True)('ff00::126c:8ffa:fe22:b3af')
             ('ff00::126c:8ffa:fe22:b3af', 'enter valid IPv6 address')
-            >>> IS_IPV6(subnets='2001::/32')('2001::8ffa:fe22:b3af')
+            >>> isIPv6(subnets='2001::/32')('2001::8ffa:fe22:b3af')
             ('2001::8ffa:fe22:b3af', None)
-            >>> IS_IPV6(subnets='fb00::/8')('2001::8ffa:fe22:b3af')
+            >>> isIPv6(subnets='fb00::/8')('2001::8ffa:fe22:b3af')
             ('2001::8ffa:fe22:b3af', 'enter valid IPv6 address')
-            >>> IS_IPV6(subnets=['fc00::/8','2001::/32'])('2001::8ffa:fe22:b3af')
+            >>> isIPv6(subnets=['fc00::/8','2001::/32'])('2001::8ffa:fe22:b3af')
             ('2001::8ffa:fe22:b3af', None)
-            >>> IS_IPV6(subnets='invalidsubnet')('2001::8ffa:fe22:b3af')
+            >>> isIPv6(subnets='invalidsubnet')('2001::8ffa:fe22:b3af')
             ('2001::8ffa:fe22:b3af', 'invalid subnet provided')
 
     """
@@ -3191,7 +3155,7 @@ class IS_IPV6(Validator):
             ip = ipaddress.IPv6Address(value)
             ok = True
         except ipaddress.AddressValueError:
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
 
         if self.subnets:
             # iterate through self.subnets to see if value is a member
@@ -3202,7 +3166,7 @@ class IS_IPV6(Validator):
                 try:
                     ipnet = ipaddress.IPv6Network(network)
                 except (ipaddress.NetmaskValueError, ipaddress.AddressValueError):
-                    return (value, translate('invalid subnet provided'))
+                    return (value, _translate('invalid subnet provided'))
                 if ip in ipnet:
                     ok = True
 
@@ -3234,14 +3198,14 @@ class IS_IPV6(Validator):
         if ok:
             return (value, None)
 
-        return (value, translate(self.error_message))
+        return (value, _translate(self.error_message))
 
 
-class IS_IPADDRESS(Validator):
+class isIP(Validator):
     """
     Checks if field's value is an IP Address (v4 or v6). Can be set to force
     addresses from within a specific range. Checks are done with the correct
-    IS_IPV4 and IS_IPV6 validators.
+    isIPv4 and isIPv6 validators.
 
     Uses ipaddress library if found, falls back to PEP-3144 ipaddr.py from
     Google (in contrib).
@@ -3299,76 +3263,76 @@ class IS_IPADDRESS(Validator):
 
     Longer iterable will be truncated to match length of shorter one.
 
-        >>> IS_IPADDRESS()('192.168.1.5')
+        >>> isIP()('192.168.1.5')
         ('192.168.1.5', None)
-        >>> IS_IPADDRESS(is_ipv6=False)('192.168.1.5')
+        >>> isIP(is_ipv6=False)('192.168.1.5')
         ('192.168.1.5', None)
-        >>> IS_IPADDRESS()('255.255.255.255')
+        >>> isIP()('255.255.255.255')
         ('255.255.255.255', None)
-        >>> IS_IPADDRESS()('192.168.1.5 ')
+        >>> isIP()('192.168.1.5 ')
         ('192.168.1.5 ', 'enter valid IP address')
-        >>> IS_IPADDRESS()('192.168.1.1.5')
+        >>> isIP()('192.168.1.1.5')
         ('192.168.1.1.5', 'enter valid IP address')
-        >>> IS_IPADDRESS()('123.123')
+        >>> isIP()('123.123')
         ('123.123', 'enter valid IP address')
-        >>> IS_IPADDRESS()('1111.2.3.4')
+        >>> isIP()('1111.2.3.4')
         ('1111.2.3.4', 'enter valid IP address')
-        >>> IS_IPADDRESS()('0111.2.3.4')
+        >>> isIP()('0111.2.3.4')
         ('0111.2.3.4', 'enter valid IP address')
-        >>> IS_IPADDRESS()('256.2.3.4')
+        >>> isIP()('256.2.3.4')
         ('256.2.3.4', 'enter valid IP address')
-        >>> IS_IPADDRESS()('300.2.3.4')
+        >>> isIP()('300.2.3.4')
         ('300.2.3.4', 'enter valid IP address')
-        >>> IS_IPADDRESS(minip='192.168.1.0', maxip='192.168.1.255')('192.168.1.100')
+        >>> isIP(minip='192.168.1.0', maxip='192.168.1.255')('192.168.1.100')
         ('192.168.1.100', None)
-        >>> IS_IPADDRESS(minip='1.2.3.5', maxip='1.2.3.9', error_message='Bad ip')('1.2.3.4')
+        >>> isIP(minip='1.2.3.5', maxip='1.2.3.9', error_message='Bad ip')('1.2.3.4')
         ('1.2.3.4', 'bad ip')
-        >>> IS_IPADDRESS(maxip='1.2.3.4', invert=True)('127.0.0.1')
+        >>> isIP(maxip='1.2.3.4', invert=True)('127.0.0.1')
         ('127.0.0.1', None)
-        >>> IS_IPADDRESS(maxip='192.168.1.4', invert=True)('192.168.1.4')
+        >>> isIP(maxip='192.168.1.4', invert=True)('192.168.1.4')
         ('192.168.1.4', 'enter valid IP address')
-        >>> IS_IPADDRESS(is_localhost=True)('127.0.0.1')
+        >>> isIP(is_localhost=True)('127.0.0.1')
         ('127.0.0.1', None)
-        >>> IS_IPADDRESS(is_localhost=True)('192.168.1.10')
+        >>> isIP(is_localhost=True)('192.168.1.10')
         ('192.168.1.10', 'enter valid IP address')
-        >>> IS_IPADDRESS(is_localhost=False)('127.0.0.1')
+        >>> isIP(is_localhost=False)('127.0.0.1')
         ('127.0.0.1', 'enter valid IP address')
-        >>> IS_IPADDRESS(maxip='100.0.0.0', is_localhost=True)('127.0.0.1')
+        >>> isIP(maxip='100.0.0.0', is_localhost=True)('127.0.0.1')
         ('127.0.0.1', 'enter valid IP address')
 
-        >>> IS_IPADDRESS()('fe80::126c:8ffa:fe22:b3af')
+        >>> isIP()('fe80::126c:8ffa:fe22:b3af')
         ('fe80::126c:8ffa:fe22:b3af', None)
-        >>> IS_IPADDRESS(is_ipv4=False)('fe80::126c:8ffa:fe22:b3af')
+        >>> isIP(is_ipv4=False)('fe80::126c:8ffa:fe22:b3af')
         ('fe80::126c:8ffa:fe22:b3af', None)
-        >>> IS_IPADDRESS()('fe80::126c:8ffa:fe22:b3af  ')
+        >>> isIP()('fe80::126c:8ffa:fe22:b3af  ')
         ('fe80::126c:8ffa:fe22:b3af  ', 'enter valid IP address')
-        >>> IS_IPADDRESS(is_ipv4=True)('fe80::126c:8ffa:fe22:b3af')
+        >>> isIP(is_ipv4=True)('fe80::126c:8ffa:fe22:b3af')
         ('fe80::126c:8ffa:fe22:b3af', 'enter valid IP address')
-        >>> IS_IPADDRESS(is_ipv6=True)('192.168.1.1')
+        >>> isIP(is_ipv6=True)('192.168.1.1')
         ('192.168.1.1', 'enter valid IP address')
-        >>> IS_IPADDRESS(is_ipv6=True, error_message='Bad ip')('192.168.1.1')
+        >>> isIP(is_ipv6=True, error_message='Bad ip')('192.168.1.1')
         ('192.168.1.1', 'bad ip')
-        >>> IS_IPADDRESS(is_link_local=True)('fe80::126c:8ffa:fe22:b3af')
+        >>> isIP(is_link_local=True)('fe80::126c:8ffa:fe22:b3af')
         ('fe80::126c:8ffa:fe22:b3af', None)
-        >>> IS_IPADDRESS(is_link_local=False)('fe80::126c:8ffa:fe22:b3af')
+        >>> isIP(is_link_local=False)('fe80::126c:8ffa:fe22:b3af')
         ('fe80::126c:8ffa:fe22:b3af', 'enter valid IP address')
-        >>> IS_IPADDRESS(is_link_local=True)('2001::126c:8ffa:fe22:b3af')
+        >>> isIP(is_link_local=True)('2001::126c:8ffa:fe22:b3af')
         ('2001::126c:8ffa:fe22:b3af', 'enter valid IP address')
-        >>> IS_IPADDRESS(is_multicast=True)('2001::126c:8ffa:fe22:b3af')
+        >>> isIP(is_multicast=True)('2001::126c:8ffa:fe22:b3af')
         ('2001::126c:8ffa:fe22:b3af', 'enter valid IP address')
-        >>> IS_IPADDRESS(is_multicast=True)('ff00::126c:8ffa:fe22:b3af')
+        >>> isIP(is_multicast=True)('ff00::126c:8ffa:fe22:b3af')
         ('ff00::126c:8ffa:fe22:b3af', None)
-        >>> IS_IPADDRESS(is_routeable=True)('2001::126c:8ffa:fe22:b3af')
+        >>> isIP(is_routeable=True)('2001::126c:8ffa:fe22:b3af')
         ('2001::126c:8ffa:fe22:b3af', None)
-        >>> IS_IPADDRESS(is_routeable=True)('ff00::126c:8ffa:fe22:b3af')
+        >>> isIP(is_routeable=True)('ff00::126c:8ffa:fe22:b3af')
         ('ff00::126c:8ffa:fe22:b3af', 'enter valid IP address')
-        >>> IS_IPADDRESS(subnets='2001::/32')('2001::8ffa:fe22:b3af')
+        >>> isIP(subnets='2001::/32')('2001::8ffa:fe22:b3af')
         ('2001::8ffa:fe22:b3af', None)
-        >>> IS_IPADDRESS(subnets='fb00::/8')('2001::8ffa:fe22:b3af')
+        >>> isIP(subnets='fb00::/8')('2001::8ffa:fe22:b3af')
         ('2001::8ffa:fe22:b3af', 'enter valid IP address')
-        >>> IS_IPADDRESS(subnets=['fc00::/8','2001::/32'])('2001::8ffa:fe22:b3af')
+        >>> isIP(subnets=['fc00::/8','2001::/32'])('2001::8ffa:fe22:b3af')
         ('2001::8ffa:fe22:b3af', None)
-        >>> IS_IPADDRESS(subnets='invalidsubnet')('2001::8ffa:fe22:b3af')
+        >>> isIP(subnets='invalidsubnet')('2001::8ffa:fe22:b3af')
         ('2001::8ffa:fe22:b3af', 'invalid subnet provided')
     """
     def __init__(
@@ -3416,14 +3380,14 @@ class IS_IPADDRESS(Validator):
         try:
             ip = ipaddress.ip_address(value)
         except ValueError, e:
-            return (value, translate(self.error_message))
+            return (value, _translate(self.error_message))
 
         if self.is_ipv4 and isinstance(ip, ipaddress.IPv6Address):
-            retval = (value, translate(self.error_message))
+            retval = (value, _translate(self.error_message))
         elif self.is_ipv6 and isinstance(ip, ipaddress.IPv4Address):
-            retval = (value, translate(self.error_message))
+            retval = (value, _translate(self.error_message))
         elif self.is_ipv4 or isinstance(ip, ipaddress.IPv4Address):
-            retval = IS_IPV4(
+            retval = isIPv4(
                 minip=self.minip,
                 maxip=self.maxip,
                 invert=self.invert,
@@ -3433,7 +3397,7 @@ class IS_IPADDRESS(Validator):
                 error_message=self.error_message
                 )(value)
         elif self.is_ipv6 or isinstance(ip, ipaddress.IPv6Address):
-            retval = IS_IPV6(
+            retval = isIPv6(
                 is_private=self.is_private,
                 is_link_local=self.is_link_local,
                 is_reserved=self.is_reserved,
@@ -3445,6 +3409,6 @@ class IS_IPADDRESS(Validator):
                 error_message=self.error_message
                 )(value)
         else:
-            retval = (value, translate(self.error_message))
+            retval = (value, _translate(self.error_message))
 
         return retval

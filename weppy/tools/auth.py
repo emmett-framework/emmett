@@ -522,7 +522,8 @@ class Auth(object):
             auth.define_tables(migrate=False)
 
         """
-        from ..validators import IS_NOT_EMPTY, CRYPT, IS_EMAIL, IS_NOT_IN_DB, IS_LOWER, IS_MATCH, IS_INT_IN_RANGE, IS_URL
+        from ..validators import isntEmpty, Crypt, isEmail, notInDb, Lower, \
+            Matches, isIntInRange
         db = self.db
         if migrate is None:
             migrate = db._migrate
@@ -539,27 +540,27 @@ class Auth(object):
             signature_list = [signature]
         else:
             signature_list = signature
-        is_not_empty = IS_NOT_EMPTY(error_message=self.messages.is_empty)
-        is_crypted = CRYPT(key=settings.hmac_key,
+        is_not_empty = isntEmpty(error_message=self.messages.is_empty)
+        is_crypted = Crypt(key=settings.hmac_key,
                            min_length=settings.password_min_length)
         is_unique_email = [
-            IS_EMAIL(error_message=self.messages.invalid_email),
-            IS_NOT_IN_DB(db, '%s.email' % settings.table_user_name,
+            isEmail(error_message=self.messages.invalid_email),
+            notInDb(db, '%s.email' % settings.table_user_name,
                          error_message=self.messages.email_taken)]
         if not settings.email_case_sensitive:
-            is_unique_email.insert(1, IS_LOWER())
+            is_unique_email.insert(1, Lower())
         if not settings.table_user_name in db.tables:
             passfield = settings.password_field
             extra_fields = settings.extra_fields.get(
                 settings.table_user_name, []) + signature_list
             if settings.use_username or settings.cas_provider:
                 is_unique_username = \
-                    [IS_MATCH('[\w\.\-]+', strict=True,
+                    [Matches('[\w\.\-]+', strict=True,
                               error_message=self.messages.invalid_username),
-                     IS_NOT_IN_DB(db, '%s.username' % settings.table_user_name,
+                     notInDb(db, '%s.username' % settings.table_user_name,
                                   error_message=self.messages.username_taken)]
                 if not settings.username_case_sensitive:
-                    is_unique_username.insert(1, IS_LOWER())
+                    is_unique_username.insert(1, Lower())
                 db.define_table(
                     settings.table_user_name,
                     Field('first_name', length=128, default='',
@@ -631,7 +632,7 @@ class Auth(object):
                 Field(
                     'role', length=512, default='',
                     label=self.messages.label_role,
-                    requires=IS_NOT_IN_DB(
+                    requires=notInDb(
                         db, '%s.role' % settings.table_group_name)),
                 Field('description', 'text',
                       label=self.messages.label_description),
@@ -670,7 +671,7 @@ class Auth(object):
                       label=self.messages.label_table_name),
                 Field('record_id', 'integer', default=0,
                       label=self.messages.label_record_id,
-                      requires=IS_INT_IN_RANGE(0, 10 ** 9)),
+                      requires=isIntInRange(0, 10 ** 9)),
                 *extra_fields,
                 **dict(
                     migrate=self.__get_migrate(
@@ -1190,7 +1191,7 @@ class Auth(object):
             [, onvalidation=DEFAULT [, onaccept=DEFAULT [, log=DEFAULT]]]])
 
         """
-        from ..validators import IS_IN_DB
+        from ..validators import inDb
         if not 'username' in self.table_user.fields:
             raise HTTP(404)
         #captcha = self.settings.retrieve_username_captcha or \
@@ -1208,8 +1209,8 @@ class Auth(object):
             log = self.messages['retrieve_username_log']
         email_field = self.table_user.email.clone()
         email_field.requires = [
-            IS_IN_DB(self.db, self.table_user.email,
-                     error_message=self.messages.invalid_email)]
+            inDb(self.db, self.table_user.email,
+                 error_message=self.messages.invalid_email)]
         form = Form(
             email_field,
             hidden=dict(_next=next),
@@ -1264,7 +1265,12 @@ class Auth(object):
 
         """
         import time
-        from ..validators import IS_EXPR
+
+        def _same_psw(value):
+            if value != request.vars.new_password:
+                return (value, mismatch_psw_msg)
+            return (value, None)
+        mismatch_psw_msg = self.messages.mismatched_password
 
         if next is DEFAULT:
             next = self.get_vars_next() or self.settings.reset_password_next
@@ -1289,9 +1295,7 @@ class Auth(object):
             Field(
                 'new_password2', 'password',
                 label=self.messages.verify_password,
-                requires=[IS_EXPR(
-                    'value==%s' % repr(request.vars.new_password),
-                    self.messages.mismatched_password)]),
+                requires=[_same_psw]),
             submit=self.messages.password_reset_button,
             hidden=dict(_next=next),
         )
@@ -1315,7 +1319,7 @@ class Auth(object):
             [, onvalidation=DEFAULT [, onaccept=DEFAULT [, log=DEFAULT]]]])
 
         """
-        from ..validators import IS_EMAIL, IS_IN_DB
+        from ..validators import isEmail, inDb
         #captcha = self.settings.retrieve_password_captcha or \
         #        (self.settings.retrieve_password_captcha != False and self.settings.captcha)
 
@@ -1332,12 +1336,12 @@ class Auth(object):
             log = self.messages['reset_password_log']
         userfield = self.settings.login_userfield
         if userfield == 'email':
-            req = [IS_EMAIL(error_message=self.messages.invalid_email),
-                   IS_IN_DB(self.db, self.table_user.email,
-                            error_message=self.messages.invalid_email)]
+            req = [isEmail(error_message=self.messages.invalid_email),
+                   inDb(self.db, self.table_user.email,
+                        error_message=self.messages.invalid_email)]
         else:
-            req = [IS_IN_DB(self.db, self.table_user.username,
-                            error_message=self.messages.invalid_username)]
+            req = [inDb(self.db, self.table_user.username,
+                        error_message=self.messages.invalid_username)]
         form_field = self.table_user[userfield].clone()
         form_field.requires = req
         form = Form(
@@ -1400,7 +1404,12 @@ class Auth(object):
         method: Auth.change_password([next=DEFAULT[, onvalidation=DEFAULT[,
             onaccept=DEFAULT[, log=DEFAULT]]]])
         """
-        from ..validators import IS_EXPR
+        def _same_psw(value):
+            if value != request.vars.new_password:
+                return (value, mismatch_psw_msg)
+            return (value, None)
+        mismatch_psw_msg = self.messages.mismatched_password
+
         if not self.is_logged_in():
             redirect(self.settings.login_url,
                      client_side=self.settings.client_side)
@@ -1425,9 +1434,7 @@ class Auth(object):
             Field(
                 'new_password2', 'password',
                 label=self.messages.verify_password,
-                requires=[IS_EXPR(
-                    'value==%s' % repr(request.vars.new_password),
-                    self.messages.mismatched_password)]),
+                requires=[_same_psw]),
             submit=self.messages.password_change_button,
             hidden=dict(_next=next)
         )
@@ -1930,19 +1937,19 @@ class DefaultLoginHandler(AuthLoginHandler):
         redirect(self.auth.url(args=['login'], vars=request.get_vars))
 
     def login_form(self):
-        from ..validators import IS_EMAIL, IS_NOT_EMPTY, IS_LOWER
+        from ..validators import isEmail, isntEmpty, Lower
         userfield = self.userfield
         passfield = self.passfield
         if userfield == 'email':
-            tmpvalidator = IS_EMAIL(
+            tmpvalidator = isEmail(
                 error_message=self.auth.messages.invalid_email)
             if not self.auth.settings.email_case_sensitive:
-                tmpvalidator = [IS_LOWER(), tmpvalidator]
+                tmpvalidator = [Lower(), tmpvalidator]
         else:
-            tmpvalidator = IS_NOT_EMPTY(
+            tmpvalidator = isntEmpty(
                 error_message=self.auth.messages.is_empty)
             if not self.auth.settings.username_case_sensitive:
-                tmpvalidator = [IS_LOWER(), tmpvalidator]
+                tmpvalidator = [Lower(), tmpvalidator]
         form_fields = [self.auth.table_user[userfield].clone(),
                        self.auth.table_user[passfield]]
         form_fields[0].requires = tmpvalidator
