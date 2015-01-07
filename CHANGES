@@ -17,6 +17,8 @@ Version 0.2
 - `Model` class now has only one `setup` method instead of the old unnecessary
   list of `set_` methods
 - Updated validators nomenclature to "camelcase"
+- `stream_file()` in helpers now accept a path relative to application, the old
+  one is now renamed in the more consistent `stream_dbfile()`
 
 
 Version 0.1
