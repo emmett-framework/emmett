@@ -15,11 +15,12 @@ def abort(code):
     raise HTTP(code)
 
 
-def stream_file(app, path):
+def stream_file(path):
     import os
     from .globals import request, response
+    from .expose import Expose
     from .stream import streamer
-    fullfilename = os.path.join(app.root_path, path)
+    fullfilename = os.path.join(Expose.application.root_path, path)
     raise streamer(request.environ, fullfilename, headers=response.headers)
 
 
