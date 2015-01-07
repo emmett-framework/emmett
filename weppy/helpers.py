@@ -15,7 +15,15 @@ def abort(code):
     raise HTTP(code)
 
 
-def stream_file(db, name):
+def stream_file(app, path):
+    import os
+    from .globals import request, response
+    from .stream import streamer
+    fullfilename = os.path.join(app.root_path, path)
+    raise streamer(request.environ, fullfilename, headers=response.headers)
+
+
+def stream_dbfile(db, name):
     import re
     from pydal.exceptions import NotAuthorizedException, NotFoundException
     items = re.compile('(?P<table>.*?)\.(?P<field>.*?)\..*').match(name)
