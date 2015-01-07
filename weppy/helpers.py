@@ -17,6 +17,7 @@ def abort(code):
 
 def stream_file(db, name):
     import re
+    from pydal.exceptions import NotAuthorizedException, NotFoundException
     items = re.compile('(?P<table>.*?)\.(?P<field>.*?)\..*').match(name)
     if not items:
         abort(404)
@@ -27,6 +28,10 @@ def stream_file(db, name):
         abort(404)
     try:
         (filename, fullfilename) = field.retrieve(name, nameonly=True)
+    except NotAuthorizedException:
+        abort(403)
+    except NotFoundException:
+        abort(404)
     except IOError:
         abort(404)
     from .globals import request, response
