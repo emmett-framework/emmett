@@ -7,7 +7,7 @@ Let's see how to use it with an example:
 
 ```python
 form weppy import Field, Form
-from weppy.validators import IS_IN_SET
+from weppy.validators import inSet
 
 # create a form
 @app.expose('/form')
@@ -15,7 +15,7 @@ def a():
     name_field = Field('name')
     int_field = Field('number', 'integer')
     type_field = Field('type')
-    type_field.requires = IS_IN_SET(['type1', 'type2'])
+    type_field.requires = inSet(['type1', 'type2'])
     simple_form = Form([name_field, int_field, type_field])
     if simple_form.accepted:
         inserted_number = form.vars.number
@@ -160,7 +160,7 @@ def myform():
 
 where basically the form check if the second number is the double of the first and return an error if the input is wrong.
 
-You've just learnt how to use `onvalidation` parameter and that you can store errors in `form.errors` which is a `Storage` object like `form.vars`.
+You've just learnt how to use `onvalidation` parameter and that you can store errors in `form.errors` which is a `sdict` object like `form.vars`.
 
 Customizing forms
 -----------------

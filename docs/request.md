@@ -82,11 +82,11 @@ on the url */post/123?editor=markdown* ? Simple: the three `request` attributes 
 
 ```
 >>> request.vars
-<Storage {'date': '2014-10-15', 'text': 'this is a sample post', 'editor': 'markdown'}>
+<sdict {'date': '2014-10-15', 'text': 'this is a sample post', 'editor': 'markdown'}>
 >>> request.get_vars
-<Storage {'editor': 'markdown'}>
+<sdict {'editor': 'markdown'}>
 >>> request.post_vars
-<Storage {'date': '2014-10-15', 'text': 'this is a sample post'}>
+<sdict {'date': '2014-10-15', 'text': 'this is a sample post'}>
 ```
 so you can always access the variables you need.
 

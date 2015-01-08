@@ -396,7 +396,7 @@ Let's see how to use it with an example:
 
 ```python
 form weppy import Field, Form
-from weppy.validators import IS_IN_SET
+from weppy.validators import inSet
 
 # create a form
 @app.expose('/form')
@@ -404,7 +404,7 @@ def a():
     name_field = Field('name')
     int_field = Field('number', 'integer')
     type_field = Field('type')
-    type_field.requires = IS_IN_SET(['type1', 'type2'])
+    type_field.requires = inSet(['type1', 'type2'])
     simple_form = Form([name_field, int_field, type_field])
     if simple_form.accepted:
         #do something
