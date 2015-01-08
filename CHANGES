@@ -19,6 +19,7 @@ Version 0.2
 - Updated validators nomenclature to "camelcase"
 - `stream_file()` in helpers now accept a path relative to application, the old
   one is now renamed in the more consistent `stream_dbfile()`
+- Added `SessionFSManager` to store sessions' data on filesystem
 
 
 Version 0.1
