@@ -4,7 +4,7 @@ The Database Abstraction Layer
 > – Ok, what if I need to use a database in my application?   
 > – *you can use the included DAL*
 
-weppy integrates the Database Abstraction Layer (formerly *DAL*) of *web2py*, which gives you the ability to use a database in your application, writing the same code and using the same syntax independently on which of the available adapters you want to use for deploy your app (you just need to install one of the supported drivers):
+weppy integrates *pyDAL* as the preferred database abstraction layer, which gives you the ability to use a database in your application, writing the same code and using the same syntax independently on which of the available adapters you want to use for deploy your app (you just need to install one of the supported drivers):
 
 | Supported DBMS | python driver(s) |
 | --- | --- |
@@ -54,20 +54,20 @@ Let's reconstruct what we done in those simple lines:
 
 As you noticed, the fields defined for the table are available for queries as attributes, and calling *db* with a query as argument provides you a set on which you can do operations like the `select()`.
 
-Since *DAL* is well documented in the *web2py* [reference manual](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer), we wouldn't re-propose the complete documentation here. The only difference you have to remember looking at the *web2py* documentation is that the `DAL` class in weppy needs your `app` object as first parameter to work, and you store the configuration for dal in your `app.config`.
+Since *pyDAL* is well documented in the *web2py* [reference manual](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer), we wouldn't re-propose the complete documentation here. The only difference you have to remember looking at the *web2py* documentation is that the `DAL` class in weppy needs your `app` object as first parameter to work, and you store the configuration for dal in your `app.config`.
 
-What we propose here it's an *additional layer* to use the *DAL*: the models one.
+What we propose here it's an *additional layer* to use with *pyDAL*: the models one.
 
 The models layer
 ----------------
-weppy provides a *models* structuring layer upon the web2py's DAL; we encourage the use of models since they make easy to organize all the database entities for the applications. Also, models provides an easier syntax to use many DAL's features, like fields computations.
+weppy provides a *models* structuring layer upon the pyDAL; we encourage the use of models since they make easy to organize all the database entities for the applications. Also, models provides an easier syntax to use many DAL's features, like fields computations.
 
 So, how a weppy model look like? Using the upper example for the posts table in a blog, and adding some features, an example model would be like this:
 
 ```python
 from markdown2 import markdown
-from weppy.dal.models import Model, computation
-from weppy.validators import IS_NOT_EMPTY
+from weppy.dal import Field, Model, computation
+from weppy.validators import isntEmpty
 
 class Post(Model):
     tablename = "post"
@@ -84,8 +84,8 @@ class Post(Model):
     }
 
     validators = {
-        "title": IS_NOT_EMPTY(),
-        "body": IS_NOT_EMPTY()
+        "title": isntEmpty(),
+        "body": isntEmpty()
     }
 
     @computation('slug')
@@ -94,17 +94,17 @@ class Post(Model):
 
 ```
 
-As you can see, we added some validators, a representation rule to parse the markdown text of the post and produce html in the templates and a `computation` on the `slug` field. To use this model in your application you need to use the `ModelsDAL` class of weppy and its `define_datamodels()` method:
+As you can see, we added some validators, a representation rule to parse the markdown text of the post and produce html in the templates and a `computation` on the `slug` field. To use this model in your application you can use the `define_models()` method of the `DAL` class of weppy:
 
 ```python
-from weppy import App, ModelsDAL
+from weppy import App, DAL
 from mymodel import Post
 
 app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
 
-db = ModelsDAL(app)
-db.define_datamodels([Post])
+db = DAL(app)
+db.define_models([Post])
 
 app.common_handlers = [db.handler]
 
@@ -145,28 +145,28 @@ Available types for Field definition are:
 
 | Field type | default validators |
 | --- | --- |
-| string | `IS_LENGTH(length)` *(default length at 512)* |
-| text | `IS_LENGTH(65536)` |
+| string | `hasLength(512)` |
+| text | `hasLength(65536)` |
 | blob | `None` |
 | boolean | `None` |
-| integer | `IS_INT_IN_RANGE(-1e100, 1e100)` |
-| double | `IS_FLOAT_IN_RANGE(-1e100, 1e100)` |
-| decimal(n,m) | `IS_DECIMAL_IN_RANGE(-1e100, 1e100)` |
-| date | `IS_DATE()` |
-| time | `IS_TIME()` |
-| datetime | `IS_DATETIME()` |
+| integer | `isIntInRange(-1e100, 1e100)` |
+| double | `isFloatInRange(-1e100, 1e100)` |
+| decimal(n,m) | `isDecimalInRange(-1e100, 1e100)` |
+| date | `isDate()` |
+| time | `isTime()` |
+| datetime | `isDatetime()` |
 | password | `None` |
 | upload | `None` |
-| reference *tablename* | `IS_IN_DB(db, table.field, format)` |
+| reference *tablename* | `inDb(db, table.field, format)` |
 | list:string | `None` |
 | list:integer | `None` |
-| list:reference *tablename* | `IS_IN_DB(db, table.field, format, multiple=True)` |
-| json | `IS_JSON()` |
+| list:reference *tablename* | `inDb(db, table.field, format, multiple=True)` |
+| json | `isJSON()` |
 | bigint | `None` |
 | big-id | `None` |
 | big-reference | `None` |
 
-Now, for the complete list of parameters accepted by `Field` class we encourage you to take a look at the [official DAL documentation](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Field-constructor).
+Now, for the complete list of parameters accepted by `Field` class we encourage you to take a look at the [official pyDAL documentation](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Field-constructor).
 
 #### Validators
 
@@ -174,7 +174,7 @@ Now, for the complete list of parameters accepted by `Field` class we encourage 
 
 ```python
 validators = {
-    'started': IS_DATETIME_IN_RANGE(
+    'started': isDatetimeInRange(
         datetime(2014, 10, 12), 
         datetime(2014, 10, 15))
 }
@@ -267,35 +267,21 @@ def my_custom_widget(field, value):
     return myhtmlinput
 ```
 
-### 'set' helpers
+### The 'setup' helper
 
-Sometimes you need to access your model attributes when defining other features, but, until now, we couldn't access the class or the instance itself. An example are the `IS_NOT_IN_DB` and `IS_IN_DB` validators that needs the database instance and the field as parameters. To use these validators you can use the `set_validators` method of the model:
+Sometimes you need to access your model attributes when defining other features, but, until now, we couldn't access the class or the instance itself. An example are the `notInDb` and `inDb` validators that needs the database instance and the field as parameters. To implement these validators you can use the `setup` method of the model:
 
 ```python
 def set_validators(self):
-    self.entity.fieldname.requires = [IS_NOT_IN_DB(self.db, self.entity.fieldname)]
+    self.entity.fieldname.requires = [notInDb(self.db, self.entity.fieldname)]
 ```
-
-To allow you properly and completely customize your models definition, this is the complete list of `set` methods weppy runs when parsing the model (in this order):
-
-* set_table()
-* set_validators()
-* set_visibility()
-* set_representation()
-* set_widgets()
-* set_labels()
-* set_comments()
-* set_updates()
-
-> *Note:*   
-> You can define validators in any other *set* function,  weppy provides you separated methods so you can better organize your code.
 
 ### Computations
 
 Sometimes you need some field values to be *computed* using other fields. For example:
 
 ```python
-from weppy.models import Model, computation
+from weppy.dal import Model, computation
 
 class Item(Model):
     tablename = "items"
@@ -340,7 +326,7 @@ def update_avatar_thumb(self, s, fields):
 An alternative option to *computed* fields are the virtual ones. Considering the same example for the computations we can instead write:
 
 ```python
-from weppy.models import Model, virtualfield
+from weppy.dal import Model, virtualfield
 
 class Item(Model):
     tablename = "items"
@@ -366,7 +352,7 @@ for item in items:
 Another option for computed fields is to use the `fieldmethod` decorator:
 
 ```python
-from weppy.models import Model, fieldmethod
+from weppy.dal import Model, fieldmethod
 
 class Item(Model):
     tablename = "items"
@@ -389,7 +375,7 @@ print item.total()
 Field methods can be useful also to create query shortcuts on other tables. Let's say we have defined another model called `Warehouse` for the quantity of items available in the warehouse, and we want to check the availability directly when we have the selected item:
 
 ```python
-from weppy.models import Model, fieldmethod
+from weppy.dal import Model, fieldmethod
 
 class Item(Model):
     tablename = "items"
