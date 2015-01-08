@@ -152,7 +152,7 @@ You can obviously use the Auth module with the [database Models layer](./dal#the
 
 ```python
 from weppy import Field
-from weppy.dal.models import AuthModel
+from weppy.dal import AuthModel
 
 
 class User(AuthModel):
@@ -168,11 +168,11 @@ class User(AuthModel):
 and pass it to the Auth instance:
 
 ```python
-from weppy.tools import ModelsAuth
-auth = ModelsAuth(app, db, User)
+from weppy.tools import Auth
+auth = Auth(app, db, usermodel=User)
 ```
 
-As you can see, defining an `AuthModel` is quite the same as a standard `Model`, except that the fields you define are additional fields you want to add to the user table, and instead of the `visibility` attribute you have `profile_visibility` and `register_visibility` to treat separately the field access during user registration and when the user edits its own profile.
+As you can see, defining an `AuthModel` is quite the same as for a `Model`, except that the fields you define will be the additional fields you want to add to the user table, and instead of the `visibility` attribute you have `profile_visibility` and `register_visibility` to treat separately the field access during user registration and when the user edits its own profile.
 As the default visibility is set to `False` for any extra field you have defined, in the above example the client will be able to upload an avatar for its account only with the profile function and not during the registration.
 
 Auth module configuration
