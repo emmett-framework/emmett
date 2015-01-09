@@ -318,13 +318,39 @@ class Model(object):
     def config(self):
         return self.db.config
 
-    #def __init__(self, migrate=None, Format=None):
+    @classmethod
+    def __allfields(cls):
+        supermodel = cls.__base__
+        try:
+            superfields = supermodel.__allfields()
+        except:
+            superfields = []
+        if superfields:
+            fields = [f for f in superfields]
+            toadd = []
+            for field in cls.fields:
+                override = (False, 0)
+                for i in range(0, len(fields)):
+                    if fields[i][0] == field[0]:
+                        override = (True, i)
+                        break
+                if override[0]:
+                    fields[i] = field
+                else:
+                    toadd.append(field)
+            for field in toadd:
+                fields.append(field)
+            cls.fields = fields
+        return cls.fields
+
+    def __new__(cls):
+        #cls.fields = cls.__allfields()
+        cls.__allfields()
+        return super(Model, cls).__new__(cls)
+
     def __init__(self):
-        #if migrate is not None:
-        #    self.migrate = migrate
         if not hasattr(self, 'migrate'):
             self.migrate = self.config.get('migrate', self.db._migrate)
-        #if Format is not None or not hasattr(self, 'format'):
         if not hasattr(self, 'format'):
             self.format = None
 
