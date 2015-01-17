@@ -5,7 +5,7 @@
 
     Provides logging utitilites for weppy applications.
 
-    :copyright: (c) 2014 by Giovanni Barillari
+    :copyright: (c) 2015 by Giovanni Barillari
 
     Based on the code of Flask (http://flask.pocoo.org)
     :copyright: (c) 2014 by Armin Ronacher.

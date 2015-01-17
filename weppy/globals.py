@@ -6,7 +6,7 @@
     Provide the current object. Used by application to deal with
     request, response, session (if loaded with handlers).
 
-    :copyright: (c) 2014 by Giovanni Barillari
+    :copyright: (c) 2015 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 

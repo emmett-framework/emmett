@@ -5,7 +5,7 @@
 
     Provides some utilities for weppy.
 
-    :copyright: (c) 2014 by Giovanni Barillari
+    :copyright: (c) 2015 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
