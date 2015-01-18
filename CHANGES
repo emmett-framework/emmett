@@ -20,6 +20,7 @@ Version 0.2
 - `stream_file()` in helpers now accept a path relative to application, the old
   one is now renamed in the more consistent `stream_dbfile()`
 - Added `SessionFSManager` to store sessions' data on filesystem
+- `Model` class inherits fields and properties on subclassing
 
 
 Version 0.1
