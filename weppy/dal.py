@@ -319,19 +319,24 @@ class Model(object):
         return self.db.config
 
     @classmethod
-    def __allfields(cls):
+    def __getsuperprops(cls):
+        superattr = "_supermodel" + cls.__name__
+        if hasattr(cls, superattr):
+            return
         supermodel = cls.__base__
         try:
-            superfields = supermodel.__allfields()
+            supermodel.__getsuperprops()
+            setattr(cls, superattr, supermodel)
         except:
-            superfields = []
-        if superfields:
-            fields = [f for f in superfields]
+            setattr(cls, superattr, None)
+        if getattr(cls, superattr):
+            #: get supermodel fields
+            fields = [f for f in getattr(cls, superattr).fields]
             toadd = []
             for field in cls.fields:
                 override = (False, 0)
                 for i in range(0, len(fields)):
-                    if fields[i][0] == field[0]:
+                    if fields[i].name == field.name:
                         override = (True, i)
                         break
                 if override[0]:
@@ -341,11 +346,20 @@ class Model(object):
             for field in toadd:
                 fields.append(field)
             cls.fields = fields
-        return cls.fields
+            #: get super model fields' properties
+            proplist = ['validators', 'visibility', 'representation',
+                        'widgets', 'labels', 'comments', 'updates']
+            for prop in proplist:
+                superprops = getattr(getattr(cls, superattr), prop)
+                props = {}
+                for k, v in superprops.items():
+                    props[k] = v
+                for k, v in getattr(cls, prop).items():
+                    props[k] = v
+                setattr(cls, prop, props)
 
     def __new__(cls):
-        #cls.fields = cls.__allfields()
-        cls.__allfields()
+        cls.__getsuperprops()
         return super(Model, cls).__new__(cls)
 
     def __init__(self):
