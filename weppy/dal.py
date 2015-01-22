@@ -142,7 +142,7 @@ class DAL(_pyDAL):
     serializers = _serializers
     validators_method = _default_validators
     logger = None
-    uuid = _uuid
+    uuid = lambda x: _uuid()
 
     @staticmethod
     def uri_from_config(config=None):
