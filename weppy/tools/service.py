@@ -11,7 +11,7 @@
 
 from ..handlers import Handler
 from ..globals import response
-from ..serializers import json
+from ..serializers import json, xml
 
 
 class ServiceHandler(Handler):
@@ -19,13 +19,22 @@ class ServiceHandler(Handler):
         self.procedure = procedure
 
     def json(self, f, **kwargs):
-        response.headers['Content-Type'] = \
-            'application/json; charset=utf-8'
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
         data = f(**kwargs)
         return json(data)
 
+    def xml(self, f, **kwargs):
+        response.headers['Content-Type'] = 'text/xml'
+        data = f(**kwargs)
+        return xml(data)
+
     def wrap_call(self, func):
         def wrap(**kwargs):
-            if self.procedure == "json":
-                return self.json(func, **kwargs)
+            if hasattr(self, self.procedure):
+                return self.__getattribute__(self.procedure)(func, **kwargs)
+            else:
+                raise RuntimeError(
+                    'weppy cannot handle the service you requested: %s' %
+                    self.procedure
+                )
         return wrap

@@ -21,6 +21,7 @@ Version 0.2
   one is now renamed in the more consistent `stream_dbfile()`
 - Added `SessionFSManager` to store sessions' data on filesystem
 - `Model` class inherits fields and properties on subclassing
+- Added `service.xml` method to serve xml contents
 
 
 Version 0.1

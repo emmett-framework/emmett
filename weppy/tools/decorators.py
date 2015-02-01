@@ -25,9 +25,13 @@ class Decorator(object):
 class requires(Decorator):
     def __init__(self, condition=None, otherwise=None):
         if condition is None or otherwise is None:
-            raise SyntaxError('requires usage: @requires(condition, otherwise)')
+            raise SyntaxError(
+                'requires usage: @requires(condition, otherwise)'
+            )
         if not callable(otherwise) and not isinstance(otherwise, basestring):
-            raise SyntaxError("requires 'otherwise' param must be string or callable")
+            raise SyntaxError(
+                "requires 'otherwise' param must be string or callable"
+            )
         self.condition = condition
         self.otherwise = otherwise
 
@@ -43,6 +47,10 @@ class service(Decorator):
     @staticmethod
     def json(f):
         return service('json')(f)
+
+    @staticmethod
+    def xml(f):
+        return service('xml')(f)
 
     def handler(self):
         from .service import ServiceHandler

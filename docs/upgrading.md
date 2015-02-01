@@ -122,6 +122,6 @@ The usage remains the same.
 weppy 0.2 also introduces some new features you may want to take advantage of:
 
 * json POST requests are now parsed to make the message data available into `request.post_vars`. If you want to use this feature, ensure to send the content to weppy with the *Content-Type* header set to *"application/json"*.   
-* `SessionFSManager` is now available to store sessions on server's filesystem. For the complete usage please check the [Session chapter](./sessions) of the documentation.
-* `stream_file()` method under `weppy.helpers` allows you to stream a file stored into your application path, simply passing the location as the parameter: `stream_file("myfiles/book.pdf")`.
-
+* `SessionFSManager` is now available to store sessions on server's filesystem. For the complete usage please check the [Session chapter](./sessions) of the documentation.   
+* `stream_file()` method under `weppy.helpers` allows you to stream a file stored into your application path, simply passing the location as the parameter: `stream_file("myfiles/book.pdf")`.   
+* `xml` is now available under services to allow rendering content as XML
