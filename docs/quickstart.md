@@ -458,7 +458,7 @@ weppy uses the url to determine the language instead of the HTTP "Accept-Languag
 | /anexampleurl | shows up the contents with the default language |
 | /it/anexampleurl | shows up the contents with the italian language |
 
-To see more about languages and dive into translator features, read the complete documentation available in the [Languages chapter](#).
+To see more about languages and dive into translator features, read the complete documentation available in the [Languages chapter](.languages).
 
 Debugging and logging
 ---------------------
