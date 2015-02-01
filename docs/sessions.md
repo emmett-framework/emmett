@@ -37,6 +37,32 @@ As you can see, `SessionCookieManager` needs a secret key to crypt the sessions'
 | secure | tells the manager to allow sessions only on *https* protocol |
 | domain | allows you to set a specific domain for the cookie |
 
+Storing sessions on filesystem
+------------------------------
+*New in version 0.2*
+
+You can store session contents on the server's filesystem using the weppy's `SessionFSManager` handler:
+
+```python
+from weppy import App, session
+from weppy.sessions import SessionFSManager
+
+app = App(__name__)
+app.common_handlers = [SessionFSManager()]
+
+@app.expose("/counter")
+# previous code
+```
+
+As you can see, `SessionFSManager` doesn't require specific parameters, but it accepts these optional ones:
+
+| parameter | description |
+| --- | --- |
+| expire | set the expiration for the session (default `3600` seconds) |
+| secure | tells the manager to allow sessions only on *https* protocol |
+| domain | allows you to set a specific domain for the cookie |
+| filename_template | allows you to set a specific format for the files created to store the data (default `'weppy_%s.sess'`) |
+
 Storing sessions using redis
 ----------------------------
 You can store session contents using *redis* – you obviously need the redis package for python – with the weppy's `SessionRedisManager` handler:
