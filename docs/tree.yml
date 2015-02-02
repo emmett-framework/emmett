@@ -12,6 +12,7 @@
 - dal
 - forms
 - auth
+- services
 - extensions
 - deployment
 - upgrading

@@ -223,22 +223,9 @@ def f():
     l = [1, 2, {'foo': 'bar'}]
     return dict(status="OK", data=l}
 ```
-The output will be a JSON object with the converted content of your python dictionary:
+The output will be a JSON object with the converted content of your python dictionary.
 
-```json
-{
-    "status": "OK",
-    "data": [
-        1,
-        2,
-        {
-            "foo": "bar",
-        }
-    ]
-}
-```
-
-The `service` module has other helpers, like *xml* format: go further in the [Services chapter](#) of the documentation.
+The `service` module has other helpers, like *xml* format: go further in the [Services chapter](.services) of the documentation.
 
 Dealing with requests
 ---------------------
@@ -424,16 +411,13 @@ But how does it works?
 from weppy import App, T
 app = App(__name__)
 
-app.languages = ['en', 'it']
-app.language_default = 'en'
-
 @app.route("/")
 def index():
     hello = T('Hello, my dear!')
     return dict(hello=hello)
 ```
 
-As you can see, weppy provide a language translator with the `T` object. We also defined which languages our app supports and which is the default language (that tells weppy how to behave when user request a language not defined in the app).   
+As you can see, weppy provide a language translator with the `T` object.   
 So what you should do with languages? You can just write in *languages/it.py* file in your application:
 
 ```python
@@ -443,20 +427,13 @@ So what you should do with languages? You can just write in *languages/it.py* fi
 ```
 
 and the hello message will be translated when the user request the italian language.   
-On default settings, the user's requested language is determined by the "Accept-Language" field in the HTTP header, which means that if *user1* has its browser accepting italian language, visiting 'http://127.0.0.1:8000/' he will see the italian version, while *user2* that has its browser accepting any other language different from italian will see the english one.
-
-The translation system has another way to behave, in fact if we put in the prior example this line:
+On default settings, the user's requested language is determined by the "Accept-Language" field in the HTTP header, but the translation system has another way to behave, in fact if we put in the prior example this line:
 
 ```python
 app.language_force_on_url = True
 ```
 
-weppy uses the url to determine the language instead of the HTTP "Accept-Language" header. This means that weppy will automatically add the support for language on your routing rules to the follow:
-
-| requested url | behaviour |
-| --- | --- |
-| /anexampleurl | shows up the contents with the default language |
-| /it/anexampleurl | shows up the contents with the italian language |
+weppy uses the url to determine the language instead of the HTTP "Accept-Language" header. This means that weppy will automatically add the support for language on your routing rules.
 
 To see more about languages and dive into translator features, read the complete documentation available in the [Languages chapter](.languages).
 
