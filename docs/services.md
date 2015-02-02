@@ -18,10 +18,10 @@ def f():
 ```
 The output will be automatically converted using the required service (in this example JSON).
 
-> – awesome. But, what if I need to expose several function with a service? Should I decorate every function?
+> – awesome. But, what if I need to expose several function with a service? Should I decorate every function?   
 > – *you can use the provided handler, dude*
 
-weppy also provide a `ServiceHandler` object so you can create an `AppModule` with all the functions you want to expose with a specific service and add the handler to the module:
+weppy also provides a `ServiceHandler` object so you can create an `AppModule` with all the functions you want to expose with a specific service and add the handler to the module:
 
 ```python
 from weppy import AppModule

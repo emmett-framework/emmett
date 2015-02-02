@@ -38,7 +38,7 @@ Once you have configured nginx properly and have a `server` object in your confi
 
 ```
 location / {
-    uwsgi_pass unix:/tmp/app.socket;
+    uwsgi_pass unix:/tmp/app.sock;
     include uwsgi_params;
 }
 

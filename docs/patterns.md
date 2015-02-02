@@ -37,7 +37,7 @@ To convert it to a package application, you should create another folder inside 
             ...
 ```
 
-> – ok dude. But what did we gain with this?
+> – ok dude. But what did we gain with this?   
 > – *well, now we can organize the code in multiple modules*
 
 With this new structure, we can create a new *views.py* file inside the package and we can move the routed functions to it.   
@@ -60,7 +60,7 @@ def index():
     # some code
 ```
 
-and your final structure will be like this:
+Your final structure would be like this:
 
 ```
 /myapp
@@ -114,7 +114,7 @@ app.run()
 
 MVC pattern
 -----------
-The **MVC** (model-view-controller) pattern is wide used on web applications, is well structured and becomes handy when you have big applications.   
+The **MVC** (model-view-controller) pattern is widely used on web applications, is well structured and becomes handy when you have big applications.   
 Even if weppy doesn't provide controllers, you can implement an MVC pattern using `AppModule` objects. An MVC structure for a weppy application can be something like this:
 
 ```

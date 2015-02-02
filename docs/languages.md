@@ -2,7 +2,7 @@ Languages and internationalization
 ==================================
 
 weppy provides an integrated powerful multi-language system, based on the *web2py's* one, which helps you to write application supporting different languages.   
-But how does it works?
+But how does it work?
 
 ```python
 from weppy import App, T
@@ -26,8 +26,8 @@ So what you should do with languages? You can just write in *languages/it.py* fi
 
 and the hello message will be translated when the user request the italian language. 
 
-> – awesome. But how weppy decides which language should load for a specific client?
-> – *actually you can choose that*
+> – awesome. But how weppy decides which language should load for a specific client?   
+> – *actually, you can choose that*
 
 weppy has two different ways to handle languages in your application: using clients' HTTP headers or using urls. Let's see the differences between the two systems.
 
@@ -40,16 +40,16 @@ On default settings, the user's requested language is determined by the "Accept-
 As you imagined, using this translation technique is quite easy, as the available languages are automatically defined based on the translation files you have inside *languages* folder of your application. For example
 
 ```
-myapp\
-    languages\
+/myapp
+    /languages
          it.py
 ```
 
-will make your application available in english, while
+will make your application available in english and italian, while
 
 ```
-myapp\
-    languages\
+/myapp
+    /languages
         it.py
         es.py
 ```
