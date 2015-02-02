@@ -14,5 +14,6 @@
 - auth
 - services
 - extensions
+- patterns
 - deployment
 - upgrading
