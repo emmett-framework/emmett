@@ -309,10 +309,19 @@ class RedisCache(BaseCache):
 
 
 class Cache(object):
-    def __init__(self, handlers=[('ram', RamCache())], default=None):
+    def __init__(self, **kwargs):
+        #: load handlers
+        handlers = []
+        for key, val in kwargs.iteritems():
+            if key == "default":
+                continue
+            handlers.append((key, val))
+        if not handlers:
+            handlers.append(('ram', RamCache()))
+        #: set handlers
         for name, handler in handlers:
             setattr(self, name, handler)
-        self.default_handler = default or handlers[0][0]
+        self.default_handler = kwargs.get('default', handlers[0][0])
 
     def __call__(self, key, f, time_expire=None):
         return self.__getattribute__(self.default_handler)(key, f, time_expire)
