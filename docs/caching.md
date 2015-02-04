@@ -1,14 +1,14 @@
 Caching
 =======
 
-When you code a dynamic application, you will soon face its trade-off: **it is** dynamic. Each time a user does a requests, your server makes all sorts of calculations – database queries, template rendering and so on – to create the final response.   
-Now, for most web applications, this is not a big deal. But when your application starts becoming big and high visited you would like to limit the overhead on your machines.
+When you code a dynamic application, you will soon face its trade-off: **it is** dynamic. Each time a user does a request, your server makes all sorts of calculations – database queries, template rendering and so on – to create the final response.   
+Now, for most web applications, this is not a big deal. But when your application starts becoming big and highly visited you would like to limit the overhead on your machines.
 
 And that's where caching comes in.
 
-The main idea behind cache is simple: we store somewhere the result of an expensive calculation to avoid performing the calculation next time. But, sincerely speaking, designing a good caching scheme is mainly a *PITA*, since it involves many complex evaluation about what you should store, where to store it, and so on.
+The main idea behind cache is simple: we store somewhere the result of an expensive calculation to avoid performing the calculation next time. But, sincerely speaking, designing a good caching scheme is mainly a *PITA*, since it involves many complex evaluations about what you should store, where to store it, and so on.
 
-So how weppy can help you on this? It provides some tools out of the box that let your development process focusing on *what* to cache and not on *how* you should do that.
+So how weppy can help you on this? It provides some tools out of the box that let your development process focus on *what* to cache and not on *how* you should do that.
 
 Low-level cache
 ---------------
@@ -34,12 +34,12 @@ def last():
     return dict(posts=cache('last_posts', _get, 30))
 ```
 
-You got how it works: you encapsulate the action you want to cache into a function, and then call your `cache` instance with a key, the function, and the amount of time (in seconds) you want to store the result of your function. weppy would take care of the rest.
+You got how it works: you encapsulate the action you want to cache into a function, and then call your `cache` instance with a key, the function, and the amount of time (in seconds) you want to store the result of your function. weppy will take care of the rest.
 
-> – ok dude. But where weppy stores the result?   
+> – ok dude. But where does weppy store the result?   
 > – *you can choose it*
 
-By default weppy stores your cached content into the RAM of your machine. But you can also use the disk or redis as the storage system. Let's see those 3 systems in detail.
+By default weppy stores your cached content into the RAM of your machine. But you can also use the disk or redis as storage system. Let's see these 3 systems in detail.
 
 ### RAM cache
 This is the default cache mechanism of weppy. To use this system you just create a `Cache` instance and you can call it directly:
@@ -69,7 +69,7 @@ v = cache('my_key', my_f, my_time)
 
 ```python
 from weppy.cache import Cache, RedisCache
-cache = Cache(redis=RedisCache(host='localhost', port=6379)
+cache = Cache(redis=RedisCache(host='localhost', port=6379))
 v = cache('my_key', my_f, my_time)
 ```
 
