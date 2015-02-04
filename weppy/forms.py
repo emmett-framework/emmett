@@ -188,8 +188,8 @@ class DALForm(Form):
         self.record = record or table(record_id)
         tfields = [field for field in table if field.type != 'id' and
                    field.writable and field.name not in exclude_fields]
-        ##: experimental: don't check for fields names
-        ##      it's quite pythonic: we're all adults. Aren't we?
+        #: experimental: don't check for fields names
+        #  it's quite pythonic: we're all adults. Aren't we?
         #if fields is not None:
         #    ofields = fields
         #    fields = []
@@ -205,7 +205,6 @@ class DALForm(Form):
             fields = tfields
         attributes['id_prefix'] = table._tablename+"_"
         Form.__init__(self, *fields, **attributes)
-        #self.id_prefix = table._tablename+"_"
 
     def _validate_field(self, field, value):
         #: needed to handle IS_NOT_IN_DB validator
@@ -222,7 +221,7 @@ class DALForm(Form):
         Form._process(self)
         if self.accepted:
             for field in self.fields:
-                # handle uploads
+                #: handle uploads
                 if field.type == 'upload':
                     f = self.vars[field.name]
                     fd = field.name+"__del"
@@ -244,6 +243,10 @@ class DALForm(Form):
                     if isinstance(field.uploadfield, str):
                         self.vars[field.uploadfield] = source_file.read()
                     self.vars[field.name] = newfilename
+                #: handle booleans
+                if field.type == 'boolean':
+                    if self.vars[field.name] is None:
+                        self.vars[field.name] = False
             if self.record:
                 self.record.update_record(**self.vars)
             else:
@@ -253,7 +256,6 @@ class DALForm(Form):
                 value = self.record[field.name] if self.record \
                     else field.default
                 self.input_vars[field.name] = field.formatter(value)
-        return self
 
 
 class FormStyle(object):
@@ -314,7 +316,7 @@ class FormStyle(object):
 
     @staticmethod
     def widget_boolean(attr, field, value, _class='boolean', _id=None):
-        return tag.input(_type='checkbox', _name=field.name, _value='t',
+        return tag.input(_type='checkbox', _name=field.name,
                          _checked='checked' if value else None,
                          _class=_class, _id=_id or field.name)
 
@@ -343,10 +345,10 @@ class FormStyle(object):
         return tag.select(*option_items, _name=field.name, _class=_class,
                           multiple='multiple', _id=_id or field.name)
 
-    @staticmethod
-    def widget_list(attr, field, value, _class='', _id=None):
-        ## TO DO
-        pass
+    #: TO-DO
+    #@staticmethod
+    #def widget_list(attr, field, value, _class='', _id=None):
+    #    return ""
 
     @staticmethod
     def widget_upload(attr, field, value, _class='upload',
