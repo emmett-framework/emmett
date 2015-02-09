@@ -501,7 +501,8 @@ class Translator(object):
     def get_best_language(self, langstr):
         langs = regex_language.findall(langstr)
         for lang in langs:
-            if lang not in self.current_languages:
+            if lang not in self.current_languages and \
+                    lang[:2] not in self.current_languages:
                 return lang
         return langs[0]
 
