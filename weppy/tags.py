@@ -43,7 +43,6 @@ def xmlescape(s, quote=True):
 
 
 class TAG(object):
-
     rules = {'ul': ['li'],
              'ol': ['li'],
              'table': ['tr', 'thead', 'tbody'],
@@ -75,7 +74,7 @@ class TAG(object):
     @staticmethod
     def wrap(component, rules):
         if rules and (not isinstance(component, TAG) or
-                      not component.name in rules):
+                      component.name not in rules):
             return TAG(rules[0])(component)
         return component
 
@@ -168,11 +167,16 @@ class TAG(object):
 
     def xml(self):
         name = self.name
-        ca = ' '.join('%s="%s"' % (k[1:], k[1:] if v == True else xmlescape(v))
-             for (k, v) in sorted(self.attributes.items())
-             if k.startswith('_') and v is not None)
+        ca = ' '.join(
+            '%s="%s"' % (k[1:], k[1:] if v == True else xmlescape(v))
+            for (k, v) in sorted(self.attributes.items())
+            if k.startswith('_') and v is not None)
+        da = self.attributes.get('data', {})
+        ca_data = ' '.join(
+            'data-%s="%s"' % (k, xmlescape(v)) for k, v in da.iteritems())
+        if ca_data:
+            ca = ca + ' ' + ca_data
         ca = ' ' + ca if ca else ''
-        #if not self.components:
         if name in self._self_closed:
             return '<%s%s />' % (name, ca)
         else:
@@ -183,7 +187,6 @@ class TAG(object):
 
 
 class METATAG(object):
-
     def __getattr__(self, name):
         return TAG(name)
 
@@ -194,16 +197,15 @@ tag = METATAG()
 
 
 class cat(TAG):
-
     def __init__(self, *components):
         self.components = [c for c in components]
+        self.attributes = {}
 
     def xml(self):
         return ''.join(xmlescape(v) for v in self.components)
 
 
 class safe(TAG):
-
     default_allowed_tags = {
         'a': ['href', 'title', 'target'], 'b': [], 'blockquote': ['type'],
         'br': [], 'i': [], 'li': [], 'ol': [], 'ul': [], 'p': [], 'cite': [],
