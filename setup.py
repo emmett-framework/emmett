@@ -17,7 +17,7 @@ Links
 from setuptools import setup
 setup(
     name='weppy',
-    version='0.2-dev',
+    version='0.2',
     url='http://github.com/gi0baro/weppy/',
     license='BSD',
     author='Giovanni Barillari',
@@ -36,7 +36,7 @@ setup(
         'pyyaml'
     ],
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',

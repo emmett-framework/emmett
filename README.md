@@ -23,12 +23,11 @@ Examples will be soon available on this repository. In the meantime take a look 
 
 ## Status of the project
 
-weppy is currently released in alpha stage.
+weppy is currently released in beta stage.
 *What does it means?*
 
 * That the code may contain *noteworthy* bugs
 * That you can use it on production but cannot blame the developers if something goes wrong
-* That APIs can change without backward compatibility until the reach of a beta stage
 
 Also, please keep in mind that currently **weppy** doesn't provide support to python 3.
 

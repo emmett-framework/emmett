@@ -4,7 +4,7 @@ weppy changelog
 Version 0.2
 -----------
 
-(release date to be announced, codename to be selected)
+Released on February 11th 2015, codename Bellatrix
 
 - Several bugfixes
 - JSON body parsing for incoming requests with POST method and 'application/
