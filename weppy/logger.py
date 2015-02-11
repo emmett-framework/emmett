@@ -39,10 +39,8 @@ _def_log_config = sdict(
         on_app_debug=False))
 
 _debug_log_format = (
-    '-' * 80 + '\n' +
-    '%(levelname)s in %(module)s [%(pathname)s:%(lineno)d]:\n' +
-    '%(message)s\n' +
-    '-' * 80
+    '> %(levelname)s in %(module)s [%(pathname)s:%(lineno)d]:\n' +
+    '%(message)s'
 )
 
 

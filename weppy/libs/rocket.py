@@ -1841,8 +1841,8 @@ class WSGIWorker(Worker):
 
             # Log execution time
             dt = time.time()-t0
-            self.app.log.debug('%s %s %s' % (environ['REMOTE_ADDR'],
-                               environ['PATH_INFO'], dt))
+            self.app.log.info('[%s on %s] dispatched in %s' % (
+                environ['REMOTE_ADDR'], environ['PATH_INFO'], dt))
 
             if not hasattr(output, '__len__') and not hasattr(output, '__iter__'):
                 self.error = ('500 Internal Server Error',
