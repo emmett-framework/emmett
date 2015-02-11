@@ -1834,8 +1834,15 @@ class WSGIWorker(Worker):
                 res = environ['SERVER_PROTOCOL'] + ' 100 Continue\r\n\r\n'
                 conn.sendall(b(res))
 
+            t0 = time.time()
+
             # Send it to our WSGI application
             output = self.app(environ, self.start_response)
+
+            # Log execution time
+            dt = time.time()-t0
+            self.app.log.debug('%s %s %s' % (environ['REMOTE_ADDR'],
+                               environ['PATH_INFO'], dt))
 
             if not hasattr(output, '__len__') and not hasattr(output, '__iter__'):
                 self.error = ('500 Internal Server Error',
