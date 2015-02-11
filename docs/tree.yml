@@ -12,8 +12,10 @@
 - dal
 - forms
 - auth
+- caching
 - services
 - extensions
 - patterns
+- debug_and_logging
 - deployment
 - upgrading
