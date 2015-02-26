@@ -20,15 +20,11 @@ import urllib
 import struct
 import decimal
 import unicodedata
+import json
 
 from ._compat import StringIO
 from .security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
 from .globals import current
-
-try:
-    import simplejson as json
-except:
-    import json
 
 __all__ = [
     'anyOf',

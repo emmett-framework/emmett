@@ -9,14 +9,10 @@
 
 import datetime
 import decimal
+import json as json_parser
 from .language.translator import TElement
 from .tags import TAG, tag, xmlescape
 from .datastructures import sdict
-
-try:
-    import simplejson as json_parser
-except ImportError:
-    import json as json_parser
 
 
 def _custom_json(o):
