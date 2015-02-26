@@ -3149,7 +3149,8 @@ class isIPv6(Validator):
         try:
             import ipaddress
         except ImportError:
-            from gluon.contrib import ipaddr as ipaddress
+            raise RuntimeError(
+                "You need 'ipaddress' python module to use isIPv6 validator.")
 
         try:
             ip = ipaddress.IPv6Address(value)
@@ -3375,11 +3376,12 @@ class isIP(Validator):
         try:
             import ipaddress
         except ImportError:
-            from gluon.contrib import ipaddr as ipaddress
+            raise RuntimeError(
+                "You need 'ipaddress' python module to use isIP validator.")
 
         try:
             ip = ipaddress.ip_address(value)
-        except ValueError, e:
+        except ValueError:
             return (value, _translate(self.error_message))
 
         if self.is_ipv4 and isinstance(ip, ipaddress.IPv6Address):
