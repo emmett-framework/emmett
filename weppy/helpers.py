@@ -26,7 +26,6 @@ def stream_file(path):
 
 def stream_dbfile(db, name):
     import re
-    from pydal.exceptions import NotAuthorizedException, NotFoundException
     items = re.compile('(?P<table>.*?)\.(?P<field>.*?)\..*').match(name)
     if not items:
         abort(404)
@@ -35,6 +34,7 @@ def stream_dbfile(db, name):
         field = db[t][f]
     except AttributeError:
         abort(404)
+    from pydal.exceptions import NotAuthorizedException, NotFoundException
     try:
         (filename, fullfilename) = field.retrieve(name, nameonly=True)
     except NotAuthorizedException:
@@ -44,6 +44,18 @@ def stream_dbfile(db, name):
     except IOError:
         abort(404)
     from .globals import request, response
+    #: handle blob fields
+    from ._compat import StringIO
+    if isinstance(fullfilename, StringIO):
+        from .libs.contenttype import contenttype
+        from .http import HTTP
+        response.headers['Content-Type'] = contenttype(filename)
+        if 'wsgi.file_wrapper' in request.environ:
+            data = request.environ['wsgi.file_wrapper'](fullfilename, 10**5)
+        else:
+            data = iter(lambda: fullfilename.read(10**5), '')
+        raise HTTP(200, data, response.headers)
+    #: handle file uploads
     from .stream import streamer
     raise streamer(request.environ, fullfilename, headers=response.headers)
 
