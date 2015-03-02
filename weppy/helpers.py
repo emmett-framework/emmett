@@ -44,9 +44,12 @@ def stream_dbfile(db, name):
     except IOError:
         abort(404)
     from .globals import request, response
-    #: handle blob fields
-    from ._compat import StringIO
-    if isinstance(fullfilename, StringIO):
+    if isinstance(fullfilename, (str, unicode)):
+        #: handle file uploads
+        from .stream import streamer
+        raise streamer(request.environ, fullfilename, headers=response.headers)
+    else:
+        #: handle blob fields
         from .libs.contenttype import contenttype
         from .http import HTTP
         response.headers['Content-Type'] = contenttype(filename)
@@ -55,9 +58,6 @@ def stream_dbfile(db, name):
         else:
             data = iter(lambda: fullfilename.read(10**5), '')
         raise HTTP(200, data, response.headers)
-    #: handle file uploads
-    from .stream import streamer
-    raise streamer(request.environ, fullfilename, headers=response.headers)
 
 
 def flash(message, category='message'):
