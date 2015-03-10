@@ -25,6 +25,7 @@ class Form(TAG):
         return Expose.application.config.ui.forms_style or FormStyle
 
     def __init__(self, *fields, **attributes):
+        #: process attributes
         attributes['_action'] = attributes.get('_action', '')
         attributes['_method'] = attributes.get('_method', 'POST')
         attributes['_enctype'] = attributes.get('_enctype',
@@ -37,6 +38,7 @@ class Form(TAG):
         attributes['id_prefix'] = attributes.get('id_prefix', '')
         attributes['onvalidation'] = attributes.get('onvalidation')
         attributes['upload'] = attributes.get('upload')
+        #: init the form
         self.attributes = attributes
         self.fields = fields
         self.errors = sdict()
@@ -45,16 +47,16 @@ class Form(TAG):
         self.processed = False
         self.accepted = False
         self.formkey = "undef"
-        # move some attributes to self, just because it's handy
+        #: move some attributes to self, just because it's handy
         self.keepvalues = attributes['keepvalues']
         self.onvalidation = attributes['onvalidation']
         del attributes['keepvalues']
         del attributes['onvalidation']
-        # verify formstyle consistence
+        #: verify formstyle consistence
         if not issubclass(attributes['formstyle'], FormStyle):
             raise RuntimeError('%s is an invalid weppy form style'
                                % attributes['formstyle'].__name__)
-        # process the form
+        #: process the form
         self._process()
 
     @property
@@ -117,7 +119,9 @@ class Form(TAG):
         # reset default values in form
         if not self.processed or (self.accepted and not self.keepvalues):
             for field in self.fields:
-                self.input_vars[field.name] = field.default
+                default_value = field.default() if callable(field.default) \
+                    else field.default
+                self.input_vars[field.name] = default_value
 
     def _render(self):
         styler = self.attributes['formstyle'](self.attributes)
@@ -247,15 +251,24 @@ class DALForm(Form):
                 if field.type == 'boolean':
                     if self.vars[field.name] is None:
                         self.vars[field.name] = False
+            #: add default values to hidden fields if needed
+            for field in self.table:
+                if field not in self.fields and field.writable is False \
+                        and field.update is None and field.compute is None:
+                    if not self.record and field.default is not None:
+                        def_val = field.default() if callable(field.default) \
+                            else field.default
+                        self.vars[field.name] = def_val
             if self.record:
                 self.record.update_record(**self.vars)
             else:
                 self.vars.id = self.table.insert(**self.vars)
         if not self.processed or (self.accepted and not self.keepvalues):
             for field in self.fields:
-                value = self.record[field.name] if self.record \
-                    else field.default
-                self.input_vars[field.name] = field.formatter(value)
+                if self.record:
+                    self.input_vars[field.name] = self.record[field.name]
+                self.input_vars[field.name] = field.formatter(
+                    self.input_vars[field.name])
 
 
 class FormStyle(object):
