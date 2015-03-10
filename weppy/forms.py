@@ -252,8 +252,9 @@ class DALForm(Form):
                     if self.vars[field.name] is None:
                         self.vars[field.name] = False
             #: add default values to hidden fields if needed
+            ffields = [field.name for field in self.fields]
             for field in self.table:
-                if field not in self.fields and field.writable is False \
+                if field.name not in ffields and field.writable is False \
                         and field.update is None and field.compute is None:
                     if not self.record and field.default is not None:
                         def_val = field.default() if callable(field.default) \
