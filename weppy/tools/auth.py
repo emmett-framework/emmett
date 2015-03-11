@@ -1081,7 +1081,8 @@ class Auth(object):
         for i, field in enumerate(form_fields):
             if field.name == passfield:
                 pass2 = Field(
-                    'password2', 'password'
+                    'password2', 'password',
+                    label=self.messages.verify_password
                 )
                 form_fields.insert(i+1, pass2)
                 break
