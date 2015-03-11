@@ -273,7 +273,7 @@ class RedisCache(BaseCache):
     def clear(self, key=None):
         if key is not None:
             key = self._prefix + key
-            self._client.delete(key)
+            self._cache.delete(key)
             return
         if self._prefix:
             keys = self._cache.keys(self._prefix + '*')
