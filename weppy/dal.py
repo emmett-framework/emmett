@@ -250,6 +250,15 @@ class fieldmethod(virtualfield):
     pass
 
 
+class _virtualwrap(object):
+    def __init__(self, model, virtual):
+        self.model = model
+        self.virtual = virtual
+
+    def __call__(self, row, *args, **kwargs):
+        return self.virtual.f(self.model, row, *args, **kwargs)
+
+
 class modelmethod(object):
     def __init__(self, f):
         self.f = f
@@ -395,11 +404,15 @@ class Model(object):
                             'virtualfield or fieldmethod cannot have same ' +
                             'name as an existent field!')
                     if isinstance(obj, fieldmethod):
-                        f = Field.Method(obj.field_name, lambda row, obj=obj,
-                                         self=self: obj.f(self, row))
+                        #f = Field.Method(obj.field_name, lambda row, obj=obj,
+                        #                 self=self: obj.f(self, row))
+                        f = Field.Method(
+                            obj.field_name, _virtualwrap(self, obj))
                     else:
-                        f = Field.Virtual(obj.field_name, lambda row, obj=obj,
-                                          self=self: obj.f(self, row))
+                        #f = Field.Virtual(obj.field_name, lambda row, obj=obj,
+                        #                  self=self: obj.f(self, row))
+                        f = Field.Virtual(
+                            obj.field_name, _virtualwrap(self, obj))
                     self.fields.append(f)
 
     def __define_validators(self):
