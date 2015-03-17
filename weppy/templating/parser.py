@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.templating
-    ----------------
+    weppy.templating.parser
+    -----------------------
 
     Provides the templating system for weppy.
 
@@ -14,277 +14,13 @@
 """
 
 import os
-import cgi
 from re import compile, sub, escape, DOTALL
-from ._compat import StringIO
-
-
-class TemplateError(Exception):
-    def __init__(self, parser, message, filename, lineno):
-        Exception.__init__(self, message)
-        self.parser = parser
-        self.template = filename
-        if isinstance(lineno, tuple):
-            lineno = lineno[0]
-        self.lineno = lineno
-
-    @property
-    def file_path(self):
-        return os.path.join(self.parser.path, self.template)
-
-
-class TemplateReference(object):
-    def __init__(self, parser, code, exc_type, exc_value, tb):
-        self.parser = parser
-        self.exc_type = exc_type
-        self.exc_value = exc_value
-        self.tb = tb
-        if hasattr(exc_value, 'lineno'):
-            dummy_lineno = exc_value.lineno
-        else:
-            import traceback
-            template_frame = traceback.extract_tb(tb, 2)[-1]
-            dummy_lineno = template_frame[1]
-        self.lines = self.get_template_reference(parser.content,
-                                                 parser.content.blocks)
-        self.template, self.lineno = self.match_template(dummy_lineno)
-
-    @property
-    def file_path(self):
-        return os.path.join(self.parser.path, self.template)
-
-    @property
-    def message(self):
-        location = 'File "%s", line %d' % (self.file_path, self.lineno)
-        lines = [self.args[0], '  ' + location]
-        return "\n".join(lines)
-
-    def __str__(self):
-        #return self.message
-        return str(self.exc_value)
-
-    @staticmethod
-    def get_template_reference(content, blocks):
-        lines = []
-        for node in content.nodes:
-            if isinstance(node, BlockNode):
-                if node.name in blocks:
-                    lines += TemplateReference.get_template_reference(
-                        blocks[node.name], blocks)
-                else:
-                    lines += TemplateReference.get_template_reference(node,
-                                                                      blocks)
-            else:
-                node_lines = node._rendered_lines()
-                if len(node_lines) == node.lines[1]-node.lines[0]+1:
-                    linenos = [(i, i+1) for i in range(node.lines[0],
-                                                       node.lines[1]+1)]
-                else:
-                    linenos = [(node.lines[0], node.lines[1])
-                               for i in range(0, len(node_lines))]
-                for l in range(0, len(node_lines)):
-                    lines.append((node.template, linenos[l]))
-        return lines
-
-    def match_template(self, dummy_lineno):
-        try:
-            reference = self.lines[dummy_lineno-1]
-        except:
-            reference = (self.parser.name, ('<unknown>', 'unknown'))
-        return reference[0], reference[1][0]
-
-
-class Node(object):
-    """
-    Basic Container Object
-    """
-    def __init__(self, value=None, pre_extend=False, template=None,
-                 lines=None):
-        self.value = value
-        self.pre_extend = pre_extend
-        self.template = template
-        self.lines = lines or (None, None)
-
-    def __str__(self):
-        return str(self.value)
-
-    def _rendered_lines(self):
-        return str(self.value).split("\n")[1:]
-
-
-class SuperNode(Node):
-    def __init__(self, name='', pre_extend=False):
-        self.name = name
-        self.value = None
-        self.pre_extend = pre_extend
-
-    def __str__(self):
-        if self.value:
-            return str(self.value)
-        else:
-            return ''
-
-    def __repr__(self):
-        return "%s->%s" % (self.name, self.value)
-
-
-def output_aux(node, blocks):
-    # If we have a block level
-    #   If we can override this block.
-    #     Override block from vars.
-    #   Else we take the default
-    # Else its just a string
-    return (blocks[node.name].output(blocks)
-            if node.name in blocks else
-            node.output(blocks)) \
-        if isinstance(node, BlockNode) \
-        else str(node)
-
-
-class BlockNode(Node):
-    """
-    Block Container.
-
-    This Node can contain other Nodes and will render in a hierarchical order
-    of when nodes were added.
-
-    ie::
-
-        {{ block test }}
-            This is default block test
-        {{ end }}
-    """
-    def __init__(self, name='', pre_extend=False, delimiters=('{{', '}}')):
-        """
-        name - Name of this Node.
-        """
-        self.nodes = []
-        self.name = name
-        self.pre_extend = pre_extend
-        self.left, self.right = delimiters
-
-    def __repr__(self):
-        lines = ['%sblock %s%s' % (self.left, self.name, self.right)]
-        lines += [str(node) for node in self.nodes]
-        lines.append('%send%s' % (self.left, self.right))
-        return ''.join(lines)
-
-    def __str__(self):
-        """
-        Get this BlockNodes content, not including child Nodes
-        """
-        return ''.join(str(node) for node in self.nodes
-                       if not isinstance(node, BlockNode))
-
-    def append(self, node):
-        """
-        Add an element to the nodes.
-
-        Keyword Arguments
-
-        - node -- Node object or string to append.
-        """
-        if isinstance(node, (str, Node)):
-            self.nodes.append(node)
-        else:
-            raise TypeError("Invalid type; must be instance of ``str`` or ``BlockNode``. %s" % node)
-
-    def extend(self, other):
-        """
-        Extend the list of nodes with another BlockNode class.
-
-        Keyword Arguments
-
-        - other -- BlockNode or Content object to extend from.
-        """
-        if isinstance(other, BlockNode):
-            self.nodes.extend(other.nodes)
-        else:
-            raise TypeError(
-                "Invalid type; must be instance of ``BlockNode``. %s" % other)
-
-    def output(self, blocks):
-        """
-        Merges all nodes into a single string.
-        blocks -- Dictionary of blocks that are extending
-        from this template.
-        """
-        return ''.join(output_aux(node, blocks) for node in self.nodes)
-
-
-class Content(BlockNode):
-    """
-    Parent Container -- Used as the root level BlockNode.
-
-    Contains functions that operate as such.
-    """
-    def __init__(self, name="ContentBlock", pre_extend=False):
-        """
-        Keyword Arguments
-
-        name -- Unique name for this BlockNode
-        """
-        self.name = name
-        self.nodes = []
-        self.blocks = {}
-        self.pre_extend = pre_extend
-        self.template = name
-
-    def __str__(self):
-        return ''.join(output_aux(node, self.blocks) for node in self.nodes)
-
-    def _insert(self, other, index=0):
-        """
-        Inserts object at index.
-        """
-        if isinstance(other, (str, Node)):
-            self.nodes.insert(index, other)
-        else:
-            raise TypeError(
-                "Invalid type, must be instance of ``str`` or ``Node``.")
-
-    def insert(self, other, index=0):
-        """
-        Inserts object at index.
-
-        You may pass a list of objects and have them inserted.
-        """
-        if isinstance(other, (list, tuple)):
-            # Must reverse so the order stays the same.
-            other.reverse()
-            for item in other:
-                self._insert(item, index)
-        else:
-            self._insert(other, index)
-
-    def append(self, node):
-        """
-        Adds a node to list. If it is a BlockNode then we assign a block for it.
-        """
-        if isinstance(node, (str, Node)):
-            self.nodes.append(node)
-            if isinstance(node, BlockNode):
-                self.blocks[node.name] = node
-        else:
-            raise TypeError("Invalid type, must be instance of ``str`` or ``BlockNode``. %s" % node)
-
-    def extend(self, other):
-        """
-        Extends the objects list of nodes with another objects nodes
-        """
-        if isinstance(other, BlockNode):
-            self.nodes.extend(other.nodes)
-            self.blocks.update(other.blocks)
-        else:
-            raise TypeError(
-                "Invalid type; must be instance of ``BlockNode``. %s" % other)
-
-    def clear_content(self):
-        self.nodes = []
+from ..expose import url
+from .contents import Node, SuperNode, BlockNode, Content
+from .helpers import TemplateError
 
 
 class TemplateParser(object):
-
     default_delimiters = ('{{', '}}')
     r_tag = compile(r'(\{\{.*?\}\})', DOTALL)
 
@@ -299,15 +35,9 @@ class TemplateParser(object):
     # Indent - 1
     re_pass = compile('^pass( .*)?$', DOTALL)
 
-    def __init__(self, templater, text,
-                 name="ParserContainer",
-                 context=dict(),
-                 path='views/',
-                 writer='_DummyResponse_.write',
-                 lexers={},
-                 delimiters=('{{', '}}'),
-                 _super_nodes = [],
-                 ):
+    def __init__(self, templater, text, name="ParserContainer", context={},
+                 path='templates/', writer='_DummyResponse_.write', lexers={},
+                 delimiters=('{{', '}}'), _super_nodes=[]):
         """
         text -- text to parse
         context -- context to parse in
@@ -492,10 +222,12 @@ class TemplateParser(object):
 
         if k > 0:
             #self._raise_error('missing "pass" in view', new_text)
-            raise TemplateError(self, 'missing "pass" in view', self.name, 1)
+            raise TemplateError(self.path, 'missing "pass" in view',
+                                self.name, 1)
         elif k < 0:
             #self._raise_error('too many "pass" in view', new_text)
-            raise TemplateError(self, 'too many "pass" in view', self.name, 1)
+            raise TemplateError(self.path, 'too many "pass" in view',
+                                self.name, 1)
 
         return new_text
 
@@ -509,8 +241,8 @@ class TemplateParser(object):
         # If they didn't specify a filename, how can we find one!
         if not filename.strip():
             #self._raise_error('Invalid template filename')
-            raise TemplateError(self, 'Invalid template filename', self.name,
-                                1)
+            raise TemplateError(self.path, 'Invalid template filename',
+                                self.name, 1)
 
         # Allow Views to include other views dynamically
         context = self.context
@@ -531,7 +263,7 @@ class TemplateParser(object):
         try:
             tsource = self.templater.load(filepath)
         except:
-            raise TemplateError(self, 'Unable to open included view file',
+            raise TemplateError(self.path, 'Unable to open included view file',
                                 self.name, 1)
         tsource = self.templater.prerender(tsource, filepath)
 
@@ -621,7 +353,6 @@ class TemplateParser(object):
         self.content = t_content
 
     def parse(self, text):
-
         # Basically, r_tag.split will split the text into
         # an array containing, 'non-tag', 'tag', 'non-tag', 'tag'
         # so if we alternate this variable, we know
@@ -648,9 +379,10 @@ class TemplateParser(object):
                                       len(i.split("\n"))-1)
 
                 if not stack:
-                    raise TemplateError(self,
-                        'The "end" tag is unmatched, please check if you have a starting "block" tag',
-                        self.name, self.current_lines)
+                    raise TemplateError(
+                        self.path, 'The "end" tag is unmatched, please check' +
+                        ' if you have a starting "block" tag', self.name,
+                        self.current_lines)
 
                 # Our current element in the stack.
                 top = stack[-1]
@@ -781,8 +513,10 @@ class TemplateParser(object):
                     elif name == 'include_helpers' and \
                             not value.startswith('='):
                         helpers = [
-                            '<script type="text/javascript" src="/__weppy__/jquery.min.js"></script>',
-                            '<script type="text/javascript" src="/__weppy__/helpers.js"></script>']
+                            '<script type="text/javascript" ' +
+                            'src="/__weppy__/jquery.min.js"></script>',
+                            '<script type="text/javascript" ' +
+                            'src="/__weppy__/helpers.js"></script>']
                         node = self.create_htmlnode(
                             "\n".join(h for h in helpers), pre_extend)
                         top.append(node)
@@ -796,15 +530,16 @@ class TemplateParser(object):
 
                     elif name == 'include_static' and not \
                             value.startswith('='):
-                        url = eval(value, self.context)
-                        file_name = url.split("?")[0]
-                        from .expose import url as murl
-                        url = murl('static', file_name)
+                        surl = eval(value, self.context)
+                        file_name = surl.split("?")[0]
+                        surl = url('static', file_name)
                         file_ext = file_name.rsplit(".", 1)[-1]
                         if file_ext == 'js':
-                            static = '<script type="text/javascript" src="'+url+'"></script>'
+                            static = '<script type="text/javascript" src="' + \
+                                surl + '"></script>'
                         elif file_ext == "css":
-                            static = '<link rel="stylesheet" href="'+url+'" type="text/css" />'
+                            static = '<link rel="stylesheet" href="' + surl + \
+                                '" type="text/css" />'
                         else:
                             static = None
                         if static:
@@ -829,7 +564,7 @@ class TemplateParser(object):
                             # for i in range(10):
                             #   = i
                             # pass
-                            # So we can properly put a response.write() in place.
+                            # So we can properly put a writer in place.
                             continuation = False
                             len_parsed = 0
                             for k, token in enumerate(tokens):
@@ -884,128 +619,3 @@ class TemplateParser(object):
         # If we need to extend a template.
         if extend:
             self.extend(extend)
-
-
-class DummyResponse():
-    def __init__(self):
-        self.body = StringIO()
-
-    #def write(self, data, escape=True):
-    #    if not escape:
-    #        self.body.write(str(data))
-    #    elif hasattr(data, 'xml') and callable(data.xml):
-    #        self.body.write(data.xml())
-    #    else:
-    #        # make it a string
-    #        if not isinstance(data, (str, unicode)):
-    #            data = str(data)
-    #        elif isinstance(data, unicode):
-    #            data = data.encode('utf8', 'xmlcharrefreplace')
-    #        data = cgi.escape(data, True).replace("'", "&#x27;")
-    #        self.body.write(data)
-    def write(self, data, escape=True):
-        body = None
-        if not escape:
-            body = str(data)
-        else:
-            if hasattr(data, 'xml') and callable(data.xml):
-                try:
-                    body = data.xml()
-                except:
-                    pass
-        if body is None:
-            # make it a string
-            if not isinstance(data, (str, unicode)):
-                data = str(data)
-            elif isinstance(data, unicode):
-                data = data.encode('utf8', 'xmlcharrefreplace')
-            body = cgi.escape(data, True).replace("'", "&#x27;")
-        self.body.write(body)
-
-
-class NOESCAPE():
-    """
-    A little helper to avoid escaping.
-    """
-    def __init__(self, text):
-        self.text = text
-
-    def xml(self):
-        return self.text
-
-
-class Templater(object):
-    def __init__(self, application):
-        self.loaders = application.template_preloaders
-        self.renders = application.template_extensions
-        self.lexers = application.template_lexers
-
-    def preload(self, path, name):
-        fext = os.path.splitext(name)[1]
-        return reduce(lambda s, e: e.preload(s[0], s[1]),
-                      self.loaders.get(fext, []), (path, name))
-
-    def load(self, filename):
-        try:
-            file_obj = open(filename, 'rb')
-            source = file_obj.read()
-            file_obj.close()
-        except IOError:
-            raise RuntimeError('Unable to open template file: ' + filename)
-        return source
-
-    def prerender(self, source, filename):
-        return reduce(lambda s, e: e.preprocess(s, filename),
-                      self.renders, str(source))
-
-    def render(self, source='', path=None, filename=None, context={}):
-        if not 'asis' in context:
-            from .tags import asis
-            context['asis'] = asis
-        if not 'load_component' in context:
-            from .helpers import load_component
-            context['load_component'] = load_component
-        context['_DummyResponse_'] = DummyResponse()
-        parser = None
-        code = None
-        try:
-            parser = TemplateParser(self, source, name=filename,
-                                    context=context, path=path)
-            code = str(parser)
-            exec(code) in context
-        except:
-            import sys
-            exc_info = sys.exc_info()
-            try:
-                template_ref = TemplateReference(parser, code, exc_info[0],
-                                                 exc_info[1], exc_info[2])
-            except:
-                template_ref = None
-            context['__weppy_template__'] = template_ref
-            from .debug import make_traceback
-            make_traceback(exc_info, template_ref)
-        return context['_DummyResponse_'].body.getvalue()
-
-
-def render_template(application, filename):
-    templater = Templater(application)
-    tpath, tname = templater.preload(application.template_path, filename)
-    filepath = os.path.join(tpath, tname)
-    tsource = templater.load(filepath)
-    tsource = templater.prerender(tsource, tname)
-    from .globals import current
-    from .expose import url
-    context = dict(current=current, url=url)
-    return templater.render(tsource, tpath, tname, context)
-
-
-def render(application, path, template, context):
-    templater = Templater(application)
-    tpath, tname = templater.preload(path, template)
-    filepath = os.path.join(tpath, tname)
-    if not os.path.exists(filepath):
-        from .http import HTTP
-        raise HTTP(404, body="Invalid view\n")
-    tsource = templater.load(filepath)
-    tsource = templater.prerender(tsource, tname)
-    return templater.render(tsource, tpath, tname, context.copy())

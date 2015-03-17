@@ -10,6 +10,7 @@
 """
 
 import sys
+import hashlib
 
 PY2 = sys.version_info[0] == 2
 _identity = lambda x: x
@@ -24,6 +25,8 @@ if PY2:
     iteritems = lambda d: d.iteritems()
     integer_types = (int, long)
 
+    hashlib_md5 = hashlib.md5
+
     implements_iterator = _identity
 
     def reraise(tp, value, tb=None):
@@ -37,6 +40,8 @@ else:
     itervalues = lambda d: iter(d.values())
     iteritems = lambda d: iter(d.items())
     integer_types = (int, )
+
+    hashlib_md5 = lambda s: hashlib.md5(bytes(s, 'utf8'))
 
     def implements_iterator(cls):
         cls.next = cls.__next__
