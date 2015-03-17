@@ -14,11 +14,9 @@ import cgi
 import sys
 from .._compat import StringIO
 from ..globals import current
-from ..expose import url
 from ..http import HTTP
 from ..tags import asis
 from ..helpers import load_component
-from ..debug import make_traceback
 from ..datastructures import sdict
 from .parser import TemplateParser
 from .cache import TemplaterCache
@@ -51,9 +49,6 @@ class DummyResponse():
 
 class Templater(object):
     def __init__(self, application):
-        # temp: remove next line
-        self._app = application
-        #
         self.loaders = application.template_preloaders
         self.renders = application.template_extensions
         self.lexers = application.template_lexers
@@ -80,7 +75,6 @@ class Templater(object):
     def parse(self, path, filename, source, context):
         code, parserdata = self.cache.get(filename, source)
         if not code:
-            self._app.log.debug("[Templater] generating code for "+filename)
             parser = TemplateParser(self, source, name=filename,
                                     context=context, path=path)
             code = compile(str(parser), filename, 'exec')
@@ -95,11 +89,11 @@ class Templater(object):
         if 'load_component' not in context:
             context['load_component'] = load_component
         context['_DummyResponse_'] = DummyResponse()
-        self._app.log.debug("[Templater] getting code for "+filename)
         code, parserdata = self.parse(path, filename, source, context)
         try:
             exec code in context
         except:
+            from ..debug import make_traceback
             exc_info = sys.exc_info()
             try:
                 parserdata.path = path
@@ -119,6 +113,7 @@ def render_template(application, filename):
     filepath = os.path.join(tpath, tname)
     tsource = templater.load(filepath)
     tsource = templater.prerender(tsource, tname)
+    from ..expose import url
     context = dict(current=current, url=url)
     return templater.render(tsource, tpath, tname, context)
 

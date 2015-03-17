@@ -28,7 +28,7 @@ class TemplaterCache(object):
         if self.changes:
             hashed = make_md5(source)
             if self.hashes.get(filename) != hashed:
-                return None
+                return None, None
         return self.data.get(filename), self.pdata.get(filename)
 
     def set(self, filename, source, compiled, pdata):

@@ -19,7 +19,7 @@ import os
 import sys
 from types import TracebackType, CodeType
 from ._compat import PY2, reraise
-from .templating import TemplateError
+from .templating.helpers import TemplateError
 
 
 # on pypy we can take advantage of transparent proxies
@@ -287,7 +287,8 @@ def smart_traceback(app):
 def debug_handler(tb):
     from os.path import join, dirname, basename
     view = join(dirname(__file__), 'assets', 'debug', basename('view.html'))
-    from .templating import TemplateParser, DummyResponse
+    from .templating.core import DummyResponse
+    from .templating.parser import TemplateParser
     view_file = open(view, 'rb')
     view_source = view_file.read()
     view_file.close()

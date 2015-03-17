@@ -15,7 +15,6 @@
 
 import os
 from re import compile, sub, escape, DOTALL
-from ..expose import url
 from .contents import Node, SuperNode, BlockNode, Content
 from .helpers import TemplateError
 
@@ -353,6 +352,7 @@ class TemplateParser(object):
         self.content = t_content
 
     def parse(self, text):
+        from ..expose import url
         # Basically, r_tag.split will split the text into
         # an array containing, 'non-tag', 'tag', 'non-tag', 'tag'
         # so if we alternate this variable, we know
