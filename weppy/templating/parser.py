@@ -3,7 +3,7 @@
     weppy.templating.parser
     -----------------------
 
-    Provides the templating system for weppy.
+    Provides the templating parser.
 
     :copyright: (c) 2015 by Giovanni Barillari
 

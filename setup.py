@@ -25,7 +25,7 @@ setup(
     description='The web framework for humans',
     long_description=__doc__,
     packages=['weppy', 'weppy.language', 'weppy.language.plurals',
-              'weppy.tools', 'weppy.libs'],
+              'weppy.templating', 'weppy.tools', 'weppy.libs'],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
