@@ -225,8 +225,12 @@ class Frame(object):
     @property
     def first_line_no(self):
         l = self.lineno > 5 and (self.lineno - 5) or 1
+        if l > len(self.sourcelines):
+            l = 1
         while not self.sourcelines[l-1]:
             l += 1
+            if l > len(self.sourcelines):
+                break
         return l
 
     @property

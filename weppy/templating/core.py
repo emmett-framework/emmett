@@ -78,7 +78,7 @@ class Templater(object):
             parser = TemplateParser(self, source, name=filename,
                                     context=context, path=path)
             code = compile(str(parser), filename, 'exec')
-            parserdata = sdict(nodes=parser.content.nodes,
+            parserdata = sdict(content=parser.content,
                                blocks=parser.content.blocks)
             self.cache.set(filename, source, code, parserdata)
         return code, parserdata

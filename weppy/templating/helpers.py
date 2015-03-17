@@ -39,7 +39,7 @@ class TemplateReference(object):
         else:
             template_frame = traceback.extract_tb(tb, 2)[-1]
             dummy_lineno = template_frame[1]
-        self.lines = self.get_template_reference(parserdata.nodes,
+        self.lines = self.get_template_reference(parserdata.content,
                                                  parserdata.blocks)
         self.template, self.lineno = self.match_template(dummy_lineno)
 
@@ -57,9 +57,9 @@ class TemplateReference(object):
         return str(self.exc_value)
 
     @staticmethod
-    def get_template_reference(nodes, blocks):
+    def get_template_reference(content, blocks):
         lines = []
-        for node in nodes:
+        for node in content.nodes:
             if isinstance(node, BlockNode):
                 if node.name in blocks:
                     lines += TemplateReference.get_template_reference(
