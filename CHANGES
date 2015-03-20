@@ -1,6 +1,17 @@
 weppy changelog
 ===============
 
+Next
+----
+
+(Release date to be announced, codename to be selected)
+
+- Various bugfixes
+- Implemented streaming of pyDAL 'blob' fields
+- Better implementation of `@virtualfield` and `@fieldmethod`
+- Added caching system to templates
+
+
 Version 0.2
 -----------
 

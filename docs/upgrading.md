@@ -19,6 +19,14 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 0.3
+-----------
+
+weppy 0.3 introduces a caching system for the templates. This change add a new configuration value under `app.config.templates_auto_reload` which is default set to `False`.   
+This means that, under default behavior, in production weppy won't re-process the template files when modified, unless you reload the wsgi process. If you want to have the old behavior, so that weppy re-process the template file when it's modified, simply set the `templates_auto_reload` variable to `True`.   
+Also remind that when your application is in *debug* mode – which means when it's loaded with the builtin wsgi server – the configuration setting is ignored and templates are auto reloaded by default.
+
+
 Version 0.2
 -----------
 
