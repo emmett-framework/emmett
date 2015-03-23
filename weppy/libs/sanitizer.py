@@ -35,8 +35,8 @@ class XssCleaner(HTMLParser):
                         'li', 'ol', 'ul', 'p', 'cite',
                         'code', 'pre', 'img/',],
         allowed_attributes={
-            'a': ['href', 'title'], 
-            'img': ['src', 'alt'], 
+            'a': ['href', 'title'],
+            'img': ['src', 'alt'],
             'blockquote': ['type']},
         fmt=AbstractFormatter,
         strip_disallowed=False
@@ -118,7 +118,8 @@ class XssCleaner(HTMLParser):
                 bt += ' /'
             bt += '>'
             self.result += bt
-            self.open_tags.insert(0, tag)
+            if tag not in self.requires_no_close:
+                self.open_tags.insert(0, tag)
 
     def handle_endtag(self, tag, attrs):
         bracketed = '</%s>' % tag
@@ -185,7 +186,7 @@ class XssCleaner(HTMLParser):
 
 
 def sanitize(
-    text, 
+    text,
     permitted_tags=['a', 'b', 'blockquote', 'br/', 'i', 'li',
                     'ol', 'ul', 'p', 'cite', 'code', 'pre',
                     'img/', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
