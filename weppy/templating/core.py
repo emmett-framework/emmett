@@ -72,6 +72,10 @@ class Templater(object):
         return reduce(lambda s, e: e.preprocess(s, filename),
                       self.renders, str(source))
 
+    def inject(self, context):
+        for extension in self.renders:
+            extension.inject(context)
+
     def parse(self, path, filename, source, context):
         code, parserdata = self.cache.get(filename, source)
         if not code:
@@ -90,6 +94,7 @@ class Templater(object):
             context['load_component'] = load_component
         context['_DummyResponse_'] = DummyResponse()
         code, parserdata = self.parse(path, filename, source, context)
+        self.inject(context)
         try:
             exec code in context
         except:
@@ -126,4 +131,4 @@ def render(application, path, template, context):
         raise HTTP(404, body="Invalid view\n")
     tsource = templater.load(filepath)
     tsource = templater.prerender(tsource, tname)
-    return templater.render(tsource, tpath, tname, context.copy())
+    return templater.render(tsource, tpath, tname, context)

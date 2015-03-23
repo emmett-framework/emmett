@@ -37,6 +37,9 @@ class TemplateExtension(object):
     def preprocess(self, source, name):
         return source
 
+    def inject(self, context):
+        pass
+
 
 class TemplateLexer(object):
     def __init__(self, extension):
