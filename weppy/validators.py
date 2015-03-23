@@ -2070,29 +2070,32 @@ class isListOf(Validator):
         self.other = other
         self.minimum = minimum
         self.maximum = maximum
-        self.error_message = error_message or "Enter between %(min)g and %(max)g values"
+        self.error_message = error_message or \
+            "Enter between %(min)g and %(max)g values"
 
     def __call__(self, value):
         ivalue = value
         if not isinstance(value, list):
             ivalue = [ivalue]
-        if not self.minimum is None and len(ivalue) < self.minimum:
-            return (ivalue, _translate(self.error_message) % dict(min=self.minimum, max=self.maximum))
-        if not self.maximum is None and len(ivalue) > self.maximum:
-            return (ivalue, _translate(self.error_message) % dict(min=self.minimum, max=self.maximum))
+        ivalue = [i for i in ivalue if str(i).strip()]
+        if self.minimum is not None and len(ivalue) < self.minimum:
+            return (ivalue, _translate(self.error_message) % dict(
+                min=self.minimum, max=self.maximum))
+        if self.maximum is not None and len(ivalue) > self.maximum:
+            return (ivalue, _translate(self.error_message) % dict(
+                min=self.minimum, max=self.maximum))
         new_value = []
         other = self.other
         if self.other:
-            if not isinstance(other, (list,tuple)):
+            if not isinstance(other, (list, tuple)):
                 other = [other]
             for item in ivalue:
-                if item.strip():
-                    v = item
-                    for validator in other:
-                        (v, e) = validator(v)
-                        if e:
-                            return (ivalue, e)
-                    new_value.append(v)
+                v = item
+                for validator in other:
+                    (v, e) = validator(v)
+                    if e:
+                        return (ivalue, e)
+                new_value.append(v)
             ivalue = new_value
         return (ivalue, None)
 
