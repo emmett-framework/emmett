@@ -209,40 +209,53 @@ class Expose(object):
         return None, {}
 
     @staticmethod
-    def run_dispatcher():
+    def _after_dispatch(route):
+        #: call handlers `on_end` method
+        for handler in reversed(route.handlers):
+            handler.on_end()
+
+    @staticmethod
+    def dispatch():
         #: get the right exposed function
         request = current.request
         route, reqargs = Expose.match(request)
         if route:
             request.name = route.name
-            output = route.func(**reqargs)
+            try:
+                output = route.func(**reqargs)
+            except:
+                Expose._after_dispatch(route)
+                raise
             if output is None:
                 output = dict()
         else:
             raise HTTP(404, body="Invalid action\n")
         #: build the right output
         response = current.response
-        if isinstance(output, str):
-            response.output = [output]
-        elif isinstance(output, dict):
-            if 'current' not in output:
-                output['current'] = current
-            if 'url' not in output:
-                output['url'] = url
-            templatename = route.template.replace(
-                '.<ext>', Expose.application.template_default_extension)
-            output = render(Expose.application, route.template_path,
-                            templatename, output)
-            response.output = [output]
-        elif isinstance(output, TAG):
-            response.output = [output.xml()]
-        elif hasattr(output, '__iter__'):
-            response.output = output
-        else:
-            response.output = [str(output)]
-        #: call handlers `on_end` method
-        for handler in reversed(route.handlers):
-            handler.on_end()
+        try:
+            if isinstance(output, str):
+                response.output = [output]
+            elif isinstance(output, dict):
+                if 'current' not in output:
+                    output['current'] = current
+                if 'url' not in output:
+                    output['url'] = url
+                templatename = route.template.replace(
+                    '.<ext>', Expose.application.template_default_extension)
+                output = render(Expose.application, route.template_path,
+                                templatename, output)
+                response.output = [output]
+            elif isinstance(output, TAG):
+                response.output = [output.xml()]
+            elif hasattr(output, '__iter__'):
+                response.output = output
+            else:
+                response.output = [str(output)]
+        except:
+            Expose._after_dispatch(route)
+            raise
+        #: end the dispatching
+        Expose._after_dispatch(route)
 
     @staticmethod
     def static_versioning():

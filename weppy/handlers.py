@@ -67,7 +67,7 @@ class RequireHandler(Handler):
             flag = self.condition()
             if not flag:
                 from .http import redirect
-                if not self.otherwise is None:
+                if self.otherwise is not None:
                     if callable(self.otherwise):
                         return self.otherwise()
                     redirect(self.otherwise)
