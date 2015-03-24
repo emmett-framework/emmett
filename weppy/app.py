@@ -33,9 +33,9 @@ class App(object):
         if root_path is None:
             root_path = get_root_path(self.import_name)
         self.root_path = root_path
-        self.static_path = self.root_path+"/static"
-        self.template_path = self.root_path+"/"+template_folder
-        self.config_path = self.root_path+"/"+config_folder
+        self.static_path = os.path.join(self.root_path, "static")
+        self.template_path = os.path.join(self.root_path, template_folder)
+        self.config_path = os.path.join(self.root_path, config_folder)
         #: The click command line context for this application.
         self.cli = click.Group(self)
         #: Init the configuration

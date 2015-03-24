@@ -156,7 +156,7 @@ class Expose(object):
         #if self.name.startswith('.'):
         #    self.name = '%s%s' % (self.application, self.name)
         if self.template_folder:
-            self.template = self.template_folder+"/"+self.template
+            self.template = os.path.join(self.template_folder, self.template)
         self.template_path = self.template_path or self.folder
         wrapped_func = _wrapWithHandlers(self.handlers)(func)
         self.func = wrapped_func
