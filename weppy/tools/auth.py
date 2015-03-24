@@ -2023,35 +2023,7 @@ class AuthManager(Handler):
             if self.auth._auth:
                 del session.auth
 
-    def on_success(self):
+    def on_end(self):
         # set correct session expiration if requested by user
         if self.auth._auth and self.auth._auth.remember:
             session._expires_after(self.auth._auth.expiration)
-
-    def on_failure(self):
-        # run on_success to keep session state on errors
-        self.on_success()
-
-
-class ModelsAuth(Auth):
-    def __init__(self, app, db, usermodel, **kwargs):
-        # init auth without defining tables
-        kwargs['define_tables'] = False
-        Auth.__init__(self, app, db, **kwargs)
-        # load the user Model
-        _use_signature = kwargs.get('use_signature')
-        _migrate = kwargs.get('migrate')
-        _fake_migrate = kwargs.get('fake_migrate')
-        usermodel.auth = self
-        usermodel.db = self.db
-        user = usermodel(_migrate, _fake_migrate, _use_signature)
-        user.entity = self.table_user
-        # load user's definitions
-        getattr(user, '_AuthModel__define')()
-        # set reference in db for datamodel name
-        setattr(db, usermodel.__name__, user.entity)
-        self.entity = user.entity
-        if app.config.get('auth', {}).get('server', 'default') != "default":
-            self.settings.mailer.server = app.config.auth.server
-            self.settings.mailer.sender = app.config.auth.sender
-            self.settings.mailer.login = app.config.auth.login

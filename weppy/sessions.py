@@ -36,7 +36,7 @@ class SessionCookieManager(Handler):
             current.session = SessionData(expires=3600)
         #(current.response.flash, current.session.flash) = (current.session.flash, None)
 
-    def on_success(self):
+    def on_end(self):
         data = secure_dumps(sdict(current.session), self.key)
         response.cookies[self.cookie_data_name] = data
         response.cookies[self.cookie_data_name]['path'] = "/"
@@ -46,9 +46,6 @@ class SessionCookieManager(Handler):
             response.cookies[self.cookie_data_name]['secure'] = True
         if self.domain is not None:
             response.cookies[self.cookie_data_name]['domain'] = self.domain
-
-    def on_failure(self):
-        self.on_success()
 
 
 class SessionFSManager(Handler):
@@ -126,7 +123,7 @@ class SessionFSManager(Handler):
             sid = uuid()
             current.session = SessionData(sid=sid)
 
-    def on_success(self):
+    def on_end(self):
         if not current.session:
             self._delete(current.session)
             if current.session._modified:
@@ -145,9 +142,6 @@ class SessionFSManager(Handler):
             response.cookies[self.cookie_data_name]['secure'] = True
         if self.domain is not None:
             response.cookies[self.cookie_data_name]['domain'] = self.domain
-
-    def on_failure(self):
-        self.on_success()
 
 
 class SessionRedisManager(Handler):
@@ -171,7 +165,7 @@ class SessionRedisManager(Handler):
             sid = uuid()
             current.session = SessionData(sid=sid)
 
-    def on_success(self):
+    def on_end(self):
         if not current.session:
             self.redis.delete(self.prefix+current.session._sid)
             if current.session._modified:
@@ -193,6 +187,3 @@ class SessionRedisManager(Handler):
             response.cookies[self.cookie_data_name]['secure'] = True
         if self.domain is not None:
             response.cookies[self.cookie_data_name]['domain'] = self.domain
-
-    def on_failure(self):
-        self.on_success()

@@ -81,7 +81,8 @@ class RequireHandler(Handler):
 
 class Helper(Handler):
     def _inject(self, d):
-        exclude = ['on_start', 'on_success', 'on_failure', 'wrap_call']
+        exclude = ['on_start', 'on_end', 'on_success', 'on_failure',
+                   'wrap_call']
         attr_list = dir(self)
         for attr in attr_list:
             if attr.startswith('_') or attr in exclude:
