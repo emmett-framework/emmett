@@ -16,7 +16,6 @@
 import os
 import sys
 import click
-from .libs.rocket import Rocket
 
 
 def find_best_app(module):
@@ -185,11 +184,21 @@ class WeppyGroup(click.Group):
               help='The interface to bind to.')
 @click.option('--port', '-p', default=8000,
               help='The port to bind to.')
+@click.option('--reloader', default=True, help='Runs with reloader.')
 @pass_script_info
-def run_command(info, host, port):
+def run_command(info, host, port, reloader):
     app = info.load_app()
-    r = Rocket((host, port), 'wsgi', {'wsgi_app': app})
-    r.start()
+    app.debug = True
+    if os.environ.get('WEPPY_RUN_MAIN') != 'true':
+        app.log.info("> Serving weppy application %s" % app.import_name)
+        quit_msg = "(press CTRL+C to quit)"
+        app.log.info("> weppy application %s running on http://%s:%i %s" %
+                     (app.import_name, host, port, quit_msg))
+    if reloader:
+        from ._reloader import run_with_reloader
+        run_with_reloader(app, host, port)
+    else:
+        app._run(host, port)
 
 
 @click.command('shell', short_help='Runs a shell in the app context.')
@@ -205,7 +214,6 @@ def shell_command(info):
         #app.instance_path,
     )
     code.interact(banner=banner, local=app.make_shell_context())
-    pass
 
 
 cli = WeppyGroup(help="")

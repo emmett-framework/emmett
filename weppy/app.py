@@ -165,16 +165,26 @@ class App(object):
         #    rv.update(processor())
         return rv
 
-    def run(self, host=None, port=None):
+    def _run(self, host, port):
         from .libs.rocket import Rocket
+        r = Rocket((host, port), 'wsgi', {'wsgi_app': self})
+        r.start()
+
+    def run(self, host=None, port=None, reloader=True):
         if host is None:
             host = "127.0.0.1"
         if port is None:
             port = 8000
         self.debug = True
-        self.log.debug("Starting app server on %s:%s" % (host, port))
-        r = Rocket((host, port), 'wsgi', {'wsgi_app': self})
-        r.start()
+        if os.environ.get('WEPPY_RUN_MAIN') != 'true':
+            quit_msg = "(press CTRL+C to quit)"
+            self.log.info("> weppy application %s running on http://%s:%i %s" %
+                          (self.import_name, host, port, quit_msg))
+        if reloader:
+            from ._reloader import run_with_reloader
+            run_with_reloader(self, host, port)
+        else:
+            self._run(host, port)
 
     def wsgi_handler(self, environ, start_request):
         return error_handler(self, environ, start_request)
