@@ -28,18 +28,6 @@ def _default_validators(db, field):
 
     field_type, field_length = field.type, field.length
     requires = []
-
-    def ff(r, id):
-        row = r(id)
-        if not row:
-            return str(id)
-        elif hasattr(r, '_format') and isinstance(r._format, str):
-            return r._format % row
-        elif hasattr(r, '_format') and callable(r._format):
-            return r._format(row)
-        else:
-            return str(id)
-
     if field_type in (('string', 'text', 'password')):
         requires.append(_validators.hasLength(field_length))
     elif field_type == 'json':
@@ -62,11 +50,6 @@ def _default_validators(db, field):
             field_type.find('.') < 0 and \
             field_type[10:] in db.tables:
         referenced = db[field_type[10:]]
-
-        def repr_ref(id, row=None, r=referenced, f=ff):
-            return f(r, id)
-
-        field.represent = field.represent or repr_ref
         if hasattr(referenced, '_format') and referenced._format:
             requires = _validators.inDb(db, referenced._id, referenced._format)
             if field.unique:
@@ -78,24 +61,6 @@ def _default_validators(db, field):
             field_type.find('.') < 0 and \
             field_type[15:] in db.tables:
         referenced = db[field_type[15:]]
-
-        def list_ref_repr(ids, row=None, r=referenced, f=ff):
-            if not ids:
-                return None
-            from pydal.adapters import GoogleDatastoreAdapter
-            refs = None
-            db, id = r._db, r._id
-            if isinstance(db._adapter, GoogleDatastoreAdapter):
-                def count(values):
-                    return db(id.belongs(values)).select(id)
-                rx = range(0, len(ids), 30)
-                refs = reduce(lambda a, b: a & b, [count(ids[i:i+30])
-                              for i in rx])
-            else:
-                refs = db(id.belongs(ids)).select(id)
-            return (refs and ', '.join(f(r, x.id) for x in refs) or '')
-
-        field.represent = field.represent or list_ref_repr
         if hasattr(referenced, '_format') and referenced._format:
             requires = _validators.inDb(db, referenced._id, referenced._format,
                                         multiple=True)
@@ -106,11 +71,6 @@ def _default_validators(db, field):
         if not field.notnull:
             requires = _validators.isEmptyOr(requires)
         return requires
-    elif field_type.startswith('list:'):
-        def repr_list(values, row=None):
-            return', '.join(str(v) for v in (values or []))
-
-        field.represent = field.represent or repr_list
 
     if field.unique:
         requires.append(_validators.notInDb(db, field))
@@ -542,7 +502,7 @@ class AuthModel(Model):
     def __hide_all(self):
         alwaysvisible = ['first_name', 'last_name', 'password', 'email']
         for field in self.entity.fields:
-            if not field in alwaysvisible:
+            if field not in alwaysvisible:
                 self.entity[field].writable = self.entity[field].readable = \
                     False
 
