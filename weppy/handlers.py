@@ -49,6 +49,9 @@ class Handler(object):
     def wrap_call(self, func):
         return func
 
+    def on_end(self):
+        pass
+
 
 class RequireHandler(Handler):
     def __init__(self, condition=None, otherwise=None):

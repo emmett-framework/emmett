@@ -210,7 +210,7 @@ class Expose(object):
 
     @staticmethod
     def run_dispatcher():
-        " maps the path_info into a function call "
+        #: get the right exposed function
         request = current.request
         route, reqargs = Expose.match(request)
         if route:
@@ -220,14 +220,14 @@ class Expose(object):
                 output = dict()
         else:
             raise HTTP(404, body="Invalid action\n")
-
+        #: build the right output
         response = current.response
         if isinstance(output, str):
             response.output = [output]
         elif isinstance(output, dict):
-            if not 'current' in output:
+            if 'current' not in output:
                 output['current'] = current
-            if not 'url' in output:
+            if 'url' not in output:
                 output['url'] = url
             templatename = route.template.replace(
                 '.<ext>', Expose.application.template_default_extension)
@@ -240,6 +240,9 @@ class Expose(object):
             response.output = output
         else:
             response.output = [str(output)]
+        #: call handlers `on_end` method
+        for handler in reversed(route.handlers):
+            handler.on_end()
 
     @staticmethod
     def static_versioning():
@@ -269,9 +272,9 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
     if path == 'static':
         path = '/static'
     # routes urls with 'dot' notation
-    if not '/' in path:
+    if '/' not in path:
         # urls like 'function' refers to same module
-        if not '.' in path:
+        if '.' not in path:
             namespace = Expose.application.config.url_default_namespace or \
                 Expose.application.name
             path = namespace + "." + path

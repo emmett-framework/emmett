@@ -91,11 +91,12 @@ class DALHandler(Handler):
 
     def on_success(self):
         self.db.commit()
-        #self.db._adapter.close()
 
     def on_failure(self):
         self.db.rollback()
-        #self.db._adapter.close()
+
+    def on_end(self):
+        self.db._adapter.close()
 
 
 class DAL(_pyDAL):
