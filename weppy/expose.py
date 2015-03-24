@@ -131,7 +131,7 @@ class Expose(object):
 
     def __call__(self, func):
         self.func_name = func.__name__
-        self.filename = func.__code__.co_filename
+        self.filename = os.path.realpath(func.__code__.co_filename)
         #self.mtime = os.path.getmtime(self.filename)
         self.hostname = self.hostname or \
             Expose.application.config.hostname_default
