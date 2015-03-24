@@ -30,9 +30,9 @@ def dynamic_handler(app, environ, start_response):
         environ["wpp.apppath"] = app.root_path
         environ["wpp.appnow"] = app.now_reference
         current.initialize(environ)
-        #: distpatch request
+        #: dispatch request
         response = current.response
-        app.expose.run_dispatcher()
+        app.expose.dispatch()
         #: build HTTP response
         http = HTTP(response.status, response.output, response.headers,
                     response.cookies)
