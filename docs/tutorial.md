@@ -155,6 +155,7 @@ def setup():
     admins = auth.add_group("admin")
     # add user to admins group
     auth.add_membership(admins, user.id)
+    db.commit()
 ```
 
 The code is quite self-explanatory: it will add an user who can sign in with the "walter@massivedynamics.com" email and "pocketuniverse" as the password, then create an admin group and add the *Walter* user to this group.
@@ -258,7 +259,7 @@ We should create a template for every function we exposed. But, since the weppy 
     </head>
     <body>
         <div class="page">
-            <h1>Flaskr</h1>
+            <a href="/" class="title"><h1>Bloggy</h1></a>
             <div class="nav">
             {{if not current.session.auth:}}
                 <a href="{{=url('account', 'login')}}">log in</a>
@@ -287,6 +288,7 @@ Let's do that, starting with *index.html* (which will be, *obviously*, used with
     <li>
         <h2>{{=post.title}}</h2>
         <a href="{{=url('one', post.id)}}">Read more</a>
+        <hr />
     </li>
 {{pass}}
 {{if not posts:}}
@@ -305,12 +307,12 @@ Then the *one.html* template which is the most complex:
 <br />
 <hr />
 <h4>Comments</h4>
-{{if current.session.auth.user:}}
+{{if current.session.auth:}}
 <h5>Write a comment:</h5>
 {{=form}}
 {{pass}}
 <ul class="comments">
-{{for comment in comments}}:
+{{for comment in comments:}}
     <li>
         {{=comment.text}}
         <br />
@@ -346,19 +348,21 @@ Some styling
 Now that everything works, it's time to add some style to bloggy. We just create a *style.css* file inside *static* folder and write down something like that:
 
 ```css
-body          { font-family: sans-serif; background: #eee; }
-a, h1, h2     { color: #377ba8; }
-h1, h2        { font-family: 'Georgia', serif; margin: 0; }
-h1            { border-bottom: 2px solid #eee; }
-h2            { font-size: 1.2em; }
+body           { font-family: sans-serif; background: #eee; }
+a, h1, h2      { color: #377ba8; }
+h1, h2, h4, h5 { font-family: 'Georgia', serif; }
+h1             { border-bottom: 2px solid #eee; }
+h2             { font-size: 1.2em; }
 
-.page         { margin: 2em auto; width: 35em; border: 5px solid #ccc;
-                padding: 0.8em; background: white; }
-.posts        { list-style: none; margin: 0; padding: 0; }
-.posts li     { margin: 0.8em 1.2em; }
-.posts li h2  { margin-left: -1em; }
-.nav          { text-align: right; font-size: 0.8em; padding: 0.3em;
-                margin-bottom: 1em; background: #fafafa; }
+.page          { margin: 2em auto; width: 35em; border: 5px solid #ccc;
+                 padding: 0.8em; background: white; }
+.title         { text-decoration: none; }
+.posts         { list-style: none; margin: 0; padding: 0; }
+.posts li      { margin: 0.8em 1.2em; }
+.posts li h2   { margin-left: -1em; }
+.posts li hr   { margin-left: -0.8em; }
+.nav           { text-align: right; font-size: 0.8em; padding: 0.3em;
+                 margin-bottom: 1em; background: #fafafa; }
 ```
 
 Enjoy

@@ -1,0 +1,15 @@
+{{extend 'layout.html'}}
+
+<a href="{{=url('new_post')}}">Create a new post</a>
+<ul class="posts">
+{{for post in posts:}}
+    <li>
+        <h2>{{=post.title}}</h2>
+        <a href="{{=url('one', post.id)}}">Read more</a>
+        <hr />
+    </li>
+{{pass}}
+{{if not posts:}}
+    <li><em>No posts here so far.</em></li>
+{{pass}}
+</ul>

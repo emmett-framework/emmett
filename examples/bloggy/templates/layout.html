@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Bloggy</title>
+        {{include_meta}}
+        {{include_helpers}}
+        {{include_static 'style.css'}}
+    </head>
+    <body>
+        <div class="page">
+            <a href="/" class="title"><h1>Bloggy</h1></a>
+            <div class="nav">
+            {{if not current.session.auth:}}
+                <a href="{{=url('account', 'login')}}">log in</a>
+            {{else:}}
+                <a href="{{=url('account', 'logout')}}">log out</a>
+            {{pass}}
+            </div>
+            {{block main}}
+            {{include}}
+            {{end}}
+        </div>
+    </body>
+</html>

@@ -1,0 +1,22 @@
+{{extend 'layout.html'}}
+
+<h1>{{=post.title}}</h1>
+{{=post.text}}
+<br />
+<hr />
+<h4>Comments</h4>
+{{if current.session.auth:}}
+<h5>Write a comment:</h5>
+{{=form}}
+{{pass}}
+<ul class="comments">
+{{for comment in comments:}}
+    <li>
+        {{=comment.text}}
+        <br />
+        <em>by {{=comment.author.first_name}} on {{=comment.date}}</em>
+    </li>
+{{else:}}
+    <li><em>No comments here so far.</em></li>
+{{pass}}
+</ul>

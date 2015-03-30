@@ -1,0 +1,15 @@
+body           { font-family: sans-serif; background: #eee; }
+a, h1, h2      { color: #377ba8; }
+h1, h2, h4, h5 { font-family: 'Georgia', serif; }
+h1             { border-bottom: 2px solid #eee; }
+h2             { font-size: 1.2em; }
+
+.page          { margin: 2em auto; width: 35em; border: 5px solid #ccc;
+                 padding: 0.8em; background: white; }
+.title         { text-decoration: none; }
+.posts         { list-style: none; margin: 0; padding: 0; }
+.posts li      { margin: 0.8em 1.2em; }
+.posts li h2   { margin-left: -1em; }
+.posts li hr   { margin-left: -0.8em; }
+.nav           { text-align: right; font-size: 0.8em; padding: 0.3em;
+                 margin-bottom: 1em; background: #fafafa; }
