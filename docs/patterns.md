@@ -110,7 +110,7 @@ app.run()
 ```
 
 > **A note regarding circular imports:**   
-> Every Python developer hates them, and yet we just added some of them: *views.py* depends on *\__init\__.py*, but *\__init\__.py* imports *views.py*. In general this is a bad idea, but here it is actually fine: we are not actually using the views in *\__init\__.py* but just ensuring the module is imported to expose te functions; also we are doing that at the bottom of the file.
+> Every Python developer hates them, and yet we just added some of them: *views.py* depends on *\__init\__.py*, but *\__init\__.py* imports *views.py*. In general this is a bad idea, but here it is actually fine: we are not actually using the views in *\__init\__.py* but just ensuring the module is imported to expose the functions; also we are doing that at the bottom of the file.
 
 MVC pattern
 -----------

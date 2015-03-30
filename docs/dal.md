@@ -180,7 +180,45 @@ validators = {
         datetime(2014, 10, 15))
 }
 ```
-you can also define your custom validators:
+
+Here is the complete list of the validators shipped with weppy:
+
+| validator | description |
+| --- | --- |
+| isAlphanumeric | ensure the value is alphanumeric |
+| isIntInRange | ensure the value is an integer bewteen 2 values |
+| isFloatInRange | ensure the value is an float bewteen 2 values |
+| isDecimalInRange | ensure the value is a decimal bewteen 2 values |
+| isTime | ensure the value is a time |
+| isDate | ensure the value is a date |
+| isDateInRange | ensure the value is a date between a defined range |
+| isDatetime | ensure the value is a `datetime` object |
+| isDatetimeInRange | ensure the value is a `datetime` object between a range |
+| isEmail | ensure the value is an email |
+| isEmailList | ensure the value is a list of emails |
+| isUrl | ensure the value is an url |
+| isJSON | ensure the value is a JSON object |
+| isImage | ensure the value points to an image |
+| isIP | ensure the value is a valid IP |
+| isListOf | ensure that all the values passes the given conditions |
+| isStrong | ensure the value has a good complexity |
+| isEmptyOr | ensure the value is empty or respond to another condition |
+| isntEmpty | ensure the value is not empty |
+| inDb | ensure the value is in the database (*reference* fields) |
+| notInDb | ensure the value is unique |
+| inSet | ensure the value is one of the given list or set |
+| hasLength | ensure the value has a defined length |
+| Equals | ensure the value equals something |
+| Matches | ensure the value matches a regular expression |
+| FilenameMatches | ensure the value matches name and extension given |
+| anyOf | ensure the value respond to any of the given conditions |
+| Cleanup | cleanup special characters from value |
+| Crypt | crypt the value |
+| Lower | converts value to lowercase |
+| Upper | converts value to uppercase |
+| Slug | converts value to a *slug* |
+
+You can also define your custom validators:
 
 ```python
 class MyValidator(object):
@@ -193,7 +231,7 @@ class MyValidator(object):
         # if value is not ok
         return (value, "my error")
 ```
-In general a validator is a class returning the tuple `(value, error)` on call.
+as you can see, in general, a validator is a class returning the tuple `(value, error)` when called.
 
 ### Visibility
 
