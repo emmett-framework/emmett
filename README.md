@@ -36,6 +36,7 @@ Also, please keep in mind that currently **weppy** doesn't provide support to py
 We are very glad if you contribute to the project in one or all of these ways:
 
 * Talking about **weppy** with firends and on the web
+* Paticipating on [weppy users group](https://groups.google.com/forum/#!forum/weppy-talk)
 * Adding issues and features requests here on github
 * Participating in discussions about new features and issues here on github
 * Improving the documentation
