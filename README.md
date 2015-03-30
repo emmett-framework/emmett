@@ -19,7 +19,7 @@ The documentation is available at [http://weppy.org/docs](http://weppy.org/docs)
 
 ## Examples
 
-Examples will be soon available on this repository. In the meantime take a look at [H-Funding](https://github.com/gi0baro/h-funding), which can give you a deepen view on weppy and its features.
+The "bloggy" example described in the [Tutorial](http://weppy.org/docs/latest/tutorial) is available under the *examples* folder. While we're still populating this folder with more examples, you can take a look also at [H-Funding](https://github.com/gi0baro/h-funding), which can give you a deepen view on weppy's features.
 
 ## Status of the project
 
@@ -29,13 +29,13 @@ weppy is currently released in beta stage.
 * That the code may contain *noteworthy* bugs
 * That you can use it on production but cannot blame the developers if something goes wrong
 
-Also, please keep in mind that currently **weppy** doesn't provide support to python 3.
+Also, please keep in mind that currently weppy doesn't provide support to python 3.
 
 ## How can I help?
 
 We are very glad if you contribute to the project in one or all of these ways:
 
-* Talking about **weppy** with firends and on the web
+* Talking about weppy with firends and on the web
 * Paticipating on [weppy users group](https://groups.google.com/forum/#!forum/weppy-talk)
 * Adding issues and features requests here on github
 * Participating in discussions about new features and issues here on github
