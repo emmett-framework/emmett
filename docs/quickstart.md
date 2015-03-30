@@ -437,10 +437,6 @@ weppy uses the url to determine the language instead of the HTTP "Accept-Languag
 
 To see more about languages and dive into translator features, read the complete documentation available in the [Languages chapter](.languages).
 
-Debugging and logging
----------------------
-*Section under writing*
-
 Go ahead
 --------
 

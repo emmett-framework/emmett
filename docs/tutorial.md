@@ -1,0 +1,357 @@
+Tutorial
+========
+
+So, you want to develop an application with Python and weppy, huh?   
+Here you have the chance to learn that by example. In this tutorial we will create a simple microblog application, using weppy and SQLite as database which comes out of the box with Python, so you won't need anything else.
+
+Bloggy: a micro blog
+--------------------
+
+We will call our blogging application *bloggy* and, basically, we want it to do the following things:
+
+* let users signup and then sign in and out with their own credentials
+* let only an admin user to add new posts (consisting of a title and a text body)
+* shows all posts' titles in reverse order (newest on top) to everyone on the index page
+* show the entire post on a specific page and allow registered users to comment
+
+> – hem, dude.. seems quite a lot of stuffs for a "micro" blogging application   
+> – *relax, you'll see that every feature will need just a small time to be implemented with weppy*
+
+Application structure
+---------------------
+
+So, let's start from the basis. The directory structure:
+
+```
+/bloggy
+    /static
+    /templates
+```
+
+The *bloggy* folder won't be a python package, but just something where we drop our files. In the next steps we will build our application with a single python file, since it's small.   
+The files inside the *static* folder will be available to clients via HTTP. This is the place where you should put your css and javascript files. The templates you create later in the tutorial for the application will, obviously, go in the *templates* directory.
+
+So, after you created the above folders, write down a *bloggy.py* file inside your *bloggy* application:
+
+```python
+from weppy import App
+
+app = App(__name__)
+```
+
+Then you should have this structure:
+
+```
+/bloggy
+    bloggy.py
+    /static
+    /templates
+```
+
+Now you can test your application simply issuing the following command (inside the *bloggy* folder):
+
+```bash
+weppy --app bloggy.py run
+```
+
+You will see a message telling you that server has started along with the address at which you can access it.
+
+When you head over to the server in your browser you will get a 404 page not found error because we don’t have any exposed function yet. But we will focus on that a little later. First we should create the database for the application.
+
+Database schema
+---------------
+
+The first step in coding our application is to create the database schema. In bloggy we would need at least 4 tables:
+
+* The users table
+* A users' groups/permission table (to allow only the admin user to write posts)
+* The posts table
+* The comments table
+
+Now, this sounds complicated, but actually it's not. In fact, we can actually skip all the schema about users since weppy includes an authorization module that automatically creates the tables we need.   
+So, how we build our schema? We will use the default `AuthModel` class for the users' related tables, which will create the `auth_user` table, and the `Model` class for the other tables:
+
+```python
+from weppy import request, session
+from weppy.dal import Field, Model, AuthModel
+
+class User(AuthModel):
+    # will create "auth_user" table and groups/permissions ones
+    pass
+
+class Post(Model):
+    tablename = "posts"
+    fields = [
+        Field("author", "reference auth_user",
+              default=lambda: session.auth.user.id),
+        Field("title"),
+        Field("text", "text"),
+        Field("date", "datetime", default=lambda: request.now)
+    ]
+    visibility = {
+        "author": (False, False),
+        "date": (False, False)
+    }
+
+class Comment(Model):
+    tablename = "comments"
+    fields = [
+        Field("author", "reference auth_user",
+              default=lambda: session.auth.user.id),
+        Field("post", "reference posts"),
+        Field("text", "text"),
+        Field("date", "datetime", default=lambda: request.now)
+    ]
+    visibility = {
+        "author": (False, False),
+        "post": (False, False),
+        "date": (False, False)
+    }
+```
+
+That's it. You can see we defined some *reference* fields, which is simply a relationships between the tables, so we have these conditions:
+
+* a post always have an author, and an author can have *n* posts
+* a comment always have an author and always refers to a post, and a post can have *n* comments
+
+Moreover, you can se we have set some *default* values (like the dates and the authors) and we hidden some fields to the users: as you can easily understand, it will be pointless have an *author* field if the user can set this value to whatever he or she want, so we're telling to weppy to auto-set those values to the right ones.
+
+Init the database and the auth module
+-------------------------------------
+
+We've defined our schema, and now it's time to add the database and the authorization system to bloggy. It's as simple as writing:
+
+```python
+from weppy import DAL
+from weppy.tools import Auth
+
+db = DAL(app)
+auth = Auth(app, db, usermodel=User)
+db.define_models([Post, Comment])
+```
+
+But wait, how we add the admin user who can write the posts? We can write a `setup` function which allow us to do that. Let's write:
+
+```python
+def setup():
+    # create the user
+    user = db.User.validate_and_insert(
+        email="walter@massivedynamics.com",
+        first_name="Walter",
+        last_name="Bishop",
+        password="pocketuniverse"
+    )
+    # create an admin group
+    admins = auth.add_group("admin")
+    # add user to admins group
+    auth.add_membership(admins, user.id)
+```
+
+The code is quite self-explanatory: it will add an user who can sign in with the "walter@massivedynamics.com" email and "pocketuniverse" as the password, then create an admin group and add the *Walter* user to this group.
+
+So you can just start a python shell and run:
+
+```python
+>>> from bloggy import setup
+>>> setup()
+```
+
+And we have everything ready to start writing and *exposing* our functions.
+
+Exposing functions
+------------------
+
+The first thing we need to do, just a moment before writing the functions that will handle the clients' requests, is to add the database and authorization handlers to our application, so that we can use them with our functions following the request flow. 
+Moreover, to use the authorization module, we need to add to the application's handlers a sessions manager too.   
+In this tutorial, the cookie support for session will be enough (we will use "Walternate" as a secret key for encrypting cookies):
+
+```python
+from weppy.sessions import SessionCookieManager
+app.expose.common_handlers = [
+    SessionCookieManager('Walternate'),
+    db.handler, auth.handler
+]
+```
+
+Then we can start writing the function for our index page, that will list all the posts in reverse chronological order (so the newest ones will be the first):
+
+```python
+@app.expose("/")
+def index():
+    posts = db(db.Post.id > 0).select(orderby=~db.Post.date)
+    return dict(posts=posts)
+```
+
+and, since in the list we will show up only the title of the posts, we also write down a function for the detail of a single post:
+
+```python
+from weppy import abort
+
+@app.expose("/post/<int:pid>")
+def one(pid):
+    def _validate_comment(form):
+        # manually set post id in comment form
+        form.vars.post = pid
+    # get post and return 404 if doesn't exist
+    post = db.Post(id=pid)
+    if not post:
+        abort(404)
+    # get comments and create a form
+    comments = db(db.Comment.post == post.id).select(orderby=~db.Comment.date)
+    form = Comment.form(onvalidation=_validate_comment)
+    return locals()
+```
+
+as you can see, the `one` function will show up the post text, the comments users have wrote about it, and a commenting form.
+
+We also need to expose a function to write posts, and it will be available only to users in the "admin" group, thanks to the `requires` decorator:
+
+```python
+from weppy import redirect, url
+from weppy.tools import requires
+
+@app.expose("/new")
+@requires(lambda: auth.has_membership('admin'), url('index'))
+def new_post():
+    form = Post.form()
+    if form.accepted:
+        redirect(url('one', form.vars.id))
+    return dict(form=form)
+```
+
+as you can see, if a user try to open up the "/new" address without the membership of the *admin* group, weppy will redirect them to the index page.
+
+Finally, we should expose an *account* function to let users signup and sign in on bloggy:
+
+```python
+@app.expose('/account(/<str:f>)?(/<str:k>)?')
+def account(f, k):
+    form = auth(f, k)
+    return dict(form=form)
+```
+
+Now that we have all the main code of our application ready to work, we need the templates to render the content to the clients.
+
+The templates
+-------------
+
+We should create a template for every function we exposed. But, since the weppy templating system supports blocks and nesting, and we don't really want to repeat ourselves in writing code, we will start with a main layout file under *templates/layout.html*, and we will extend it with the functions' templates:
+
+```html
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Bloggy</title>
+        {{include_meta}}
+        {{include_helpers}}
+        {{include_static 'style.css'}}
+    </head>
+    <body>
+        <div class="page">
+            <h1>Flaskr</h1>
+            <div class="nav">
+            {{if not current.session.auth:}}
+                <a href="{{=url('account', 'login')}}">log in</a>
+            {{else:}}
+                <a href="{{=url('account', 'logout')}}">log out</a>
+            {{pass}}
+            </div>
+            {{block main}}
+            {{include}}
+            {{end}}
+        </div>
+    </body>
+</html>
+```
+
+All the templates we will create from now, will start with an `extend` instruction, and all their contents will be injected on the `include` instruction of the main layout.
+
+Let's do that, starting with *index.html* (which will be, *obviously*, used with our `index` function):
+
+```html
+{{extend 'layout.html'}}
+
+<a href="{{=url('new_post')}}">Create a new post</a>
+<ul class="posts">
+{{for post in posts:}}
+    <li>
+        <h2>{{=post.title}}</h2>
+        <a href="{{=url('one', post.id)}}">Read more</a>
+    </li>
+{{else:}}
+    <li><em>No posts here so far.</em></li>
+{{pass}}
+</ul>
+```
+
+Then the *one.html* template which is the most complex:
+
+```html
+{{extend 'layout.html'}}
+
+<h1>{{=post.title}}</h1>
+{{=post.text}}
+<br />
+<hr />
+<h4>Comments</h4>
+{{if current.session.auth.user:}}
+<h5>Write a comment:</h5>
+{{=form}}
+{{pass}}
+<ul class="comments">
+{{for comment in comments}}:
+    <li>
+        {{=comment.text}}
+        <br />
+        <em>by {{=comment.author.first_name}} on {{=comment.date}}</em>
+    </li>
+{{else:}}
+    <li><em>No comments here so far.</em></li>
+{{pass}}
+</ul>
+```
+
+The two templates remaining are quite simple and similar, since they will only show up a form. So, the first *new_post.html* will be just like:
+
+```html
+{{extend 'layout.html'}}
+
+<h1>Create a new post</h1>
+{{=form}}
+```
+
+and *account.html* will be:
+
+```html
+{{extend 'layout.html'}}
+
+<h1>Account</h1>
+{{=form}}
+```
+
+Some styling
+------------
+
+Now that everything works, it's time to add some style to bloggy. We just create a *style.css* file inside *static* folder and write down something like that:
+
+```css
+body          { font-family: sans-serif; background: #eee; }
+a, h1, h2     { color: #377ba8; }
+h1, h2        { font-family: 'Georgia', serif; margin: 0; }
+h1            { border-bottom: 2px solid #eee; }
+h2            { font-size: 1.2em; }
+
+.page         { margin: 2em auto; width: 35em; border: 5px solid #ccc;
+                padding: 0.8em; background: white; }
+.posts        { list-style: none; margin: 0; padding: 0; }
+.posts li     { margin: 0.8em 1.2em; }
+.posts li h2  { margin-left: -1em; }
+.nav          { text-align: right; font-size: 0.8em; padding: 0.3em;
+                margin-bottom: 1em; background: #fafafa; }
+```
+
+Enjoy
+-----
+
+Done. Now you have a working blogging application written with weppy.   
+So, what's next? Now you can read the [complete documentation](./) and deepenly explore all the features available in weppy.
