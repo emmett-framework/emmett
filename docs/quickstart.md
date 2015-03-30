@@ -291,8 +291,10 @@ class MyHandler(Handler):
         # code
     def on_failure(self):
         # code
+    def on_end(self):
+        # code
 ```
-As you can see `Handler` provide methods to run your code before the request is processed by your function (with the `on_start` method) and after your function were executed, providing different methods depending on what happened on your function: if an exception is occurred weppy will call the `on_failure` method, otherwise the `on_success` method.
+As you can see `Handler` provide methods to run your code before the request is processed by your function (with the `on_start` method) and after your function were executed, providing different methods depending on what happened on your function: if an exception is occurred weppy will call the `on_failure` method, otherwise the `on_success` method. The `on_end` method is **always** called after every request has been processed, in particular: *after* the response has been created and *before* sending it to the client.
 
 To register your handler to a function you just need to write:
 
@@ -301,6 +303,7 @@ To register your handler to a function you just need to write:
 def f():
     #code
 ```
+
 And if you need to register your handler to all your application functions, you can omit the handler from the `expose()` decorator writing instead:
 
 ```python

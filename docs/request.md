@@ -105,10 +105,25 @@ class MyHandler(Handler):
         # code
     def on_failure(self):
         # code
+    def on_end(self):
+        # code
 ```
-As you can see `Handler` provide methods to run your code before the request is processed by your function (with the `on_start` method) and after your function were executed, providing different methods depending on what happened on your function: if an exception is occurred weppy will call the `on_failure` method, otherwise the `on_success` method.
+As you can see `Handler` provide methods to run your code before the request is processed by your function (with the `on_start` method) and after your function were executed, providing different methods depending on what happened on your function: if an exception is occurred weppy will call the `on_failure` method, otherwise the `on_success` method. The `on_end` method is **always** called after every request has been processed, in particular: *after* the response has been created and *before* sending it to the client.
 
-To register your handler to a function you just need to write:
+To better understand the usage of all these methods, let's assume to write a database handler, so that it will connect to the database when a request arrive, will do a commit or a rollback depending on what happened during the request and finally will close the connection:
+
+```python
+class DBHandler(Handler):
+    def on_start(self):
+        # connect to the db
+    def on_success(self):
+        # commit to the db
+    def on_failure(self):
+        # rollback the operations
+    def on_end(self):
+        # close the connection
+```
+Now, to register your handler to a function you just need to write:
 
 ```python
 @app.expose("/url", handlers=[MyHandler()])
