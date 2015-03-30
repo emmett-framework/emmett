@@ -11,6 +11,7 @@ Next
 - Better implementation of `@virtualfield` and `@fieldmethod`
 - Added caching system to templates
 - Added auto-reloader for builtin wsgi server
+- Added `on_end` method to `Handler` class
 
 
 Version 0.2
