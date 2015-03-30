@@ -116,7 +116,8 @@ def post_by(author):
 
 Now, let's see the complete list of attributes and helpers you can use with models.
 
-### Model attributes
+Model attributes
+----------------
 
 As you have seen in the example, when you define your model class, the first step you should do is to define the `tablename` and the `fields` attributes, which assign the name for the table in your DBMS, and the properties of your entity.
 
@@ -129,7 +130,7 @@ class MyModel(Model):
         Field('two')]
 ```
 
-#### Fields
+### Fields
 The `fields` attribute has to be a list of `Field` objects. These objects define your entity's properties, so in general you would write the name of the property, the type and some additional parameters:
 
 ```python
@@ -168,7 +169,7 @@ Available types for Field definition are:
 
 Now, for the complete list of parameters accepted by `Field` class we encourage you to take a look at the [official pyDAL documentation](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Field-constructor).
 
-#### Validators
+### Validators
 
 `validators` attribute is a `dict` mapping the names of the fields and the validator imported from `weppy.validators` you want to apply. They will be used to validate the forms created from the models on the user input:
 
@@ -194,7 +195,7 @@ class MyValidator(object):
 ```
 In general a validator is a class returning the tuple `(value, error)` on call.
 
-#### Visibility
+### Visibility
 
 Visibility helps you to hide some attributes to users when you create forms:
 
@@ -205,7 +206,7 @@ visibility = {
 ```
 where the first value of the tuple define if the field should be visible, and the second if the field should be writable by user. By default, all fields are defined with visibility `(True, True)`.
 
-#### Labels
+### Labels
 
 Labels are useful to produce good titles for your fields in forms:
 
@@ -216,7 +217,7 @@ labels = {
 ```
 The labels will decorate the input fields in your forms.
 
-#### Comments
+### Comments
 
 As for the labels, comments are useful to produce hints or helping blocks for your fields in forms:
 
@@ -226,7 +227,7 @@ comments = {
 }
 ```
 
-#### Updates
+### Updates
 As for the `default` value we've seen before, `updates` helps you to set the default value for the field on record updates:
 
 ```python
@@ -235,7 +236,7 @@ updates = {
 }
 ```
 
-#### Representation
+### Representation
 
 Sometimes you need to give a better representation for the value of your entity:
 
@@ -250,7 +251,7 @@ and you can render it using:
 db.MyModel.started.represent(record, record.started)
 ```
 
-#### Widgets
+### Widgets
 
 Widgets are used to produce the relevant input part in the form produced from your model. Every `Field` object has a default widget depending on the type you defined, for example the *datetime* has an `<input>` html tag of type *text*. When you need to customize the look of your input parts in the form, you can use your defined widgets and pass them to the model with the appropriate attribute:
 
@@ -267,16 +268,18 @@ def my_custom_widget(field, value):
     return myhtmlinput
 ```
 
-### The 'setup' helper
+The 'setup' helper
+------------------
 
 Sometimes you need to access your model attributes when defining other features, but, until now, we couldn't access the class or the instance itself. An example are the `notInDb` and `inDb` validators that needs the database instance and the field as parameters. To implement these validators you can use the `setup` method of the model:
 
 ```python
-def set_validators(self):
+def setup(self):
     self.entity.fieldname.requires = [notInDb(self.db, self.entity.fieldname)]
 ```
 
-### Computations
+Computations
+------------
 
 Sometimes you need some field values to be *computed* using other fields. For example:
 
@@ -297,7 +300,8 @@ class Item(Model):
 ``` 
 The function that does computation has to accept the row as parameter, and the computed value will be evaluated on both insert and updates.
 
-### Callbacks
+Callbacks
+---------
 
 When you need to perform certain computations on specific conditions, weppy helps you with the callbacks decorators, which will be invoked automatically. Here is the complete list of available decorators, with the parameters that will be passed to your decorated function:
 
@@ -321,7 +325,8 @@ def update_avatar_thumb(self, s, fields):
     fields['image'] = thumbnail
 ```
 
-### Virtual fields
+Virtual fields
+--------------
 
 An alternative option to *computed* fields are the virtual ones. Considering the same example for the computations we can instead write:
 
@@ -347,7 +352,8 @@ for item in items:
     print item.total
 ```
 
-### Field methods
+Field methods
+-------------
 
 Another option for computed fields is to use the `fieldmethod` decorator:
 
@@ -401,7 +407,8 @@ item = db(db.Item.price > 2).select().first()
 print item.availability()
 ```
 
-### Model methods
+Model methods
+-------------
 
 You can also define methods that will be available on the Model class itself. For instance, every weppy model comes with some pre-defined methods, for example:
 
