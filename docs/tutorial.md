@@ -74,6 +74,7 @@ So, how we build our schema? We will use the default `AuthModel` class for the u
 ```python
 from weppy import request, session
 from weppy.dal import Field, Model, AuthModel
+from weppy.validators import isntEmpty
 
 class User(AuthModel):
     # will create "auth_user" table and groups/permissions ones
@@ -92,6 +93,10 @@ class Post(Model):
         "author": (False, False),
         "date": (False, False)
     }
+    validators = {
+        "title": isntEmpty(),
+        "text": isntEmpty()
+    }
 
 class Comment(Model):
     tablename = "comments"
@@ -107,6 +112,9 @@ class Comment(Model):
         "post": (False, False),
         "date": (False, False)
     }
+    validators = {
+        "text": isntEmpty()
+    }
 ```
 
 That's it. You can see we defined some *reference* fields, which is simply a relationships between the tables, so we have these conditions:
@@ -115,6 +123,8 @@ That's it. You can see we defined some *reference* fields, which is simply a rel
 * a comment always have an author and always refers to a post, and a post can have *n* comments
 
 Moreover, you can se we have set some *default* values (like the dates and the authors) and we hidden some fields to the users: as you can easily understand, it will be pointless have an *author* field if the user can set this value to whatever he or she want, so we're telling to weppy to auto-set those values to the right ones.
+
+We've also added some validators, so we can prevent users to send empty contents.
 
 Init the database and the auth module
 -------------------------------------
@@ -278,7 +288,8 @@ Let's do that, starting with *index.html* (which will be, *obviously*, used with
         <h2>{{=post.title}}</h2>
         <a href="{{=url('one', post.id)}}">Read more</a>
     </li>
-{{else:}}
+{{pass}}
+{{if not posts:}}
     <li><em>No posts here so far.</em></li>
 {{pass}}
 </ul>
