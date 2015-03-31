@@ -1,3 +1,9 @@
 include CHANGES LICENSE
-recursive-include docs *
 recursive-include weppy/assets *
+recursive-include docs *
+recursive-include tests *
+recursive-include examples *
+recursive-exclude tests *.pyc
+recursive-exclude tests *.pyo
+recursive-exclude examples *.pyc
+recursive-exclude examples *.pyo
