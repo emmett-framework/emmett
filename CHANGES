@@ -1,10 +1,10 @@
 weppy changelog
 ===============
 
-Next
-----
+Version 0.3
+-----------
 
-(Release date to be announced, codename to be selected)
+Released on April 1st 2015, codename Caph
 
 - Various bugfixes
 - Implemented streaming of pyDAL 'blob' fields
