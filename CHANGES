@@ -12,6 +12,7 @@ Released on April 1st 2015, codename Caph
 - Added caching system to templates
 - Added auto-reloader for builtin wsgi server
 - Added `on_end` method to `Handler` class
+- Updated jQuery to v1.11.2
 
 
 Version 0.2
