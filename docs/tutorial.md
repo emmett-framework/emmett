@@ -4,6 +4,8 @@ Tutorial
 So, you want to develop an application with Python and weppy, huh?   
 Here you have the chance to learn that by example. In this tutorial we will create a simple microblog application, using weppy and SQLite as database which comes out of the box with Python, so you won't need anything else.
 
+If you want the full sourcecode in advance or for comparison, check out the [example source](https://github.com/gi0baro/weppy/tree/master/examples/bloggy).
+
 Bloggy: a micro blog
 --------------------
 

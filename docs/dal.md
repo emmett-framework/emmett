@@ -4,7 +4,7 @@ The Database Abstraction Layer
 > – Ok, what if I need to use a database in my application?   
 > – *you can use the included DAL*
 
-weppy integrates *pyDAL* as the preferred database abstraction layer, which gives you the ability to use a database in your application, writing the same code and using the same syntax independently on which of the available adapters you want to use for deploy your app (you just need to install one of the supported drivers):
+weppy integrates [pyDAL](https://github.com/web2py/pydal) as the preferred database abstraction layer, which gives you the ability to use a database in your application, writing the same code and using the same syntax independently on which of the available adapters you want to use for deploy your app (you just need to install one of the supported drivers):
 
 | Supported DBMS | python driver(s) |
 | --- | --- |
@@ -49,7 +49,7 @@ The above code is quite simple: the `post_by()` function list posts from a speci
 Let's reconstruct what we done in those simple lines:
 
 * we added an *sqlite* database to our application, stored on file *storage.sqlite*
-* we defined the table *post* and it's properties
+* we defined the table *post* and its properties
 * we did a select on the table querying the *author* column of *post* table
 
 As you noticed, the fields defined for the table are available for queries as attributes, and calling *db* with a query as argument provides you a set on which you can do operations like the `select()`.
@@ -60,9 +60,9 @@ What we propose here it's an *additional layer* to use with *pyDAL*: the models 
 
 The models layer
 ----------------
-weppy provides a *models* structuring layer upon the pyDAL; we encourage the use of models since they make easy to organize all the database entities for the applications. Also, models provides an easier syntax to use many DAL's features, like fields computations.
+weppy provides a *models* structuring layer upon the pyDAL; we encourage the use of models since they make easy to organize all the database entities for the applications. Also, models provides an easier syntax to use many DAL's features, like a computation on a certain field contents.
 
-So, how a weppy model look like? Using the upper example for the posts table in a blog, and adding some features, an example model would be like this:
+So, how a weppy model looks like? Using the upper example for the posts table in a blog, and adding some features, an example model would be like this:
 
 ```python
 from markdown2 import markdown
@@ -76,7 +76,7 @@ class Post(Model):
         Field("author"),
         Field("title"),
         Field("body"),
-        Field("slug")
+        Field("summary")
     ]
 
     representation = {
@@ -88,9 +88,9 @@ class Post(Model):
         "body": isntEmpty()
     }
 
-    @computation('slug')
+    @computation('summary')
     def make_slug(self, row):
-        # custom code to create the slug
+        # custom code to create the summary
 
 ```
 
@@ -253,7 +253,7 @@ labels = {
     'started': T("Opening date:")
 }
 ```
-The labels will decorate the input fields in your forms.
+The labels will decorate the input fields in your forms. In this example we used the [weppy translator](./languages) object to automatically translate the string in the correct language.
 
 ### Comments
 
