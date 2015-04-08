@@ -1655,7 +1655,7 @@ class isDatetimeInRange(isDatetime):
     def extremes(self):
         minimum = self.minimum() if callable(self.minimum) else self.minimum
         maximum = self.maximum() if callable(self.maximum) else self.maximum
-        return dict(min=self.formatter(minimum), max=self.formatter(maximum)
+        return dict(min=self.formatter(minimum), max=self.formatter(maximum))
 
     def __call__(self, value):
         ovalue = value
