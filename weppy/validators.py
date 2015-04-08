@@ -1615,8 +1615,11 @@ class isDateInRange(isDate):
                 error_message = "Enter date in range %(min)s %(max)s"
         isDate.__init__(self, format=format, error_message=error_message,
                         timezone=timezone)
-        self.extremes = dict(min=self.formatter(minimum),
-                             max=self.formatter(maximum))
+
+    def extremes(self):
+        minimum = self.minimum() if callable(self.minimum) else self.minimum
+        maximum = self.maximum() if callable(self.maximum) else self.maximum
+        return dict(min=self.formatter(minimum), max=self.formatter(maximum))
 
     def __call__(self, value):
         ovalue = value
@@ -1624,9 +1627,9 @@ class isDateInRange(isDate):
         if msg is not None:
             return (value, msg)
         if self.minimum and self.minimum > value:
-            return (ovalue, _translate(self.error_message) % self.extremes)
+            return (ovalue, _translate(self.error_message) % self.extremes())
         if self.maximum and value > self.maximum:
-            return (ovalue, _translate(self.error_message) % self.extremes)
+            return (ovalue, _translate(self.error_message) % self.extremes())
         return (value, None)
 
 
@@ -1648,8 +1651,11 @@ class isDatetimeInRange(isDatetime):
                 error_message = "Enter date and time in range %(min)s %(max)s"
         isDatetime.__init__(self, format=format, error_message=error_message,
                             timezone=timezone)
-        self.extremes = dict(min=self.formatter(minimum),
-                             max=self.formatter(maximum))
+
+    def extremes(self):
+        minimum = self.minimum() if callable(self.minimum) else self.minimum
+        maximum = self.maximum() if callable(self.maximum) else self.maximum
+        return dict(min=self.formatter(minimum), max=self.formatter(maximum)
 
     def __call__(self, value):
         ovalue = value
@@ -1657,9 +1663,9 @@ class isDatetimeInRange(isDatetime):
         if msg is not None:
             return (value, msg)
         if self.minimum and self.minimum > value:
-            return (ovalue, _translate(self.error_message) % self.extremes)
+            return (ovalue, _translate(self.error_message) % self.extremes())
         if self.maximum and value > self.maximum:
-            return (ovalue, _translate(self.error_message) % self.extremes)
+            return (ovalue, _translate(self.error_message) % self.extremes())
         return (value, None)
 
 
