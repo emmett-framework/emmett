@@ -266,6 +266,6 @@ def test_relations(db):
     assert len(f) == 1
     assert f[0].name == "tasty" and f[0].thing.id == t[0].id and \
         f[0].thing.person.id == p.id
-    #m = p.things()[0].features()[0].price
-    #assert m.value == 5 and m.feature.id == f[0].id and \
-    #    m.feature.thing.id == t[0].id and m.feature.thing.person.id == p.id
+    m = p.things()[0].features()[0].price
+    assert m.value == 5 and m.feature.id == f[0].id and \
+        m.feature.thing.id == t[0].id and m.feature.thing.person.id == p.id
