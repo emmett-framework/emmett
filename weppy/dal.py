@@ -164,29 +164,108 @@ class DAL(_pyDAL):
                 datamodel.db = self
                 # init datamodel
                 obj = datamodel()
+                getattr(obj, '_Model__define_props')()
+                getattr(obj, '_Model__define_relations')()
                 getattr(obj, '_Model__define_virtuals')()
                 # define table and store in model
+                #datamodel.fields = obj.fields
                 datamodel.entity = self.define_table(
                     obj.tablename,
                     *obj.fields,
                     **dict(migrate=obj.migrate, format=obj.format)
                 )
+                datamodel.id = datamodel.entity.id
                 # load user's definitions
                 getattr(obj, '_Model__define')()
                 # set reference in db for datamodel name
                 self.__setattr__(datamodel.__name__, obj.entity)
 
 
-def DAL_unpickler(db_uid):
+def _DAL_unpickler(db_uid):
     fake_app_obj = sdict(config=sdict(db=sdict()))
     fake_app_obj.config.db.adapter = '<zombie>'
     return DAL(fake_app_obj, db_uid=db_uid)
 
 
-def DAL_pickler(db):
-    return DAL_unpickler, (db._db_uid,)
+def _DAL_pickler(db):
+    return _DAL_unpickler, (db._db_uid,)
 
-copyreg.pickle(DAL, DAL_pickler, DAL_unpickler)
+copyreg.pickle(DAL, _DAL_pickler, _DAL_unpickler)
+
+
+class Prop(Field):
+    def __init__(self, *args, **kwargs):
+        self._args = args
+        self._kwargs = kwargs
+        self.modelname = None
+
+    def _make_field(self, model, name):
+        self.modelname = model.__class__.__name__
+        super(Prop, self).__init__(name, *self._args, **self._kwargs)
+        return self
+
+    def __str__(self):
+        return object.__str__(self)
+
+    def __repr__(self):
+        if self.modelname and self.name:
+            return "<%s property of Model %s>" % (self.name, self.modelname)
+        #return "unbinded property %d" % id(self)
+        return super(Prop, self).__repr__()
+
+
+class _reference(object):
+    def __init__(self, *args):
+        self.reference = [arg for arg in args]
+        self.refobj[id(self)] = self
+
+    @property
+    def refobj(self):
+        return {}
+
+
+class belongs_to(_reference):
+    _references_ = {}
+
+    @property
+    def refobj(self):
+        return belongs_to._references_
+
+
+class has_one(_reference):
+    _references_ = {}
+
+    @property
+    def refobj(self):
+        return has_one._references_
+
+
+class has_many(_reference):
+    _references_ = {}
+
+    @property
+    def refobj(self):
+        return has_many._references_
+
+
+class _hasonewrap(object):
+    def __init__(self, ref, field):
+        self.ref = ref
+        self.field = field
+
+    def __call__(self, model, row):
+        rid = row[model.tablename].id
+        return model.db(model.db[self.ref][self.field] == rid).select().first()
+
+
+class _hasmanywrap(object):
+    def __init__(self, ref, field):
+        self.ref = ref
+        self.field = field
+
+    def __call__(self, model, row):
+        rid = row[model.tablename].id
+        return model.db(model.db[self.ref][self.field] == rid).select()
 
 
 class computation(object):
@@ -232,10 +311,10 @@ class modelmethod(object):
         return self.f(self.model.db, self.model.entity, *args, **kwargs)
 
 
-class ModelActionF(object):
+class _ModelActionF(object):
     def __init__(self, f, t):
         self.t = []
-        if isinstance(f, ModelActionF):
+        if isinstance(f, _ModelActionF):
             self.t += f.t
             f = f.f
         self.f = f
@@ -246,36 +325,55 @@ class ModelActionF(object):
 
 
 def before_insert(f):
-    return ModelActionF(f, '_before_insert')
+    return _ModelActionF(f, '_before_insert')
 
 
 def after_insert(f):
-    return ModelActionF(f, '_after_insert')
+    return _ModelActionF(f, '_after_insert')
 
 
 def before_update(f):
-    return ModelActionF(f, '_before_update')
+    return _ModelActionF(f, '_before_update')
 
 
 def after_update(f):
-    return ModelActionF(f, '_after_update')
+    return _ModelActionF(f, '_after_update')
 
 
 def before_delete(f):
-    return ModelActionF(f, '_before_delete')
+    return _ModelActionF(f, '_before_delete')
 
 
 def after_delete(f):
-    return ModelActionF(f, '_after_delete')
+    return _ModelActionF(f, '_after_delete')
+
+
+class _MetaModel(type):
+    def __new__(cls, name, bases, attrs):
+        new_class = type.__new__(cls, name, bases, attrs)
+        if bases == (object,):
+            return new_class
+        for item in belongs_to._references_.values():
+            setattr(new_class, "_belongs_ref_", item)
+        belongs_to._references_ = {}
+        for item in has_one._references_.values():
+            setattr(new_class, "_hasone_ref_", item)
+        has_one._references_ = {}
+        for item in has_many._references_.values():
+            setattr(new_class, "_hasmany_ref_", item)
+        has_many._references_ = {}
+        return new_class
 
 
 class Model(object):
+    __metaclass__ = _MetaModel
+
     db = None
     entity = None
 
     sign_table = False
 
-    fields = []
+    #fields = []
     validators = {}
     visibility = {}
     representation = {}
@@ -299,36 +397,26 @@ class Model(object):
             setattr(cls, superattr, supermodel)
         except:
             setattr(cls, superattr, None)
-        if getattr(cls, superattr):
-            #: get supermodel fields
-            fields = [f for f in getattr(cls, superattr).fields]
-            toadd = []
-            for field in cls.fields:
-                override = (False, 0)
-                for i in range(0, len(fields)):
-                    if fields[i].name == field.name:
-                        override = (True, i)
-                        break
-                if override[0]:
-                    fields[i] = field
-                else:
-                    toadd.append(field)
-            for field in toadd:
-                fields.append(field)
-            cls.fields = fields
-            #: get super model fields' properties
-            proplist = ['validators', 'visibility', 'representation',
-                        'widgets', 'labels', 'comments', 'updates']
-            for prop in proplist:
-                superprops = getattr(getattr(cls, superattr), prop)
-                props = {}
-                for k, v in superprops.items():
-                    props[k] = v
-                for k, v in getattr(cls, prop).items():
-                    props[k] = v
-                setattr(cls, prop, props)
+        sup = getattr(cls, superattr)
+        if not sup:
+            return
+        if cls.tablename == getattr(sup, 'tablename', None):
+            cls.tablename = cls.__name__.lower()+"s"
+        #: get super model fields' properties
+        proplist = ['validators', 'visibility', 'representation',
+                    'widgets', 'labels', 'comments', 'updates']
+        for prop in proplist:
+            superprops = getattr(sup, prop)
+            props = {}
+            for k, v in superprops.items():
+                props[k] = v
+            for k, v in getattr(cls, prop).items():
+                props[k] = v
+            setattr(cls, prop, props)
 
     def __new__(cls):
+        if not getattr(cls, 'tablename', None):
+            cls.tablename = cls.__name__.lower()+"s"
         cls.__getsuperprops()
         return super(Model, cls).__new__(cls)
 
@@ -354,27 +442,84 @@ class Model(object):
         self.__define_actions()
         self.setup()
 
+    def __define_props(self):
+        self.fields = []
+        #: create Field elements from Prop ones
+        for name in dir(self):
+            if name.startswith("_"):
+                continue
+            obj = getattr(self, name)
+            if isinstance(obj, Prop):
+                if obj.modelname is not None:
+                    #: ensure fields are new instances on subclassing
+                    obj = Prop(*obj._args, **obj._kwargs)
+                    setattr(self.__class__, name, obj)
+                self.fields.append(obj._make_field(self, name))
+
+    def __define_relations(self):
+        bad_args_error = "belongs_to, has_one and has_many only accept " + \
+            "strings or dicts as arguments"
+        #: belongs_to are mapped with 'reference' type Field
+        if hasattr(self, '_belongs_ref_'):
+            for item in getattr(self, '_belongs_ref_').reference:
+                if not isinstance(item, (str, dict)):
+                    raise RuntimeError(bad_args_error)
+                reference = item.capitalize()
+                refname = item
+                if isinstance(item, dict):
+                    refname = list(item)[0]
+                    reference = item[refname]
+                tablename = self.db[reference]._tablename
+                self.fields.append(
+                    Field(refname, 'reference '+tablename)
+                )
+            delattr(self.__class__, '_belongs_ref_')
+        #: has_one are mapped with virtualfield()
+        if hasattr(self, '_hasone_ref_'):
+            for item in getattr(self, '_hasone_ref_').reference:
+                if not isinstance(item, (str, dict)):
+                    raise RuntimeError(bad_args_error)
+                reference = item.capitalize()
+                refname = item
+                if isinstance(item, dict):
+                    refname = list(item)[0]
+                    reference = item[refname]
+                sname = self.__class__.__name__.lower()
+                setattr(self, refname,
+                        virtualfield(refname)(_hasonewrap(reference, sname)))
+            delattr(self.__class__, '_hasone_ref_')
+        #: has_many are mapped with fieldmethod()
+        if hasattr(self, '_hasmany_ref_'):
+            for item in getattr(self, '_hasmany_ref_').reference:
+                if not isinstance(item, (str, dict)):
+                    raise RuntimeError(bad_args_error)
+                reference = item[:-1].capitalize()
+                refname = item
+                if isinstance(item, dict):
+                    refname = list(item)[0]
+                    reference = item[refname]
+                sname = self.__class__.__name__.lower()
+                setattr(self, refname,
+                        fieldmethod(refname)(_hasmanywrap(reference, sname)))
+            delattr(self.__class__, '_hasmany_ref_')
+        return
+
     def __define_virtuals(self):
         field_names = [field.name for field in self.fields]
         for name in dir(self):
-            if not name.startswith("_"):
-                obj = self.__getattribute__(name)
-                if isinstance(obj, virtualfield):
-                    if obj.field_name in field_names:
-                        raise RuntimeError(
-                            'virtualfield or fieldmethod cannot have same ' +
-                            'name as an existent field!')
-                    if isinstance(obj, fieldmethod):
-                        #f = Field.Method(obj.field_name, lambda row, obj=obj,
-                        #                 self=self: obj.f(self, row))
-                        f = Field.Method(
-                            obj.field_name, _virtualwrap(self, obj))
-                    else:
-                        #f = Field.Virtual(obj.field_name, lambda row, obj=obj,
-                        #                  self=self: obj.f(self, row))
-                        f = Field.Virtual(
-                            obj.field_name, _virtualwrap(self, obj))
-                    self.fields.append(f)
+            if name.startswith("_"):
+                continue
+            obj = getattr(self, name)
+            if isinstance(obj, virtualfield):
+                if obj.field_name in field_names:
+                    raise RuntimeError(
+                        'virtualfield or fieldmethod cannot have same ' +
+                        'name as an existent field!')
+                if isinstance(obj, fieldmethod):
+                    f = Field.Method(obj.field_name, _virtualwrap(self, obj))
+                else:
+                    f = Field.Virtual(obj.field_name, _virtualwrap(self, obj))
+                self.fields.append(f)
 
     def __define_validators(self):
         for field, value in self.validators.items():
@@ -409,7 +554,7 @@ class Model(object):
         field_names = [field.name for field in self.fields]
         for name in dir(self):
             if not name.startswith("_"):
-                obj = self.__getattribute__(name)
+                obj = getattr(self, name)
                 if isinstance(obj, computation):
                     if obj.field_name not in field_names:
                         raise RuntimeError(
@@ -425,8 +570,8 @@ class Model(object):
     def __define_actions(self):
         for name in dir(self):
             if not name.startswith("_"):
-                obj = self.__getattribute__(name)
-                if isinstance(obj, ModelActionF):
+                obj = getattr(self, name)
+                if isinstance(obj, _ModelActionF):
                     for t in obj.t:
                         if t in ["_before_insert", "_before_delete",
                                  "_after_delete"]:
@@ -470,15 +615,11 @@ class AuthModel(Model):
     register_visibility = {}
     profile_visibility = {}
 
-    #def __init__(self, migrate=None, fake_migrate=None, signature=None):
     def __init__(self):
-        #if migrate is not None:
-        #    self.migrate = migrate
-        #if not hasattr(self, 'migrate'):
-        #    self.migrate = self.config.get('db', {}).get('migrate', True)
+        self.__super_method('define_props')()
+        self.__super_method('define_relations')()
         self.__super_method('define_virtuals')()
         self.__define_extra_fields()
-        #self.auth.define_tables(signature, self.migrate, fake_migrate)
 
     def __super_method(self, name):
         return getattr(super(AuthModel, self), '_Model__'+name)

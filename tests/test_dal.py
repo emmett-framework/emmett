@@ -13,9 +13,9 @@ import pytest
 from pydal.objects import Table
 
 from weppy import App, sdict
-from weppy.dal import DAL, Field, Model, computation, before_insert, \
+from weppy.dal import DAL, Field, Model, Prop, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
-    virtualfield, fieldmethod, modelmethod
+    virtualfield, fieldmethod, modelmethod, has_one, has_many, belongs_to
 from weppy.validators import isntEmpty, notInDb
 
 
@@ -43,17 +43,13 @@ def _call_d(set):
     return set
 
 
-class TModel(Model):
-    tablename = "test"
-
-    fields = [
-        Field("a", "string"),
-        Field("b"),
-        Field("price", "double"),
-        Field("quantity", "integer"),
-        Field("total", "double"),
-        Field("invisible")
-    ]
+class Stuff(Model):
+    a = Prop('string')
+    b = Prop()
+    price = Prop('double')
+    quantity = Prop('integer')
+    total = Prop('double')
+    invisible = Prop()
 
     validators = {
         "a": isntEmpty()
@@ -116,22 +112,50 @@ class TModel(Model):
 
     @virtualfield('totalv')
     def eval_total_v(self, row):
-        return row.test.price*row.test.quantity
+        return row.stuffs.price*row.stuffs.quantity
 
     @fieldmethod('totalm')
     def eval_total_m(self, row):
-        return row.test.price*row.test.quantity
+        return row.stuffs.price*row.stuffs.quantity
 
     @modelmethod
     def method_test(db, entity, t):
         return db, entity, t
 
 
+class Person(Model):
+    has_many('things')
+
+    name = Prop()
+    age = Prop('integer')
+
+
+class Thing(Model):
+    belongs_to('person')
+    has_many('features')
+
+    name = Prop()
+    color = Prop()
+
+
+class Feature(Model):
+    belongs_to('thing')
+    has_one('price')
+
+    name = Prop()
+
+
+class Price(Model):
+    belongs_to('feature')
+
+    value = Prop('integer')
+
+
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
     db = DAL(app)
-    db.define_models([TModel])
+    db.define_models([Stuff, Person, Thing, Feature, Price])
     return db
 
 
@@ -140,89 +164,108 @@ def test_db_instance(db):
 
 
 def test_table_definition(db):
-    assert isinstance(db.TModel, Table)
-    assert isinstance(db[TModel.tablename], Table)
+    assert isinstance(db.Stuff, Table)
+    assert isinstance(db[Stuff.tablename], Table)
 
 
 def test_fields(db):
-    assert isinstance(db.TModel.a, Field)
-    assert db.TModel.a.type == "string"
+    assert isinstance(db.Stuff.a, Field)
+    assert db.Stuff.a.type == "string"
 
 
 def test_validators(db):
-    assert isinstance(db.TModel.a.requires, isntEmpty)
+    assert isinstance(db.Stuff.a.requires, isntEmpty)
 
 
 def test_visibility(db):
-    assert db.TModel.a.readable is True
-    assert db.TModel.a.writable is True
-    assert db.TModel.invisible.readable is False
-    assert db.TModel.invisible.writable is False
+    assert db.Stuff.a.readable is True
+    assert db.Stuff.a.writable is True
+    assert db.Stuff.invisible.readable is False
+    assert db.Stuff.invisible.writable is False
 
 
 def test_labels(db):
-    assert db.TModel.a.label == "A label"
+    assert db.Stuff.a.label == "A label"
 
 
 def test_comments(db):
-    assert db.TModel.a.comment == "A comment"
+    assert db.Stuff.a.comment == "A comment"
 
 
 def test_updates(db):
-    assert db.TModel.a.update == "a_update"
+    assert db.Stuff.a.update == "a_update"
 
 
 def test_representation(db):
-    assert db.TModel.a.represent == _represent_f
+    assert db.Stuff.a.represent == _represent_f
 
 
 def test_widgets(db):
-    assert db.TModel.a.widget == _widget_f
+    assert db.Stuff.a.widget == _widget_f
 
 
 def test_set_helper(db):
-    assert isinstance(db.TModel.b.requires, notInDb)
+    assert isinstance(db.Stuff.b.requires, notInDb)
 
 
 def test_computations(db):
     row = sdict(price=12.95, quantity=3)
-    rv = db.TModel.total.compute(row)
+    rv = db.Stuff.total.compute(row)
     assert rv == 12.95*3
 
 
 def test_callbacks(db):
     fields = ["a", "b", "c"]
     id = 12
-    rv = db.TModel._before_insert[-1](fields)
+    rv = db.Stuff._before_insert[-1](fields)
     assert rv == fields[:-1]
-    rv = db.TModel._after_insert[-1](fields, id)
+    rv = db.Stuff._after_insert[-1](fields, id)
     assert rv[0] == fields[:-1] and rv[1] == id+1
     set = {"a": "b"}
-    rv = db.TModel._before_update[-1](set, fields)
+    rv = db.Stuff._before_update[-1](set, fields)
     assert rv[0] == set and rv[1] == fields[:-1]
-    rv = db.TModel._after_update[-1](set, fields)
+    rv = db.Stuff._after_update[-1](set, fields)
     assert rv[0] == set and rv[1] == fields[:-1]
-    rv = db.TModel._before_delete[-1](set)
+    rv = db.Stuff._before_delete[-1](set)
     assert rv == set
-    rv = db.TModel._after_delete[-1](set)
+    rv = db.Stuff._after_delete[-1](set)
     assert rv == set
 
 
 def test_virtualfields(db):
-    db.TModel._before_insert = []
-    db.TModel._after_insert = []
-    db.TModel.insert(a="foo", b="bar", price=12.95, quantity=3)
+    db.Stuff._before_insert = []
+    db.Stuff._after_insert = []
+    db.Stuff.insert(a="foo", b="bar", price=12.95, quantity=3)
     db.commit()
-    row = db(db.TModel.id > 0).select().first()
+    row = db(db.Stuff.id > 0).select().first()
     assert row.totalv == 12.95*3
 
 
 def test_fieldmethods(db):
-    row = db(db.TModel.id > 0).select().first()
+    row = db(db.Stuff.id > 0).select().first()
     assert row.totalm() == 12.95*3
 
 
 def test_modelmethods(db):
     tm = "foo"
-    rv = TModel.method_test(tm)
-    assert rv[0] == db and rv[1] == db.TModel and rv[2] == tm
+    rv = Stuff.method_test(tm)
+    assert rv[0] == db and rv[1] == db.Stuff and rv[2] == tm
+
+
+def test_relations(db):
+    p = db.Person.insert(name="Giovanni", age=25)
+    t = db.Thing.insert(name="apple", color="red", person=p)
+    f = db.Feature.insert(name="tasty", thing=t)
+    db.Price.insert(value=5, feature=f)
+    p = db.Person(name="Giovanni")
+    t = p.things()
+    assert len(t) == 1
+    assert t[0].name == "apple" and t[0].color == "red" and \
+        t[0].person.id == p.id
+    f = p.things()[0].features()
+    assert len(f) == 1
+    assert f[0].name == "tasty" and f[0].thing.id == t[0].id and \
+        f[0].thing.person.id == p.id
+    #m = p.things()[0].features()[0].price
+    #assert m.value == 5 and m.feature.id == f[0].id and \
+    #    m.feature.thing.id == t[0].id and m.feature.thing.person.id == p.id

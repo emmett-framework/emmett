@@ -243,10 +243,10 @@ class Auth(object):
     def _init_usermodel(self, usermodel, use_signature):
         usermodel.auth = self
         usermodel.db = self.db
-        #user = usermodel(_migrate, _fake_migrate, _use_signature)
         user = usermodel()
         self.define_tables(use_signature)
-        user.entity = self.table_user
+        usermodel.entity = self.table_user
+        usermodel.id = user.entity.id
         # load user's definitions
         getattr(user, '_AuthModel__define')()
         # set reference in db for datamodel name
