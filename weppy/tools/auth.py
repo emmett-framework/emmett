@@ -252,6 +252,7 @@ class Auth(object):
         # set reference in db for datamodel name
         setattr(self.db, usermodel.__name__, user.entity)
         self.entity = user.entity
+        self._usermodel = user
         #if app.config.get('auth', {}).get('server', 'default') != "default":
         #    self.settings.mailer.server = app.config.auth.server
         #    self.settings.mailer.sender = app.config.auth.sender
@@ -335,6 +336,8 @@ class Auth(object):
                 self.register_action(k, getattr(self, k))
 
         _use_signature = kwargs.get('sign_tables')
+
+        self._usermodel = None
         if usermodel:
             from ..dal import AuthModel
             if not issubclass(usermodel, AuthModel):
@@ -2008,12 +2011,34 @@ class AuthManager(Handler):
     def __init__(self, auth):
         #: the Auth() instance
         self.auth = auth
+        self._virtuals = []
+        for field in self.auth._usermodel.fields:
+            if isinstance(field, (Field.Virtual, Field.Method)):
+                self._virtuals.append(field)
+
+    @property
+    def _user_as_row(self):
+        r = sdict()
+        r[self.auth.settings.table_user_name] = self.auth.user
+        return r
+
+    def _load_virtuals(self):
+        #: inject virtual fields on session data
+        for field in self._virtuals:
+            if isinstance(field, Field.Virtual):
+                self.auth.user[field.name] = field.f(self._user_as_row)
+            if isinstance(field, Field.Method):
+                self.auth.user[field.name] = \
+                    lambda s=self: field.f(s._user_as_row)
 
     def on_start(self):
         # check auth session is valid
         if self.auth._auth and self.auth._auth.last_visit and \
            self.auth._auth.last_visit + \
            timedelta(days=0, seconds=self.auth._auth.expiration) > request.now:
+            # load virtuals from Auth Model
+            if self.auth.user:
+                self._load_virtuals()
             # this is a trick to speed up sessions
             if (request.now - self.auth._auth.last_visit).seconds > \
                (self.auth._auth.expiration / 10):
@@ -2027,3 +2052,9 @@ class AuthManager(Handler):
         # set correct session expiration if requested by user
         if self.auth._auth and self.auth._auth.remember:
             session._expires_after(self.auth._auth.expiration)
+        # remove virtual fields
+        if self.auth.user:
+            ukeys = self.auth.user.keys()
+            for field in self._virtuals:
+                if field.name in ukeys:
+                    del self.auth.user[field.name]

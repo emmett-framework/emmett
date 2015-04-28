@@ -615,6 +615,11 @@ class AuthModel(Model):
     register_visibility = {}
     profile_visibility = {}
 
+    def __new__(cls):
+        if not getattr(cls, 'tablename', None):
+            cls.tablename = "auth_user"
+        return super(AuthModel, cls).__new__(cls)
+
     def __init__(self):
         self.__super_method('define_props')()
         self.__super_method('define_relations')()
