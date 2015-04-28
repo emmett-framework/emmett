@@ -19,27 +19,35 @@ __all__ = ['Form', 'DALForm']
 
 
 class Form(TAG):
+    default_attrs = {
+        '_action': '', '_method': 'POST', '_enctype': 'multipart/form-data',
+        'submit': 'Submit', 'formstyle': None, 'csrf': 'auto',
+        'keepvalues': False, 'onvalidation': None, 'id_prefix': '',
+        'upload': None
+    }
+
     @staticmethod
     def _get_default_style():
         from .expose import Expose
         return Expose.application.config.ui.forms_style or FormStyle
 
-    def __init__(self, *fields, **attributes):
+    def __init__(self, fields={}, **kwargs):
         #: process attributes
-        attributes['_action'] = attributes.get('_action', '')
-        attributes['_method'] = attributes.get('_method', 'POST')
-        attributes['_enctype'] = attributes.get('_enctype',
-                                                'multipart/form-data')
-        attributes['submit'] = attributes.get('submit', 'Submit')
-        attributes['formstyle'] = attributes.get('formstyle',
-                                                 self._get_default_style())
-        attributes['csrf'] = attributes.get('csrf', 'auto')
-        attributes['keepvalues'] = attributes.get('keepvalues', False)
-        attributes['id_prefix'] = attributes.get('id_prefix', '')
-        attributes['onvalidation'] = attributes.get('onvalidation')
-        attributes['upload'] = attributes.get('upload')
+        self.attributes = {}
+        for key, val in Form.default_attrs.items():
+            self.attributes = kwargs.get(key, val)
+        self.attributes['formstyle'] = self.attributes.get(
+            'formstyle', self._get_default_style())
+        #: get fields
+        self.fields = []
+        if not fields:
+            excluded = Form.default_attrs.keys()
+            for key, val in kwargs.items():
+                if key not in excluded:
+                    fields[key] = val
+        for name, obj in fields.items():
+            fields.append(obj._make_field(name))
         #: init the form
-        self.attributes = attributes
         self.fields = fields
         self.errors = sdict()
         self.vars = sdict()
@@ -48,14 +56,14 @@ class Form(TAG):
         self.accepted = False
         self.formkey = "undef"
         #: move some attributes to self, just because it's handy
-        self.keepvalues = attributes['keepvalues']
-        self.onvalidation = attributes['onvalidation']
-        del attributes['keepvalues']
-        del attributes['onvalidation']
+        self.keepvalues = self.attributes['keepvalues']
+        self.onvalidation = self.attributes['onvalidation']
+        del self.attributes['keepvalues']
+        del self.attributes['onvalidation']
         #: verify formstyle consistence
-        if not issubclass(attributes['formstyle'], FormStyle):
+        if not issubclass(self.attributes['formstyle'], FormStyle):
             raise RuntimeError('%s is an invalid weppy form style'
-                               % attributes['formstyle'].__name__)
+                               % self.attributes['formstyle'].__name__)
         #: process the form
         self._process()
 
@@ -190,25 +198,22 @@ class DALForm(Form):
                  exclude_fields=[], **attributes):
         self.table = table
         self.record = record or table(record_id)
-        tfields = [field for field in table if field.type != 'id' and
-                   field.writable and field.name not in exclude_fields]
-        #: experimental: don't check for fields names
-        #  it's quite pythonic: we're all adults. Aren't we?
-        #if fields is not None:
-        #    ofields = fields
-        #    fields = []
-        #    for field in tfields:
-        #        if field.name in ofields:
-        #            fields.append(field)
+        #: build fields for form
+        fields_dict = {}
         if fields is not None:
-            ofields = fields
-            fields = []
-            for field in ofields:
-                fields.append(table[field])
+            #: developer has selected specific fields
+            for field in fields:
+                fields_dict[field] = table[field]
         else:
-            fields = tfields
+            #: use table fields
+            for field in table:
+                if field.type != 'id' and field.writable and \
+                        field.name not in exclude_fields:
+                    fields_dict[field.name] = field
+        #: use tablename for form id
         attributes['id_prefix'] = table._tablename+"_"
-        Form.__init__(self, *fields, **attributes)
+        #: finally init the form
+        Form.__init__(self, fields_dict, **attributes)
 
     def _validate_field(self, field, value):
         #: needed to handle IS_NOT_IN_DB validator

@@ -11,9 +11,10 @@
 
 import pytest
 from pydal.objects import Table
+from pydal import Field as _Field
 
 from weppy import App, sdict
-from weppy.dal import DAL, Field, Model, Prop, computation, before_insert, \
+from weppy.dal import DAL, Field, Model, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
     virtualfield, fieldmethod, modelmethod, has_one, has_many, belongs_to
 from weppy.validators import isntEmpty, notInDb
@@ -44,12 +45,12 @@ def _call_d(set):
 
 
 class Stuff(Model):
-    a = Prop('string')
-    b = Prop()
-    price = Prop('double')
-    quantity = Prop('integer')
-    total = Prop('double')
-    invisible = Prop()
+    a = Field('string')
+    b = Field()
+    price = Field('double')
+    quantity = Field('integer')
+    total = Field('double')
+    invisible = Field()
 
     validators = {
         "a": isntEmpty()
@@ -126,29 +127,29 @@ class Stuff(Model):
 class Person(Model):
     has_many('things')
 
-    name = Prop()
-    age = Prop('integer')
+    name = Field()
+    age = Field('integer')
 
 
 class Thing(Model):
     belongs_to('person')
     has_many('features')
 
-    name = Prop()
-    color = Prop()
+    name = Field()
+    color = Field()
 
 
 class Feature(Model):
     belongs_to('thing')
     has_one('price')
 
-    name = Prop()
+    name = Field()
 
 
 class Price(Model):
     belongs_to('feature')
 
-    value = Prop('integer')
+    value = Field('integer')
 
 
 @pytest.fixture(scope='module')
@@ -169,7 +170,7 @@ def test_table_definition(db):
 
 
 def test_fields(db):
-    assert isinstance(db.Stuff.a, Field)
+    assert isinstance(db.Stuff.a, _Field)
     assert db.Stuff.a.type == "string"
 
 

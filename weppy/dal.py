@@ -10,7 +10,7 @@
 
 import os
 from pydal import DAL as _pyDAL
-from pydal import Field
+from pydal import Field as _Field
 from weppy import serializers as _serializers
 from weppy import validators as _validators
 from ._compat import copyreg
@@ -193,15 +193,16 @@ def _DAL_pickler(db):
 copyreg.pickle(DAL, _DAL_pickler, _DAL_unpickler)
 
 
-class Prop(Field):
+class Field(_Field):
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
         self.modelname = None
 
-    def _make_field(self, model, name):
-        self.modelname = model.__class__.__name__
-        super(Prop, self).__init__(name, *self._args, **self._kwargs)
+    def _make_field(self, name, model=None):
+        if model is not None:
+            self.modelname = model.__class__.__name__
+        super(Field, self).__init__(name, *self._args, **self._kwargs)
         return self
 
     def __str__(self):
@@ -211,7 +212,7 @@ class Prop(Field):
         if self.modelname and self.name:
             return "<%s property of Model %s>" % (self.name, self.modelname)
         #return "unbinded property %d" % id(self)
-        return super(Prop, self).__repr__()
+        return super(Field, self).__repr__()
 
 
 class _reference(object):
@@ -449,12 +450,12 @@ class Model(object):
             if name.startswith("_"):
                 continue
             obj = getattr(self, name)
-            if isinstance(obj, Prop):
+            if isinstance(obj, Field):
                 if obj.modelname is not None:
                     #: ensure fields are new instances on subclassing
-                    obj = Prop(*obj._args, **obj._kwargs)
+                    obj = Field(*obj._args, **obj._kwargs)
                     setattr(self.__class__, name, obj)
-                self.fields.append(obj._make_field(self, name))
+                self.fields.append(obj._make_field(name, self))
 
     def __define_relations(self):
         bad_args_error = "belongs_to, has_one and has_many only accept " + \
@@ -471,7 +472,7 @@ class Model(object):
                     reference = item[refname]
                 tablename = self.db[reference]._tablename
                 self.fields.append(
-                    Field(refname, 'reference '+tablename)
+                    _Field(refname, 'reference '+tablename)
                 )
             delattr(self.__class__, '_belongs_ref_')
         #: has_one are mapped with virtualfield()
@@ -516,9 +517,9 @@ class Model(object):
                         'virtualfield or fieldmethod cannot have same ' +
                         'name as an existent field!')
                 if isinstance(obj, fieldmethod):
-                    f = Field.Method(obj.field_name, _virtualwrap(self, obj))
+                    f = _Field.Method(obj.field_name, _virtualwrap(self, obj))
                 else:
-                    f = Field.Virtual(obj.field_name, _virtualwrap(self, obj))
+                    f = _Field.Virtual(obj.field_name, _virtualwrap(self, obj))
                 self.fields.append(f)
 
     def __define_validators(self):
