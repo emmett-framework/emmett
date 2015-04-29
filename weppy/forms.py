@@ -11,9 +11,10 @@
 
 import uuid
 
-from .tags import tag, TAG, cat, asis
+from .dal import Field
 from .datastructures import sdict
 from .globals import current, request, session
+from .tags import tag, TAG, cat, asis
 
 __all__ = ['Form', 'DALForm']
 
@@ -32,19 +33,18 @@ class Form(TAG):
         return Expose.application.config.ui.forms_style or FormStyle
 
     def __init__(self, fields={}, **kwargs):
+        #: get fields from kwargs
+        for name, parameter in kwargs.iteritems():
+            if isinstance(parameter, Field):
+                fields[name] = parameter
         #: process attributes
         self.attributes = {}
         for key, val in Form.default_attrs.items():
             self.attributes = kwargs.get(key, val)
         self.attributes['formstyle'] = self.attributes.get(
             'formstyle', self._get_default_style())
-        #: get fields
+        #: init fields
         self.fields = []
-        if not fields:
-            excluded = Form.default_attrs.keys()
-            for key, val in kwargs.items():
-                if key not in excluded:
-                    fields[key] = val
         for name, obj in fields.items():
             fields.append(obj._make_field(name))
         #: init the form
