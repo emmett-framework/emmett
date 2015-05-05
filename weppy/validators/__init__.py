@@ -136,5 +136,11 @@ class ValidateFromDict(object):
             validators.append(self(data['not']))
         #: insert presence validation if needed
         if presence:
-            validators.insert(0, isntEmpty())
+            if field.type.startswith('reference'):
+                pass
+            else:
+                validators.insert(0, isntEmpty())
+        else:
+            if validators:
+                validators = [isEmptyOr(validators)]
         return validators

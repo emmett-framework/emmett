@@ -53,7 +53,7 @@ class Stuff(Model):
     invisible = Field()
 
     validators = {
-        "a": isntEmpty()
+        "a": {'presence': True}
     }
 
     visibility = {
@@ -175,7 +175,8 @@ def test_fields(db):
 
 
 def test_validators(db):
-    assert isinstance(db.Stuff.a.requires, isntEmpty)
+    assert len(db.Stuff.a.requires) == 1
+    assert isinstance(db.Stuff.a.requires[0], isntEmpty)
 
 
 def test_visibility(db):
