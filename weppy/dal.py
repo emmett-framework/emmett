@@ -26,42 +26,41 @@ def _default_validators(db, field):
     makes sure the content of a field is in line with the declared
     fieldtype
     """
-
-    field_type, field_length = field.type, field.length
     requires = []
-    if field_type in (('string', 'text', 'password')):
-        requires.append(_validators.hasLength(field_length))
-    elif field_type == 'json':
-        requires.append(_validators.isEmptyOr(_validators.isJSON()))
-    elif field_type == 'double' or field_type == 'float':
-        requires.append(_validators.isFloat())
-    elif field_type == 'integer':
-        requires.append(_validators.isInt())
-    elif field_type == 'bigint':
-        requires.append(_validators.isInt())
-    elif field_type.startswith('decimal'):
-        requires.append(_validators.isDecimal())
-    elif field_type == 'date':
-        requires.append(_validators.isDate())
-    elif field_type == 'time':
-        requires.append(_validators.isTime())
-    elif field_type == 'datetime':
-        requires.append(_validators.isDatetime())
-    elif db and field_type.startswith('reference') and \
-            field_type.find('.') < 0 and \
-            field_type[10:] in db.tables:
-        referenced = db[field_type[10:]]
+    #if field.type in (('string', 'text', 'password')):
+        #requires = parser(field, {'len': {'lt': field.length}})
+        #requires.append(_validators.hasLength(field.length))
+    #elif field.type == 'json':
+    #    requires.append(_validators.isEmptyOr(_validators.isJSON()))
+    #elif field.type == 'double' or field.type == 'float':
+    #    requires.append(_validators.isFloat())
+    #elif field.type == 'integer':
+    #    requires.append(_validators.isInt())
+    #elif field.type == 'bigint':
+    #    requires.append(_validators.isInt())
+    #elif field.type.startswith('decimal'):
+    #    requires.append(_validators.isDecimal())
+    #elif field.type == 'date':
+    #    requires.append(_validators.isDate())
+    #elif field.type == 'time':
+    #    requires.append(_validators.isTime())
+    #elif field.type == 'datetime':
+    #    requires.append(_validators.isDatetime())
+    if db and field.type.startswith('reference') and \
+            field.type.find('.') < 0 and \
+            field.type[10:] in db.tables:
+        referenced = db[field.type[10:]]
         if hasattr(referenced, '_format') and referenced._format:
             requires = _validators.inDb(db, referenced._id, referenced._format)
             if field.unique:
                 requires._and = _validators.notInDb(db, field)
-            if field.tablename == field_type[10:]:
+            if field.tablename == field.type[10:]:
                 return _validators.isEmptyOr(requires)
             return requires
-    elif db and field_type.startswith('list:reference') and \
-            field_type.find('.') < 0 and \
-            field_type[15:] in db.tables:
-        referenced = db[field_type[15:]]
+    elif db and field.type.startswith('list:reference') and \
+            field.type.find('.') < 0 and \
+            field.type[15:] in db.tables:
+        referenced = db[field.type[15:]]
         if hasattr(referenced, '_format') and referenced._format:
             requires = _validators.inDb(db, referenced._id, referenced._format,
                                         multiple=True)
@@ -76,9 +75,9 @@ def _default_validators(db, field):
     if field.unique:
         requires.append(_validators.notInDb(db, field))
     sff = ['in', 'do', 'da', 'ti', 'de', 'bo']
-    if field.notnull and not field_type[:2] in sff:
+    if field.notnull and not field.type[:2] in sff:
         requires.append(_validators.isntEmpty())
-    elif not field.notnull and field_type[:2] in sff and requires:
+    elif not field.notnull and field.type[:2] in sff and requires:
         requires[0] = _validators.isEmptyOr(requires[0])
     return requires
 
@@ -102,7 +101,7 @@ class DALHandler(Handler):
 
 class DAL(_pyDAL):
     serializers = _serializers
-    validators_method = _default_validators
+    #validators_method = _default_validators
     logger = None
     uuid = lambda x: _uuid()
 
@@ -195,22 +194,67 @@ copyreg.pickle(DAL, _DAL_pickler, _DAL_unpickler)
 
 
 class Field(_Field):
-    def __init__(self, *args, **kwargs):
+    _weppy_types = {'integer': 'int', 'double': 'float', 'bigint': 'int'}
+    _pydal_types = {'int': 'integer'}
+
+    def __init__(self, type='string', *args, **kwargs):
+        self._type = self._weppy_types.get(type, type)
+        self.modelname = None
+        self._auto_validators = True
+        if 'auto_requires' in kwargs:
+            self._auto_validators = kwargs['auto_requires']
+            del kwargs['auto_requires']
+        #: intercept requires (will be processed by `_make_field`
+        self._requires = {}
+        self._custom_requires = []
+        if 'requires' in kwargs:
+            if isinstance(kwargs['requires'], dict):
+                self._requires = kwargs['requires']
+            else:
+                self._custom_requires = kwargs['requires']
+                del kwargs['requires']
+                if not isinstance(self._custom_requires, list):
+                    self._custom_requires = [self._custom_requires]
+        self._validation = {}
+        self._vparser = ValidateFromDict()
+        #: store args and kwargs for `_make_field`
         self._args = args
         self._kwargs = kwargs
-        self.modelname = None
+
+    def _default_validation(self):
+        rv = {}
+        auto_types = [
+            'int', 'float', 'decimal', 'date', 'time', 'datetime', 'json'
+        ]
+        if self._type in auto_types:
+            rv['is'] = self._type
+        if self._type in ['string', 'text', 'password']:
+            rv['len'] = {'lt': self.length}
+        return rv
+
+    def _parse_validation(self):
+        for key in list(self._requires):
+            self._validation[key] = self._requires[key]
+        self.requires = self._vparser(self, self._validation) + \
+            self._custom_requires
 
     def _make_field(self, name, model=None):
-        requires = None
-        if isinstance(requires, dict):
-            validation_parser = ValidateFromDict()
-            requires = self._kwargs.get('requires')
-            del self._kwargs['requires']
         if model is not None:
             self.modelname = model.__class__.__name__
-        super(Field, self).__init__(name, *self._args, **self._kwargs)
-        if requires:
-            self.requires = validation_parser(self, requires)
+        #: convert field type to pyDAL ones if needed
+        ftype = self._pydal_types.get(self._type, self._type)
+        #: create pyDAL's Field instance
+        super(Field, self).__init__(name, ftype, *self._args, **self._kwargs)
+        #: add automatic validation (if requested)
+        if self._auto_validators:
+            auto = True
+            if self.modelname:
+                auto = model.default_validators
+            if auto:
+                self._validation = self._default_validation()
+        #: validators
+        if not self.modelname:
+            self._parse_validation()
         return self
 
     def __str__(self):
@@ -381,6 +425,7 @@ class Model(object):
     entity = None
 
     sign_table = False
+    default_validators = True
 
     #fields = []
     validators = {}
@@ -531,14 +576,16 @@ class Model(object):
                 self.fields.append(f)
 
     def __define_validators(self):
-        validation_parser = ValidateFromDict()
-        for field, value in self.validators.items():
-            if isinstance(value, dict):
-                self.entity[field].requires = validation_parser(
-                    self.entity[field], value
-                )
+        for fieldname in self.entity.fields:
+            validation = self.validators.get(fieldname, {})
+            if isinstance(validation, dict):
+                for key in list(validation):
+                    self.entity[fieldname]._requires[key] = validation[key]
+            elif isinstance(validation, list):
+                self.entity[fieldname]._custom_requires += validation
             else:
-                self.entity[field].requires = value
+                self.entity[fieldname]._custom_requires.append(validation)
+            self.entity[fieldname]._parse_validation()
 
     def __define_visibility(self):
         try:
