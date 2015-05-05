@@ -17,6 +17,8 @@ from weppy.validators import isEmptyOr, hasLength, isInt, isFloat, isDate, \
 
 
 class A(Model):
+    tablename = "a"
+
     name = Field()
     val = Field('int')
     fval = Field('float')
@@ -38,18 +40,18 @@ def db():
 
 def test_defaults(db):
     #: string, text, password
-    assert isinstance(db.name.requires[0], isEmptyOr)
-    assert isinstance(db.name.requires[0].other[0], hasLength)
-    assert db.name.requires[0].other[0].minsize == 0
-    assert db.name.requires[0].other[0].maxsize == 255
-    assert isinstance(db.text.requires[0].other[0], hasLength)
-    assert isinstance(db.password.requires[0].other[0], hasLength)
+    assert isinstance(db.a.name.requires[0], isEmptyOr)
+    assert isinstance(db.a.name.requires[0].other[0], hasLength)
+    assert db.a.name.requires[0].other[0].minsize == 0
+    assert db.a.name.requires[0].other[0].maxsize == 255
+    assert isinstance(db.a.text.requires[0].other[0], hasLength)
+    assert isinstance(db.a.password.requires[0].other[0], hasLength)
     #: numbers
-    assert isinstance(db.val.requires[0].other[0], isInt)
-    assert isinstance(db.fval.requires[0].other[0], isFloat)
+    assert isinstance(db.a.val.requires[0].other[0], isInt)
+    assert isinstance(db.a.fval.requires[0].other[0], isFloat)
     #: date, time, datetime
-    assert isinstance(db.d.requires[0].other[0], isDate)
-    assert isinstance(db.t.requires[0].other[0], isTime)
-    assert isinstance(db.dt.requires[0].other[0], isDatetime)
+    assert isinstance(db.a.d.requires[0].other[0], isDate)
+    assert isinstance(db.a.t.requires[0].other[0], isTime)
+    assert isinstance(db.a.dt.requires[0].other[0], isDatetime)
     #: json
-    assert isinstance(db.json.requires[0].other[0], isJSON)
+    assert isinstance(db.a.json.requires[0].other[0], isJSON)

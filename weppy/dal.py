@@ -524,8 +524,9 @@ class Model(object):
                     refname = list(item)[0]
                     reference = item[refname]
                 tablename = self.db[reference]._tablename
+                setattr(self.__class__, refname, Field('reference '+tablename))
                 self.fields.append(
-                    _Field(refname, 'reference '+tablename)
+                    getattr(self, refname)._make_field(refname, self)
                 )
             delattr(self.__class__, '_belongs_ref_')
         #: has_one are mapped with virtualfield()
