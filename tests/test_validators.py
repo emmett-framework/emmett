@@ -10,7 +10,7 @@
 """
 
 import pytest
-from weppy import App
+from weppy import App, sdict
 from weppy.dal import DAL, Model, Field
 from weppy.validators import isEmptyOr, hasLength, isInt, isFloat, isDate, \
     isTime, isDatetime, isJSON
@@ -33,7 +33,7 @@ class A(Model):
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
-    db = DAL(app)
+    db = DAL(app, config=sdict(uri='sqlite://validators.db'))
     db.define_models([A])
     return db
 

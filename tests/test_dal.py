@@ -17,7 +17,7 @@ from weppy import App, sdict
 from weppy.dal import DAL, Field, Model, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
     virtualfield, fieldmethod, modelmethod, has_one, has_many, belongs_to
-from weppy.validators import isntEmpty, notInDb
+from weppy.validators import isntEmpty, notInDb, hasLength
 
 
 def _represent_f(value):
@@ -155,7 +155,7 @@ class Price(Model):
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
-    db = DAL(app)
+    db = DAL(app, config=sdict(uri='sqlite://dal.db'))
     db.define_models([Stuff, Person, Thing, Feature, Price])
     return db
 
@@ -175,8 +175,9 @@ def test_fields(db):
 
 
 def test_validators(db):
-    assert len(db.Stuff.a.requires) == 1
+    assert len(db.Stuff.a.requires) == 2
     assert isinstance(db.Stuff.a.requires[0], isntEmpty)
+    assert isinstance(db.Stuff.a.requires[1], hasLength)
 
 
 def test_visibility(db):
