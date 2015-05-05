@@ -21,13 +21,17 @@ class inRange(Validator):
     def __init__(self, minimum=None, maximum=None, message=None):
         self.minimum = minimum
         self.maximum = maximum
-        self.message = self._range_error(message, self.minimum, self.maximum)
+        self.message = message
 
     def __call__(self, value):
-        if (self.minimum is None or value >= self.minimum) and \
-                (self.maximum is None or value < self.maximum):
+        minimum = self.minimum() if callable(self.minimum) else self.minimum
+        maximum = self.maximum() if callable(self.maximum) else self.maximum
+        if (minimum is None or value >= minimum) and \
+                (maximum is None or value < maximum):
             return value, None
-        return value, translate(self.message)
+        return value, translate(
+            self._range_error(self.message, minimum, maximum)
+        )
 
     def _range_error(self, error_message, minimum, maximum):
         if error_message is None:
