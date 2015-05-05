@@ -82,7 +82,7 @@ class ValidateFromDict(object):
                     minv, maxv = _len['range']
                 else:
                     minv, maxv = self.parse_num_comparisons(_len)
-                validators.append(hasLength(minv, maxv))
+                validators.append(hasLength(maxv, minv))
         #: parse 'in'
         _in = data.get('in', [])
         if _in:
