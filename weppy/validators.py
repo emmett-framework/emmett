@@ -31,19 +31,15 @@ __all__ = [
     'Cleanup',
     'Crypt',
     'isAlphanumeric',
-    'isDateInRange',
     'isDate',
-    'isDatetimeInRange',
     'isDatetime',
-    'isDecimalInRange',
     'isEmail',
     'isEmailList',
     'isEmptyOr',
-    'isFloatInRange',
     'isImage',
     'inDb',
     'inSet',
-    'isIntInRange',
+    'inRange',
     'isIPv4',
     'isIPv6',
     'isIP',
@@ -78,6 +74,145 @@ def _options_sorter(x, y):
     return (str(x[1]).upper() > str(y[1]).upper() and 1) or -1
 
 
+class ValidateFromDict(object):
+    numkeys = {'gt': 1, 'gte': 0, 'lt': 0, 'lte': 1}
+
+    def __init__(self):
+        self.iskeys = {
+            'int': isInt, 'float': isFloat, 'decimal': isDecimal,
+            'date': isDate, 'time': isTime, 'datetime': isDatetime,
+            'email': isEmail, 'url': isUrl, 'ip': isIP, 'json': isJSON,
+            'image': isImage
+        }
+        self.prockeys = {
+            'crypt': Crypt, 'lower': Lower, 'upper': Upper, 'slug': Slug,
+            'clean': Cleanup
+        }
+
+    def parse_num_comparisons(self, data):
+        minv = None
+        maxv = None
+        for key, addend in self.numkeys.iteritems():
+            val = data.get(key)
+            if val is not None:
+                if key[0] == "g":
+                    minv = val + addend
+                elif key[0] == "l":
+                    maxv = val + addend
+        return minv, maxv
+
+    def __call__(self, field, data):
+        # 'is', 'equals', 'not', 'match', 'length', 'presence', 'empty', 'proc'
+        validators = []
+        #: parse 'presence' and 'empty'
+        presence = data.get('presence')
+        if presence is None:
+            presence = not data.get('empty', True)
+        #: parse 'is'
+        _is = data.get('is')
+        if _is is not None:
+            # TODO 'list'
+            #: map types with fields
+            if isinstance(_is, basestring):
+                validator = self.iskeys.get(_is)
+                options = {}
+            elif isinstance(_is, dict):
+                key = list(_is)[0]
+                validator = self.iskeys.get(key)
+                options = _is[key]
+            else:
+                raise SyntaxError("'is' validator accepts only string or dict")
+            if validator is None:
+                raise SyntaxError("Unknown type %s for 'is' validator" % _is)
+            validators.append(validator(**options))
+        #: parse 'len'
+        _len = data.get('len')
+        if _len is not None:
+            if isinstance(_len, int):
+                #: allows {'len': 2}
+                validators.append(hasLength(_len, _len,
+                                  error_message='Enter %(min)g characters'))
+            else:
+                #: allows
+                #  {'len': {'gt': 1, 'gte': 2, 'lt': 5, 'lte' 6}}
+                #  {'len': {'range': (2, 6)}}
+                if _len.get('range') is not None:
+                    minv, maxv = _len['range']
+                else:
+                    minv, maxv = self.parse_num_comparisons(_len)
+                validators.append(hasLength(minv, maxv))
+        #: parse 'in'
+        _in = data.get('in', [])
+        if _in:
+            if isinstance(_in, (list, tuple, set)):
+                #: allows {'in': [1, 2], 'labels': ['one', 'two']}
+                opt_keys = ['labels', 'message', 'multiple', 'zero', 'sort']
+                options = {}
+                for key in opt_keys:
+                    val = data.get(key)
+                    if val:
+                        options[key] = val
+                validators.append(inSet(_in, **options))
+            elif isinstance(_in, dict):
+                #: allows {'in': {'range': (1, 5)}}
+                _range = _in.get('range')
+                if isinstance(_range, (tuple, list)):
+                    validators.append(inRange(_range[0], _range[1]))
+                #: allows {'in': {'sub': [1, 2, 4]}}
+                _sub = _in.get('sub')
+                if isinstance(_sub, (list, set, tuple)):
+                    validators.append(inSubSet(_sub))
+            else:
+                raise SyntaxError(
+                    "'in' validator accepts only a set or a dict")
+        #: parse 'gt', 'gte', 'lt', 'lte'
+        minv, maxv = self.parse_num_comparisons(data)
+        if minv is not None or maxv is not None:
+            validators.append(inRange(minv, maxv))
+        # 'range'
+        #if 'range' in data:
+        #    minv, maxv = data['range']
+        #    validators.append(inRange(minv, maxv))
+        #: parse 'equals'
+        if 'equals' in data:
+            validators.append(Equals(data['equals']))
+        #: parse transforming validators
+        for key, vclass in self.prockeys.iteritems():
+            if key in data:
+                options = {}
+                if isinstance(data[key], dict):
+                    options = data[key]
+                elif data[key] != True:
+                    if key == 'crypt' and isinstance(data[key], basestring):
+                        options = {'algorithm': data[key]}
+                    else:
+                        raise SyntaxError(
+                            key+" validator accepts only dict or True")
+                validators.append(vclass(**options))
+        #: parse 'not'
+        if 'not' in data:
+            validators.append(self(data['not']))
+        #: insert presence validation if needed
+        if presence:
+            validators.insert(0, isntEmpty())
+        return validators
+
+
+class _UTC(datetime.tzinfo):
+    ZERO = datetime.timedelta(0)
+
+    def utcoffset(self, dt):
+        return _UTC.ZERO
+
+    def tzname(self, dt):
+        return "UTC"
+
+    def dst(self, dt):
+        return _UTC.ZERO
+
+_utc = _UTC()
+
+
 class Validator(object):
     """
     Base class for all validators, mainly for documentation purposes.
@@ -98,14 +233,265 @@ class Validator(object):
         return (value, None)
 
 
+class _is(Validator):
+    rule = None
+    message = "Invalid value"
+
+    def __init__(self, message=None):
+        if message:
+            self.message = message
+
+    def __call__(self, value):
+        if self.rule is None or \
+                (self.rule is not None and self.rule.match(str(value))):
+            return self.check(value)
+        return value, _translate(self.message)
+
+    def check(self, value):
+        return value, None
+
+
+class _options(Validator):
+    pass
+
+
+class _not(Validator):
+    def __init__(self, validators, message="value not allowed"):
+        if not isinstance(validators, (list, tuple)):
+            validators = [validators]
+        self.conditions = validators
+        self.message = message
+
+    def __call__(self, value):
+        val = value
+        for condition in self.conditions:
+            value, error = condition(value)
+            if error is None:
+                return val, self.message
+        return value, None
+
+
+class isInt(_is):
+    rule = re.compile('^[+-]?\d+$')
+
+    def check(self, value):
+        return int(value), None
+
+
+class isFloat(_is):
+    def __init__(self, dot=".", message=None):
+        _is.__init__(self, message)
+        self.dot = dot
+
+    def check(self, value):
+        try:
+            v = float(str(value).replace(self.dot, '.'))
+            return v, None
+        except (ValueError, TypeError):
+            pass
+        return value, _translate(self.message)
+
+    def _str2dec(number):
+        s = str(number)
+        if '.' not in s:
+            s += '.00'
+        else:
+            s += '0' * (2 - len(s.split('.')[1]))
+        return s
+
+    def formatter(self, value):
+        if value is None:
+            return None
+        val = str(value)
+        if '.' not in val:
+            val += '.00'
+        else:
+            val += '0' * (2 - len(val.split('.')[1]))
+        return val.replace('.', self.dot)
+
+
+class isDecimal(isFloat):
+    def check(self, value):
+        try:
+            if isinstance(value, decimal.Decimal):
+                v = value
+            else:
+                v = decimal.Decimal(str(value).replace(self.dot, '.'))
+            return v, None
+        except (ValueError, TypeError, decimal.InvalidOperation):
+            return value, _translate(self.message)
+
+
+class isTime(_is):
+    rule = re.compile('((?P<h>[0-9]+))([^0-9 ]+(?P<m>[0-9 ]+))?([^0-9ap ]+' +
+                      '(?P<s>[0-9]*))?((?P<d>[ap]m))?')
+
+    def __call__(self, value):
+        return _is.__call__(self, value.lower())
+
+    def check(self, value):
+        val = self.rule.match(value)
+        try:
+            (h, m, s) = (int(val.group('h')), 0, 0)
+            if not val.group('m') is None:
+                m = int(val.group('m'))
+            if not val.group('s') is None:
+                s = int(val.group('s'))
+            if val.group('d') == 'pm' and 0 < h < 12:
+                h = h + 12
+            if val.group('d') == 'am' and h == 12:
+                h = 0
+            if not (h in range(24) and m in range(60) and s
+                    in range(60)):
+                raise ValueError(
+                    'Hours or minutes or seconds are outside of allowed range')
+            val = datetime.time(h, m, s)
+            return val, None
+        except AttributeError:
+            pass
+        except ValueError:
+            pass
+        return value, _translate(self.message)
+
+
+class isDate(_is):
+    def __init__(self, format='%Y-%m-%d', timezone=None, message=None):
+        _is.__init__(self, message)
+        self.format = _translate(format)
+        self.timezone = timezone
+        self.extremes = {}
+
+    def check(self, value):
+        if isinstance(value, datetime.date):
+            if self.timezone is not None:
+                val = value - datetime.timedelta(seconds=self.timezone*3600)
+            return val, None
+        try:
+            (y, m, d, hh, mm, ss, t0, t1, t2) = \
+                time.strptime(value, str(self.format))
+            val = datetime.date(y, m, d)
+            if self.timezone is not None:
+                val = self.timezone.localize(val).astimezone(_utc)
+            return value, None
+        except:
+            self.extremes.update(isDate.nice(self.format))
+            return value, _translate(self.message) % self.extremes
+
+    def _formatter_obj(self, year, value):
+        return datetime.datetime(year, value.month, value.day)
+
+    def formatter(self, value):
+        if value is None:
+            return None
+        format = self.format
+        year = value.year
+        y = '%.4i' % year
+        format = format.replace('%y', y[-2:])
+        format = format.replace('%Y', y)
+        if year < 1900:
+            year = 2000
+        d = self._formatter_obj(year, value)
+        if self.timezone is not None:
+            d = d.replace(tzinfo=_utc).astimezone(self.timezone)
+        return d.strftime(format)
+
+    @staticmethod
+    def nice(format):
+        codes = (
+            ('%Y', '1963'), ('%y', '63'), ('%d', '28'), ('%m', '08'),
+            ('%b', 'Aug'), ('%B', 'August'), ('%H', '14'), ('%I', '02'),
+            ('%p', 'PM'), ('%M', '30'), ('%S', '59')
+        )
+        for (a, b) in codes:
+            format = format.replace(a, b)
+        return dict(format=format)
+
+
+class isDatetime(isDate):
+    def __init__(self, format='%Y-%m-%d %H:%M:%S', **kwargs):
+        isDate.__init__(self, format=format, **kwargs)
+
+    def _formatter_obj(self, year, value):
+        return datetime.datetime(year, value.month, value.day, value.hour,
+                                 value.minute, value.second)
+
+
+class isEmail(_is):
+    rule = re.compile(
+        "^(?!\.)([-a-z0-9!\#$%&'*+/=?^_`{|}~]|(?<!\.)\.)+(?<!\.)@" +
+        "(localhost|([a-z0-9]([-\w]*[a-z0-9])?\.)+[a-z]{2,})$",
+        re.VERBOSE | re.IGNORECASE
+    )
+
+    def __init__(self, banned=None, forced=None, message=None):
+        _is.__init__(self, message)
+        self.banned = banned
+        self.forced = forced
+
+    def check(self, value):
+        domain = value.split('@')[1]
+        if (not self.banned or not self.banned.match(domain)) \
+                and (not self.forced or self.forced.match(domain)):
+            return value, None
+        return value, _translate(self.message)
+
+
+class isJSON(_is):
+    JSONErrors = (NameError, TypeError, ValueError, AttributeError,
+                  KeyError)
+
+    def __init__(self, load=True, message=None):
+        _is.__init__(self, message)
+        self.native = not load
+
+    def check(self, value):
+        try:
+            v = json.loads(value)
+            if self.native:
+                return value, None
+            return v, None
+        except self.JSONErrors:
+            return value, _translate(self.message)
+
+    def formatter(self, value):
+        if value is None:
+            return None
+        return json.dumps(value)
+
+
+class inRange(Validator):
+    def __init__(self, minimum=None, maximum=None, message=None):
+        self.minimum = minimum
+        self.maximum = maximum
+        self.message = self._range_error(message, self.minimum, self.maximum)
+
+    def __call__(self, value):
+        if (self.minimum is None or value >= self.minimum) and \
+                (self.maximum is None or value < self.maximum):
+            return value, None
+        return value, _translate(self.message)
+
+    def _range_error(self, error_message, minimum, maximum):
+        if error_message is None:
+            error_message = 'Enter a value'
+            if minimum is not None and maximum is not None:
+                error_message += ' between %(min)g and %(max)g'
+            elif minimum is not None:
+                error_message += ' greater than or equal to %(min)g'
+            elif maximum is not None:
+                error_message += ' less than or equal to %(max)g'
+        if type(maximum) in [int, long]:
+            maximum -= 1
+        return _translate(error_message) % dict(min=minimum, max=maximum)
+
+
 class Matches(Validator):
     """
     The argument of Matches is a regular expression.
     """
 
-    def __init__(self, expression, error_message='Invalid expression',
-                 strict=False, search=False, extract=False,
-                 is_unicode=False):
+    def __init__(self, expression, message='Invalid expression', strict=False,
+                 search=False, extract=False, is_unicode=False):
 
         if strict or not search:
             if not expression.startswith('^'):
@@ -119,7 +505,7 @@ class Matches(Validator):
             self.regex = re.compile(expression, re.UNICODE)
         else:
             self.regex = re.compile(expression)
-        self.error_message = error_message
+        self.message = message
         self.extract = extract
         self.is_unicode = is_unicode
 
@@ -130,18 +516,18 @@ class Matches(Validator):
             match = self.regex.search(str(value))
         if match is not None:
             return (self.extract and match.group() or value, None)
-        return (value, _translate(self.error_message))
+        return (value, _translate(self.message))
 
 
 class Equals(Validator):
-    def __init__(self, expression, error_message='No match'):
+    def __init__(self, expression, message='No match'):
         self.expression = expression
-        self.error_message = error_message
+        self.message = message
 
     def __call__(self, value):
         if value == self.expression:
             return (value, None)
-        return (value, _translate(self.error_message))
+        return (value, _translate(self.message))
 
 
 class hasLength(Validator):
@@ -197,48 +583,18 @@ class hasLength(Validator):
                 % dict(min=self.minsize, max=self.maxsize))
 
 
-class isJSON(Validator):
-    JSONErrors = (NameError, TypeError, ValueError, AttributeError,
-                  KeyError)
-
-    def __init__(self, error_message='Invalid json', native_json=False):
-        self.native_json = native_json
-        self.error_message = error_message
-
-    def __call__(self, value):
-        try:
-            if self.native_json:
-                json.loads(value)
-                return (value, None)
-            return (json.loads(value), None)
-        except self.JSONErrors:
-            return (value, _translate(self.error_message))
-
-    def formatter(self, value):
-        if value is None:
-            return None
-        return json.dumps(value)
-
-
 class inSet(Validator):
     """
     Check that value is one of the given list or set.
     """
 
-    def __init__(
-        self,
-        theset,
-        labels=None,
-        error_message='Value not allowed',
-        multiple=False,
-        zero='',
-        sort=False,
-    ):
+    def __init__(self, theset, labels=None, message='Value not allowed',
+                 multiple=False, zero=None, sort=False):
         self.multiple = multiple
-        if isinstance(theset, dict):
-            self.theset = [str(item) for item in theset]
-            self.labels = theset.values()
-        elif theset and isinstance(theset, (tuple, list)) \
+        #if isinstance(theset, dict):
+        #    self.theset = [str(item) for item in theset]
+        #    self.labels = theset.values()
+        if theset and isinstance(theset, (tuple, list)) \
                 and isinstance(theset[0], (tuple, list)) \
                 and len(theset[0]) == 2:
             self.theset = [str(item) for item, label in theset]
@@ -246,7 +602,7 @@ class inSet(Validator):
         else:
             self.theset = [str(item) for item in theset]
             self.labels = labels
-        self.error_message = error_message
+        self.error_message = message
         self.zero = zero
         self.sort = sort
 
@@ -545,92 +901,6 @@ def _str2dec(number):
     return s
 
 
-class isFloatInRange(Validator):
-    """
-    Determines that the argument is (or can be represented as) a float,
-    and that it falls within the specified inclusive range.
-    The comparison is made with native arithmetic.
-
-    The minimum and maximum limits can be None, meaning no lower or upper
-    limit, respectively.
-    """
-
-    def __init__(
-        self,
-        minimum=None,
-        maximum=None,
-        error_message=None,
-        dot='.'
-    ):
-        self.minimum = float(minimum) if minimum is not None else None
-        self.maximum = float(maximum) if maximum is not None else None
-        self.dot = str(dot)
-        self.error_message = _range_error_message(
-            error_message, 'a number', self.minimum, self.maximum)
-
-    def __call__(self, value):
-        try:
-            if self.dot == '.':
-                v = float(value)
-            else:
-                v = float(str(value).replace(self.dot, '.'))
-            if ((self.minimum is None or v >= self.minimum) and
-                    (self.maximum is None or v <= self.maximum)):
-                return (v, None)
-        except (ValueError, TypeError):
-            pass
-        return (value, self.error_message)
-
-    def formatter(self, value):
-        if value is None:
-            return None
-        return _str2dec(value).replace('.', self.dot)
-
-
-class isDecimalInRange(Validator):
-    """
-    Determines that the argument is (or can be represented as) a Python
-    Decimal, and that it falls within the specified inclusive range.
-    The comparison is made with Python Decimal arithmetic.
-
-    The minimum and maximum limits can be None, meaning no lower or upper
-    limit, respectively.
-    """
-
-    def __init__(
-        self,
-        minimum=None,
-        maximum=None,
-        error_message=None,
-        dot='.'
-    ):
-        self.minimum = decimal.Decimal(str(minimum)) if minimum is not None \
-            else None
-        self.maximum = decimal.Decimal(str(maximum)) if maximum is not None \
-            else None
-        self.dot = str(dot)
-        self.error_message = _range_error_message(
-            error_message, 'a number', self.minimum, self.maximum)
-
-    def __call__(self, value):
-        try:
-            if isinstance(value, decimal.Decimal):
-                v = value
-            else:
-                v = decimal.Decimal(str(value).replace(self.dot, '.'))
-            if ((self.minimum is None or v >= self.minimum) and
-                    (self.maximum is None or v <= self.maximum)):
-                return (v, None)
-        except (ValueError, TypeError, decimal.InvalidOperation):
-            pass
-        return (value, self.error_message)
-
-    def formatter(self, value):
-        if value is None:
-            return None
-        return _str2dec(value).replace('.', self.dot)
-
-
 def _is_empty(value, empty_regex=None):
     "test empty field"
     if isinstance(value, (str, unicode)):
@@ -661,47 +931,6 @@ class isAlphanumeric(Matches):
     def __init__(self,
                  error_message='Enter only letters, numbers, and underscore'):
         Matches.__init__(self, '^[\w]*$', error_message)
-
-
-class isEmail(Validator):
-    """
-    Checks if field's value is a valid email address. Can be set to disallow
-    or force addresses from certain domain(s).
-
-    Email regex adapted from
-    http://haacked.com/archive/2007/08/21/i-knew-how-to-validate-an-email-address-until-i.aspx,
-    generally following the RFCs, except that we disallow quoted strings
-    and permit underscores and leading numerics in subdomain labels
-
-    Args:
-        banned: regex text for disallowed address domains
-        forced: regex text for required address domains
-
-    Both arguments can also be custom objects with a match(value) method.
-    """
-
-    regex = re.compile("^(?!\.)([-a-z0-9!\#$%&'*+/=?^_`{|}~]|(?<!\.)\.)+(?<!\.)@(localhost|([a-z0-9]([-\w]*[a-z0-9])?\.)+[a-z]{2,})$", re.VERBOSE | re.IGNORECASE)
-
-    def __init__(self,
-                 banned=None,
-                 forced=None,
-                 error_message='Enter a valid email address'):
-        if isinstance(banned, str):
-            banned = re.compile(banned)
-        if isinstance(forced, str):
-            forced = re.compile(forced)
-        self.banned = banned
-        self.forced = forced
-        self.error_message = error_message
-
-    def __call__(self, value):
-        match = self.regex.match(value)
-        if match:
-            domain = value.split('@')[1]
-            if (not self.banned or not self.banned.match(domain)) \
-                    and (not self.forced or self.forced.match(domain)):
-                return (value, None)
-        return (value, _translate(self.error_message))
 
 
 class isEmailList(object):
@@ -1425,178 +1654,6 @@ class isUrl(Validator):
                 return methodResult
 
 
-_regex_time = re.compile('((?P<h>[0-9]+))([^0-9 ]+(?P<m>[0-9 ]+))?([^0-9ap ]+(?P<s>[0-9]*))?((?P<d>[ap]m))?')
-
-
-class isTime(Validator):
-    """
-    understands the following formats
-    hh:mm:ss [am/pm]
-    hh:mm [am/pm]
-    hh [am/pm]
-
-    [am/pm] is optional, ':' can be replaced by any other non-space non-digit::
-    """
-
-    def __init__(self, error_message='Enter time as hh:mm:ss (seconds, am, pm optional)'):
-        self.error_message = error_message
-
-    def __call__(self, value):
-        try:
-            ivalue = value
-            value = _regex_time.match(value.lower())
-            (h, m, s) = (int(value.group('h')), 0, 0)
-            if not value.group('m') is None:
-                m = int(value.group('m'))
-            if not value.group('s') is None:
-                s = int(value.group('s'))
-            if value.group('d') == 'pm' and 0 < h < 12:
-                h = h + 12
-            if value.group('d') == 'am' and h == 12:
-                h = 0
-            if not (h in range(24) and m in range(60) and s
-                    in range(60)):
-                raise ValueError(
-                    'Hours or minutes or seconds are outside of allowed range')
-            value = datetime.time(h, m, s)
-            return (value, None)
-        except AttributeError:
-            pass
-        except ValueError:
-            pass
-        return (ivalue, _translate(self.error_message))
-
-
-class _UTC(datetime.tzinfo):
-    """UTC"""
-    ZERO = datetime.timedelta(0)
-
-    def utcoffset(self, dt):
-        return _UTC.ZERO
-
-    def tzname(self, dt):
-        return "UTC"
-
-    def dst(self, dt):
-        return _UTC.ZERO
-
-_utc = _UTC()
-
-
-class isDate(Validator):
-    """
-    date has to be in the ISO8960 format YYYY-MM-DD
-    timezome must be None or a pytz.timezone("America/Chicago") object
-    """
-
-    def __init__(self, format='%Y-%m-%d',
-                 error_message='Enter date as %(format)s',
-                 timezone=None):
-        self.format = _translate(format)
-        self.error_message = str(error_message)
-        self.timezone = timezone
-        self.extremes = {}
-
-    def __call__(self, value):
-        ovalue = value
-        if isinstance(value, datetime.date):
-            if self.timezone is not None:
-                value = value - datetime.timedelta(seconds=self.timezone*3600)
-            return (value, None)
-        try:
-            (y, m, d, hh, mm, ss, t0, t1, t2) = \
-                time.strptime(value, str(self.format))
-            value = datetime.date(y, m, d)
-            if self.timezone is not None:
-                value = self.timezone.localize(value).astimezone(_utc)
-            return (value, None)
-        except:
-            self.extremes.update(isDatetime.nice(self.format))
-            return (ovalue, _translate(self.error_message) % self.extremes)
-
-    def formatter(self, value):
-        if value is None:
-            return None
-        format = self.format
-        year = value.year
-        y = '%.4i' % year
-        format = format.replace('%y', y[-2:])
-        format = format.replace('%Y', y)
-        if year < 1900:
-            year = 2000
-        if self.timezone is not None:
-            d = datetime.datetime(year, value.month, value.day)
-            d = d.replace(tzinfo=_utc).astimezone(self.timezone)
-        else:
-            d = datetime.date(year, value.month, value.day)
-        return d.strftime(format)
-
-
-class isDatetime(Validator):
-    """
-    datetime has to be in the ISO8960 format YYYY-MM-DD hh:mm:ss
-    timezome must be None or a pytz.timezone("America/Chicago") object
-    """
-
-    isodatetime = '%Y-%m-%d %H:%M:%S'
-
-    @staticmethod
-    def nice(format):
-        code = (('%Y', '1963'),
-                ('%y', '63'),
-                ('%d', '28'),
-                ('%m', '08'),
-                ('%b', 'Aug'),
-                ('%B', 'August'),
-                ('%H', '14'),
-                ('%I', '02'),
-                ('%p', 'PM'),
-                ('%M', '30'),
-                ('%S', '59'))
-        for (a, b) in code:
-            format = format.replace(a, b)
-        return dict(format=format)
-
-    def __init__(self, format='%Y-%m-%d %H:%M:%S',
-                 error_message='Enter date and time as %(format)s',
-                 timezone=None):
-        self.format = _translate(format)
-        self.error_message = str(error_message)
-        self.extremes = {}
-        self.timezone = timezone
-
-    def __call__(self, value):
-        ovalue = value
-        if isinstance(value, datetime.datetime):
-            return (value, None)
-        try:
-            (y, m, d, hh, mm, ss, t0, t1, t2) = \
-                time.strptime(value, str(self.format))
-            value = datetime.datetime(y, m, d, hh, mm, ss)
-            if self.timezone is not None:
-                value = self.timezone.localize(value).astimezone(_utc)
-            return (value, None)
-        except:
-            self.extremes.update(isDatetime.nice(self.format))
-            return (ovalue, _translate(self.error_message) % self.extremes)
-
-    def formatter(self, value):
-        if value is None:
-            return None
-        format = self.format
-        year = value.year
-        y = '%.4i' % year
-        format = format.replace('%y', y[-2:])
-        format = format.replace('%Y', y)
-        if year < 1900:
-            year = 2000
-        d = datetime.datetime(year, value.month, value.day,
-                              value.hour, value.minute, value.second)
-        if self.timezone is not None:
-            d = d.replace(tzinfo=_utc).astimezone(self.timezone)
-        return d.strftime(format)
-
-
 class isDateInRange(isDate):
     def __init__(self,
                  minimum=None,
@@ -1750,16 +1807,16 @@ class Slug(Validator):
         s = s.strip('-')                      # remove leading and trailing hyphens
         return s[:self.maxlen]                # enforce maximum length
 
-    def __init__(self, maxlen=80, check=False, error_message='Must be slug',
+    def __init__(self, maxlen=80, check=False, message='Must be slug',
                  keep_underscores=False):
         self.maxlen = maxlen
         self.check = check
-        self.error_message = error_message
+        self.message = message
         self.keep_underscores = keep_underscores
 
     def __call__(self, value):
         if self.check and value != self._urlify(value):
-            return (value, _translate(self.error_message))
+            return (value, _translate(self.message))
         return (self._urlify(value), None)
 
 
@@ -1971,9 +2028,9 @@ class Crypt(object):
 
     def __init__(self,
                  key=None,
-                 digest_alg='pbkdf2(1000,20,sha512)',
+                 algorithm='pbkdf2(1000,20,sha512)',
                  min_length=0,
-                 error_message='Too short', salt=True,
+                 message='Too short', salt=True,
                  max_length=1024):
         """
         important, digest_alg='md5' is not the default hashing algorithm for
@@ -1983,16 +2040,16 @@ class Crypt(object):
         generated by web2py in tools.py. This defaults to hmac+sha512.
         """
         self.key = key
-        self.digest_alg = digest_alg
-        self.min_length = min_length
-        self.max_length = max_length
-        self.error_message = error_message
+        self.digest_alg = algorithm
+        #self.min_length = min_length
+        #self.max_length = max_length
+        self.message = message
         self.salt = salt
 
     def __call__(self, value):
-        value = value and value[:self.max_length]
-        if len(value) < self.min_length:
-            return ('', _translate(self.error_message))
+        #value = value and value[:self.max_length]
+        #if len(value) < self.min_length:
+        #    return ('', _translate(self.message))
         return (_LazyCrypt(self, value), None)
 
 

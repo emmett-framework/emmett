@@ -17,6 +17,7 @@ from ._compat import copyreg
 from .datastructures import sdict
 from .handlers import Handler
 from .security import uuid as _uuid
+from .validators import ValidateFromDict
 
 
 def _default_validators(db, field):
@@ -33,13 +34,13 @@ def _default_validators(db, field):
     elif field_type == 'json':
         requires.append(_validators.isEmptyOr(_validators.isJSON()))
     elif field_type == 'double' or field_type == 'float':
-        requires.append(_validators.isFloatInRange(-1e100, 1e100))
+        requires.append(_validators.isFloat())
     elif field_type == 'integer':
-        requires.append(_validators.isIntInRange(-2**31, 2**31))
+        requires.append(_validators.isInt())
     elif field_type == 'bigint':
-        requires.append(_validators.isIntInRange(-2**63, 2**63))
+        requires.append(_validators.isInt())
     elif field_type.startswith('decimal'):
-        requires.append(_validators.isDecimalInRange(-10**10, 10**10))
+        requires.append(_validators.isDecimal())
     elif field_type == 'date':
         requires.append(_validators.isDate())
     elif field_type == 'time':
@@ -200,9 +201,16 @@ class Field(_Field):
         self.modelname = None
 
     def _make_field(self, name, model=None):
+        requires = None
+        if isinstance(requires, dict):
+            validation_parser = ValidateFromDict()
+            requires = self._kwargs.get('requires')
+            del self._kwargs['requires']
         if model is not None:
             self.modelname = model.__class__.__name__
         super(Field, self).__init__(name, *self._args, **self._kwargs)
+        if requires:
+            self.requires = validation_parser(self, requires)
         return self
 
     def __str__(self):
@@ -523,8 +531,14 @@ class Model(object):
                 self.fields.append(f)
 
     def __define_validators(self):
+        validation_parser = ValidateFromDict()
         for field, value in self.validators.items():
-            self.entity[field].requires = value
+            if isinstance(value, dict):
+                self.entity[field].requires = validation_parser(
+                    self.entity[field], value
+                )
+            else:
+                self.entity[field].requires = value
 
     def __define_visibility(self):
         try:
