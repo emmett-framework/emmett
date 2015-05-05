@@ -576,16 +576,16 @@ class Model(object):
                 self.fields.append(f)
 
     def __define_validators(self):
-        for fieldname in self.entity.fields:
-            validation = self.validators.get(fieldname, {})
+        for field in self.fields:
+            validation = self.validators.get(field.name, {})
             if isinstance(validation, dict):
                 for key in list(validation):
-                    self.entity[fieldname]._requires[key] = validation[key]
+                    field._requires[key] = validation[key]
             elif isinstance(validation, list):
-                self.entity[fieldname]._custom_requires += validation
+                field._custom_requires += validation
             else:
-                self.entity[fieldname]._custom_requires.append(validation)
-            self.entity[fieldname]._parse_validation()
+                field._custom_requires.append(validation)
+            field._parse_validation()
 
     def __define_visibility(self):
         try:
