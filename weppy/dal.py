@@ -577,6 +577,8 @@ class Model(object):
 
     def __define_validators(self):
         for field in self.fields:
+            if isinstance(field, (_Field.Method, _Field.Virtual)):
+                continue
             validation = self.validators.get(field.name, {})
             if isinstance(validation, dict):
                 for key in list(validation):
