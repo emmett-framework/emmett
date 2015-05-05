@@ -181,10 +181,10 @@ class hasLength(Validator):
     """
 
     def __init__(self, maxsize=255, minsize=0,
-                 error_message='Enter from %(min)g to %(max)g characters'):
+                 message='Enter from %(min)g to %(max)g characters'):
         self.maxsize = maxsize
         self.minsize = minsize
-        self.error_message = error_message
+        self.message = message
 
     def __call__(self, value):
         if value is None:
@@ -219,5 +219,5 @@ class hasLength(Validator):
                 return (value, None)
         elif self.minsize <= len(str(value)) <= self.maxsize:
             return (str(value), None)
-        return (value, translate(self.error_message)
+        return (value, translate(self.message)
                 % dict(min=self.minsize, max=self.maxsize))

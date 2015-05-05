@@ -31,9 +31,7 @@ class ValidateFromDict(object):
             'clean': Cleanup
         }
 
-    def parse_num_comparisons(self, data):
-        minv = None
-        maxv = None
+    def parse_num_comparisons(self, data, minv=None, maxv=None):
         for key, addend in self.numkeys.iteritems():
             val = data.get(key)
             if val is not None:
@@ -81,7 +79,7 @@ class ValidateFromDict(object):
                 if _len.get('range') is not None:
                     minv, maxv = _len['range']
                 else:
-                    minv, maxv = self.parse_num_comparisons(_len)
+                    minv, maxv = self.parse_num_comparisons(_len, 0, 255)
                 validators.append(hasLength(maxv, minv))
         #: parse 'in'
         _in = data.get('in', [])
