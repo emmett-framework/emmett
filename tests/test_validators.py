@@ -43,7 +43,7 @@ def test_defaults(db):
     assert isinstance(db.a.name.requires[0], isEmptyOr)
     assert isinstance(db.a.name.requires[0].other[0], hasLength)
     assert db.a.name.requires[0].other[0].minsize == 0
-    assert db.a.name.requires[0].other[0].maxsize == 255
+    assert db.a.name.requires[0].other[0].maxsize == db.a.name.length
     assert isinstance(db.a.text.requires[0].other[0], hasLength)
     assert isinstance(db.a.password.requires[0].other[0], hasLength)
     #: numbers
