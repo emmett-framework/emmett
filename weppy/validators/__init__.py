@@ -70,8 +70,9 @@ class ValidateFromDict(object):
         if _len is not None:
             if isinstance(_len, int):
                 #: allows {'len': 2}
-                validators.append(hasLength(_len, _len,
-                                  error_message='Enter %(min)g characters'))
+                validators.append(
+                    hasLength(_len+1, _len, 'Enter %(min)g characters')
+                )
             else:
                 #: allows
                 #  {'len': {'gt': 1, 'gte': 2, 'lt': 5, 'lte' 6}}
@@ -79,7 +80,7 @@ class ValidateFromDict(object):
                 if _len.get('range') is not None:
                     minv, maxv = _len['range']
                 else:
-                    minv, maxv = self.parse_num_comparisons(_len, 0, 255)
+                    minv, maxv = self.parse_num_comparisons(_len, 0, 256)
                 validators.append(hasLength(maxv, minv))
         #: parse 'in'
         _in = data.get('in', [])

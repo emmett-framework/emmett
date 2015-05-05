@@ -180,7 +180,7 @@ class hasLength(Validator):
         minsize: minimum allowed length / size
     """
 
-    def __init__(self, maxsize=255, minsize=0,
+    def __init__(self, maxsize=256, minsize=0,
                  message='Enter from %(min)g to %(max)g characters'):
         self.maxsize = maxsize
         self.minsize = minsize
@@ -189,7 +189,7 @@ class hasLength(Validator):
     def __call__(self, value):
         if value is None:
             length = 0
-            if self.minsize <= length <= self.maxsize:
+            if self.minsize <= length < self.maxsize:
                 return (value, None)
         elif isinstance(value, FieldStorage):
             if value.file:
@@ -202,22 +202,22 @@ class hasLength(Validator):
                     length = len(val)
                 else:
                     length = 0
-            if self.minsize <= length <= self.maxsize:
+            if self.minsize <= length < self.maxsize:
                 return (value, None)
         elif isinstance(value, str):
             try:
                 lvalue = len(value.decode('utf8'))
             except:
                 lvalue = len(value)
-            if self.minsize <= lvalue <= self.maxsize:
+            if self.minsize <= lvalue < self.maxsize:
                 return (value, None)
         elif isinstance(value, unicode):
-            if self.minsize <= len(value) <= self.maxsize:
+            if self.minsize <= len(value) < self.maxsize:
                 return (value.encode('utf8'), None)
         elif isinstance(value, (tuple, list)):
-            if self.minsize <= len(value) <= self.maxsize:
+            if self.minsize <= len(value) < self.maxsize:
                 return (value, None)
-        elif self.minsize <= len(str(value)) <= self.maxsize:
+        elif self.minsize <= len(str(value)) < self.maxsize:
             return (str(value), None)
         return (value, translate(self.message)
                 % dict(min=self.minsize, max=self.maxsize))

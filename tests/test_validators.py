@@ -30,11 +30,49 @@ class A(Model):
     json = Field('json')
 
 
+class AA(Model):
+    tablename = "aa"
+
+    a = Field(auto_requires=False)
+
+
+class AAA(Model):
+    tablename = "aaa"
+    default_validators = False
+
+    a = Field()
+
+
+class B(Model):
+    tablename = "b"
+
+    a = Field()
+    b = Field(requires={'len': {'gte': 5}})
+
+    validators = {
+        'a': {'len': {'gte': 5}}
+    }
+
+
+class Len(Model):
+    a = Field()
+    b = Field()
+    c = Field()
+    d = Field()
+
+    validators = {
+        'a': {'len': 5},
+        'b': {'len': {'gt': 4, 'lt': 13}},
+        'c': {'len': {'gte': 5, 'lte': 12}},
+        'd': {'len': {'range': (5, 13)}}
+    }
+
+
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
     db = DAL(app, config=sdict(uri='sqlite://validators.db'))
-    db.define_models([A])
+    db.define_models([A, AA, AAA, B, Len])
     return db
 
 
@@ -55,3 +93,25 @@ def test_defaults(db):
     assert isinstance(db.a.dt.requires[0].other[0], isDatetime)
     #: json
     assert isinstance(db.a.json.requires[0].other[0], isJSON)
+
+
+def test_defaults_disable(db):
+    assert len(db.aa.a.requires) == 0
+    assert len(db.aaa.a.requires) == 0
+
+
+def test_requires_vs_validators(db):
+    # using Field(requires=) is the same as 'validators'
+    assert db.b.a.requires[0].other[0].minsize == 5
+    assert db.b.b.requires[0].other[0].minsize == 5
+
+
+def test_len(db):
+    assert db.Len.a.requires[0].other[0].minsize == 5
+    assert db.Len.a.requires[0].other[0].maxsize == 6
+    assert db.Len.b.requires[0].other[0].minsize == 5
+    assert db.Len.b.requires[0].other[0].maxsize == 13
+    assert db.Len.c.requires[0].other[0].minsize == 5
+    assert db.Len.c.requires[0].other[0].maxsize == 13
+    assert db.Len.d.requires[0].other[0].minsize == 5
+    assert db.Len.d.requires[0].other[0].maxsize == 13
