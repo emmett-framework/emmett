@@ -227,8 +227,9 @@ def test_numerical(db):
 
 def test_eq(db):
     assert isinstance(Eq.a.requires[0].other[1], Equals)
-    assert isinstance(Eq.a.requires[0].other[1], _not)
-    assert isinstance(Eq.a.requires[0].other[1].conditions[0], Equals)
+    assert isinstance(Eq.b.requires[0].other[1], Equals)
+    assert isinstance(Eq.c.requires[0].other[1], _not)
+    assert isinstance(Eq.c.requires[0].other[1].conditions[0], Equals)
 
 
 def test_processors(db):
@@ -236,8 +237,8 @@ def test_processors(db):
     assert isinstance(Proc.b.requires[0].other[1], Upper)
     assert isinstance(Proc.c.requires[0].other[1], Cleanup)
     assert isinstance(Proc.d.requires[0].other[1], Slug)
-    assert isinstance(Proc.e.requires[0].other[2], Crypt)
-    assert isinstance(Proc.f.requires[0].other[2], Crypt)
+    assert isinstance(Proc.e.requires[0].other[1], Crypt)
+    assert isinstance(Proc.f.requires[0].other[1], Crypt)
 
 
 def test_presence(db):
