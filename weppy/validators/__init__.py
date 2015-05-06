@@ -133,7 +133,7 @@ class ValidateFromDict(object):
                 validators.append(vclass(**options))
         #: parse 'not'
         if 'not' in data:
-            validators.append(_not(self(data['not'])))
+            validators.append(_not(self(field, data['not'])))
         #: insert presence validation if needed
         if presence:
             if field.type.startswith('reference'):
