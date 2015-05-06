@@ -42,7 +42,7 @@ class ValidateFromDict(object):
                     maxv = val + addend
         return minv, maxv
 
-    def __call__(self, field, data):
+    def __call__(self, field, data, auto_presence=True):
         # 'is', 'equals', 'not', 'match', 'length', 'presence', 'empty'
         validators = []
         #: parse 'presence' and 'empty'
@@ -133,7 +133,7 @@ class ValidateFromDict(object):
                 validators.append(vclass(**options))
         #: parse 'not'
         if 'not' in data:
-            validators.append(_not(self(field, data['not'])))
+            validators.append(_not(self(field, data['not'], False)))
         #: insert presence validation if needed
         if presence:
             if field.type.startswith('reference'):
@@ -141,6 +141,6 @@ class ValidateFromDict(object):
             else:
                 validators.insert(0, isntEmpty())
         else:
-            if validators:
+            if validators and auto_presence:
                 validators = [isEmptyOr(validators)]
         return validators
