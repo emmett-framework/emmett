@@ -9,7 +9,8 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, hasLength
+from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, \
+    hasLength, _not
 from .consist import isInt, isFloat, isDecimal, isDate, isTime, isDatetime, \
     isEmail, isJSON, isUrl, isIP, isImage
 from .inside import inRange, inSet, inSubSet, inDb, notInDb
@@ -132,7 +133,7 @@ class ValidateFromDict(object):
                 validators.append(vclass(**options))
         #: parse 'not'
         if 'not' in data:
-            validators.append(self(data['not']))
+            validators.append(_not(self(data['not'])))
         #: insert presence validation if needed
         if presence:
             if field.type.startswith('reference'):
