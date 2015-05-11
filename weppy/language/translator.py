@@ -16,6 +16,7 @@
 from cgi import escape
 import os
 
+from .._compat import implements_bool
 from ..tags import asis, xmlescape
 from .helpers import regex_backslash, regex_plural, regex_plural_dict, \
     regex_plural_tuple, regex_language, DEFAULT_NPLURALS, \
@@ -30,6 +31,7 @@ NUMBERS = (int, long, float)
 #: The single 'translator string element', is created when user calls
 #  T('string'), and will be translated when loaded in templates or converted to
 #  a string (via str() or repr())
+@implements_bool
 class TElement(object):
     m = s = T = language = None
     M = is_copy = False
@@ -99,6 +101,9 @@ class TElement(object):
 
     def __len__(self):
         return len(str(self))
+
+    def __bool__(self):
+        return len(self.m) > 0
 
     def xml(self):
         return str(self) if self.M else escape(str(self))

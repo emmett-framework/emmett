@@ -27,7 +27,15 @@ if PY2:
 
     hashlib_md5 = hashlib.md5
 
-    implements_iterator = _identity
+    def implements_iterator(cls):
+        cls.next = cls.__next__
+        del cls.__next__
+        return cls
+
+    def implements_bool(cls):
+        cls.__nonzero__ = cls.__bool__
+        del cls.__bool__
+        return cls
 
     def reraise(tp, value, tb=None):
         raise tp, value, tb
@@ -43,10 +51,8 @@ else:
 
     hashlib_md5 = lambda s: hashlib.md5(bytes(s, 'utf8'))
 
-    def implements_iterator(cls):
-        cls.next = cls.__next__
-        del cls.__next__
-        return cls
+    implements_iterator = _identity
+    implements_bool = _identity
 
     def reraise(tp, value, tb=None):
         if value.__traceback__ is not tb:
