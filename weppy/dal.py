@@ -657,14 +657,14 @@ class Model(object):
     #   return Row(**kwargs)
 
     @modelmethod
-    def create(db, entity, **kwargs):
+    def create(db, entity, *args, **kwargs):
         rv = sdict(id=None)
         vals = sdict()
         errors = sdict()
-        if len(kwargs == 1):
-            arg = kwargs[list(kwargs)[0]]
-            if isinstance(kwargs[list(kwargs)[0]], (dict, sdict)):
-                kwargs = arg
+        if args:
+            if isinstance(args[0], (dict, sdict)):
+                for key, val in args[0].iterkeys():
+                    kwargs[key] = val
         for field in entity.fields:
             value = kwargs.get(field)
             vals[field], errors[field] = entity[field].validate(value)
