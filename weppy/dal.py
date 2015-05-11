@@ -663,8 +663,8 @@ class Model(object):
         errors = sdict()
         if args:
             if isinstance(args[0], (dict, sdict)):
-                for key, val in args[0].iterkeys():
-                    kwargs[key] = val
+                for key in list(args[0]):
+                    kwargs[key] = args[0][key]
         for field in entity.fields:
             value = kwargs.get(field)
             vals[field], errors[field] = entity[field].validate(value)
