@@ -265,12 +265,12 @@ def test_validation(db):
     assert 'surname' in errors
     assert len(errors) == 1
     #: 'presence' with reference
-    thing = {'name': 'a', 'person': 5}
+    thing = {'name': 'a', 'person': 5, 'color': 'blue'}
     errors = Thing.validate(thing)
     assert 'person' in errors
     assert len(errors) == 1
     mario = {'name': 'mario', 'surname': 'draghi'}
     mario = Person.create(mario)
-    thing = {'name': 'euro', 'person': mario.id}
+    thing = {'name': 'euro', 'person': mario.id, 'color': 'red'}
     errors = Thing.validate(thing)
     assert len(errors) == 0
