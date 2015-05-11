@@ -658,7 +658,20 @@ class Model(object):
 
     @modelmethod
     def create(db, entity, **kwargs):
-        return entity.validate_and_insert(**kwargs)
+        rv = sdict(id=None)
+        vals = sdict()
+        errors = sdict()
+        if len(kwargs == 1):
+            arg = kwargs[list(kwargs)[0]]
+            if isinstance(kwargs[list(kwargs)[0]], (dict, sdict)):
+                kwargs = arg
+        for field in entity.fields:
+            value = kwargs.get(field)
+            vals[field], errors[field] = entity[field].validate(value)
+        if not errors:
+            rv.id = entity.insert(**vals)
+        rv.errors = errors
+        return rv
 
     @modelmethod
     def validate(db, entity, row):
@@ -666,7 +679,7 @@ class Model(object):
         errors = sdict()
         for field in entity.fields:
             value = row.get(field)
-            rv, error = field.validate(value)
+            rv, error = entity[field].validate(value)
             if error:
                 errors[field] = error
         return errors
