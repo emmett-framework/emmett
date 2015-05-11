@@ -662,12 +662,13 @@ class Model(object):
 
     @modelmethod
     def validate(db, entity, row):
-        errors = {}
+        row = sdict(row)
+        errors = sdict()
         for field in entity.fields:
-            value = row[field.name]
+            value = row.get(field)
             rv, error = field.validate(value)
             if error:
-                errors[field.name] = error
+                errors[field] = error
         return errors
 
     @modelmethod
