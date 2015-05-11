@@ -230,6 +230,8 @@ class Field(_Field):
             rv['is'] = self._type
         if self._type in ['string', 'text', 'password']:
             rv['len'] = {'lt': self.length}
+        if self._type.startswith('reference'):
+            rv['presence'] = True
         return rv
 
     def _parse_validation(self):

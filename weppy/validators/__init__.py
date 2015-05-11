@@ -13,7 +13,7 @@ from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, \
     hasLength, _not
 from .consist import isInt, isFloat, isDecimal, isDate, isTime, isDatetime, \
     isEmail, isJSON, isUrl, isIP, isImage
-from .inside import inRange, inSet, inSubSet, inDb, notInDb
+from .inside import inRange, inSet, inSubSet, inDB, notInDB
 from .process import Cleanup, Crypt, Lower, Slug, Upper
 
 
@@ -47,6 +47,7 @@ class ValidateFromDict(object):
         validators = []
         #: parse 'presence' and 'empty'
         presence = data.get('presence')
+        empty = data.get('empty')
         if presence is None:
             presence = not data.get('empty', True)
         #: parse 'is'
@@ -134,11 +135,20 @@ class ValidateFromDict(object):
         #: parse 'not'
         if 'not' in data:
             validators.append(_not(self(field, data['not'], False)))
+        #: parse 'unique'
+        if data.get('unique', False):
+            validators.append(notInDB(field.db, field.table))
+        #if data.get('exists', False) and field.type.startswith('reference'):
+        #    ref_table = field.type.split(' ')[1]
+        #    validators.append(inDB(field.db, ref_table))
         #: insert presence validation if needed
         if presence:
             if field.type.startswith('reference'):
-                pass
-            else:
+                ref_table = field.type.split(' ')[1]
+                validators.append(inDB(field.db, ref_table))
+                if empty is True:
+                    validators = [isEmptyOr(validators)]
+            if not empty:
                 validators.insert(0, isntEmpty())
         else:
             if validators and auto_presence:

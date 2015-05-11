@@ -119,6 +119,28 @@ class inSubSet(inSet):
         return value, None
 
 
+class inDB(Validator):
+    def __init__(self, db, set, field='_id', message=None):
+        self.db = db
+        self.set = set
+        self.field = field
+        # TODO: parse set if is not table
+
+    def __call__(self, value):
+        field = self.db[self.set][self.field]
+        if self.db(field == value).count():
+            return value, None
+        return value, translate(self.message)
+
+
+class notInDB(inDB):
+    def __call__(self, value):
+        field = self.db[self.set][self.field]
+        if self.db(field == value).count():
+            return value, translate(self.message)
+        return value, None
+
+
 class inDb(Validator):
     """
     Used for reference fields, rendered as a dropbox

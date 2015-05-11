@@ -13,7 +13,7 @@ import pytest
 from weppy import App, sdict
 from weppy.dal import DAL, Model, Field, has_many, belongs_to
 from weppy.validators import isEmptyOr, hasLength, isInt, isFloat, isDate, \
-    isTime, isDatetime, isJSON, isntEmpty, inSet, inDb, isEmail, isUrl, isIP, \
+    isTime, isDatetime, isJSON, isntEmpty, inSet, inDB, isEmail, isUrl, isIP, \
     isImage, inRange, Equals, Lower, Upper, Cleanup, Slug, Crypt
 from weppy.validators.basic import _not
 
@@ -255,4 +255,22 @@ def test_presence(db):
     assert isinstance(Thing.color.requires[0], isntEmpty)
     assert isinstance(Thing.color.requires[1], hasLength)
     assert isinstance(Thing.color.requires[2], inSet)
-    #assert isinstance(Thing.person.requires[0], inDb)
+    assert isinstance(Thing.person.requires[1], inDB)
+
+
+def test_validation(db):
+    #: 'presence'
+    mario = {'name': 'mario'}
+    errors = Person.validate(mario)
+    assert 'surname' in errors
+    assert len(errors) == 1
+    #: 'presence' with reference
+    thing = {'name': 'a', 'person': 5}
+    errors = Thing.validate(thing)
+    assert 'person' in errors
+    assert len(errors) == 1
+    mario = {'name': 'mario', 'surname': 'draghi'}
+    mario = Person.create(mario)
+    thing = {'name': 'euro', 'person': mario.id}
+    errors = Thing.validate(thing)
+    assert len(errors) == 0
