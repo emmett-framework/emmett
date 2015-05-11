@@ -33,18 +33,18 @@ class inRange(Validator):
             self._range_error(self.message, minimum, maximum)
         )
 
-    def _range_error(self, error_message, minimum, maximum):
-        if error_message is None:
-            error_message = 'Enter a value'
+    def _range_error(self, message, minimum, maximum):
+        if message is None:
+            message = 'Enter a value'
             if minimum is not None and maximum is not None:
-                error_message += ' between %(min)g and %(max)g'
+                message += ' between %(min)g and %(max)g'
             elif minimum is not None:
-                error_message += ' greater than or equal to %(min)g'
+                message += ' greater than or equal to %(min)g'
             elif maximum is not None:
-                error_message += ' less than or equal to %(max)g'
+                message += ' less than or equal to %(max)g'
         if type(maximum) in [int, long]:
             maximum -= 1
-        return translate(error_message) % dict(min=minimum, max=maximum)
+        return translate(message) % dict(min=minimum, max=maximum)
 
 
 class inSet(Validator):
@@ -66,7 +66,7 @@ class inSet(Validator):
         else:
             self.theset = [str(item) for item in theset]
             self.labels = labels
-        self.error_message = message
+        self.message = message
         self.zero = zero
         self.sort = sort
 
@@ -96,11 +96,11 @@ class inSet(Validator):
         if failures and self.theset:
             if self.multiple and (value is None or value == ''):
                 return ([], None)
-            return value, translate(self.error_message)
+            return value, translate(self.message)
         if self.multiple:
             if isinstance(self.multiple, (tuple, list)) and \
                     not self.multiple[0] <= len(values) < self.multiple[1]:
-                return values, translate(self.error_message)
+                return values, translate(self.message)
             return values, None
         return value, None
 
@@ -121,6 +121,7 @@ class inSubSet(inSet):
 
 class inDB(Validator):
     def __init__(self, db, set, field='_id', message=None):
+        Validator.__init__(self, message)
         self.db = db
         self.set = set
         self.field = field

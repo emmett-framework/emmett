@@ -20,6 +20,12 @@ from .helpers import translate, is_empty
 
 
 class Validator(object):
+    message = "Invalid value"
+
+    def __init__(self, message=None):
+        if message:
+            self.message = message
+
     def formatter(self, value):
         return value
 
@@ -31,10 +37,6 @@ class Validator(object):
 class _is(Validator):
     rule = None
     message = "Invalid value"
-
-    def __init__(self, message=None):
-        if message:
-            self.message = message
 
     def __call__(self, value):
         if self.rule is None or \
@@ -67,8 +69,8 @@ class _not(Validator):
 
 
 class isntEmpty(Validator):
-    def __init__(self, error_message='Enter a value', empty_regex=None):
-        self.error_message = error_message
+    def __init__(self, message='Enter a value', empty_regex=None):
+        Validator.__init__(self, message)
         if empty_regex is not None:
             self.empty_regex = re.compile(empty_regex)
         else:
@@ -77,7 +79,7 @@ class isntEmpty(Validator):
     def __call__(self, value):
         value, empty = is_empty(value, empty_regex=self.empty_regex)
         if empty:
-            return value, translate(self.error_message)
+            return value, translate(self.message)
         return value, None
 
 
