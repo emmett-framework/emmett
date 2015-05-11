@@ -271,6 +271,8 @@ def test_validation(db):
     assert len(errors) == 1
     mario = {'name': 'mario', 'surname': 'draghi'}
     mario = Person.create(mario)
+    assert len(mario.errors) == 0
+    assert mario.id == 1
     thing = {'name': 'euro', 'person': mario.id, 'color': 'red'}
     errors = Thing.validate(thing)
     assert len(errors) == 0

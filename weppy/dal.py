@@ -667,7 +667,9 @@ class Model(object):
                     kwargs[key] = args[0][key]
         for field in entity.fields:
             value = kwargs.get(field)
-            vals[field], errors[field] = entity[field].validate(value)
+            vals[field], error = entity[field].validate(value)
+            if error:
+                errors[field] = error
         if not errors:
             rv.id = entity.insert(**vals)
         rv.errors = errors
