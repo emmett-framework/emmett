@@ -350,7 +350,7 @@ def test_multi(db):
     current._language = 'en'
     p = db.Person(name="mario")
     base_data = {
-        'date': '{:%d/%m/%Y}'.format(datetime.utcnow()+timedelta(days=1)),
+        'date': '{0:%d/%m/%Y}'.format(datetime.utcnow()+timedelta(days=1)),
         'type': 'a',
         'inside': 'asd',
         'number': 1,
@@ -371,7 +371,7 @@ def test_multi(db):
     assert 'person' in res.errors
     #: invalid date range
     vals = dict(base_data)
-    vals['date'] = '{:%d/%m/%Y}'.format(datetime.utcnow()-timedelta(days=2))
+    vals['date'] = '{0:%d/%m/%Y}'.format(datetime.utcnow()-timedelta(days=2))
     res = Mixed.create(vals)
     assert res.id is None
     assert len(res.errors) == 1
