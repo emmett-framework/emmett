@@ -10,11 +10,13 @@
 """
 
 import pytest
+from datetime import datetime, timedelta
 from weppy import App, sdict
 from weppy.dal import DAL, Model, Field, has_many, belongs_to
 from weppy.validators import isEmptyOr, hasLength, isInt, isFloat, isDate, \
     isTime, isDatetime, isJSON, isntEmpty, inSet, inDB, isEmail, isUrl, isIP, \
-    isImage, inRange, Equals, Lower, Upper, Cleanup, Slug, Crypt
+    isImage, inRange, Equals, Lower, Upper, Cleanup, Urlify, Crypt, notInDB, \
+    _allow
 from weppy.validators.basic import _not
 
 
@@ -118,7 +120,7 @@ class Proc(Model):
         'a': {'lower': True},
         'b': {'upper': True},
         'c': {'clean': True},
-        'd': {'slug': True},
+        'd': {'urlify': True},
         'e': {'len': {'range': (6, 25)}, 'crypt': True},
         'f': {'len': {'gt': 5, 'lt': 25}, 'crypt': 'md5'}
     }
@@ -148,10 +150,40 @@ class Thing(Model):
 
     name = Field()
     color = Field()
+    uid = Field(unique=True)
 
     validators = {
         'name': {'presence': True},
-        'color': {'empty': False, 'in': ['blue', 'red']}
+        'color': {'in': ['blue', 'red']},
+        'uid': {'empty': False}
+    }
+
+
+class Allowed(Model):
+    a = Field(requires={'in': ['a', 'b'], 'allow': None})
+    b = Field(requires={'in': ['a', 'b'], 'allow': 'empty'})
+    c = Field(requires={'in': ['a', 'b'], 'allow': 'blank'})
+
+
+class Mixed(Model):
+    belongs_to('person')
+
+    date = Field('date')
+    type = Field()
+    inside = Field()
+    number = Field('int')
+    dont = Field()
+    yep = Field()
+    psw = Field('password')
+
+    validators = {
+        'date': {'format': '%d/%m/%Y', 'gt': lambda: datetime.utcnow().date()},
+        'type': {'in': ['a', 'b'], 'allow': None},
+        'inside': {'in': ['asd', 'lol']},
+        'number': {'allow': 'blank'},
+        'dont': {'empty': True},
+        'yep': {'presence': True},
+        'psw': {'len': {'range': (6, 25)}, 'crypt': True}
     }
 
 
@@ -160,28 +192,28 @@ def db():
     app = App(__name__)
     db = DAL(app, config=sdict(uri='sqlite://validators.db'))
     db.define_models([
-        A, AA, AAA, B, Consist, Len, Inside, Num, Eq, Proc, Person, Thing
+        A, AA, AAA, B, Consist, Len, Inside, Num, Eq, Proc, Person, Thing,
+        Allowed, Mixed
     ])
     return db
 
 
 def test_defaults(db):
     #: string, text, password
-    assert isinstance(db.a.name.requires[0], isEmptyOr)
-    assert isinstance(db.a.name.requires[0].other[0], hasLength)
-    assert db.a.name.requires[0].other[0].minsize == 0
-    assert db.a.name.requires[0].other[0].maxsize == db.a.name.length
-    assert isinstance(db.a.text.requires[0].other[0], hasLength)
-    assert isinstance(db.a.password.requires[0].other[0], hasLength)
+    assert isinstance(db.a.name.requires[0], hasLength)
+    assert db.a.name.requires[0].minsize == 0
+    assert db.a.name.requires[0].maxsize == db.a.name.length
+    assert isinstance(db.a.text.requires[0], hasLength)
+    assert isinstance(db.a.password.requires[0], hasLength)
     #: numbers
-    assert isinstance(db.a.val.requires[0].other[0], isInt)
-    assert isinstance(db.a.fval.requires[0].other[0], isFloat)
+    assert isinstance(db.a.val.requires[0], isInt)
+    assert isinstance(db.a.fval.requires[0], isFloat)
     #: date, time, datetime
-    assert isinstance(db.a.d.requires[0].other[0], isDate)
-    assert isinstance(db.a.t.requires[0].other[0], isTime)
-    assert isinstance(db.a.dt.requires[0].other[0], isDatetime)
+    assert isinstance(db.a.d.requires[0], isDate)
+    assert isinstance(db.a.t.requires[0], isTime)
+    assert isinstance(db.a.dt.requires[0], isDatetime)
     #: json
-    assert isinstance(db.a.json.requires[0].other[0], isJSON)
+    assert isinstance(db.a.json.requires[0], isJSON)
 
 
 def test_defaults_disable(db):
@@ -191,54 +223,64 @@ def test_defaults_disable(db):
 
 def test_requires_vs_validators(db):
     # using Field(requires=) is the same as 'validators'
-    assert db.b.a.requires[0].other[0].minsize == 5
-    assert db.b.b.requires[0].other[0].minsize == 5
+    assert db.b.a.requires[0].minsize == 5
+    assert db.b.b.requires[0].minsize == 5
 
 
 def test_is(db):
-    assert isinstance(Consist.email.requires[0].other[0], isEmail)
-    assert isinstance(Consist.url.requires[0].other[0], isUrl)
-    assert isinstance(Consist.ip.requires[0].other[0], isIP)
-    assert isinstance(Consist.image.requires[0].other[0], isImage)
+    assert isinstance(Consist.email.requires[0], isEmail)
+    assert isinstance(Consist.url.requires[0], isUrl)
+    assert isinstance(Consist.ip.requires[0], isIP)
+    assert isinstance(Consist.image.requires[0], isImage)
 
 
 def test_len(db):
-    assert Len.a.requires[0].other[0].minsize == 5
-    assert Len.a.requires[0].other[0].maxsize == 6
-    assert Len.b.requires[0].other[0].minsize == 5
-    assert Len.b.requires[0].other[0].maxsize == 13
-    assert Len.c.requires[0].other[0].minsize == 5
-    assert Len.c.requires[0].other[0].maxsize == 13
-    assert Len.d.requires[0].other[0].minsize == 5
-    assert Len.d.requires[0].other[0].maxsize == 13
+    assert Len.a.requires[0].minsize == 5
+    assert Len.a.requires[0].maxsize == 6
+    assert Len.a.requires[0].inc[0] is True
+    assert Len.a.requires[0].inc[1] is False
+    assert Len.b.requires[0].minsize == 4
+    assert Len.b.requires[0].maxsize == 13
+    assert Len.b.requires[0].inc[0] is False
+    assert Len.b.requires[0].inc[1] is False
+    assert Len.c.requires[0].minsize == 5
+    assert Len.c.requires[0].maxsize == 12
+    assert Len.c.requires[0].inc[0] is True
+    assert Len.c.requires[0].inc[1] is True
+    assert Len.d.requires[0].minsize == 5
+    assert Len.d.requires[0].maxsize == 13
+    assert Len.d.requires[0].inc[0] is True
+    assert Len.d.requires[0].inc[1] is False
 
 
 def test_in(db):
-    assert isinstance(Inside.a.requires[0].other[1], inSet)
-    assert isinstance(Inside.b.requires[0].other[1], inRange)
+    assert isinstance(Inside.a.requires[1], inSet)
+    assert isinstance(Inside.b.requires[1], inRange)
 
 
 def test_numerical(db):
-    assert Num.a.requires[0].other[1].minimum == 1
-    assert Num.b.requires[0].other[1].maximum == 5
-    assert Num.c.requires[0].other[1].minimum == 1
-    assert Num.c.requires[0].other[1].maximum == 5
+    assert Num.a.requires[1].minimum == 0
+    assert Num.b.requires[1].maximum == 5
+    assert Num.a.requires[1].inc[0] is False
+    assert Num.c.requires[1].minimum == 0
+    assert Num.c.requires[1].maximum == 4
+    assert Num.c.requires[1].inc[1] is True
 
 
 def test_eq(db):
-    assert isinstance(Eq.a.requires[0].other[1], Equals)
-    assert isinstance(Eq.b.requires[0].other[1], Equals)
-    assert isinstance(Eq.c.requires[0].other[1], _not)
-    assert isinstance(Eq.c.requires[0].other[1].conditions[0], Equals)
+    assert isinstance(Eq.a.requires[1], Equals)
+    assert isinstance(Eq.b.requires[1], Equals)
+    assert isinstance(Eq.c.requires[1], _not)
+    assert isinstance(Eq.c.requires[1].conditions[0], Equals)
 
 
 def test_processors(db):
-    assert isinstance(Proc.a.requires[0].other[1], Lower)
-    assert isinstance(Proc.b.requires[0].other[1], Upper)
-    assert isinstance(Proc.c.requires[0].other[1], Cleanup)
-    assert isinstance(Proc.d.requires[0].other[1], Slug)
-    assert isinstance(Proc.e.requires[0].other[1], Crypt)
-    assert isinstance(Proc.f.requires[0].other[1], Crypt)
+    assert isinstance(Proc.a.requires[1], Lower)
+    assert isinstance(Proc.b.requires[1], Upper)
+    assert isinstance(Proc.c.requires[1], Cleanup)
+    assert isinstance(Proc.d.requires[1], Urlify)
+    assert isinstance(Proc.e.requires[1], Crypt)
+    assert isinstance(Proc.f.requires[1], Crypt)
 
 
 def test_presence(db):
@@ -251,21 +293,42 @@ def test_presence(db):
     assert len(Thing.name.requires) == 2
     assert isinstance(Thing.name.requires[0], isntEmpty)
     assert isinstance(Thing.name.requires[1], hasLength)
-    assert len(Thing.color.requires) == 3
-    assert isinstance(Thing.color.requires[0], isntEmpty)
-    assert isinstance(Thing.color.requires[1], hasLength)
-    assert isinstance(Thing.color.requires[2], inSet)
+    assert len(Thing.color.requires) == 2
+    assert isinstance(Thing.color.requires[0], hasLength)
+    assert isinstance(Thing.color.requires[1], inSet)
     assert isinstance(Thing.person.requires[1], inDB)
 
 
+def test_unique(db):
+    assert isinstance(Thing.uid.requires[2], notInDB)
+
+
+def test_allow(db):
+    assert isinstance(Allowed.a.requires[0], _allow)
+    assert isinstance(Allowed.b.requires[0], isEmptyOr)
+    assert isinstance(Allowed.c.requires[0], isEmptyOr)
+    assert isinstance(Allowed.a.requires[0].conditions[1], inSet)
+    assert isinstance(Allowed.b.requires[0].other[1], inSet)
+    assert isinstance(Allowed.c.requires[0].other[1], inSet)
+
+
 def test_validation(db):
+    #: 'is'
+    #: 'len'
+    #: 'in'
+    #: 'gt', 'lt', 'gte', 'lte'
+    #: 'equals'
+    #: 'not'
+    #: 'match'
+    #: 'allow'
+    #: processing validators
     #: 'presence'
     mario = {'name': 'mario'}
     errors = Person.validate(mario)
     assert 'surname' in errors
     assert len(errors) == 1
-    #: 'presence' with reference
-    thing = {'name': 'a', 'person': 5, 'color': 'blue'}
+    #: 'presence' with reference, 'unique'
+    thing = {'name': 'a', 'person': 5, 'color': 'blue', 'uid': 'lol'}
     errors = Thing.validate(thing)
     assert 'person' in errors
     assert len(errors) == 1
@@ -273,6 +336,95 @@ def test_validation(db):
     mario = Person.create(mario)
     assert len(mario.errors) == 0
     assert mario.id == 1
-    thing = {'name': 'euro', 'person': mario.id, 'color': 'red'}
+    thing = {'name': 'euro', 'person': mario.id, 'color': 'red', 'uid': 'lol'}
+    thing = Thing.create(thing)
+    assert len(thing.errors) == 0
+    thing = {'name': 'euro2', 'person': mario.id, 'color': 'red', 'uid': 'lol'}
     errors = Thing.validate(thing)
-    assert len(errors) == 0
+    assert len(errors) == 1
+    assert 'uid' in errors
+
+
+def test_multi(db):
+    from weppy.globals import current
+    current._language = 'en'
+    p = db.Person(name="mario")
+    base_data = {
+        'date': '{:%d/%m/%Y}'.format(datetime.utcnow()+timedelta(days=1)),
+        'type': 'a',
+        'inside': 'asd',
+        'number': 1,
+        'yep': 'asd',
+        'psw': 'password',
+        'person': p.id
+    }
+    #: everything ok
+    res = Mixed.create(base_data)
+    assert res.id == 1
+    assert len(res.errors) == 0
+    #: invalid belongs
+    vals = dict(base_data)
+    del vals['person']
+    res = Mixed.create(vals)
+    assert res.id is None
+    assert len(res.errors) == 1
+    assert 'person' in res.errors
+    #: invalid date range
+    vals = dict(base_data)
+    vals['date'] = '{:%d/%m/%Y}'.format(datetime.utcnow()-timedelta(days=2))
+    res = Mixed.create(vals)
+    assert res.id is None
+    assert len(res.errors) == 1
+    assert 'date' in res.errors
+    #: invalid date format
+    vals['date'] = '76-12-1249'
+    res = Mixed.create(vals)
+    assert res.id is None
+    assert len(res.errors) == 1
+    assert 'date' in res.errors
+    #: invalid in
+    vals = dict(base_data)
+    vals['type'] = ' '
+    res = Mixed.create(vals)
+    assert res.id is None
+    assert len(res.errors) == 1
+    assert 'type' in res.errors
+    #: empty number
+    vals = dict(base_data)
+    vals['number'] = None
+    res = Mixed.create(vals)
+    assert res.id == 2
+    assert len(res.errors) == 0
+    #: invalid number
+    vals = dict(base_data)
+    vals['number'] = 'asd'
+    res = Mixed.create(vals)
+    assert res.id is None
+    assert len(res.errors) == 1
+    assert 'number' in res.errors
+    #: invalid empty
+    vals = dict(base_data)
+    vals['dont'] = '2'
+    res = Mixed.create(vals)
+    assert res.id is None
+    assert len(res.errors) == 1
+    assert 'dont' in res.errors
+    #: invalid presence
+    vals = dict(base_data)
+    vals['yep'] = ''
+    res = Mixed.create(vals)
+    assert res.id is None
+    assert len(res.errors) == 1
+    assert 'yep' in res.errors
+    #: invalid password
+    vals = dict(base_data)
+    vals['psw'] = ''
+    res = Mixed.create(vals)
+    assert res.id is None
+    assert len(res.errors) == 1
+    assert 'psw' in res.errors
+    vals['psw'] = 'aksjfalsdkjflkasjdflkajsldkjfalslkdfjaslkdjf'
+    res = Mixed.create(vals)
+    assert res.id is None
+    assert len(res.errors) == 1
+    assert 'psw' in res.errors

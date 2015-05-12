@@ -117,18 +117,21 @@ class isDate(_is):
         self.timezone = timezone
         self.extremes = {}
 
+    def _parse(self, value):
+        (y, m, d, hh, mm, ss, t0, t1, t2) = \
+            strptime(value, str(self.format))
+        return date(y, m, d)
+
     def check(self, value):
         if isinstance(value, date):
             if self.timezone is not None:
                 val = value - timedelta(seconds=self.timezone*3600)
             return val, None
         try:
-            (y, m, d, hh, mm, ss, t0, t1, t2) = \
-                strptime(value, str(self.format))
-            val = date(y, m, d)
+            val = self._parse(value)
             if self.timezone is not None:
                 val = self.timezone.localize(val).astimezone(_utc)
-            return value, None
+            return val, None
         except:
             self.extremes.update(isDate.nice(self.format))
             return value, translate(self.message) % self.extremes
@@ -166,6 +169,11 @@ class isDate(_is):
 class isDatetime(isDate):
     def __init__(self, format='%Y-%m-%d %H:%M:%S', **kwargs):
         isDate.__init__(self, format=format, **kwargs)
+
+    def _parse(self, value):
+        (y, m, d, hh, mm, ss, t0, t1, t2) = \
+            strptime(value, str(self.format))
+        return datetime(y, m, d, hh, mm, ss)
 
     def _formatter_obj(self, year, value):
         return datetime(year, value.month, value.day, value.hour, value.minute,

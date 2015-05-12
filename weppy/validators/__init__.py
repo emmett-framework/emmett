@@ -10,15 +10,15 @@
 """
 
 from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, \
-    hasLength, _not
+    hasLength, _not, _allow, isEmpty
 from .consist import isInt, isFloat, isDecimal, isDate, isTime, isDatetime, \
     isEmail, isJSON, isUrl, isIP, isImage
 from .inside import inRange, inSet, inSubSet, inDB, notInDB
-from .process import Cleanup, Crypt, Lower, Slug, Upper
+from .process import Cleanup, Crypt, Lower, Urlify, Upper
 
 
 class ValidateFromDict(object):
-    numkeys = {'gt': 1, 'gte': 0, 'lt': 0, 'lte': 1}
+    numkeys = {'gt': False, 'gte': True, 'lt': False, 'lte': True}
 
     def __init__(self):
         self.iskeys = {
@@ -28,28 +28,31 @@ class ValidateFromDict(object):
             'image': isImage
         }
         self.prockeys = {
-            'crypt': Crypt, 'lower': Lower, 'upper': Upper, 'slug': Slug,
+            'crypt': Crypt, 'lower': Lower, 'upper': Upper, 'urlify': Urlify,
             'clean': Cleanup
         }
 
     def parse_num_comparisons(self, data, minv=None, maxv=None):
-        for key, addend in self.numkeys.iteritems():
+        inclusions = [True, False]
+        for key, include in self.numkeys.iteritems():
             val = data.get(key)
             if val is not None:
                 if key[0] == "g":
-                    minv = val + addend
+                    minv = val
+                    inclusions[0] = include
                 elif key[0] == "l":
-                    maxv = val + addend
-        return minv, maxv
+                    maxv = val
+                    inclusions[1] = include
+        return minv, maxv, inclusions
 
-    def __call__(self, field, data, auto_presence=True):
+    def __call__(self, field, data):
         # 'is', 'equals', 'not', 'match', 'length', 'presence', 'empty'
         validators = []
         #: parse 'presence' and 'empty'
         presence = data.get('presence')
         empty = data.get('empty')
-        if presence is None:
-            presence = not data.get('empty', True)
+        if presence is None and empty is not None:
+            presence = not empty
         #: parse 'is'
         _is = data.get('is')
         if _is is not None:
@@ -73,7 +76,7 @@ class ValidateFromDict(object):
             if isinstance(_len, int):
                 #: allows {'len': 2}
                 validators.append(
-                    hasLength(_len+1, _len, 'Enter %(min)g characters')
+                    hasLength(_len+1, _len, message='Enter %(min)g characters')
                 )
             else:
                 #: allows
@@ -81,9 +84,10 @@ class ValidateFromDict(object):
                 #  {'len': {'range': (2, 6)}}
                 if _len.get('range') is not None:
                     minv, maxv = _len['range']
+                    inc = (True, False)
                 else:
-                    minv, maxv = self.parse_num_comparisons(_len, 0, 256)
-                validators.append(hasLength(maxv, minv))
+                    minv, maxv, inc = self.parse_num_comparisons(_len, 0, 256)
+                validators.append(hasLength(maxv, minv, inc))
         #: parse 'in'
         _in = data.get('in', [])
         if _in:
@@ -109,13 +113,9 @@ class ValidateFromDict(object):
                 raise SyntaxError(
                     "'in' validator accepts only a set or a dict")
         #: parse 'gt', 'gte', 'lt', 'lte'
-        minv, maxv = self.parse_num_comparisons(data)
+        minv, maxv, inc = self.parse_num_comparisons(data)
         if minv is not None or maxv is not None:
-            validators.append(inRange(minv, maxv))
-        # 'range'
-        #if 'range' in data:
-        #    minv, maxv = data['range']
-        #    validators.append(inRange(minv, maxv))
+            validators.append(inRange(minv, maxv, inc))
         #: parse 'equals'
         if 'equals' in data:
             validators.append(Equals(data['equals']))
@@ -132,25 +132,33 @@ class ValidateFromDict(object):
                         raise SyntaxError(
                             key+" validator accepts only dict or True")
                 validators.append(vclass(**options))
-        #: parse 'not'
-        if 'not' in data:
-            validators.append(_not(self(field, data['not'], False)))
         #: parse 'unique'
         if data.get('unique', False):
-            validators.append(notInDB(field.db, field.table))
-        #if data.get('exists', False) and field.type.startswith('reference'):
-        #    ref_table = field.type.split(' ')[1]
-        #    validators.append(inDB(field.db, ref_table))
-        #: insert presence validation if needed
+            validators.append(notInDB(field.db, field.table, field.name))
+        #: common options ('format', 'message')
+        if 'format' in data:
+            for validator in validators:
+                if hasattr(validator, 'format'):
+                    validator.format = data['format']
+                    break
+        if 'message' in data:
+            for validator in validators:
+                validator.message = data['message']
+        #: parse 'not'
+        if 'not' in data:
+            validators.append(_not(self(field, data['not'])))
+        #: insert presence/empty validation if needed
         if presence:
             if field.type.startswith('reference'):
                 ref_table = field.type.split(' ')[1]
                 validators.append(inDB(field.db, ref_table))
-                if empty is True:
-                    validators = [isEmptyOr(validators)]
-            if not empty:
-                validators.insert(0, isntEmpty())
-        else:
-            if validators and auto_presence:
+            validators.insert(0, isntEmpty())
+        if empty:
+            validators.insert(0, isEmpty())
+        #: parse 'allow'
+        if 'allow' in data:
+            if data['allow'] in ['empty', 'blank']:
                 validators = [isEmptyOr(validators)]
+            else:
+                validators = [_allow(data['allow'], validators)]
         return validators

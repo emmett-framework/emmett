@@ -68,6 +68,42 @@ class _not(Validator):
         return value, None
 
 
+class _allow(Validator):
+    def __init__(self, value, validators, message=None):
+        Validator.__init__(self, message)
+        if not isinstance(validators, (list, tuple)):
+            validators = [validators]
+        self.conditions = validators
+        self.value = value
+
+    def __call__(self, value):
+        val = value
+        comparing = self.value() if callable(self.value) else self.value
+        if value is not comparing:
+            for condition in self.conditions:
+                value, error = condition(value)
+                #if error is None:
+                #    return val, self.message
+                if error:
+                    return val, error
+        return value, None
+
+
+class isEmpty(Validator):
+    def __init__(self, message='No value allowed', empty_regex=None):
+        Validator.__init__(self, message)
+        if empty_regex is not None:
+            self.empty_regex = re.compile(empty_regex)
+        else:
+            self.empty_regex = None
+
+    def __call__(self, value):
+        value, empty = is_empty(value, empty_regex=self.empty_regex)
+        if empty:
+            return value, None
+        return value, translate(self.message)
+
+
 class isntEmpty(Validator):
     def __init__(self, message='Enter a value', empty_regex=None):
         Validator.__init__(self, message)
@@ -182,16 +218,29 @@ class hasLength(Validator):
         minsize: minimum allowed length / size
     """
 
-    def __init__(self, maxsize=256, minsize=0,
+    def __init__(self, maxsize=256, minsize=0, include=(True, False),
                  message='Enter from %(min)g to %(max)g characters'):
         self.maxsize = maxsize
         self.minsize = minsize
+        self.inc = include
         self.message = message
+
+    def _between(self, value):
+        if self.inc[0]:
+            great = self.minsize <= value
+        else:
+            great = self.minsize < value
+        if self.inc[1]:
+            less = value <= self.maxsize
+        else:
+            less = value < self.maxsize
+        return great and less
 
     def __call__(self, value):
         if value is None:
             length = 0
-            if self.minsize <= length < self.maxsize:
+            #if self.minsize <= length < self.maxsize:
+            if self._between(length):
                 return (value, None)
         elif isinstance(value, FieldStorage):
             if value.file:
@@ -204,22 +253,27 @@ class hasLength(Validator):
                     length = len(val)
                 else:
                     length = 0
-            if self.minsize <= length < self.maxsize:
+            #if self.minsize <= length < self.maxsize:
+            if self._between(length):
                 return (value, None)
         elif isinstance(value, str):
             try:
                 lvalue = len(value.decode('utf8'))
             except:
                 lvalue = len(value)
-            if self.minsize <= lvalue < self.maxsize:
+            #if self.minsize <= lvalue < self.maxsize:
+            if self._between(lvalue):
                 return (value, None)
         elif isinstance(value, unicode):
-            if self.minsize <= len(value) < self.maxsize:
+            #if self.minsize <= len(value) < self.maxsize:
+            if self._between(len(value)):
                 return (value.encode('utf8'), None)
         elif isinstance(value, (tuple, list)):
-            if self.minsize <= len(value) < self.maxsize:
+            #if self.minsize <= len(value) < self.maxsize:
+            if self._between(len(value)):
                 return (value, None)
-        elif self.minsize <= len(str(value)) < self.maxsize:
+        #elif self.minsize <= len(str(value)) < self.maxsize:
+        elif self._between(len(str(value))):
             return (str(value), None)
         return (value, translate(self.message)
                 % dict(min=self.minsize, max=self.maxsize))

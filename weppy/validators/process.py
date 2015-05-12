@@ -44,8 +44,8 @@ class Upper(Validator):
         return (value.decode('utf8').upper().encode('utf8'), None)
 
 
-class Slug(Validator):
-    """converts arbitrary text string to a slug"""
+class Urlify(Validator):
+    """converts arbitrary text string to a valid url string"""
 
     def _urlify(self, s):
         """

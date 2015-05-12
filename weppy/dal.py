@@ -232,6 +232,8 @@ class Field(_Field):
             rv['len'] = {'lt': self.length}
         if self._type.startswith('reference'):
             rv['presence'] = True
+        if self.unique:
+            rv['unique'] = True
         return rv
 
     def _parse_validation(self):

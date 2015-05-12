@@ -18,16 +18,28 @@ from .helpers import options_sorter, translate
 
 
 class inRange(Validator):
-    def __init__(self, minimum=None, maximum=None, message=None):
+    def __init__(self, minimum=None, maximum=None, include=(True, False),
+                 message=None):
         self.minimum = minimum
         self.maximum = maximum
+        self.inc = include
         self.message = message
+
+    def _gt(self, val1, val2, eq=False):
+        if eq:
+            return val1 >= val2
+        return val1 > val2
+
+    def _lt(self, val1, val2, eq=False):
+        if eq:
+            return val1 <= val2
+        return val1 < val2
 
     def __call__(self, value):
         minimum = self.minimum() if callable(self.minimum) else self.minimum
         maximum = self.maximum() if callable(self.maximum) else self.maximum
-        if (minimum is None or value >= minimum) and \
-                (maximum is None or value < maximum):
+        if ((minimum is None or self._gt(value, minimum, self.inc[0])) and
+                (maximum is None or self._lt(value, maximum, self.inc[1]))):
             return value, None
         return value, translate(
             self._range_error(self.message, minimum, maximum)
@@ -37,11 +49,11 @@ class inRange(Validator):
         if message is None:
             message = 'Enter a value'
             if minimum is not None and maximum is not None:
-                message += ' between %(min)g and %(max)g'
+                message += ' between %(min)s and %(max)s'
             elif minimum is not None:
-                message += ' greater than or equal to %(min)g'
+                message += ' greater than or equal to %(min)s'
             elif maximum is not None:
-                message += ' less than or equal to %(max)g'
+                message += ' less than or equal to %(max)s'
         if type(maximum) in [int, long]:
             maximum -= 1
         return translate(message) % dict(min=minimum, max=maximum)
