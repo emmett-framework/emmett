@@ -5,9 +5,11 @@
 
     Validators that check presence/absence of given value in a set.
 
-    Ported from the original validators of web2py (http://www.web2py.com)
+    :copyright: (c) 2015 by Giovanni Barillari
 
+    Based on the web2py's validators (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 

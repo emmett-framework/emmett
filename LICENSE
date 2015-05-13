@@ -39,14 +39,14 @@ Due to the original license limitations, some of these components are
 distributed under LGPLv3 license, in particular:
 
     * weppy/language
+    * weppy/validators
     * weppy/tools/auth.py
     * weppy/tools/mail.py
     * weppy/security.py
-    * weppy/validators.py
 
 Other derived components are distributed under BSD license, in particular:
 
-    * weppy/templating.py
+    * weppy/templating
 
 For futher details, check out the web2py's license:
     https://github.com/web2py/web2py/blob/master/LICENSE
