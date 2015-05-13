@@ -584,7 +584,13 @@ class Model(object):
         except:
             pass
         for field, value in self.visibility.items():
-            self.entity[field].writable, self.entity[field].readable = value
+            if isinstance(value, (tuple, list)):
+                writable, readable = value
+            else:
+                writable = value
+                readable = value
+            self.entity[field].writable = writable
+            self.entity[field].readable = readable
 
     def __define_representation(self):
         for field, value in self.representation.items():

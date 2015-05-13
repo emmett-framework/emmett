@@ -26,8 +26,8 @@ class Post(Model):
         'date': lambda: request.now
     }
     visibility = {
-        "author": (False, False),
-        "date": (False, False)
+        "author": False,
+        "date": False
     }
     validators = {
         "title": {'presence': True},
@@ -47,9 +47,9 @@ class Comment(Model):
     }
 
     visibility = {
-        "author": (False, False),
-        "post": (False, False),
-        "date": (False, False)
+        "author": False,
+        "post": False,
+        "date": False
     }
     validators = {
         "text": {'presence': True}
@@ -102,6 +102,8 @@ def one(pid):
     # get comments and create a form
     comments = db(db.Comment.post == post.id).select(orderby=~db.Comment.date)
     form = Comment.form(onvalidation=_validate_comment)
+    if form.accepted:
+        redirect(url('post', pid))
     return locals()
 
 
