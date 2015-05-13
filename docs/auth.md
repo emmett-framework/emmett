@@ -146,22 +146,19 @@ Database tables
 ---------------
 *section under writing*
 
-Authorization system with DAL Models
-------------------------------------
-You can obviously use the Auth module with the [database Models layer](./dal#the-models-layer). You just have to define your user model:
+Authorization system with Models
+--------------------------------
+You can obviously use the Auth module with the [database Models layer](./dal#models). You just have to define your user model:
 
 ```python
-from weppy import Field
-from weppy.dal import AuthModel
+from weppy.dal import Field, AuthModel
 
 
 class User(AuthModel):
-    fields = [
-        Field("avatar", "upload", uploadfolder='uploads'),
-    ]
-
+    avatar = Field("upload", uploadfolder='uploads')
+    
     profile_visibility = {
-        "avatar": (True, True)
+        "avatar": True
     }
 ```
 
