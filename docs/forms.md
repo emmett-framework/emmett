@@ -6,44 +6,31 @@ weppy provides the `Form` class to let you easily create forms for your applicat
 Let's see how to use it with an example:
 
 ```python
-form weppy import Field, Form
-from weppy.validators import inSet
+from weppy import Field, Form
 
 # create a form
 @app.expose('/form')
 def a():
-    name_field = Field('name')
-    int_field = Field('number', 'integer')
-    type_field = Field('type')
-    type_field.requires = inSet(['type1', 'type2'])
-    simple_form = Form([name_field, int_field, type_field])
+    simple_form = Form({
+        'name': Field(),
+        'number': Field('int'),
+        'type': Field(
+            requires={'in': ['type1', 'type2']}
+        )
+    })
     if simple_form.accepted:
         inserted_number = form.vars.number
         #do something
     return dict(form=simple_form)
 ```
 
-As you can see the `Form` class accepts a list of `Field` objects for the input, we described them in the [DAL chapter](./dal#the-models-layer) of the documentation.   
+As you can see the `Form` class accepts a `dict` of `Field` objects for the input, we described them in the [DAL chapter](./dal#fields) of the documentation.   
 Forms validate the input of the clients using their fields' validators: when the input passes the validation, the `accepted` attribute is set to `True`. The example above shows you that you can use this attribute to do stuffs when clients submit the form, and the submitted values are stored in `form.vars`.
 
 Forms with DAL entities
 -----------------------
 Forms become quite handy to insert or edit data in your database, for this purpose weppy provides another class: `DALForm`.   
-The usage is the same of the form, except that you pass one of your database tables to the constructor:
-
-```python
-from weppy import DALForm
-
-# create a form for db.post table
-@app.expose('/dalform')
-def b():
-    form = DALForm(db.post)
-    if form.accepted:
-        #do something
-    return dict(form=form)
-```
-
-and if you are using models, creating a form is even easier:
+The usage is the same of the form, except that you call it directly from your model:
 
 ```python
 # create a form for Post model
@@ -59,22 +46,17 @@ where obviously the `form()` method of the models is a shortcut for the `DALForm
 
 > – Wait, what if I need to edit a record?
 
-You can pass the record as the second argument of `DALForm` or first argument in `Model.form()`:
+You can pass the record as an argument in `Model.form()`:
 
 ```python
-record = db.post(id=someid)
-form = DALForm(db.post, record)
-# or with models
-record = db.Post(id=someid)
+record = db.Post(id=1)
 form = Post.form(record)
 ```
 
 If you prefer, you can also use a record id:
 
 ```python
-form = DALForm(db.post, record_id=someid)
-# or with models
-form = Post.form(record_id=someid)
+form = Post.form(record_id=1)
 ```
 
 Here is the complete list of parameters accepted by `Form` class:
@@ -109,7 +91,7 @@ As we seen above, the `upload` parameter of forms needs an url for download. Let
 Let's say you want to handle upload of avatar images from your user. So in your model/table you would have an upload field:
 
 ```python
-Field('avatar', 'upload')
+avatar = Field('upload')
 ```
 
 and the forms produced by weppy will handle uploads for you. But how would you display this image in your template?   
@@ -132,9 +114,6 @@ and then in your template you can create an `img` tag pointing to the `download`
 The `upload` parameter of `Form` class has the same purpose: when you edit an existent record the form will display the image or file link for the existing one uploaded. In this example you would do:
 
 ```python
-record = db.post(id=someid)
-form = DALForm(db.post, record, upload=url('download'))
-# or with models
 record = db.Post(id=someid)
 form = Post.form(record, upload=url('download'))
 ```
@@ -151,16 +130,20 @@ def myform():
     def process_form(form):
         if form.vars.double != form.vars.number*2:
             form.errors.double = "Double is incorrect!"
-        
-    field1 = Field('number', 'integer')
-    field2 = Field('double', 'integer')
-    form = Form([field1, field2], onvalidation=process_form)
+    
+    form = Form(
+        number=Field('int'), 
+        double=Field('int'),
+        onvalidation=process_form
+    )
     return dict(form=form)
 ```
 
 where basically the form check if the second number is the double of the first and return an error if the input is wrong.
 
 You've just learnt how to use `onvalidation` parameter and that you can store errors in `form.errors` which is a `sdict` object like `form.vars`.
+
+Also, you understood that `Form` accepts fields objects also as arguments.
 
 Customizing forms
 -----------------
