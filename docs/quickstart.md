@@ -391,11 +391,13 @@ from weppy.validators import inSet
 # create a form
 @app.expose('/form')
 def a():
-    name_field = Field('name')
-    int_field = Field('number', 'integer')
-    type_field = Field('type')
-    type_field.requires = inSet(['type1', 'type2'])
-    simple_form = Form([name_field, int_field, type_field])
+    simple_form = Form({
+        'name': Field(),
+        'number': Field('int'),
+        'type': Field(
+            requires={'in': ['type1', 'type2']}
+        )
+    })
     if simple_form.accepted:
         #do something
     return dict(form=simple_form)
