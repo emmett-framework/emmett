@@ -138,28 +138,30 @@ class DAL(_pyDAL):
     def handler(self):
         return DALHandler(self)
 
-    def define_models(self, datamodels=[]):
-        for datamodel in datamodels:
-            if not hasattr(self, datamodel.__name__):
-                # store actual db instance in model
-                datamodel.db = self
-                # init datamodel
-                obj = datamodel()
+    def define_models(self, *models):
+        if len(models) == 1 and isinstance(models[0], (list, tuple)):
+            models = models[0]
+        for model in models:
+            if not hasattr(self, model.__name__):
+                # store db instance inside model
+                model.db = self
+                # init model
+                obj = model()
                 getattr(obj, '_Model__define_props')()
                 getattr(obj, '_Model__define_relations')()
                 getattr(obj, '_Model__define_virtuals')()
                 # define table and store in model
-                #datamodel.fields = obj.fields
-                datamodel.entity = self.define_table(
+                #model.fields = obj.fields
+                model.entity = self.define_table(
                     obj.tablename,
                     *obj.fields,
                     **dict(migrate=obj.migrate, format=obj.format)
                 )
-                datamodel.id = datamodel.entity.id
+                model.id = model.entity.id
                 # load user's definitions
                 getattr(obj, '_Model__define')()
-                # set reference in db for datamodel name
-                self.__setattr__(datamodel.__name__, obj.entity)
+                # set reference in db for model name
+                self.__setattr__(model.__name__, obj.entity)
 
 
 def _DAL_unpickler(db_uid):
