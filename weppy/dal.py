@@ -745,7 +745,8 @@ class AuthModel(Model):
     def __define_register_visibility(self):
         l = self.auth.settings.register_fields or self.__base_visibility()
         for field, value in self.register_visibility.items():
-            if value[0]:
+            show = value[1] if isinstance(value, (tuple, list)) else value
+            if show:
                 #self.entity[field].writable = value[0]
                 #self.entity[field].readable = value[1]
                 l.append(field)
@@ -758,7 +759,8 @@ class AuthModel(Model):
     def __define_profile_visibility(self):
         l = self.auth.settings.profile_fields or self.__base_visibility()
         for field, value in self.profile_visibility.items():
-            if value[0]:
+            show = value[1] if isinstance(value, (tuple, list)) else value
+            if show:
                 #self.entity[field].writable = value[0]
                 #self.entity[field].readable = value[1]
                 l.append(field)
