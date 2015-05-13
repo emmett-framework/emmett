@@ -307,11 +307,11 @@ class FormStyle(object):
                             _class=_class, _id=_id or field.name)
 
     @staticmethod
-    def widget_integer(attr, field, value, _class='integer', _id=None):
+    def widget_int(attr, field, value, _class='int', _id=None):
         return FormStyle.widget_string(attr, field, value, _class, _id)
 
     @staticmethod
-    def widget_double(attr, field, value, _class='double', _id=None):
+    def widget_float(attr, field, value, _class='float', _id=None):
         return FormStyle.widget_string(attr, field, value, _class, _id)
 
     @staticmethod
@@ -334,7 +334,7 @@ class FormStyle(object):
         )
 
     @staticmethod
-    def widget_boolean(attr, field, value, _class='boolean', _id=None):
+    def widget_bool(attr, field, value, _class='bool', _id=None):
         return tag.input(_type='checkbox', _name=field.name,
                          _checked='checked' if value else None,
                          _class=_class, _id=_id or field.name)
@@ -419,11 +419,11 @@ class FormStyle(object):
     def _get_widget(self, field, value):
         if field.widget:
             return field.widget(field, value), True
-        wtype = field.type.split(":")[0]
+        wtype = field._type.split(":")[0]
         if hasattr(field.requires, 'options'):
             wtype = 'select'
         if wtype.startswith('reference'):
-            wtype = 'integer'
+            wtype = 'int'
         widget_id = self.attr["id_prefix"] + field.name
         try:
             return getattr(self, "widget_"+wtype)(

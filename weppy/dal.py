@@ -177,8 +177,10 @@ copyreg.pickle(DAL, _DAL_pickler, _DAL_unpickler)
 
 
 class Field(_Field):
-    _weppy_types = {'integer': 'int', 'double': 'float', 'bigint': 'int'}
-    _pydal_types = {'int': 'integer'}
+    _weppy_types = {
+        'integer': 'int', 'double': 'float', 'bigint': 'int', 'boolean': 'bool'
+    }
+    _pydal_types = {'int': 'integer', 'bool': 'boolean'}
 
     def __init__(self, type='string', *args, **kwargs):
         self._type = self._weppy_types.get(type, type)
@@ -211,6 +213,8 @@ class Field(_Field):
         ]
         if self._type in auto_types:
             rv['is'] = self._type
+        if self._type == 'bool':
+            rv['in'] = (False, True)
         if self._type in ['string', 'text', 'password']:
             rv['len'] = {'lt': self.length}
         if self._type.startswith('reference') or self.notnull:

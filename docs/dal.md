@@ -126,7 +126,7 @@ Available types for Field definition are:
 | string | `str` |
 | text | `str` |
 | blob | `str` |
-| boolean | `bool` |
+| bool | `bool` |
 | int | `int` |
 | float | `float` |
 | decimal(n,m) | `decimal.Decimal` |
@@ -165,7 +165,7 @@ While you can find the complete list of available validators in the [appropriate
 | --- | --- | --- |
 | string | `{'len': {'lt': 255}}` | yes |
 | text | `{'len': {'lt': 65536}}` | yes |
-| boolean | `None` | no |
+| bool | `{'in': (False, True)}` | no |
 | int | `{'is': 'int'}` | no |
 | float | `{'is': 'float'}` | no |
 | decimal | `{'is': 'decimal'}` | no |
