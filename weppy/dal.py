@@ -211,7 +211,7 @@ class Field(_Field):
             rv['is'] = self._type
         if self._type in ['string', 'text', 'password']:
             rv['len'] = {'lt': self.length}
-        if self._type.startswith('reference'):
+        if self._type.startswith('reference') or self.notnull:
             rv['presence'] = True
         if self.unique:
             rv['unique'] = True
@@ -247,8 +247,8 @@ class Field(_Field):
 
     def __repr__(self):
         if self.modelname and self.name:
-            return "<%s property of Model %s>" % (self.name, self.modelname)
-        #return "unbinded property %d" % id(self)
+            return "<%s.%s (%s) field>" % (self.modelname, self.name,
+                                           self._type)
         return super(Field, self).__repr__()
 
 
