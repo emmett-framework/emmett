@@ -14,7 +14,7 @@ class User(AuthModel):
 
 
 class Post(Model):
-    belongs_to({'author': 'user'})
+    belongs_to('user')
     has_many('comments')
 
     title = Field()
@@ -22,43 +22,43 @@ class Post(Model):
     date = Field('datetime')
 
     defaults = {
-        'author': lambda: session.auth.user.id,
+        'user': lambda: session.auth.user.id,
         'date': lambda: request.now
     }
     visibility = {
-        "author": False,
-        "date": False
+        'user': False,
+        'date': False
     }
     validators = {
-        "title": {'presence': True},
-        "text": {'presence': True}
+        'title': {'presence': True},
+        'text': {'presence': True}
     }
 
 
 class Comment(Model):
-    belongs_to({'author': 'user'}, 'post')
+    belongs_to('user', 'post')
 
     text = Field('text')
     date = Field('datetime')
 
     defaults = {
-        'author': lambda: session.auth.user.id,
+        'user': lambda: session.auth.user.id,
         'date': lambda: request.now
     }
 
     visibility = {
-        "author": False,
-        "post": False,
-        "date": False
+        'user': False,
+        'post': False,
+        'date': False
     }
     validators = {
-        "text": {'presence': True}
+        'text': {'presence': True}
     }
 
 #: init db and auth
 db = DAL(app)
 auth = Auth(app, db, usermodel=User)
-db.define_models([Post, Comment])
+db.define_models(Post, Comment)
 
 
 #: setup helping function
@@ -86,7 +86,7 @@ app.expose.common_handlers = [
 #: exposing functions
 @app.expose("/")
 def index():
-    posts = db(db.Post.id > 0).select(orderby=~db.Post.date)
+    posts = db(Post.id > 0).select(orderby=~Post.date)
     return dict(posts=posts)
 
 
@@ -100,7 +100,7 @@ def one(pid):
     if not post:
         abort(404)
     # get comments and create a form for commenting
-    comments = post.comments(orderby=~db.Comment.date)
+    comments = post.comments(orderby=~Comment.date)
     form = Comment.form(onvalidation=_validate_comment)
     if form.accepted:
         redirect(url('post', pid))

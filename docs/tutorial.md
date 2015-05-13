@@ -76,55 +76,61 @@ So, how we build our schema? We will use the default `AuthModel` class for the u
 ```python
 from weppy import request, session
 from weppy.dal import Field, Model, AuthModel
-from weppy.validators import isntEmpty
 
 class User(AuthModel):
     # will create "auth_user" table and groups/permissions ones
-    pass
+    has_many('posts', 'comments')
+
 
 class Post(Model):
-    tablename = "posts"
-    fields = [
-        Field("author", "reference auth_user",
-              default=lambda: session.auth.user.id),
-        Field("title"),
-        Field("text", "text"),
-        Field("date", "datetime", default=lambda: request.now)
-    ]
+    belongs_to('user')
+    has_many('comments')
+
+    title = Field()
+    text = Field('text')
+    date = Field('datetime')
+
+    defaults = {
+        'user': lambda: session.auth.user.id,
+        'date': lambda: request.now
+    }
     visibility = {
-        "author": (False, False),
-        "date": (False, False)
+        'user': False,
+        'date': False
     }
     validators = {
-        "title": isntEmpty(),
-        "text": isntEmpty()
+        'title': {'presence': True},
+        'text': {'presence': True}
     }
 
+
 class Comment(Model):
-    tablename = "comments"
-    fields = [
-        Field("author", "reference auth_user",
-              default=lambda: session.auth.user.id),
-        Field("post", "reference posts"),
-        Field("text", "text"),
-        Field("date", "datetime", default=lambda: request.now)
-    ]
+    belongs_to('user', 'post')
+
+    text = Field('text')
+    date = Field('datetime')
+
+    defaults = {
+        'user': lambda: session.auth.user.id,
+        'date': lambda: request.now
+    }
+
     visibility = {
-        "author": (False, False),
-        "post": (False, False),
-        "date": (False, False)
+        'user': False,
+        'post': False,
+        'date': False
     }
     validators = {
-        "text": isntEmpty()
+        'text': {'presence': True}
     }
 ```
 
-That's it. You can see we defined some *reference* fields, which is simply a relationships between the tables, so we have these conditions:
+That's it. You can see we defined some *relations* between our models, which will be a relationships between the tables, so we have these conditions:
 
 * a post always have an author, and an author can have *n* posts
 * a comment always have an author and always refers to a post, and a post can have *n* comments
 
-Moreover, we have set some *default* values (like the dates and the authors) and we hidden some fields in forms to the users: as you can easily understand, it will be pointless to have an *author* field if the user can set this value to whatever he or she want, so we're telling to weppy to auto-set those values to the right ones.
+Moreover, we have set some *default* values (like the dates and the authors) and we hidden some fields in forms to the users: as you can easily understand, it will be pointless to have an *user* field if the user can set this value to whatever he or she want, so we're telling to weppy to auto-set those values to the right ones.
 
 We've also added some validators, so we can prevent users to send empty contents.
 
@@ -139,7 +145,7 @@ from weppy.tools import Auth
 
 db = DAL(app)
 auth = Auth(app, db, usermodel=User)
-db.define_models([Post, Comment])
+db.define_models(Post, Comment)
 ```
 
 But wait, how we add the admin user who can write the posts? We can write a `setup` function which allow us to do that. Let's write:
@@ -192,7 +198,7 @@ Then we can start writing the function for our index page, that will list all th
 ```python
 @app.expose("/")
 def index():
-    posts = db(db.Post.id > 0).select(orderby=~db.Post.date)
+    posts = db(Post.id > 0).select(orderby=~Post.date)
     return dict(posts=posts)
 ```
 
@@ -211,8 +217,10 @@ def one(pid):
     if not post:
         abort(404)
     # get comments and create a form
-    comments = db(db.Comment.post == post.id).select(orderby=~db.Comment.date)
+    comments = post.comments(orderby=~Comment.date)
     form = Comment.form(onvalidation=_validate_comment)
+    if form.accepted:
+        redirect(url('post', pid))
     return locals()
 ```
 
@@ -319,7 +327,7 @@ Then the *one.html* template which is the most complex:
     <li>
         {{=comment.text}}
         <br />
-        <em>by {{=comment.author.first_name}} on {{=comment.date}}</em>
+        <em>by {{=comment.user.first_name}} on {{=comment.date}}</em>
     </li>
 {{else:}}
     <li><em>No comments here so far.</em></li>
