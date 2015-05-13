@@ -1,6 +1,5 @@
 from weppy import App, request, session, url, redirect, abort
-from weppy.dal import DAL, Field, Model, AuthModel
-from weppy.validators import isntEmpty
+from weppy.dal import DAL, Field, Model, AuthModel, belongs_to, has_many
 from weppy.tools import Auth, requires
 from weppy.sessions import SessionCookieManager
 
@@ -11,44 +10,49 @@ app = App(__name__)
 #: define models
 class User(AuthModel):
     # will create "auth_user" table and groups/permissions ones
-    pass
+    has_many('posts', 'comments')
 
 
 class Post(Model):
-    tablename = "posts"
-    fields = [
-        Field("author", "reference auth_user",
-              default=lambda: session.auth.user.id),
-        Field("title"),
-        Field("text", "text"),
-        Field("date", "datetime", default=lambda: request.now)
-    ]
+    belongs_to({'author': 'user'})
+    has_many('comments')
+
+    title = Field()
+    text = Field('text')
+    date = Field('datetime')
+
+    defaults = {
+        'author': lambda: session.auth.user.id,
+        'date': lambda: request.now
+    }
     visibility = {
         "author": (False, False),
         "date": (False, False)
     }
     validators = {
-        "title": isntEmpty(),
-        "text": isntEmpty()
+        "title": {'presence': True},
+        "text": {'presence': True}
     }
 
 
 class Comment(Model):
-    tablename = "comments"
-    fields = [
-        Field("author", "reference auth_user",
-              default=lambda: session.auth.user.id),
-        Field("post", "reference posts"),
-        Field("text", "text"),
-        Field("date", "datetime", default=lambda: request.now)
-    ]
+    belongs_to({'author': 'user'}, 'post')
+
+    text = Field('text')
+    date = Field('datetime')
+
+    defaults = {
+        'author': lambda: session.auth.user.id,
+        'date': lambda: request.now
+    }
+
     visibility = {
         "author": (False, False),
         "post": (False, False),
         "date": (False, False)
     }
     validators = {
-        "text": isntEmpty()
+        "text": {'presence': True}
     }
 
 #: init db and auth
@@ -70,6 +74,7 @@ def setup():
     admins = auth.add_group("admin")
     # add user to admins group
     auth.add_membership(admins, user.id)
+    db.commit()
 
 #: handlers
 app.expose.common_handlers = [

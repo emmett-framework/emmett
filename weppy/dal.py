@@ -27,25 +27,6 @@ def _default_validators(db, field):
     fieldtype
     """
     requires = []
-    #if field.type in (('string', 'text', 'password')):
-        #requires = parser(field, {'len': {'lt': field.length}})
-        #requires.append(_validators.hasLength(field.length))
-    #elif field.type == 'json':
-    #    requires.append(_validators.isEmptyOr(_validators.isJSON()))
-    #elif field.type == 'double' or field.type == 'float':
-    #    requires.append(_validators.isFloat())
-    #elif field.type == 'integer':
-    #    requires.append(_validators.isInt())
-    #elif field.type == 'bigint':
-    #    requires.append(_validators.isInt())
-    #elif field.type.startswith('decimal'):
-    #    requires.append(_validators.isDecimal())
-    #elif field.type == 'date':
-    #    requires.append(_validators.isDate())
-    #elif field.type == 'time':
-    #    requires.append(_validators.isTime())
-    #elif field.type == 'datetime':
-    #    requires.append(_validators.isDatetime())
     if db and field.type.startswith('reference') and \
             field.type.find('.') < 0 and \
             field.type[10:] in db.tables:
@@ -438,6 +419,7 @@ class Model(object):
     widgets = {}
     labels = {}
     comments = {}
+    defaults = {}
     updates = {}
 
     @property
@@ -462,7 +444,7 @@ class Model(object):
             cls.tablename = cls.__name__.lower()+"s"
         #: get super model fields' properties
         proplist = ['validators', 'visibility', 'representation',
-                    'widgets', 'labels', 'comments', 'updates']
+                    'widgets', 'labels', 'comments', 'defaults', 'updates']
         for prop in proplist:
             superprops = getattr(sup, prop)
             props = {}
@@ -495,6 +477,7 @@ class Model(object):
         self.__define_widgets()
         self.__define_labels()
         self.__define_comments()
+        self.__define_defaults()
         self.__define_updates()
         self.__define_computations()
         self.__define_actions()
@@ -632,6 +615,10 @@ class Model(object):
                     self.entity[obj.field_name].compute = \
                         lambda row, obj=obj, self=self: obj.f(self, row)
 
+    def __define_defaults(self):
+        for field, value in self.defaults.items():
+            self.entity[field].default = value
+
     def __define_updates(self):
         for field, value in self.updates.items():
             self.entity[field].update = value
@@ -724,6 +711,7 @@ class AuthModel(Model):
         self.__super_method('define_widgets')()
         self.__super_method('define_labels')()
         self.__super_method('define_comments')()
+        self.__super_method('define_defaults')()
         self.__super_method('define_updates')()
         self.__super_method('define_actions')()
         self.setup()
