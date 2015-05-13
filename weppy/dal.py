@@ -303,9 +303,9 @@ class _hasmanywrap(object):
         self.ref = ref
         self.field = field
 
-    def __call__(self, model, row):
+    def __call__(self, model, row, **kwargs):
         rid = row[model.tablename].id
-        return model.db(model.db[self.ref][self.field] == rid).select()
+        return model.db(model.db[self.ref][self.field] == rid).select(**kwargs)
 
 
 class computation(object):

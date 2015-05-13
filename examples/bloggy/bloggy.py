@@ -99,8 +99,8 @@ def one(pid):
     post = db.Post(id=pid)
     if not post:
         abort(404)
-    # get comments and create a form
-    comments = db(db.Comment.post == post.id).select(orderby=~db.Comment.date)
+    # get comments and create a form for commenting
+    comments = post.comments(orderby=~db.Comment.date)
     form = Comment.form(onvalidation=_validate_comment)
     if form.accepted:
         redirect(url('post', pid))
