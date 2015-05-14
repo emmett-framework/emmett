@@ -37,12 +37,12 @@ class A(Model):
 class AA(Model):
     tablename = "aa"
 
-    a = Field(auto_requires=False)
+    a = Field(auto_validation=False)
 
 
 class AAA(Model):
     tablename = "aaa"
-    default_validators = False
+    default_validation = False
 
     a = Field()
 
@@ -51,9 +51,9 @@ class B(Model):
     tablename = "b"
 
     a = Field()
-    b = Field(requires={'len': {'gte': 5}})
+    b = Field(validation={'len': {'gte': 5}})
 
-    validators = {
+    validation = {
         'a': {'len': {'gte': 5}}
     }
 
@@ -64,7 +64,7 @@ class Consist(Model):
     ip = Field()
     image = Field('upload')
 
-    validators = {
+    validation = {
         'email': {'is': 'email'},
         'url': {'is': 'url'},
         'ip': {'is': 'ip'},
@@ -78,7 +78,7 @@ class Len(Model):
     c = Field()
     d = Field()
 
-    validators = {
+    validation = {
         'a': {'len': 5},
         'b': {'len': {'gt': 4, 'lt': 13}},
         'c': {'len': {'gte': 5, 'lte': 12}},
@@ -90,7 +90,7 @@ class Inside(Model):
     a = Field()
     b = Field('int')
 
-    validators = {
+    validation = {
         'a': {'in': ['a', 'b']},
         'b': {'in': {'range': (1, 5)}}
     }
@@ -101,7 +101,7 @@ class Num(Model):
     b = Field('int')
     c = Field('int')
 
-    validators = {
+    validation = {
         'a': {'gt': 0},
         'b': {'lt': 5},
         'c': {'gt': 0, 'lte': 4}
@@ -116,7 +116,7 @@ class Proc(Model):
     e = Field('password')
     f = Field('password')
 
-    validators = {
+    validation = {
         'a': {'lower': True},
         'b': {'upper': True},
         'c': {'clean': True},
@@ -131,7 +131,7 @@ class Eq(Model):
     b = Field('int')
     c = Field('float')
 
-    validators = {
+    validation = {
         'a': {'equals': 'asd'},
         'b': {'equals': 2},
         'c': {'not': {'equals': 2.4}}
@@ -141,8 +141,8 @@ class Eq(Model):
 class Person(Model):
     has_many('things')
 
-    name = Field(requires={'empty': False})
-    surname = Field(requires={'presence': True})
+    name = Field(validation={'empty': False})
+    surname = Field(validation={'presence': True})
 
 
 class Thing(Model):
@@ -152,7 +152,7 @@ class Thing(Model):
     color = Field()
     uid = Field(unique=True)
 
-    validators = {
+    validation = {
         'name': {'presence': True},
         'color': {'in': ['blue', 'red']},
         'uid': {'empty': False}
@@ -160,9 +160,9 @@ class Thing(Model):
 
 
 class Allowed(Model):
-    a = Field(requires={'in': ['a', 'b'], 'allow': None})
-    b = Field(requires={'in': ['a', 'b'], 'allow': 'empty'})
-    c = Field(requires={'in': ['a', 'b'], 'allow': 'blank'})
+    a = Field(validation={'in': ['a', 'b'], 'allow': None})
+    b = Field(validation={'in': ['a', 'b'], 'allow': 'empty'})
+    c = Field(validation={'in': ['a', 'b'], 'allow': 'blank'})
 
 
 class Mixed(Model):
@@ -176,7 +176,7 @@ class Mixed(Model):
     yep = Field()
     psw = Field('password')
 
-    validators = {
+    validation = {
         'date': {'format': '%d/%m/%Y', 'gt': lambda: datetime.utcnow().date()},
         'type': {'in': ['a', 'b'], 'allow': None},
         'inside': {'in': ['asd', 'lol']},
@@ -222,7 +222,7 @@ def test_defaults_disable(db):
 
 
 def test_requires_vs_validators(db):
-    # using Field(requires=) is the same as 'validators'
+    # using Field(validation=) is the same as 'validators'
     assert db.b.a.requires[0].minsize == 5
     assert db.b.b.requires[0].minsize == 5
 

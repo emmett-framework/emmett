@@ -53,31 +53,31 @@ class Stuff(Model):
     total = Field('double')
     invisible = Field()
 
-    validators = {
+    validation = {
         "a": {'presence': True}
     }
 
-    visibility = {
-        "invisible": (False, False)
+    form_rw = {
+        "invisible": False
     }
 
-    labels = {
+    form_labels = {
         "a": "A label"
     }
 
-    comments = {
+    form_info = {
         "a": "A comment"
     }
 
-    updates = {
+    update_values = {
         "a": "a_update"
     }
 
-    representation = {
+    repr_values = {
         "a": _represent_f
     }
 
-    widgets = {
+    form_widgets = {
         "a": _widget_f
     }
 

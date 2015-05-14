@@ -21,17 +21,17 @@ class Post(Model):
     text = Field('text')
     date = Field('datetime')
 
-    defaults = {
+    default_values = {
         'user': lambda: session.auth.user.id,
         'date': lambda: request.now
     }
-    visibility = {
-        'user': False,
-        'date': False
-    }
-    validators = {
+    validation = {
         'title': {'presence': True},
         'text': {'presence': True}
+    }
+    form_rw = {
+        'user': False,
+        'date': False
     }
 
 
@@ -41,18 +41,17 @@ class Comment(Model):
     text = Field('text')
     date = Field('datetime')
 
-    defaults = {
+    validation = {
+        'text': {'presence': True}
+    }
+    default_values = {
         'user': lambda: session.auth.user.id,
         'date': lambda: request.now
     }
-
-    visibility = {
+    form_rw = {
         'user': False,
         'post': False,
         'date': False
-    }
-    validators = {
-        'text': {'presence': True}
     }
 
 #: init db and auth

@@ -11,6 +11,7 @@
 import os
 from pydal import DAL as _pyDAL
 from pydal import Field as _Field
+from pydal.objects import Set, LazySet
 from weppy import serializers as _serializers
 from weppy import validators as _validators
 from ._compat import copyreg
@@ -183,23 +184,39 @@ class Field(_Field):
     _pydal_types = {'int': 'integer', 'bool': 'boolean'}
 
     def __init__(self, type='string', *args, **kwargs):
-        self._type = self._weppy_types.get(type, type)
         self.modelname = None
-        self._auto_validators = True
-        if 'auto_requires' in kwargs:
-            self._auto_validators = kwargs['auto_requires']
-            del kwargs['auto_requires']
-        #: intercept requires (will be processed by `_make_field`
+        self._auto_validation = True
+        #: convert type
+        self._type = self._weppy_types.get(type, type)
+        #: convert 'rw' -> 'readable', 'writeable'
+        if 'rw' in kwargs:
+            if isinstance(kwargs['rw'], (tuple, list)):
+                read, write = kwargs['rw']
+            else:
+                read = write = kwargs['rw']
+            kwargs['readable'] = read
+            kwargs['writable'] = write
+            del kwargs['rw']
+        #: convert 'info' -> 'comment'
+        _info = kwargs.get('info')
+        if _info:
+            kwargs['comment'] = _info
+            del kwargs['info']
+        #: get auto validation preferences
+        if 'auto_validation' in kwargs:
+            self._auto_validation = kwargs['auto_validation']
+            del kwargs['auto_validation']
+        #: intercept validation (will be processed by `_make_field`)
         self._requires = {}
         self._custom_requires = []
-        if 'requires' in kwargs:
-            if isinstance(kwargs['requires'], dict):
-                self._requires = kwargs['requires']
+        if 'validation' in kwargs:
+            if isinstance(kwargs['validation'], dict):
+                self._requires = kwargs['validation']
             else:
-                self._custom_requires = kwargs['requires']
-                del kwargs['requires']
+                self._custom_requires = kwargs['validation']
                 if not isinstance(self._custom_requires, list):
                     self._custom_requires = [self._custom_requires]
+            del kwargs['validation']
         self._validation = {}
         self._vparser = ValidateFromDict()
         #: store args and kwargs for `_make_field`
@@ -229,6 +246,8 @@ class Field(_Field):
         self.requires = self._vparser(self, self._validation) + \
             self._custom_requires
 
+    #: `_make_field` will be called by `Model` class or `Form` class
+    #  it will make weppy's Field class compatible with the pyDAL's one
     def _make_field(self, name, model=None):
         if model is not None:
             self.modelname = model.__class__.__name__
@@ -237,10 +256,10 @@ class Field(_Field):
         #: create pyDAL's Field instance
         super(Field, self).__init__(name, ftype, *self._args, **self._kwargs)
         #: add automatic validation (if requested)
-        if self._auto_validators:
+        if self._auto_validation:
             auto = True
             if self.modelname:
-                auto = model.default_validators
+                auto = model.default_validation
             if auto:
                 self._validation = self._default_validation()
         #: validators
@@ -302,14 +321,52 @@ class _hasonewrap(object):
         return model.db(model.db[self.ref][self.field] == rid).select().first()
 
 
+class _hasmanyset(LazySet):
+    def __call__(self, query=None, **kwargs):
+        if query is None:
+            return self.select(**kwargs)
+        return LazySet.__call__(self, query, **kwargs)
+
+
 class _hasmanywrap(object):
     def __init__(self, ref, field):
         self.ref = ref
         self.field = field
 
-    def __call__(self, model, row, **kwargs):
+    #def __call__(self, model, row, **kwargs):
+    def __call__(self, model, row):
         rid = row[model.tablename].id
-        return model.db(model.db[self.ref][self.field] == rid).select(**kwargs)
+        #return model.db(model.db[self.ref][self.field] == rid).select(**kwargs)
+        return _hasmanyset(model.db[self.ref][self.field], rid)
+
+
+class _hasmanyviaset(Set):
+    def __init__(self, db, query, rfield, **kwargs):
+        self._rfield = rfield
+        Set.__init__(self, db, query, **kwargs)
+
+    def __call__(self, query=None, **kwargs):
+        if query is None:
+            return self.select(self._rfield, **kwargs)
+        return Set.__call__(self, query, **kwargs)
+
+
+class _hasmanyviawrap(object):
+    def __init__(self, ref, via):
+        self.ref = ref
+        self.via = via
+
+    #def __call__(self, model, row, **kwargs):
+    def __call__(self, model, row):
+        rid = row[model.tablename].id
+        via = getattr(model.entity, self.via).f.virtual.f
+        third = model.db[via.ref][self.ref].type.split(" ")[1]
+        return _hasmanyviaset(
+            model.db,
+            (model.db[via.ref][via.field] == rid) &
+            (model.db[via.ref][self.ref] == model.db[third].id),
+            model.db[third].ALL
+        )
 
 
 class computation(object):
@@ -416,17 +473,16 @@ class Model(object):
     entity = None
 
     sign_table = False
-    default_validators = True
+    default_validation = True
 
-    #fields = []
-    validators = {}
-    visibility = {}
-    representation = {}
-    widgets = {}
-    labels = {}
-    comments = {}
-    defaults = {}
-    updates = {}
+    validation = {}
+    default_values = {}
+    update_values = {}
+    repr_values = {}
+    form_labels = {}
+    form_info = {}
+    form_rw = {}
+    form_widgets = {}
 
     @property
     def config(self):
@@ -449,8 +505,9 @@ class Model(object):
         if cls.tablename == getattr(sup, 'tablename', None):
             cls.tablename = cls.__name__.lower()+"s"
         #: get super model fields' properties
-        proplist = ['validators', 'visibility', 'representation',
-                    'widgets', 'labels', 'comments', 'defaults', 'updates']
+        proplist = ['validation', 'default_values', 'update_values',
+                    'repr_values', 'form_labels', 'form_info', 'form_rw',
+                    'form_widgets']
         for prop in proplist:
             superprops = getattr(sup, prop)
             props = {}
@@ -477,16 +534,13 @@ class Model(object):
             from .tools import Auth
             fakeauth = Auth(DAL(None))
             self.fields.extend([fakeauth.signature])
-        self.__define_validators()
-        self.__define_visibility()
-        self.__define_representation()
-        self.__define_widgets()
-        self.__define_labels()
-        self.__define_comments()
+        self.__define_validation()
         self.__define_defaults()
         self.__define_updates()
+        self.__define_representation()
         self.__define_computations()
         self.__define_actions()
+        self.__define_form_utils()
         self.setup()
 
     def __define_props(self):
@@ -511,11 +565,13 @@ class Model(object):
             for item in getattr(self, '_belongs_ref_').reference:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference = item.capitalize()
-                refname = item
                 if isinstance(item, dict):
                     refname = list(item)[0]
                     reference = item[refname]
+                else:
+                    #item = item.lower()
+                    reference = item.capitalize()
+                    refname = item
                 tablename = self.db[reference]._tablename
                 setattr(self.__class__, refname, Field('reference '+tablename))
                 self.fields.append(
@@ -527,28 +583,45 @@ class Model(object):
             for item in getattr(self, '_hasone_ref_').reference:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference = item.capitalize()
-                refname = item
                 if isinstance(item, dict):
                     refname = list(item)[0]
                     reference = item[refname]
+                else:
+                    #item = item.lower()
+                    reference = item.capitalize()
+                    refname = item
                 sname = self.__class__.__name__.lower()
                 setattr(self, refname,
                         virtualfield(refname)(_hasonewrap(reference, sname)))
             delattr(self.__class__, '_hasone_ref_')
-        #: has_many are mapped with fieldmethod()
+        #: has_many are mapped with virtualfield()
         if hasattr(self, '_hasmany_ref_'):
             for item in getattr(self, '_hasmany_ref_').reference:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference = item[:-1].capitalize()
-                refname = item
                 if isinstance(item, dict):
                     refname = list(item)[0]
                     reference = item[refname]
+                else:
+                    reference = item[:-1].capitalize()
+                    refname = item
                 sname = self.__class__.__name__.lower()
-                setattr(self, refname,
-                        fieldmethod(refname)(_hasmanywrap(reference, sname)))
+                if isinstance(reference, dict):
+                    #: maps has_many({'things': {'via': 'otherthings'}})
+                    reference = reference.get('via')
+                    setattr(
+                        self, refname, virtualfield(refname)(
+                            _hasmanyviawrap(refname[:-1], reference)
+                        )
+                    )
+                else:
+                    #: maps has_many('things') and
+                    #  has_many({'things': 'othername'})
+                    setattr(
+                        self, refname, virtualfield(refname)(
+                            _hasmanywrap(reference, sname)
+                        )
+                    )
             delattr(self.__class__, '_hasmany_ref_')
         return
 
@@ -569,11 +642,11 @@ class Model(object):
                     f = _Field.Virtual(obj.field_name, _virtualwrap(self, obj))
                 self.fields.append(f)
 
-    def __define_validators(self):
+    def __define_validation(self):
         for field in self.fields:
             if isinstance(field, (_Field.Method, _Field.Virtual)):
                 continue
-            validation = self.validators.get(field.name, {})
+            validation = self.validation.get(field.name, {})
             if isinstance(validation, dict):
                 for key in list(validation):
                     field._requires[key] = validation[key]
@@ -583,36 +656,17 @@ class Model(object):
                 field._custom_requires.append(validation)
             field._parse_validation()
 
-    def __define_visibility(self):
-        try:
-            self.entity.is_active.writable = self.entity.is_active.readable = \
-                False
-        except:
-            pass
-        for field, value in self.visibility.items():
-            if isinstance(value, (tuple, list)):
-                writable, readable = value
-            else:
-                writable = value
-                readable = value
-            self.entity[field].writable = writable
-            self.entity[field].readable = readable
+    def __define_defaults(self):
+        for field, value in self.default_values.items():
+            self.entity[field].default = value
+
+    def __define_updates(self):
+        for field, value in self.update_values.items():
+            self.entity[field].update = value
 
     def __define_representation(self):
-        for field, value in self.representation.items():
+        for field, value in self.repr_values.items():
             self.entity[field].represent = value
-
-    def __define_widgets(self):
-        for field, value in self.widgets.items():
-            self.entity[field].widget = value
-
-    def __define_labels(self):
-        for field, value in self.labels.items():
-            self.entity[field].label = value
-
-    def __define_comments(self):
-        for field, value in self.comments.items():
-            self.entity[field].comment = value
 
     def __define_computations(self):
         field_names = [field.name for field in self.fields]
@@ -626,14 +680,6 @@ class Model(object):
                             'existing field to compute!')
                     self.entity[obj.field_name].compute = \
                         lambda row, obj=obj, self=self: obj.f(self, row)
-
-    def __define_defaults(self):
-        for field, value in self.defaults.items():
-            self.entity[field].default = value
-
-    def __define_updates(self):
-        for field, value in self.updates.items():
-            self.entity[field].update = value
 
     def __define_actions(self):
         for name in dir(self):
@@ -649,6 +695,31 @@ class Model(object):
                             getattr(self.entity, t).append(
                                 lambda a, b, obj=obj, self=self: obj.f(
                                     self, a, b))
+
+    def __define_form_utils(self):
+        #: labels
+        for field, value in self.form_labels.items():
+            self.entity[field].label = value
+        #: info
+        for field, value in self.form_info.items():
+            self.entity[field].comment = value
+        #: rw
+        try:
+            self.entity.is_active.writable = self.entity.is_active.readable = \
+                False
+        except:
+            pass
+        for field, value in self.form_rw.items():
+            if isinstance(value, (tuple, list)):
+                writable, readable = value
+            else:
+                writable = value
+                readable = value
+            self.entity[field].writable = writable
+            self.entity[field].readable = readable
+        #: widgets
+        for field, value in self.form_widgets.items():
+            self.entity[field].widget = value
 
     def setup(self):
         pass
@@ -696,8 +767,8 @@ class Model(object):
 class AuthModel(Model):
     auth = None
 
-    register_visibility = {}
-    profile_visibility = {}
+    form_registration_rw = {}
+    form_profile_rw = {}
 
     def __new__(cls):
         if not getattr(cls, 'tablename', None):
@@ -714,18 +785,15 @@ class AuthModel(Model):
         return getattr(super(AuthModel, self), '_Model__'+name)
 
     def __define(self):
-        self.__super_method('define_validators')()
-        self.__hide_all()
-        self.__super_method('define_visibility')()
-        self.__define_register_visibility()
-        self.__define_profile_visibility()
-        self.__super_method('define_representation')()
-        self.__super_method('define_widgets')()
-        self.__super_method('define_labels')()
-        self.__super_method('define_comments')()
+        self.__super_method('define_validation')()
         self.__super_method('define_defaults')()
         self.__super_method('define_updates')()
+        self.__super_method('define_representation')()
+        self.__super_method('define_computations')()
         self.__super_method('define_actions')()
+        self.__hide_all()
+        self.__super_method('define_form_utils')
+        self.__define_authform_utils()
         self.setup()
 
     def __define_extra_fields(self):
@@ -742,30 +810,21 @@ class AuthModel(Model):
         return [field.name for field in self.entity
                 if field.type != 'id' and field.writable]
 
-    def __define_register_visibility(self):
-        l = self.auth.settings.register_fields or self.__base_visibility()
-        for field, value in self.register_visibility.items():
-            show = value[1] if isinstance(value, (tuple, list)) else value
-            if show:
-                #self.entity[field].writable = value[0]
-                #self.entity[field].readable = value[1]
-                l.append(field)
-            else:
-                if field in l:
-                    l.remove(field)
-        if l:
-            self.auth.settings.register_fields = l
-
-    def __define_profile_visibility(self):
-        l = self.auth.settings.profile_fields or self.__base_visibility()
-        for field, value in self.profile_visibility.items():
-            show = value[1] if isinstance(value, (tuple, list)) else value
-            if show:
-                #self.entity[field].writable = value[0]
-                #self.entity[field].readable = value[1]
-                l.append(field)
-            else:
-                if field in l:
-                    l.remove(field)
-        if l:
-            self.auth.settings.profile_fields = l
+    def __define_authform_utils(self):
+        settings_map = {
+            'register_fields': 'form_registration_rw',
+            'profile_fields': 'form_profile_rw'
+        }
+        for setting, attr in settings_map.items():
+            l = self.auth.settings[setting] or self.__base_visibility()
+            for field, value in getattr(self, attr).items():
+                show = value[1] if isinstance(value, (tuple, list)) else value
+                if show:
+                    #self.entity[field].writable = value[0]
+                    #self.entity[field].readable = value[1]
+                    l.append(field)
+                else:
+                    if field in l:
+                        l.remove(field)
+            if l:
+                self.auth.settings[setting] = l
