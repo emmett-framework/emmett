@@ -11,6 +11,7 @@
 - sessions
 - languages
 - dal
+- validations
 - forms
 - auth
 - caching
