@@ -24,7 +24,7 @@ setup(
     author_email='gi0baro@d4net.org',
     description='The web framework for humans',
     long_description=__doc__,
-    packages=['weppy', 'weppy.language', 'weppy.language.plurals',
+    packages=['weppy', 'weppy.dal', 'weppy.language', 'weppy.language.plurals',
               'weppy.templating', 'weppy.tools', 'weppy.validators',
               'weppy.libs'],
     include_package_data=True,
