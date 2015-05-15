@@ -395,7 +395,7 @@ def a():
         'name': Field(),
         'number': Field('int'),
         'type': Field(
-            requires={'in': ['type1', 'type2']}
+            validation={'in': ['type1', 'type2']}
         )
     })
     if simple_form.accepted:
@@ -403,7 +403,7 @@ def a():
     return dict(form=simple_form)
 ```
 
-As you can see the `Form` class accepts a list of fields for the input, and you can add validators to your fields. The `Form` class comes with many options, for example you can set an `onvalidation` method to run additional validation besides the fields' requirements.   
+As you can see the `Form` class accepts a list of fields for the input, and you can add validation to your fields. The `Form` class comes with many options, for example you can set an `onvalidation` method to run additional validation besides the fields' requirements.   
 You can also customize the form rendering and styling, or generate forms from database tables created with the integrated [DAL](./dal). Check out the [Forms chapter](./forms) of the documentation and the [weppy BS3 extension](#) which add bootstrap3 style to your forms.
 
 Languages and translation

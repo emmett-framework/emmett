@@ -41,12 +41,12 @@ class Comment(Model):
     text = Field('text')
     date = Field('datetime')
 
-    validation = {
-        'text': {'presence': True}
-    }
     default_values = {
         'user': lambda: session.auth.user.id,
         'date': lambda: request.now
+    }
+    validation = {
+        'text': {'presence': True}
     }
     form_rw = {
         'user': False,

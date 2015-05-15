@@ -90,17 +90,17 @@ class Post(Model):
     text = Field('text')
     date = Field('datetime')
 
-    defaults = {
+    default_values = {
         'user': lambda: session.auth.user.id,
         'date': lambda: request.now
     }
-    visibility = {
-        'user': False,
-        'date': False
-    }
-    validators = {
+    validation = {
         'title': {'presence': True},
         'text': {'presence': True}
+    }
+    form_rw = {
+        'user': False,
+        'date': False
     }
 
 
@@ -110,18 +110,17 @@ class Comment(Model):
     text = Field('text')
     date = Field('datetime')
 
-    defaults = {
+    default_values = {
         'user': lambda: session.auth.user.id,
         'date': lambda: request.now
     }
-
-    visibility = {
+    validation = {
+        'text': {'presence': True}
+    }
+    form_rw = {
         'user': False,
         'post': False,
         'date': False
-    }
-    validators = {
-        'text': {'presence': True}
     }
 ```
 
@@ -132,7 +131,7 @@ That's it. You can see we defined some *relations* between our models, which wil
 
 Moreover, we have set some *default* values (like the dates and the authors) and we hidden some fields in forms to the users: as you can easily understand, it will be pointless to have an *user* field if the user can set this value to whatever he or she want, so we're telling to weppy to auto-set those values to the right ones.
 
-We've also added some validators, so we can prevent users to send empty contents.
+We've also added some validation, so we can prevent users to send empty contents.
 
 Init the database and the auth module
 -------------------------------------
