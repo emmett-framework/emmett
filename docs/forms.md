@@ -15,7 +15,7 @@ def a():
         'name': Field(),
         'number': Field('int'),
         'type': Field(
-            requires={'in': ['type1', 'type2']}
+            validation={'in': ['type1', 'type2']}
         )
     })
     if simple_form.accepted:
@@ -25,7 +25,7 @@ def a():
 ```
 
 As you can see the `Form` class accepts a `dict` of `Field` objects for the input, we described them in the [DAL chapter](./dal#fields) of the documentation.   
-Forms validate the input of the clients using their fields' validators: when the input passes the validation, the `accepted` attribute is set to `True`. The example above shows you that you can use this attribute to do stuffs when clients submit the form, and the submitted values are stored in `form.vars`.
+Forms validate the input of the clients using their fields' validation: when the input passes the validation, the `accepted` attribute is set to `True`. The example above shows you that you can use this attribute to do stuffs when clients submit the form, and the submitted values are stored in `form.vars`.
 
 Forms with DAL entities
 -----------------------
@@ -143,7 +143,7 @@ where basically the form check if the second number is the double of the first a
 
 You've just learnt how to use `onvalidation` parameter and that you can store errors in `form.errors` which is a `sdict` object like `form.vars`.
 
-Also, you understood that `Form` accepts fields objects also as arguments.
+Also, you understood that `Form` accepts `Field` objects also as arguments.
 
 Customizing forms
 -----------------
