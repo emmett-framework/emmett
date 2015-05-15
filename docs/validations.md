@@ -122,7 +122,7 @@ password = Field('password', validation={'len': {'gt': 5, 'lt': 25}})
 As you can see, the `'len'` validator is just the easier way to do that. It accepts different arguments, depending on what you need:
 
 | parameter | value expected | example |
-| --- | --- |
+| --- | --- | --- |
 | gt | `int` | `{'len': {'gt': 5}}` |
 | lt | `int` | `{'len': {'lt': 25}}` |
 | gte | `int` | `{'len': {'gte': 6}}` |
