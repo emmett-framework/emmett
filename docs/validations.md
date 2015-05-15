@@ -7,7 +7,7 @@ The validation mechanism in weppy is the same both if you're using independent f
 
 Validations cannot be bypassed by end users, and happens every time a form is submitted, or when you invoke the `Model` methods `validate` and `create`. But how you define validations for your entities and forms?
 
-The quite immediate way is to use the `validation` parameter of the `Field` class which is used both by `Model` and `Form` classes in weppy:
+The quite immediate way is to use the `validation` parameter of the `Field` class which is used both by `Model` and `Form` classes in weppy, and that accepts a `dict` of instructions:
 
 ```python
 # ensure the input is a valid email address
@@ -134,20 +134,189 @@ Note that the `range` parameter behaves like the python builtin `range()`, inclu
 Value inclusion
 ---------------
 
+To ensure the value is inside a specific set, you can use the `'in'` validator:
+
+```python
+myfield = Field(validation={'in': ['a', 'b']})
+```
+
+and if you have an *int* field, you can also use the convenient `'range'` option:
+
+```python
+number = Field('int', validation={'in': {'range': (1, 10)}})
+```
+
+The `'in'` validators also accepts some specific options, in particular:
+
+| parameter | description |
+| --- | --- |
+| labels | a `list` of values to display on form's dropdown |
+| multiple | allow user to select multiple values |
+
+When you want to use these options with a set, you may use the `'set'` notation:
+
+```python
+number = Field(
+    'int',
+    validation={'in': {'set': [0, 1], 'labels': ['zero', 'one']}}
+)
+```
+
 Numeric boundaries
 ------------------
+
+When you need to ensure some numeric values on *int* fields, you may find useful a different approach from `{'in': {'range': (1, 10)}}`, using the same notation of `'len'`:
+
+```python
+num_a = Field('int', validation={'gt': 0})
+num_b = Field('int', validation={'lt': 12})
+num_c = Field('int', validation={'gte': 1, 'lte': 10})
+```
 
 Validate only a specific value
 ------------------------------
 
+Sometimes you need to validate only a specific value for a field. weppy provides the `'equals'` validator to help you:
+
+```python
+accept_terms = Field(validation={'equals': 'yes'})
+```
+
+Basically the `'equals'` validators perform a `==` check between the input value and the one given.
+
 Match input
 -----------
 
-Transformations
----------------
+*section under writing*
 
 Exclusion
 ---------
 
+When you need to do an *exclusion* operation under validation process, you can use the `'not'` validation helper. Let's say that you want the value to be different from a certain value:
+
+```python
+myfield = Field(validation={'not': {'equals': 'somevalue'}})
+```
+
+or you want to exclude a set of values:
+
+```python
+color = Field(validation={'not': {'in': ['white', 'black']}})
+```
+
+Basically the `'not'` validator takes another validation as argument and check the opposite result.
+
+Transformations
+---------------
+
+weppy provides several validation helpers that let you transform the input value of the field on validation. For example, you may want your *string* field to always being lowercase, or you need your *password* field to be crypted.
+
+Here is the complete list of *transformation* helpers available in weppy builtins.
+
+### lower
+
+The `'lower'` helper turns your string to lowercase:
+
+```python
+low = Field(validation={'lower': True})
+```
+
+### upper
+
+The `'upper'` helper is the opposite of the `'lower'` one, and will turn your string to uppercase:
+
+```python
+up = Field(validation={'upper': True})
+```
+
+### clean
+
+The `'clean'` helper removes any special character from your string:
+
+```python
+clean = Field(validation={'clean': True})
+```
+
+### urlify
+
+The `'urlify'` helper allows you to create url valid strings (so that, for example, you can use them for routing purposes): 
+
+```python
+urldata = Field(validation={'urlify': True})
+```
+
+This helper also accepts the `underscore` parameter (default set as `False`) that you can use if you want underscores to be kept in the string:
+
+```python
+urldata = Field(validation={'urlify': {'underscore': True}})
+```
+
+### crypt
+
+The `'crypt'` helper becomes handy when you want to crypt the contents of the field. The easiest way to use it is just to enable it:
+
+```python
+password = Field(validation={'crypt': True})
+```
+
+which will crypt the contents using *sha512* algorithm.
+
+If you just want to use a different algorithm, choosing between *md5*, *sha1*, *sha224*, *sha256*, *sha384*, *sha512*, you can just write:
+
+```python
+password = Field(validation={'crypt': 'md5'})
+```
+
+But `'crypt'` also accepts two more parameters:   
+
+- the `key` parameter, which allows you to specify your own key to use with the algorithm
+- the `salt` parameter, which allows you to specify a salt to hash the password with.
+
+```python
+password = Field(
+    validation={'crypt': {'algorithm': 'md5', 'key': 'MyVerySecretKey'}}
+)
+```
+
 Custom validation
 -----------------
+
+Of course the builtin validation helpers cannot be enough in many particular cases. When you need to implement your own validation logic on a specific field, you can create your own `Validator` subclass, and pass an instance of it to the `validation` parameter:
+
+```python
+from weppy.validators import Validator
+
+class MyValidator(Validator):
+    message = "Invalid value"
+
+    def __call__(self, value):
+        if value == "notallowed":
+            return value, self.message
+        return value, None
+
+myfield = Field(validation=MyValidator())
+```
+
+and if you need to use multiple `Validator` classes, you can pass to `validation` a list of instances:
+
+```python
+myfield = Field(validation=[MyValidator1(), MyValidator2()])
+```
+
+When you write down your own `Validator` you just have to remember that the validation logic has to be inside the `__call__` method, and that should return the value and the error message if validation has failed or the value and `None` if everything was ok.
+
+`Validator` class also have a `formatter` function, that allows you to format the value to display in the form for particular cases:
+
+```python
+class FloatValidator(Validator):
+    def formatter(self, value):
+        #: shows only 2 values after the separator
+        if value is None:
+            return None
+        val = str(value)
+        if '.' not in val:
+            val += '.00'
+        else:
+            val += '0' * (2 - len(val.split('.')[1]))
+        return val
+```
