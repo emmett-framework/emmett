@@ -42,7 +42,7 @@ class AA(Model):
 
 class AAA(Model):
     tablename = "aaa"
-    default_validation = False
+    auto_validation = False
 
     a = Field()
 
