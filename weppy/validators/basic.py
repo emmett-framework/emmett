@@ -52,23 +52,44 @@ class _options(Validator):
     pass
 
 
-class _not(Validator):
-    def __init__(self, validators, message="value not allowed"):
+class Not(Validator):
+    message = "Value not allowed"
+
+    def __init__(self, validators, message=None):
+        Validator.__init__(self, message)
         if not isinstance(validators, (list, tuple)):
             validators = [validators]
         self.conditions = validators
-        self.message = message
 
     def __call__(self, value):
         val = value
         for condition in self.conditions:
             value, error = condition(value)
             if error is None:
-                return val, self.message
+                return val, translate(self.message)
         return value, None
 
 
-class _allow(Validator):
+class Any(Validator):
+    def __init__(self, validators, message=None):
+        Validator.__init__(self, message)
+        self.conditions = validators
+
+    def formatter(self, value):
+        # Use the formatter of the first subvalidator that has a formatter
+        for condition in self.conditions:
+            if hasattr(condition, 'formatter') and condition(value)[1] != None:
+                return condition.formatter(value)
+
+    def __call__(self, value):
+        for condition in self.conditions:
+            value, error = condition(value)
+            if error is None:
+                break
+        return value, error
+
+
+class Allow(Validator):
     def __init__(self, value, validators, message=None):
         Validator.__init__(self, message)
         if not isinstance(validators, (list, tuple)):
@@ -82,8 +103,6 @@ class _allow(Validator):
         if value is not comparing:
             for condition in self.conditions:
                 value, error = condition(value)
-                #if error is None:
-                #    return val, self.message
                 if error:
                     return val, error
         return value, None
@@ -178,33 +197,33 @@ class Equals(Validator):
 
 
 class Matches(Validator):
-    """The argument of Matches is a regular expression."""
+    message = "Invalid expression"
 
-    def __init__(self, expression, message='Invalid expression', strict=False,
-                 search=False, extract=False, is_unicode=False):
+    def __init__(self, expression, strict=False, search=False, extract=False,
+                 message=None):
+        Validator.__init__(self, message)
         if strict or not search:
             if not expression.startswith('^'):
                 expression = '^(%s)' % expression
         if strict:
             if not expression.endswith('$'):
                 expression = '(%s)$' % expression
-        if is_unicode:
-            if not isinstance(expression, unicode):
-                expression = expression.decode('utf8')
-            self.regex = re.compile(expression, re.UNICODE)
-        else:
-            self.regex = re.compile(expression)
-        self.message = message
+        #if is_unicode:
+        #    if not isinstance(expression, unicode):
+        #        expression = expression.decode('utf8')
+        #    self.regex = re.compile(expression, re.UNICODE)
+        #else:
+        self.regex = re.compile(expression)
         self.extract = extract
-        self.is_unicode = is_unicode
+        #self.is_unicode = is_unicode
 
     def __call__(self, value):
-        if self.is_unicode and not isinstance(value, unicode):
-            match = self.regex.search(str(value).decode('utf8'))
-        else:
-            match = self.regex.search(str(value))
+        #if self.is_unicode and not isinstance(value, unicode):
+        #    match = self.regex.search(str(value).decode('utf8'))
+        #else:
+        match = self.regex.search(str(value))
         if match is not None:
-            return (self.extract and match.group() or value, None)
+            return self.extract and match.group() or value, None
         return value, translate(self.message)
 
 

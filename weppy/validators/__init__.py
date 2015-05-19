@@ -10,7 +10,7 @@
 """
 
 from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, \
-    hasLength, _not, _allow, isEmpty
+    hasLength, Not, Allow, isEmpty, Any
 from .consist import isInt, isFloat, isDecimal, isDate, isTime, isDatetime, \
     isEmail, isJSON, isUrl, isIP, isImage
 from .inside import inRange, inSet, inSubSet, inDB, notInDB
@@ -119,6 +119,12 @@ class ValidateFromDict(object):
         #: parse 'equals'
         if 'equals' in data:
             validators.append(Equals(data['equals']))
+        #: parse 'match'
+        if 'match' in data:
+            if isinstance(data['match'], dict):
+                validators.append(Matches(**data['match']))
+            else:
+                validators.append(Matches(data['match']))
         #: parse transforming validators
         for key, vclass in self.prockeys.iteritems():
             if key in data:
@@ -144,9 +150,12 @@ class ValidateFromDict(object):
         if 'message' in data:
             for validator in validators:
                 validator.message = data['message']
+        #: parse 'any'
+        if 'any' in data:
+            validators.append(Any(self(field, data['any'])))
         #: parse 'not'
         if 'not' in data:
-            validators.append(_not(self(field, data['not'])))
+            validators.append(Not(self(field, data['not'])))
         #: insert presence/empty validation if needed
         if presence:
             if field.type.startswith('reference'):
@@ -160,5 +169,5 @@ class ValidateFromDict(object):
             if data['allow'] in ['empty', 'blank']:
                 validators = [isEmptyOr(validators)]
             else:
-                validators = [_allow(data['allow'], validators)]
+                validators = [Allow(data['allow'], validators)]
         return validators
