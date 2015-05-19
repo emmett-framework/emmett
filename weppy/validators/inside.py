@@ -134,12 +134,14 @@ class inSubSet(inSet):
 
 
 class inDB(Validator):
-    def __init__(self, db, set, field='id', label_field=None, message=None):
+    def __init__(self, db, set, field='id', label_field=None, multiple=False,
+                 message=None):
         Validator.__init__(self, message)
         self.db = db
         self.set = set
         self.field = field
         self.label_field = label_field
+        self.multiple = multiple
         # TODO: parse set if is not table
 
     def _get_set(self):
@@ -148,10 +150,10 @@ class inDB(Validator):
     def options(self, zero=True):
         records = self._get_set()
         if self.label_field:
-            items = [(r.id, str(r[self.label_field]))
+            items = [(r['id'], str(r[self.label_field]))
                      for (i, r) in enumerate(records)]
         else:
-            items = [(r.id, self.db[self.set][self.field]._format % r)
+            items = [(r['id'], self.db[self.set][self.field]._format % r)
                      for (i, r) in enumerate(records)]
         if self.sort:
             items.sort(options_sorter)
@@ -161,8 +163,17 @@ class inDB(Validator):
 
     def __call__(self, value):
         field = self.db[self.set][self.field]
-        if self.db(field == value).count():
-            return value, None
+        if self.multiple:
+            if isinstance(value, list):
+                values = value
+            else:
+                values = [value]
+            records = [i[0] for i in self._get_set()]
+            if not [v for v in values if v not in records]:
+                return values, None
+        else:
+            if self.db(field == value).count():
+                return value, None
         return value, translate(self.message)
 
 

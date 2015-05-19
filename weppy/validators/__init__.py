@@ -191,6 +191,9 @@ class ValidateFromDict(object):
             if field.type.startswith('reference'):
                 ref_table = field.type.split(' ')[1]
                 validators.append(inDB(field.db, ref_table))
+            if field.type.startswith('list:reference'):
+                ref_table = field.type.split(' ')[1]
+                validators.append(inDB(field.db, ref_table, multiple=True))
             validators.insert(0, isntEmpty())
         if empty:
             validators.insert(0, isEmpty())

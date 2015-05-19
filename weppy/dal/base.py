@@ -183,7 +183,8 @@ class Field(_Field):
             rv['len'] = {'lt': self.length}
         if self._type == 'list:int':
             rv['_is'] = {'list': 'int'}
-        if self._type.startswith('reference') or self.notnull:
+        if self.notnull or self._type.startswith('reference') or \
+                self._type.startswith('list:reference'):
             rv['presence'] = True
         if self.unique:
             rv['unique'] = True
