@@ -1,7 +1,7 @@
 from .apis import computation, virtualfield, fieldmethod, modelmethod
 from .base import DAL, Field, _Field, sdict
 from .helpers import MetaModel, HasOneWrap, HasManyWrap, HasManyViaWrap, \
-    VirtualWrap, Callback
+    VirtualWrap, Callback, make_tablename
 
 
 class Model(object):
@@ -41,7 +41,7 @@ class Model(object):
         if not sup:
             return
         if cls.tablename == getattr(sup, 'tablename', None):
-            cls.tablename = cls.__name__.lower()+"s"
+            cls.tablename = make_tablename(cls.__name__)
         #: get super model fields' properties
         proplist = ['validation', 'default_values', 'update_values',
                     'repr_values', 'form_labels', 'form_info', 'form_rw',
@@ -57,7 +57,7 @@ class Model(object):
 
     def __new__(cls):
         if not getattr(cls, 'tablename', None):
-            cls.tablename = cls.__name__.lower()+"s"
+            cls.tablename = make_tablename(cls.__name__)
         cls.__getsuperprops()
         return super(Model, cls).__new__(cls)
 
@@ -66,6 +66,15 @@ class Model(object):
             self.migrate = self.config.get('migrate', self.db._migrate)
         if not hasattr(self, 'format'):
             self.format = None
+
+    def __parse_relation(self, item):
+        if isinstance(item, dict):
+            refname = list(item)[0]
+            reference = item[refname]
+        else:
+            reference = item.capitalize()
+            refname = item
+        return reference, refname
 
     def __define(self):
         if self.sign_table:
@@ -103,13 +112,7 @@ class Model(object):
             for item in getattr(self, '_belongs_ref_').reference:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                if isinstance(item, dict):
-                    refname = list(item)[0]
-                    reference = item[refname]
-                else:
-                    #item = item.lower()
-                    reference = item.capitalize()
-                    refname = item
+                reference, refname = self.__parse_relation(item)
                 tablename = self.db[reference]._tablename
                 setattr(self.__class__, refname, Field('reference '+tablename))
                 self.fields.append(
@@ -121,13 +124,7 @@ class Model(object):
             for item in getattr(self, '_hasone_ref_').reference:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                if isinstance(item, dict):
-                    refname = list(item)[0]
-                    reference = item[refname]
-                else:
-                    #item = item.lower()
-                    reference = item.capitalize()
-                    refname = item
+                reference, refname = self.__parse_relation(item)
                 sname = self.__class__.__name__.lower()
                 setattr(self, refname,
                         virtualfield(refname)(HasOneWrap(reference, sname)))
@@ -137,24 +134,29 @@ class Model(object):
             for item in getattr(self, '_hasmany_ref_').reference:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                if isinstance(item, dict):
-                    refname = list(item)[0]
-                    reference = item[refname]
-                else:
-                    reference = item[:-1].capitalize()
-                    refname = item
-                sname = self.__class__.__name__.lower()
+                reference, refname = self.__parse_relation(item)
+                rclass = sname = via = None
                 if isinstance(reference, dict):
+                    rclass = reference.get('class')
+                    sname = reference.get('field')
+                    via = reference.get('via')
+                if via is not None:
                     #: maps has_many({'things': {'via': 'otherthings'}})
-                    reference = reference.get('via')
                     setattr(
                         self, refname, virtualfield(refname)(
-                            HasManyViaWrap(refname[:-1], reference)
+                            HasManyViaWrap(refname[:-1], via)
                         )
                     )
                 else:
-                    #: maps has_many('things') and
+                    #: maps has_many('things'),
                     #  has_many({'things': 'othername'})
+                    #  has_many({'things': {'class': 'Model', 'field': 'name'}})
+                    reference = reference[:-1]
+                    if rclass is not None:
+                        reference = rclass
+                    #: `sname` is the name of the field referring to self
+                    if sname is None:
+                        sname = self.__class__.__name__.lower()
                     setattr(
                         self, refname, virtualfield(refname)(
                             HasManyWrap(reference, sname)

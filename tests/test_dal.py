@@ -126,7 +126,7 @@ class Stuff(Model):
 
 
 class Person(Model):
-    has_many('things')
+    has_many('things', {'features': {'via': 'things'}})
 
     name = Field()
     age = Field('integer')
@@ -153,11 +153,42 @@ class Price(Model):
     value = Field('integer')
 
 
+class Doctor(Model):
+    has_many('appointments', {'patients': {'via': 'appointments'}})
+    name = Field()
+
+
+class Patient(Model):
+    has_many('appointments', {'doctors': {'via': 'appointments'}})
+    name = Field()
+
+
+class Appointment(Model):
+    belongs_to('patient', 'doctor')
+    date = Field('datetime')
+
+
+class House(Model):
+    name = Field()
+
+
+class Mouse(Model):
+    tablename = "mice"
+    name = Field()
+
+
+class NeedSplit(Model):
+    name = Field()
+
+
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
     db = DAL(app, config=sdict(uri='sqlite://dal.db'))
-    db.define_models([Stuff, Person, Thing, Feature, Price])
+    db.define_models([
+        Stuff, Person, Thing, Feature, Price, Doctor, Patient, Appointment,
+        House, Mouse, NeedSplit
+    ])
     return db
 
 
@@ -262,6 +293,7 @@ def test_relations(db):
     f = db.Feature.insert(name="tasty", thing=t)
     db.Price.insert(value=5, feature=f)
     p = db.Person(name="Giovanni")
+    #: belongs, has_one, has_many
     t = p.things()
     assert len(t) == 1
     assert t[0].name == "apple" and t[0].color == "red" and \
@@ -273,3 +305,19 @@ def test_relations(db):
     m = p.things()[0].features()[0].price
     assert m.value == 5 and m.feature.id == f[0].id and \
         m.feature.thing.id == t[0].id and m.feature.thing.person.id == p.id
+    #: has_many via as shortcut
+    assert len(p.features()) == 1
+    #: has_many via with 3 tables logic
+    doctor = db.Doctor.insert(name="cox")
+    patient = db.Patient.insert(name="mario")
+    db.Appointment.insert(doctor=1, patient=1)
+    assert len(doctor.patients()) == 1
+    assert len(doctor.appointments()) == 1
+    assert len(patient.doctors()) == 1
+    assert len(patient.appointments()) == 1
+
+
+def test_tablenames(db):
+    assert db.House == db.houses
+    assert db.Mouse == db.mice
+    assert db.NeedSplit == db.need_splits

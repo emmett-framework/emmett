@@ -1,3 +1,4 @@
+import re
 from pydal.objects import Set, LazySet
 
 
@@ -75,12 +76,23 @@ class HasManyViaWrap(object):
     def __call__(self, model, row):
         rid = row[model.tablename].id
         via = getattr(model.entity, self.via).f.virtual.f
-        third = model.db[via.ref][self.ref].type.split(" ")[1]
+        has_reference = self.ref in model.db[via.ref]
+        if has_reference:
+            #: using 3 tables
+            third = model.db[via.ref][self.ref].type.split(" ")[1]
+            return HasManyViaSet(
+                model.db,
+                (model.db[via.ref][via.field] == rid) &
+                (model.db[via.ref][self.ref] == model.db[third].id),
+                model.db[third].ALL
+            )
+        #: shortcut mode
+        third = model.db[self.ref.capitalize()][via.ref.lower()]
         return HasManyViaSet(
             model.db,
             (model.db[via.ref][via.field] == rid) &
-            (model.db[via.ref][self.ref] == model.db[third].id),
-            model.db[third].ALL
+            (third == model.db[via.ref].id),
+            model.db[self.ref.capitalize()].ALL
         )
 
 
@@ -104,6 +116,12 @@ class Callback(object):
 
     def __call__(self):
         return None
+
+
+def make_tablename(classname):
+    words = re.findall('[A-Z][^A-Z]*', classname)
+    tablename = '_'.join(words)
+    return tablename.lower()+"s"
 
 
 """
