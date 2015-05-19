@@ -200,6 +200,37 @@ class isEmail(_is):
         return value, translate(self.message)
 
 
+class isList(Validator):
+    message = "Invalid value"
+
+    def __init__(self, validators, splitter=None, message=None):
+        Validator.__init__(self, message)
+        self.conditions = validators
+        self.splitter = None
+        if splitter:
+            self.splitter = re.compile('[^'+splitter+'\s]+')
+
+    def __call__(self, value):
+        if self.splitter is not None:
+            values = self.splitter.findall(value)
+        else:
+            if not isinstance(value, list):
+                values = [value]
+            else:
+                values = value
+            values = [val for val in values if str(val).strip()]
+        nvals = []
+        for val in values:
+            v = val
+            for condition in self.conditions:
+                v, e = condition(v)
+                if e:
+                    return val, e
+            nvals.append(v)
+        values = nvals
+        return values, None
+
+
 class isJSON(_is):
     JSONErrors = (NameError, TypeError, ValueError, AttributeError,
                   KeyError)

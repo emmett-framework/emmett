@@ -32,42 +32,6 @@ class isEmailList(object):
         return ', '.join(value or [])
 
 
-class isListOf(Validator):
-    def __init__(self, other=None, minimum=0, maximum=100,
-                 error_message=None):
-        self.other = other
-        self.minimum = minimum
-        self.maximum = maximum
-        self.error_message = error_message or \
-            "Enter between %(min)g and %(max)g values"
-
-    def __call__(self, value):
-        ivalue = value
-        if not isinstance(value, list):
-            ivalue = [ivalue]
-        ivalue = [i for i in ivalue if str(i).strip()]
-        if self.minimum is not None and len(ivalue) < self.minimum:
-            return (ivalue, translate(self.error_message) % dict(
-                min=self.minimum, max=self.maximum))
-        if self.maximum is not None and len(ivalue) > self.maximum:
-            return (ivalue, translate(self.error_message) % dict(
-                min=self.minimum, max=self.maximum))
-        new_value = []
-        other = self.other
-        if self.other:
-            if not isinstance(other, (list, tuple)):
-                other = [other]
-            for item in ivalue:
-                v = item
-                for validator in other:
-                    (v, e) = validator(v)
-                    if e:
-                        return (ivalue, e)
-                new_value.append(v)
-            ivalue = new_value
-        return (ivalue, None)
-
-
 class isStrong(object):
     """
     enforces complexity requirements on a field

@@ -12,7 +12,7 @@
 from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, \
     hasLength, Not, Allow, isEmpty, Any
 from .consist import isInt, isFloat, isDecimal, isDate, isTime, isDatetime, \
-    isEmail, isJSON, isUrl, isIP, isImage, isAlphanumeric
+    isEmail, isJSON, isUrl, isIP, isImage, isAlphanumeric, isList
 from .inside import inRange, inSet, inSubSet, inDB, notInDB
 from .process import Cleanup, Crypt, Lower, Urlify, Upper
 
@@ -59,17 +59,47 @@ class ValidateFromDict(object):
             # TODO 'list'
             #: map types with fields
             if isinstance(_is, basestring):
-                validator = self.iskeys.get(_is)
+                #: map {'is': 'int'}
+                key = _is
                 options = {}
             elif isinstance(_is, dict):
+                #: map {'is': {'int': {'message': 'asd'}}}
                 key = list(_is)[0]
-                validator = self.iskeys.get(key)
                 options = _is[key]
             else:
                 raise SyntaxError("'is' validator accepts only string or dict")
-            if validator is None:
-                raise SyntaxError("Unknown type %s for 'is' validator" % _is)
-            validators.append(validator(**options))
+            validator = self.iskeys.get(key)
+            if validator is not None:
+                validators.append(validator(**options))
+            else:
+                if key == 'list':
+                    if isinstance(options, basestring):
+                        #: map {'is': {'list': 'int'}}
+                        validator = self.iskeys.get(options)
+                        options = {}
+                    elif isinstance(options, dict):
+                        #: map {'is': {'list': {'int': {'message': 'asd'}}}}
+                        if 'splitter' in options:
+                            _splitter = options['splitter']
+                            subkeys = list(options)-['splitter']
+                            subkey = subkeys[0]
+                        else:
+                            _splitter = None
+                            subkey = list(options)[0]
+                        options = options[subkey]
+                        validator = self.iskeys.get(subkey)
+                    else:
+                        raise SyntaxError(
+                            "{'is': {'list': ..} validator accepts only " +
+                            "string or dict"
+                        )
+                    validators.append(
+                        isList([validator(**options)], _splitter)
+                    )
+                else:
+                    raise SyntaxError(
+                        "Unknown type %s for 'is' validator" % _is
+                    )
         #: parse 'len'
         _len = data.get('len')
         if _len is not None:

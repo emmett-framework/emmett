@@ -48,10 +48,6 @@ class _is(Validator):
         return value, None
 
 
-class _options(Validator):
-    pass
-
-
 class Not(Validator):
     message = "Value not allowed"
 
@@ -258,7 +254,6 @@ class hasLength(Validator):
     def __call__(self, value):
         if value is None:
             length = 0
-            #if self.minsize <= length < self.maxsize:
             if self._between(length):
                 return (value, None)
         elif isinstance(value, FieldStorage):
@@ -272,7 +267,6 @@ class hasLength(Validator):
                     length = len(val)
                 else:
                     length = 0
-            #if self.minsize <= length < self.maxsize:
             if self._between(length):
                 return (value, None)
         elif isinstance(value, str):
@@ -280,18 +274,14 @@ class hasLength(Validator):
                 lvalue = len(value.decode('utf8'))
             except:
                 lvalue = len(value)
-            #if self.minsize <= lvalue < self.maxsize:
             if self._between(lvalue):
                 return (value, None)
         elif isinstance(value, unicode):
-            #if self.minsize <= len(value) < self.maxsize:
             if self._between(len(value)):
                 return (value.encode('utf8'), None)
         elif isinstance(value, (tuple, list)):
-            #if self.minsize <= len(value) < self.maxsize:
             if self._between(len(value)):
                 return (value, None)
-        #elif self.minsize <= len(str(value)) < self.maxsize:
         elif self._between(len(str(value))):
             return (str(value), None)
         return (value, translate(self.message)
