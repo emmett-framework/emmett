@@ -27,7 +27,6 @@ class DALHandler(Handler):
 
 class DAL(_pyDAL):
     serializers = _serializers
-    #validators_method = _default_validators
     logger = None
     uuid = lambda x: _uuid()
 

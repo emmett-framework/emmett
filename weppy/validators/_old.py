@@ -1,37 +1,10 @@
-# TODO: refactor following validators
-
 import re
 from .basic import Validator
 from .consist import isEmail
-from .helpers import translate
+from .helpers import translate, options_sorter
 
 
-class isEmailList(object):
-    split_emails = re.compile('[^,;\s]+')
-
-    def __init__(self, error_message='Invalid emails: %s'):
-        self.error_message = error_message
-
-    def __call__(self, value):
-        bad_emails = []
-        emails = []
-        f = isEmail()
-        for email in self.split_emails.findall(value):
-            if email not in emails:
-                emails.append(email)
-            error = f(email)[1]
-            if error and email not in bad_emails:
-                bad_emails.append(email)
-        if not bad_emails:
-            return (value, None)
-        else:
-            return (value,
-                    translate(self.error_message) % ', '.join(bad_emails))
-
-    def formatter(self, value, row=None):
-        return ', '.join(value or [])
-
-
+# TODO port this
 class isStrong(object):
     """
     enforces complexity requirements on a field
@@ -179,6 +152,7 @@ class isStrong(object):
         return round(entropy, 2)
 
 
+# TODO port this
 class FilenameMatches(Validator):
     """
     Checks if name and extension of file uploaded through file input matches
@@ -235,3 +209,238 @@ class FilenameMatches(Validator):
             return (value, translate(self.error_message))
         else:
             return (value, None)
+
+
+# Kept for reference (v0.3 and below)
+class isEmailList(object):
+    split_emails = re.compile('[^,;\s]+')
+
+    def __init__(self, error_message='Invalid emails: %s'):
+        self.error_message = error_message
+
+    def __call__(self, value):
+        bad_emails = []
+        emails = []
+        f = isEmail()
+        for email in self.split_emails.findall(value):
+            if email not in emails:
+                emails.append(email)
+            error = f(email)[1]
+            if error and email not in bad_emails:
+                bad_emails.append(email)
+        if not bad_emails:
+            return (value, None)
+        else:
+            return (value,
+                    translate(self.error_message) % ', '.join(bad_emails))
+
+    def formatter(self, value, row=None):
+        return ', '.join(value or [])
+
+
+# Kept for reference (v0.3 and below)
+class inDb(Validator):
+    """
+    Used for reference fields, rendered as a dropbox
+    """
+    regex1 = re.compile('\w+\.\w+')
+    regex2 = re.compile('%\(([^\)]+)\)\d*(?:\.\d+)?[a-zA-Z]')
+
+    def __init__(
+        self,
+        dbset,
+        field,
+        label=None,
+        error_message='Value not in database',
+        orderby=None,
+        groupby=None,
+        distinct=None,
+        cache=None,
+        multiple=False,
+        zero='',
+        sort=False,
+        _and=None,
+    ):
+        from pydal.objects import Table
+        if isinstance(field, Table):
+            field = field._id
+
+        if hasattr(dbset, 'define_table'):
+            self.dbset = dbset()
+        else:
+            self.dbset = dbset
+        (ktable, kfield) = str(field).split('.')
+        if not label:
+            label = '%%(%s)s' % kfield
+        if isinstance(label, str):
+            if self.regex1.match(str(label)):
+                label = '%%(%s)s' % str(label).split('.')[-1]
+            ks = self.regex2.findall(label)
+            if kfield not in ks:
+                ks += [kfield]
+            fields = ks
+        else:
+            ks = [kfield]
+            fields = 'all'
+        self.fields = fields
+        self.label = label
+        self.ktable = ktable
+        self.kfield = kfield
+        self.ks = ks
+        self.error_message = error_message
+        self.theset = None
+        self.orderby = orderby
+        self.groupby = groupby
+        self.distinct = distinct
+        self.cache = cache
+        self.multiple = multiple
+        self.zero = zero
+        self.sort = sort
+        self._and = _and
+
+    def set_self_id(self, id):
+        if self._and:
+            self._and.record_id = id
+
+    def build_set(self):
+        from pydal.objects import FieldVirtual, FieldMethod
+        table = self.dbset.db[self.ktable]
+        if self.fields == 'all':
+            fields = [f for f in table]
+        else:
+            fields = [table[k] for k in self.fields]
+        ignore = (FieldVirtual, FieldMethod)
+        fields = filter(lambda f: not isinstance(f, ignore), fields)
+        if self.dbset.db._dbname != 'gae':
+            orderby = self.orderby or reduce(lambda a, b: a | b, fields)
+            groupby = self.groupby
+            distinct = self.distinct
+            dd = dict(orderby=orderby, groupby=groupby,
+                      distinct=distinct, cache=self.cache,
+                      cacheable=True)
+            records = self.dbset(table).select(*fields, **dd)
+        else:
+            orderby = self.orderby or \
+                reduce(lambda a, b: a | b, (
+                    f for f in fields if not f.name == 'id'))
+            dd = dict(orderby=orderby, cache=self.cache, cacheable=True)
+            records = self.dbset(table).select(table.ALL, **dd)
+        self.theset = [str(r[self.kfield]) for r in records]
+        if isinstance(self.label, str):
+            self.labels = [self.label % r for r in records]
+        else:
+            self.labels = [self.label(r) for r in records]
+
+    def options(self, zero=True):
+        self.build_set()
+        items = [(k, self.labels[i]) for (i, k) in enumerate(self.theset)]
+        if self.sort:
+            items.sort(options_sorter)
+        if zero and self.zero is not None and not self.multiple:
+            items.insert(0, ('', self.zero))
+        return items
+
+    def __call__(self, value):
+        table = self.dbset.db[self.ktable]
+        field = table[self.kfield]
+        if self.multiple:
+            if self._and:
+                raise NotImplementedError
+            if isinstance(value, list):
+                values = value
+            elif value:
+                values = [value]
+            else:
+                values = []
+            if isinstance(self.multiple, (tuple, list)) and \
+                    not self.multiple[0] <= len(values) < self.multiple[1]:
+                return values, translate(self.error_message)
+            if self.theset:
+                if not [v for v in values if v not in self.theset]:
+                    return values, None
+            else:
+                from pydal.adapters import GoogleDatastoreAdapter
+
+                def count(values, s=self.dbset, f=field):
+                    return s(f.belongs(map(int, values))).count()
+                if isinstance(self.dbset.db._adapter, GoogleDatastoreAdapter):
+                    range_ids = range(0, len(values), 30)
+                    total = sum(count(values[i:i + 30]) for i in range_ids)
+                    if total == len(values):
+                        return values, None
+                elif count(values) == len(values):
+                    return values, None
+        elif self.theset:
+            if str(value) in self.theset:
+                if self._and:
+                    return self._and(value)
+                else:
+                    return value, None
+        else:
+            if self.dbset(field == value).count():
+                if self._and:
+                    return self._and(value)
+                else:
+                    return value, None
+        return value, translate(self.error_message)
+
+
+# Kept for reference (v0.3 and below)
+class notInDb(Validator):
+    """
+    makes the field unique
+    """
+
+    def __init__(
+        self,
+        dbset,
+        field,
+        error_message='Value already in database or empty',
+        allowed_override=[],
+        ignore_common_filters=False,
+    ):
+
+        from pydal.objects import Table
+        if isinstance(field, Table):
+            field = field._id
+
+        if hasattr(dbset, 'define_table'):
+            self.dbset = dbset()
+        else:
+            self.dbset = dbset
+        self.field = field
+        self.error_message = error_message
+        self.record_id = 0
+        self.allowed_override = allowed_override
+        self.ignore_common_filters = ignore_common_filters
+
+    def set_self_id(self, id):
+        self.record_id = id
+
+    def __call__(self, value):
+        if isinstance(value, unicode):
+            value = value.encode('utf8')
+        else:
+            value = str(value)
+        if not value.strip():
+            return value, translate(self.error_message)
+        if value in self.allowed_override:
+            return value, None
+        (tablename, fieldname) = str(self.field).split('.')
+        table = self.dbset.db[tablename]
+        field = table[fieldname]
+        subset = self.dbset(field == value,
+                            ignore_common_filters=self.ignore_common_filters)
+        id = self.record_id
+        if isinstance(id, dict):
+            fields = [table[f] for f in id]
+            row = subset.select(*fields, **dict(
+                limitby=(0, 1), orderby_on_limitby=False)).first()
+            if row and any(str(row[f]) != str(id[f]) for f in id):
+                return value, translate(self.error_message)
+        else:
+            row = subset.select(table._id, field, limitby=(0, 1),
+                                orderby_on_limitby=False).first()
+            if row and str(row.id) != str(id):
+                return value, translate(self.error_message)
+        return value, None

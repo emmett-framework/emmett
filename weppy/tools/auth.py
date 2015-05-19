@@ -527,7 +527,7 @@ class Auth(object):
         """
         from ..validators import isntEmpty, Crypt, isEmail, Lower, \
             Matches, isInt, inRange, hasLength
-        from ..validators.inside import notInDb
+        from ..validators._old import notInDb
         db = self.db
         if migrate is None:
             migrate = db._migrate
@@ -1195,7 +1195,7 @@ class Auth(object):
             [, onvalidation=DEFAULT [, onaccept=DEFAULT [, log=DEFAULT]]]])
 
         """
-        from ..validators import inDb
+        from ..validators._old import inDb
         if not 'username' in self.table_user.fields:
             raise HTTP(404)
         #captcha = self.settings.retrieve_username_captcha or \
@@ -1323,7 +1323,8 @@ class Auth(object):
             [, onvalidation=DEFAULT [, onaccept=DEFAULT [, log=DEFAULT]]]])
 
         """
-        from ..validators import isEmail, inDb
+        from ..validators import isEmail
+        from ..validators._old import inDb
         #captcha = self.settings.retrieve_password_captcha or \
         #        (self.settings.retrieve_password_captcha != False and self.settings.captcha)
 

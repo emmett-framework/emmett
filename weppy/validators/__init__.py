@@ -13,7 +13,7 @@ from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, \
     hasLength, Not, Allow, isEmpty, Any
 from .consist import isInt, isFloat, isDecimal, isDate, isTime, isDatetime, \
     isEmail, isJSON, isUrl, isIP, isImage, isAlphanumeric, isList
-from .inside import inRange, inSet, inSubSet, inDB, notInDB
+from .inside import inRange, inSet, inDB, notInDB
 from .process import Cleanup, Crypt, Lower, Urlify, Upper
 
 
@@ -122,23 +122,25 @@ class ValidateFromDict(object):
         _in = data.get('in', [])
         if _in:
             if isinstance(_in, (list, tuple, set)):
-                #: allows {'in': [1, 2], 'labels': ['one', 'two']}
-                opt_keys = ['labels', 'message', 'multiple', 'zero', 'sort']
-                options = {}
-                for key in opt_keys:
-                    val = data.get(key)
-                    if val:
-                        options[key] = val
-                validators.append(inSet(_in, **options))
+                #: allows {'in': [1, 2]}
+                validators.append(inSet(_in))
             elif isinstance(_in, dict):
+                options = {}
                 #: allows {'in': {'range': (1, 5)}}
                 _range = _in.get('range')
                 if isinstance(_range, (tuple, list)):
                     validators.append(inRange(_range[0], _range[1]))
+                #: allows {'in': {'set': [1, 5]}} with options
+                _set = _in.get('set')
+                if isinstance(_set, (list, tuple, set)):
+                    opt_keys = [key for key in list(_in) if key != 'set']
+                    for key in opt_keys:
+                        options[key] = _in[key]
+                    validators.append(inSet(_set, **options))
                 #: allows {'in': {'sub': [1, 2, 4]}}
-                _sub = _in.get('sub')
-                if isinstance(_sub, (list, set, tuple)):
-                    validators.append(inSubSet(_sub))
+                #_sub = _in.get('sub')
+                #if isinstance(_sub, (list, set, tuple)):
+                #    validators.append(inSubSet(_sub))
             else:
                 raise SyntaxError(
                     "'in' validator accepts only a set or a dict")
