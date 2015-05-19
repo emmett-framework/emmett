@@ -16,8 +16,7 @@ from weppy.dal import DAL, Model, Field, has_many, belongs_to
 from weppy.validators import isEmptyOr, hasLength, isInt, isFloat, isDate, \
     isTime, isDatetime, isJSON, isntEmpty, inSet, inDB, isEmail, isUrl, isIP, \
     isImage, inRange, Equals, Lower, Upper, Cleanup, Urlify, Crypt, notInDB, \
-    _allow
-from weppy.validators.basic import _not
+    Allow, Not
 
 
 class A(Model):
@@ -270,7 +269,7 @@ def test_numerical(db):
 def test_eq(db):
     assert isinstance(Eq.a.requires[1], Equals)
     assert isinstance(Eq.b.requires[1], Equals)
-    assert isinstance(Eq.c.requires[1], _not)
+    assert isinstance(Eq.c.requires[1], Not)
     assert isinstance(Eq.c.requires[1].conditions[0], Equals)
 
 
@@ -304,7 +303,7 @@ def test_unique(db):
 
 
 def test_allow(db):
-    assert isinstance(Allowed.a.requires[0], _allow)
+    assert isinstance(Allowed.a.requires[0], Allow)
     assert isinstance(Allowed.b.requires[0], isEmptyOr)
     assert isinstance(Allowed.c.requires[0], isEmptyOr)
     assert isinstance(Allowed.a.requires[0].conditions[1], inSet)
