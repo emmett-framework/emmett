@@ -18,7 +18,7 @@ from weppy.dal import DAL, Field, Model, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
     virtualfield, fieldmethod, modelmethod, has_one, has_many, belongs_to
 from weppy.validators import isntEmpty, hasLength
-from weppy.validators.inside import notInDb
+from weppy.validators._old import notInDb
 
 
 def _represent_f(value):
