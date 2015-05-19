@@ -20,7 +20,7 @@ import struct
 import urllib
 from datetime import date, time, datetime, timedelta
 from time import strptime
-from .basic import Validator, _is
+from .basic import Validator, _is, Matches
 from .helpers import translate, _UTC, url_split_regex, official_url_schemes, \
     unofficial_url_schemes, unicode_to_ascii_url
 
@@ -221,6 +221,13 @@ class isJSON(_is):
         if value is None:
             return None
         return json.dumps(value)
+
+
+class isAlphanumeric(Matches):
+    message = 'Enter only letters, numbers, and underscores'
+
+    def __init__(self, message=None):
+        Matches.__init__(self, '^[\w]*$', message=message)
 
 
 # TODO: refactor all the next

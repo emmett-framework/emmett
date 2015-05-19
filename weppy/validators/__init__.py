@@ -12,7 +12,7 @@
 from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, \
     hasLength, Not, Allow, isEmpty, Any
 from .consist import isInt, isFloat, isDecimal, isDate, isTime, isDatetime, \
-    isEmail, isJSON, isUrl, isIP, isImage
+    isEmail, isJSON, isUrl, isIP, isImage, isAlphanumeric
 from .inside import inRange, inSet, inSubSet, inDB, notInDB
 from .process import Cleanup, Crypt, Lower, Urlify, Upper
 
@@ -25,7 +25,7 @@ class ValidateFromDict(object):
             'int': isInt, 'float': isFloat, 'decimal': isDecimal,
             'date': isDate, 'time': isTime, 'datetime': isDatetime,
             'email': isEmail, 'url': isUrl, 'ip': isIP, 'json': isJSON,
-            'image': isImage
+            'image': isImage, 'alphanumeric': isAlphanumeric
         }
         self.prockeys = {
             'crypt': Crypt, 'lower': Lower, 'upper': Upper, 'urlify': Urlify,

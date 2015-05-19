@@ -1,15 +1,9 @@
 # TODO: refactor following validators
 
 import re
-from .basic import Validator, Matches
+from .basic import Validator
 from .consist import isEmail
 from .helpers import translate
-
-
-class isAlphanumeric(Matches):
-    def __init__(self,
-                 error_message='Enter only letters, numbers, and underscore'):
-        Matches.__init__(self, '^[\w]*$', error_message)
 
 
 class isEmailList(object):
@@ -72,29 +66,6 @@ class isListOf(Validator):
                 new_value.append(v)
             ivalue = new_value
         return (ivalue, None)
-
-
-class anyOf(Validator):
-    """
-    Tests if any of the validators in a list returns successfully::
-    """
-
-    def __init__(self, subs):
-        self.subs = subs
-
-    def __call__(self, value):
-        for validator in self.subs:
-            value, error = validator(value)
-            if error is None:
-                break
-        return value, error
-
-    def formatter(self, value):
-        # Use the formatter of the first subvalidator
-        # that validates the value and has a formatter
-        for validator in self.subs:
-            if hasattr(validator, 'formatter') and validator(value)[1] != None:
-                return validator.formatter(value)
 
 
 class isStrong(object):
