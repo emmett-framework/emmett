@@ -8,14 +8,20 @@ class MetaModel(type):
         if bases == (object,):
             return new_class
         from .apis import belongs_to, has_one, has_many
+        items = []
         for item in belongs_to._references_.values():
-            setattr(new_class, "_belongs_ref_", item)
+            items += item.reference
+        setattr(new_class, "_belongs_ref_", items)
         belongs_to._references_ = {}
+        items = []
         for item in has_one._references_.values():
-            setattr(new_class, "_hasone_ref_", item)
+            items += item.reference
+        setattr(new_class, "_hasone_ref_", items)
         has_one._references_ = {}
+        items = []
         for item in has_many._references_.values():
-            setattr(new_class, "_hasmany_ref_", item)
+            items += item.reference
+        setattr(new_class, "_hasmany_ref_", items)
         has_many._references_ = {}
         return new_class
 
@@ -31,13 +37,14 @@ class Reference(object):
 
 
 class HasOneWrap(object):
-    def __init__(self, ref, field):
+    def __init__(self, ref):
         self.ref = ref
-        self.field = field
 
     def __call__(self, model, row):
         rid = row[model.tablename].id
-        return model.db(model.db[self.ref][self.field] == rid).select().first()
+        sname = model.__class__.__name__
+        field = model.db[self.ref]._model_._belongs_ref_[sname]
+        return model.db(model.db[self.ref][field] == rid).select().first()
 
 
 class HasManySet(LazySet):
@@ -46,20 +53,32 @@ class HasManySet(LazySet):
             return self.select(**kwargs)
         return LazySet.__call__(self, query, **kwargs)
 
+    def add(self, **data):
+        rv = None
+        data[self.fieldname] = self.id
+        errors = self.db[self.tablename]._model_.validate(data)
+        if not errors:
+            rv = self.db[self.tablename].insert(**data)
+        return rv, errors
+
 
 class HasManyWrap(object):
-    def __init__(self, ref, field):
+    def __init__(self, ref):
         self.ref = ref
-        self.field = field
 
     def __call__(self, model, row):
         rid = row[model.tablename].id
-        return HasManySet(model.db[self.ref][self.field], rid)
+        sname = model.__class__.__name__
+        field = model.db[self.ref]._model_._belongs_ref_[sname]
+        return HasManySet(model.db[self.ref][field], rid)
 
 
 class HasManyViaSet(Set):
-    def __init__(self, db, query, rfield, **kwargs):
+    def __init__(self, db, query, rfield, model, rid, via, **kwargs):
         self._rfield = rfield
+        self._model = model
+        self._rid = rid
+        self._via = via
         Set.__init__(self, db, query, **kwargs)
 
     def __call__(self, query=None, **kwargs):
@@ -67,33 +86,68 @@ class HasManyViaSet(Set):
             return self.select(self._rfield, **kwargs)
         return Set.__call__(self, query, **kwargs)
 
+    def add(self, obj):
+        # works for 3 tables way only!
+        nrow = dict()
+        rv = None
+        #: get belongs reference of current model
+        self_field = self.db[self._via]._model_._belongs_ref_[self._model]
+        #: get other model belongs data
+        other_model = self._rfield._table._model_.__class__.__name__
+        other_field = self.db[self._via]._model_._belongs_ref_[other_model]
+        nrow[self_field] = self._rid
+        nrow[other_field] = obj.id
+        #: validate and insert
+        errors = self.db[self._via]._model_.validate(nrow)
+        if not errors:
+            rv = self.db[self._via].insert(**nrow)
+        return rv, errors
+
 
 class HasManyViaWrap(object):
     def __init__(self, ref, via):
         self.ref = ref
         self.via = via
 
+    def _get_belongs(self, db, model, value):
+        for key, val in db[model]._model_._belongs_ref_.iteritems():
+            if val == value:
+                return key
+        return None
+
     def __call__(self, model, row):
+        db = model.db
         rid = row[model.tablename].id
-        via = getattr(model.entity, self.via).f.virtual.f
-        has_reference = self.ref in model.db[via.ref]
-        if has_reference:
-            #: using 3 tables
-            third = model.db[via.ref][self.ref].type.split(" ")[1]
-            return HasManyViaSet(
-                model.db,
-                (model.db[via.ref][via.field] == rid) &
-                (model.db[via.ref][self.ref] == model.db[third].id),
-                model.db[third].ALL
-            )
-        #: shortcut mode
-        third = model.db[self.ref.capitalize()][via.ref.lower()]
-        return HasManyViaSet(
-            model.db,
-            (model.db[via.ref][via.field] == rid) &
-            (third == model.db[via.ref].id),
-            model.db[self.ref.capitalize()].ALL
-        )
+        sname = model.__class__.__name__
+        stack = []
+        vianame = self.via
+        via = model._hasmany_ref_[self.via]
+        stack.append((self.ref, self.via))
+        while isinstance(via, dict):
+            stack.insert(0, (vianame, via['via']))
+            vianame = via['via']
+            via = model._hasmany_ref_[vianame]
+        via_field = db[via]._model_._belongs_ref_[sname]
+        query = (db[via][via_field] == rid)
+        sel_field = db[via].ALL
+        step_model = via
+        lbelongs = None
+        for vianame, viaby in stack:
+            belongs = self._get_belongs(db, step_model, vianame[:-1])
+            if belongs:
+                #: 3 tables way
+                lbelongs = step_model
+                _query = (db[step_model][vianame[:-1]] == db[belongs].id)
+                sel_field = db[belongs].ALL
+                step_model = belongs
+            else:
+                #: shortcut mode
+                many = db[step_model]._model_._hasmany_ref_[vianame]
+                _query = (db[step_model].id == db[many][viaby[:-1]])
+                sel_field = db[many].ALL
+                step_model = many
+            query = query & _query
+        return HasManyViaSet(db, query, sel_field, sname, rid, lbelongs)
 
 
 class VirtualWrap(object):

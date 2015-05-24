@@ -67,13 +67,15 @@ class Model(object):
         if not hasattr(self, 'format'):
             self.format = None
 
-    def __parse_relation(self, item):
+    def __parse_relation(self, item, singular=False):
         if isinstance(item, dict):
             refname = list(item)[0]
             reference = item[refname]
         else:
             reference = item.capitalize()
             refname = item
+            if singular:
+                reference = reference[:-1]
         return reference, refname
 
     def __define(self):
@@ -108,8 +110,9 @@ class Model(object):
         bad_args_error = "belongs_to, has_one and has_many only accept " + \
             "strings or dicts as arguments"
         #: belongs_to are mapped with 'reference' type Field
+        belongs_references = {}
         if hasattr(self, '_belongs_ref_'):
-            for item in getattr(self, '_belongs_ref_').reference:
+            for item in getattr(self, '_belongs_ref_'):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference, refname = self.__parse_relation(item)
@@ -118,51 +121,48 @@ class Model(object):
                 self.fields.append(
                     getattr(self, refname)._make_field(refname, self)
                 )
-            delattr(self.__class__, '_belongs_ref_')
+                belongs_references[reference] = refname
+        setattr(self.__class__, '_belongs_ref_', belongs_references)
         #: has_one are mapped with virtualfield()
         if hasattr(self, '_hasone_ref_'):
-            for item in getattr(self, '_hasone_ref_').reference:
+            for item in getattr(self, '_hasone_ref_'):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference, refname = self.__parse_relation(item)
-                sname = self.__class__.__name__.lower()
                 setattr(self, refname,
-                        virtualfield(refname)(HasOneWrap(reference, sname)))
+                        virtualfield(refname)(HasOneWrap(reference)))
             delattr(self.__class__, '_hasone_ref_')
         #: has_many are mapped with virtualfield()
+        hasmany_references = {}
         if hasattr(self, '_hasmany_ref_'):
-            for item in getattr(self, '_hasmany_ref_').reference:
+            for item in getattr(self, '_hasmany_ref_'):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference, refname = self.__parse_relation(item)
-                rclass = sname = via = None
+                reference, refname = self.__parse_relation(item, True)
+                rclass = via = None
                 if isinstance(reference, dict):
                     rclass = reference.get('class')
-                    sname = reference.get('field')
                     via = reference.get('via')
                 if via is not None:
                     #: maps has_many({'things': {'via': 'otherthings'}})
                     setattr(
                         self, refname, virtualfield(refname)(
-                            HasManyViaWrap(refname[:-1], via)
+                            HasManyViaWrap(refname, via)
                         )
                     )
                 else:
                     #: maps has_many('things'),
                     #  has_many({'things': 'othername'})
-                    #  has_many({'things': {'class': 'Model', 'field': 'name'}})
-                    reference = reference[:-1]
+                    #  has_many({'things': {'class': 'Model'}})
                     if rclass is not None:
                         reference = rclass
-                    #: `sname` is the name of the field referring to self
-                    if sname is None:
-                        sname = self.__class__.__name__.lower()
                     setattr(
                         self, refname, virtualfield(refname)(
-                            HasManyWrap(reference, sname)
+                            HasManyWrap(reference)
                         )
                     )
-            delattr(self.__class__, '_hasmany_ref_')
+                hasmany_references[refname] = reference
+        setattr(self.__class__, '_hasmany_ref_', hasmany_references)
         return
 
     def __define_virtuals(self):

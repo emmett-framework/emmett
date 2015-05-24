@@ -101,6 +101,7 @@ class DAL(_pyDAL):
                     *obj.fields,
                     **dict(migrate=obj.migrate, format=obj.format)
                 )
+                model.entity._model_ = obj
                 model.id = model.entity.id
                 # load user's definitions
                 getattr(obj, '_Model__define')()
