@@ -96,17 +96,17 @@ class DAL(_pyDAL):
                 getattr(obj, '_Model__define_virtuals')()
                 # define table and store in model
                 #model.fields = obj.fields
-                model.entity = self.define_table(
+                model.table = self.define_table(
                     obj.tablename,
                     *obj.fields,
                     **dict(migrate=obj.migrate, format=obj.format)
                 )
-                model.entity._model_ = obj
-                model.id = model.entity.id
+                model.table._model_ = obj
+                model.id = model.table.id
                 # load user's definitions
                 getattr(obj, '_Model__define')()
                 # set reference in db for model name
-                self.__setattr__(model.__name__, obj.entity)
+                self.__setattr__(model.__name__, obj.table)
 
 
 def _DAL_unpickler(db_uid):

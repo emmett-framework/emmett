@@ -1,4 +1,4 @@
-from .apis import computation, virtualfield, fieldmethod, modelmethod
+from .apis import computation, virtualfield, fieldmethod
 from .base import DAL, Field, _Field, sdict
 from .helpers import MetaModel, HasOneWrap, HasManyWrap, HasManyViaWrap, \
     VirtualWrap, Callback, make_tablename
@@ -8,7 +8,7 @@ class Model(object):
     __metaclass__ = MetaModel
 
     db = None
-    entity = None
+    table = None
 
     sign_table = False
     auto_validation = True
@@ -198,15 +198,15 @@ class Model(object):
 
     def __define_defaults(self):
         for field, value in self.default_values.items():
-            self.entity[field].default = value
+            self.table[field].default = value
 
     def __define_updates(self):
         for field, value in self.update_values.items():
-            self.entity[field].update = value
+            self.table[field].update = value
 
     def __define_representation(self):
         for field, value in self.repr_values.items():
-            self.entity[field].represent = value
+            self.table[field].represent = value
 
     def __define_computations(self):
         field_names = [field.name for field in self.fields]
@@ -218,7 +218,7 @@ class Model(object):
                         raise RuntimeError(
                             'computations should have the name of an ' +
                             'existing field to compute!')
-                    self.entity[obj.field_name].compute = \
+                    self.table[obj.field_name].compute = \
                         lambda row, obj=obj, self=self: obj.f(self, row)
 
     def __define_actions(self):
@@ -229,23 +229,23 @@ class Model(object):
                     for t in obj.t:
                         if t in ["_before_insert", "_before_delete",
                                  "_after_delete"]:
-                            getattr(self.entity, t).append(
+                            getattr(self.table, t).append(
                                 lambda a, obj=obj, self=self: obj.f(self, a))
                         else:
-                            getattr(self.entity, t).append(
+                            getattr(self.table, t).append(
                                 lambda a, b, obj=obj, self=self: obj.f(
                                     self, a, b))
 
     def __define_form_utils(self):
         #: labels
         for field, value in self.form_labels.items():
-            self.entity[field].label = value
+            self.table[field].label = value
         #: info
         for field, value in self.form_info.items():
-            self.entity[field].comment = value
+            self.table[field].comment = value
         #: rw
         try:
-            self.entity.is_active.writable = self.entity.is_active.readable = \
+            self.table.is_active.writable = self.table.is_active.readable = \
                 False
         except:
             pass
@@ -255,21 +255,21 @@ class Model(object):
             else:
                 writable = value
                 readable = value
-            self.entity[field].writable = writable
-            self.entity[field].readable = readable
+            self.table[field].writable = writable
+            self.table[field].readable = readable
         #: widgets
         for field, value in self.form_widgets.items():
-            self.entity[field].widget = value
+            self.table[field].widget = value
 
     def setup(self):
         pass
 
-    #@modelmethod
-    #def new(db, entity, **kwargs):
+    #@classmethod
+    #def new(cls, **kwargs):
     #   return Row(**kwargs)
 
-    @modelmethod
-    def create(db, entity, *args, **kwargs):
+    @classmethod
+    def create(cls, *args, **kwargs):
         rv = sdict(id=None)
         vals = sdict()
         errors = sdict()
@@ -277,31 +277,31 @@ class Model(object):
             if isinstance(args[0], (dict, sdict)):
                 for key in list(args[0]):
                     kwargs[key] = args[0][key]
-        for field in entity.fields:
+        for field in cls.table.fields:
             value = kwargs.get(field)
-            vals[field], error = entity[field].validate(value)
+            vals[field], error = cls.table[field].validate(value)
             if error:
                 errors[field] = error
         if not errors:
-            rv.id = entity.insert(**vals)
+            rv.id = cls.table.insert(**vals)
         rv.errors = errors
         return rv
 
-    @modelmethod
-    def validate(db, entity, row):
+    @classmethod
+    def validate(cls, row):
         row = sdict(row)
         errors = sdict()
-        for field in entity.fields:
+        for field in cls.table.fields:
             value = row.get(field)
-            rv, error = entity[field].validate(value)
+            rv, error = cls.table[field].validate(value)
             if error:
                 errors[field] = error
         return errors
 
-    @modelmethod
-    def form(db, entity, record=None, **kwargs):
+    @classmethod
+    def form(cls, record=None, **kwargs):
         from .forms import DALForm
-        return DALForm(entity, record, **kwargs)
+        return DALForm(cls.table, record, **kwargs)
 
 
 class AuthModel(Model):
@@ -341,13 +341,13 @@ class AuthModel(Model):
 
     def __hide_all(self):
         alwaysvisible = ['first_name', 'last_name', 'password', 'email']
-        for field in self.entity.fields:
+        for field in self.table.fields:
             if field not in alwaysvisible:
-                self.entity[field].writable = self.entity[field].readable = \
+                self.table[field].writable = self.table[field].readable = \
                     False
 
     def __base_visibility(self):
-        return [field.name for field in self.entity
+        return [field.name for field in self.table
                 if field.type != 'id' and field.writable]
 
     def __define_authform_utils(self):
@@ -360,8 +360,8 @@ class AuthModel(Model):
             for field, value in getattr(self, attr).items():
                 show = value[1] if isinstance(value, (tuple, list)) else value
                 if show:
-                    #self.entity[field].writable = value[0]
-                    #self.entity[field].readable = value[1]
+                    #self.table[field].writable = value[0]
+                    #self.table[field].readable = value[1]
                     l.append(field)
                 else:
                     if field in l:

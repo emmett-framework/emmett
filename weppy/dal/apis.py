@@ -47,18 +47,6 @@ class fieldmethod(virtualfield):
     pass
 
 
-class modelmethod(object):
-    def __init__(self, f):
-        self.f = f
-
-    def __get__(self, inst, model):
-        self.model = model
-        return self
-
-    def __call__(self, *args, **kwargs):
-        return self.f(self.model.db, self.model.entity, *args, **kwargs)
-
-
 def before_insert(f):
     return Callback(f, '_before_insert')
 
