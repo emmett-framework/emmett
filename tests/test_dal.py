@@ -16,7 +16,7 @@ from pydal import Field as _Field
 from weppy import App, sdict
 from weppy.dal import DAL, Field, Model, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
-    virtualfield, fieldmethod, modelmethod, has_one, has_many, belongs_to
+    virtualfield, fieldmethod, has_one, has_many, belongs_to
 from weppy.validators import isntEmpty, hasLength
 from weppy.validators._old import notInDb
 
@@ -82,7 +82,7 @@ class Stuff(Model):
     }
 
     def setup(self):
-        self.entity.b.requires = notInDb(self.db, self.entity.b)
+        self.table.b.requires = notInDb(self.db, self.table.b)
 
     @computation('total')
     def eval_total(self, row):
@@ -120,9 +120,9 @@ class Stuff(Model):
     def eval_total_m(self, row):
         return row.stuffs.price*row.stuffs.quantity
 
-    @modelmethod
-    def method_test(db, entity, t):
-        return db, entity, t
+    @classmethod
+    def method_test(cls, t):
+        return cls.db, cls.table, t
 
 
 class Person(Model):
