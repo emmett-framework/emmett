@@ -1,10 +1,10 @@
 import os
 from pydal import DAL as _pyDAL, Field as _Field
-from weppy import serializers as _serializers
 from .._compat import copyreg
 from ..datastructures import sdict
 from ..handlers import Handler
 from ..security import uuid as _uuid
+from ..serializers import _custom_json, xml
 from ..validators import ValidateFromDict
 
 
@@ -26,7 +26,7 @@ class DALHandler(Handler):
 
 
 class DAL(_pyDAL):
-    serializers = _serializers
+    serializers = {'json': _custom_json, 'xml': xml}
     logger = None
     uuid = lambda x: _uuid()
 
