@@ -129,6 +129,7 @@ class Field(_Field):
     _pydal_types = {
         'int': 'integer', 'bool': 'boolean', 'list:int': 'list:integer'
     }
+    _inst_count = 0
 
     def __init__(self, type='string', *args, **kwargs):
         self.modelname = None
@@ -169,6 +170,9 @@ class Field(_Field):
         #: store args and kwargs for `_make_field`
         self._args = args
         self._kwargs = kwargs
+        #: increase creation counter (used to keep order of fields)
+        self._inst_count = Field._inst_count
+        Field._inst_count += 1
 
     def _default_validation(self):
         rv = {}

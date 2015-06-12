@@ -2,30 +2,6 @@ import re
 from pydal.objects import Set, LazySet
 
 
-class MetaModel(type):
-    def __new__(cls, name, bases, attrs):
-        new_class = type.__new__(cls, name, bases, attrs)
-        if bases == (object,):
-            return new_class
-        from .apis import belongs_to, has_one, has_many
-        items = []
-        for item in belongs_to._references_.values():
-            items += item.reference
-        setattr(new_class, "_belongs_ref_", items)
-        belongs_to._references_ = {}
-        items = []
-        for item in has_one._references_.values():
-            items += item.reference
-        setattr(new_class, "_hasone_ref_", items)
-        has_one._references_ = {}
-        items = []
-        for item in has_many._references_.values():
-            items += item.reference
-        setattr(new_class, "_hasmany_ref_", items)
-        has_many._references_ = {}
-        return new_class
-
-
 class Reference(object):
     def __init__(self, *args):
         self.reference = [arg for arg in args]

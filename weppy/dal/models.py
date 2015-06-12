@@ -1,7 +1,85 @@
+from collections import OrderedDict
 from .apis import computation, virtualfield, fieldmethod
-from .base import DAL, Field, _Field, sdict
-from .helpers import MetaModel, HasOneWrap, HasManyWrap, HasManyViaWrap, \
+from .base import Field, _Field, sdict
+from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
     VirtualWrap, Callback, make_tablename
+
+
+class MetaModel(type):
+    def __new__(cls, name, bases, attrs):
+        new_class = type.__new__(cls, name, bases, attrs)
+        if bases == (object,):
+            return new_class
+        #: collect declared attributes
+        current_fields = []
+        virtual_fields = {}
+        computations = {}
+        callbacks = {}
+        for key, value in list(attrs.items()):
+            if isinstance(value, Field):
+                current_fields.append((key, value))
+            elif isinstance(value, virtualfield):
+                virtual_fields[key] = value
+            elif isinstance(value, computation):
+                computations[key] = value
+            elif isinstance(value, Callback):
+                callbacks[key] = value
+        #: get super declared attributes
+        declared_fields = OrderedDict()
+        super_relations = sdict(
+            _belongs_ref_=[], _hasone_ref_=[], _hasmany_ref_=[]
+        )
+        for base in reversed(new_class.__mro__):
+            # collect fields from base class
+            if hasattr(base, '_declared_fields_'):
+                #all_fields.update(base._all_fields_)
+                declared_fields.update(base._declared_fields_)
+            for key in list(super_relations):
+                if hasattr(base, key):
+                    super_relations[key] += getattr(base, key)
+        #: set declared fields with correct order
+        current_fields.sort(key=lambda x: x[1]._inst_count)
+        declared_fields.update(OrderedDict(current_fields))
+        new_class._declared_fields_ = declared_fields
+        #: set relations references binding
+        from .apis import belongs_to, has_one, has_many
+        items = []
+        for item in belongs_to._references_.values():
+            items += item.reference
+        #setattr(new_class, "_belongs_ref_", items)
+        new_class._belongs_ref_ = super_relations._belongs_ref_ + items
+        belongs_to._references_ = {}
+        items = []
+        for item in has_one._references_.values():
+            items += item.reference
+        #setattr(new_class, "_hasone_ref_", items)
+        new_class._hasone_ref_ = super_relations._hasone_ref_ + items
+        has_one._references_ = {}
+        items = []
+        for item in has_many._references_.values():
+            items += item.reference
+        #setattr(new_class, "_hasmany_ref_", items)
+        new_class._hasmany_ref_ = super_relations._hasmany_ref_ + items
+        has_many._references_ = {}
+        #: set virtuals
+        all_virtuals = {}
+        for k, v in getattr(new_class, '_declared_virtuals_', {}).iteritems():
+            all_virtuals[k] = v
+        all_virtuals.update(virtual_fields)
+        new_class._declared_virtuals_ = all_virtuals
+        #: set computations
+        all_computations = {}
+        for k, v in getattr(new_class, '_declared_computations_', {}).iteritems():
+            all_computations[k] = v
+        all_computations.update(computations)
+        new_class._declared_computations_ = all_computations
+        #: set callbacks
+        all_callbacks = {}
+        for k, v in getattr(new_class, '_declared_callbacks_', {}).iteritems():
+            all_callbacks[k] = v
+        all_callbacks.update(callbacks)
+        new_class._declared_callbacks_ = all_callbacks
+        return new_class
 
 
 class Model(object):
@@ -10,7 +88,7 @@ class Model(object):
     db = None
     table = None
 
-    sign_table = False
+    #sign_table = False
     auto_validation = True
 
     validation = {}
@@ -79,10 +157,10 @@ class Model(object):
         return reference, refname
 
     def __define(self):
-        if self.sign_table:
-            from .tools import Auth
-            fakeauth = Auth(DAL(None))
-            self.fields.extend([fakeauth.signature])
+        #if self.sign_table:
+        #    from .tools import Auth
+        #    fakeauth = Auth(DAL(None))
+        #    self.fields.extend([fakeauth.signature])
         self.__define_validation()
         self.__define_defaults()
         self.__define_updates()
@@ -93,18 +171,13 @@ class Model(object):
         self.setup()
 
     def __define_props(self):
+        #: create pydal's Field elements
         self.fields = []
-        #: create Field elements from Prop ones
-        for name in dir(self):
-            if name.startswith("_"):
-                continue
-            obj = getattr(self, name)
-            if isinstance(obj, Field):
-                if obj.modelname is not None:
-                    #: ensure fields are new instances on subclassing
-                    obj = Field(*obj._args, **obj._kwargs)
-                    setattr(self.__class__, name, obj)
-                self.fields.append(obj._make_field(name, self))
+        for name, obj in self._declared_fields_.iteritems():
+            if obj.modelname is not None:
+                obj = Field(*obj._args, **obj._kwargs)
+                setattr(self.__class__, name, obj)
+            self.fields.append(obj._make_field(name, self))
 
     def __define_relations(self):
         bad_args_error = "belongs_to, has_one and has_many only accept " + \
@@ -129,8 +202,8 @@ class Model(object):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference, refname = self.__parse_relation(item)
-                setattr(self, refname,
-                        virtualfield(refname)(HasOneWrap(reference)))
+                self._declared_virtuals_[refname] = \
+                    virtualfield(refname)(HasOneWrap(reference))
             delattr(self.__class__, '_hasone_ref_')
         #: has_many are mapped with virtualfield()
         hasmany_references = {}
@@ -145,10 +218,8 @@ class Model(object):
                     via = reference.get('via')
                 if via is not None:
                     #: maps has_many({'things': {'via': 'otherthings'}})
-                    setattr(
-                        self, refname, virtualfield(refname)(
-                            HasManyViaWrap(refname, via)
-                        )
+                    self._declared_virtuals_[refname] = virtualfield(refname)(
+                        HasManyViaWrap(refname, via)
                     )
                 else:
                     #: maps has_many('things'),
@@ -156,31 +227,25 @@ class Model(object):
                     #  has_many({'things': {'class': 'Model'}})
                     if rclass is not None:
                         reference = rclass
-                    setattr(
-                        self, refname, virtualfield(refname)(
-                            HasManyWrap(reference)
-                        )
+                    self._declared_virtuals_[refname] = virtualfield(refname)(
+                        HasManyWrap(reference)
                     )
                 hasmany_references[refname] = reference
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
         return
 
     def __define_virtuals(self):
+        err = 'virtualfield or fieldmethod cannot have same name as an' + \
+            'existent field!'
         field_names = [field.name for field in self.fields]
-        for name in dir(self):
-            if name.startswith("_"):
-                continue
-            obj = getattr(self, name)
-            if isinstance(obj, virtualfield):
-                if obj.field_name in field_names:
-                    raise RuntimeError(
-                        'virtualfield or fieldmethod cannot have same ' +
-                        'name as an existent field!')
-                if isinstance(obj, fieldmethod):
-                    f = _Field.Method(obj.field_name, VirtualWrap(self, obj))
-                else:
-                    f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
-                self.fields.append(f)
+        for name, obj in self._declared_virtuals_.iteritems():
+            if obj.field_name in field_names:
+                raise RuntimeError(err)
+            if isinstance(obj, fieldmethod):
+                f = _Field.Method(obj.field_name, VirtualWrap(self, obj))
+            else:
+                f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
+            self.fields.append(f)
 
     def __define_validation(self):
         for field in self.fields:
@@ -209,32 +274,26 @@ class Model(object):
             self.table[field].represent = value
 
     def __define_computations(self):
+        err = 'computations should have the name of an existing field to ' +\
+            'compute!'
         field_names = [field.name for field in self.fields]
-        for name in dir(self):
-            if not name.startswith("_"):
-                obj = getattr(self, name)
-                if isinstance(obj, computation):
-                    if obj.field_name not in field_names:
-                        raise RuntimeError(
-                            'computations should have the name of an ' +
-                            'existing field to compute!')
-                    self.table[obj.field_name].compute = \
-                        lambda row, obj=obj, self=self: obj.f(self, row)
+        for name, obj in self._declared_computations_.iteritems():
+            if obj.field_name not in field_names:
+                raise RuntimeError(err)
+            # TODO add check virtuals
+            self.table[obj.field_name].compute = \
+                lambda row, obj=obj, self=self: obj.f(self, row)
 
     def __define_actions(self):
-        for name in dir(self):
-            if not name.startswith("_"):
-                obj = getattr(self, name)
-                if isinstance(obj, Callback):
-                    for t in obj.t:
-                        if t in ["_before_insert", "_before_delete",
-                                 "_after_delete"]:
-                            getattr(self.table, t).append(
-                                lambda a, obj=obj, self=self: obj.f(self, a))
-                        else:
-                            getattr(self.table, t).append(
-                                lambda a, b, obj=obj, self=self: obj.f(
-                                    self, a, b))
+        for name, obj in self._declared_callbacks_.iteritems():
+            for t in obj.t:
+                if t in ["_before_insert", "_before_delete", "_after_delete"]:
+                    getattr(self.table, t).append(
+                        lambda a, obj=obj, self=self: obj.f(self, a)
+                    )
+                else:
+                    getattr(self.table, t).append(
+                        lambda a, b, obj=obj, self=self: obj.f(self, a, b))
 
     def __define_form_utils(self):
         #: labels
@@ -302,69 +361,3 @@ class Model(object):
     def form(cls, record=None, **kwargs):
         from .forms import DALForm
         return DALForm(cls.table, record, **kwargs)
-
-
-class AuthModel(Model):
-    auth = None
-
-    form_registration_rw = {}
-    form_profile_rw = {}
-
-    def __new__(cls):
-        if not getattr(cls, 'tablename', None):
-            cls.tablename = "auth_user"
-        return super(AuthModel, cls).__new__(cls)
-
-    def __init__(self):
-        self.__super_method('define_props')()
-        self.__super_method('define_relations')()
-        self.__super_method('define_virtuals')()
-        self.__define_extra_fields()
-
-    def __super_method(self, name):
-        return getattr(super(AuthModel, self), '_Model__'+name)
-
-    def __define(self):
-        self.__super_method('define_validation')()
-        self.__super_method('define_defaults')()
-        self.__super_method('define_updates')()
-        self.__super_method('define_representation')()
-        self.__super_method('define_computations')()
-        self.__super_method('define_actions')()
-        self.__hide_all()
-        self.__super_method('define_form_utils')
-        self.__define_authform_utils()
-        self.setup()
-
-    def __define_extra_fields(self):
-        self.auth.settings.extra_fields['auth_user'] = self.fields
-
-    def __hide_all(self):
-        alwaysvisible = ['first_name', 'last_name', 'password', 'email']
-        for field in self.table.fields:
-            if field not in alwaysvisible:
-                self.table[field].writable = self.table[field].readable = \
-                    False
-
-    def __base_visibility(self):
-        return [field.name for field in self.table
-                if field.type != 'id' and field.writable]
-
-    def __define_authform_utils(self):
-        settings_map = {
-            'register_fields': 'form_registration_rw',
-            'profile_fields': 'form_profile_rw'
-        }
-        for setting, attr in settings_map.items():
-            l = self.auth.settings[setting] or self.__base_visibility()
-            for field, value in getattr(self, attr).items():
-                show = value[1] if isinstance(value, (tuple, list)) else value
-                if show:
-                    #self.table[field].writable = value[0]
-                    #self.table[field].readable = value[1]
-                    l.append(field)
-                else:
-                    if field in l:
-                        l.remove(field)
-            if l:
-                self.auth.settings[setting] = l

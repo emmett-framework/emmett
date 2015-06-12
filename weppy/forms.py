@@ -37,6 +37,11 @@ class Form(TAG):
         for name, parameter in kwargs.iteritems():
             if isinstance(parameter, Field):
                 fields[name] = parameter
+        #: order fields correctly
+        sorted_fields = []
+        for name, field in fields.iteritems():
+            sorted_fields.append((name, field))
+        sorted_fields.sort(key=lambda x: x[1]._inst_count)
         #: process attributes
         self.attributes = {}
         for key, val in Form.default_attrs.items():
@@ -45,10 +50,9 @@ class Form(TAG):
             'formstyle', self._get_default_style())
         #: init fields
         self.fields = []
-        for name, obj in fields.items():
-            fields.append(obj._make_field(name))
+        for name, obj in sorted_fields:
+            self.fields.append(obj._make_field(name))
         #: init the form
-        self.fields = fields
         self.errors = sdict()
         self.vars = sdict()
         self.input_vars = None
