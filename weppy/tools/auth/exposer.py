@@ -18,7 +18,6 @@ class Exposer(object):
         self._build_register_form_()
 
     def _build_register_form_(self):
-        self.auth.app.log.debug(self.settings.register_fields)
         if not self.settings.register_fields:
             self.settings.register_fields = [
                 field.name for field in self.auth.table_user
@@ -34,7 +33,6 @@ class Exposer(object):
                 break
         form_fields = {}
         for i, fieldname in enumerate(all_fieldkeys):
-            self.auth.app.log.debug(fieldname)
             if fieldname != 'password2':
                 form_fields[fieldname] = \
                     self.auth.table_user[fieldname].clone()
@@ -43,7 +41,6 @@ class Exposer(object):
                     'password', label=self.messages.verify_password
                 )
             form_fields[fieldname]._inst_count_ = i
-            self.auth.app.log.debug(form_fields[fieldname]._inst_count_)
         self.form_data['register'] = form_fields
 
     def login(self):
@@ -69,7 +66,6 @@ class Exposer(object):
 
     def register(self):
         def process_form(form):
-            self.auth.app.log.debug(str(form.vars))
             if form.vars.password != form.vars.password2:
                 form.errors.password = "password mismatch"
                 return
@@ -125,10 +121,10 @@ class Exposer(object):
                     self.settings.everybody_group_id, form.vars.id)
             if self.settings.registration_requires_verification:
                 link = self.auth.url(
-                    ['verify_email', row.registration_key], scheme=True
+                    ['verify_email', row['registration_key']], scheme=True
                 )
                 d = dict(request.vars)
-                d.update(dict(key=row.registration_key, link=link,
+                d.update(dict(key=row['registration_key'], link=link,
                          username=form.vars[username]))
                 if not (self.settings.mailer and self.settings.mailer.send(
                         to=form.vars.email,
