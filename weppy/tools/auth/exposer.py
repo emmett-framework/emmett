@@ -74,7 +74,7 @@ class Exposer(object):
 
         #usermodel = self.settings.models.user
         if self.auth.is_logged_in():
-            redirect(self.settings.logged_url)
+            redirect(self.settings.url_logged or self.auth.url('profile'))
         nextv = get_vars_next() or self.settings.register_next
         onvalidation = self.settings.register_onvalidation
         onaccept = self.settings.register_onaccept
@@ -152,7 +152,7 @@ class Exposer(object):
             self.auth.log_event(log, form.vars)
             callback(onaccept, form)
             if not nextv:
-                nextv = self.url('register')
+                nextv = self.auth.url('profile')
             else:
                 nextv = replace_id(nextv, form)
             redirect(nextv)
@@ -160,9 +160,9 @@ class Exposer(object):
         return form
 
     def verify_email(self, key):
-        user = self.table_user(registration_key=key)
+        user = self.auth.table_user(registration_key=key)
         if not user:
-            redirect(self.settings.login_url)
+            redirect(self.settings.login_url or self.auth.url('login'))
         if self.settings.registration_requires_approval:
             user.update_record(registration_key='pending')
             flash(self.messages.registration_pending)
@@ -170,12 +170,12 @@ class Exposer(object):
             user.update_record(registration_key='')
             flash(self.messages.email_verified)
         # make sure session has same user.registration_key as db record
-        if self.user:
-            self.user.registration_key = user.registration_key
+        if self.auth.user:
+            self.auth.user.registration_key = user.registration_key
         log = self.messages['verify_email_log']
-        nextv = self.settings.verify_email_next
+        nextv = self.settings.verify_email_next or self.auth.url('login')
         onaccept = self.settings.verify_email_onaccept
-        self.log_event(log, user)
+        self.auth.log_event(log, user)
         callback(onaccept, user)
         redirect(nextv)
 

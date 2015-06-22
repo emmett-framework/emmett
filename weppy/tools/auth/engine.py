@@ -1,6 +1,7 @@
 import urllib
 from pydal.objects import Row, Set, Query
 from ...datastructures import sdict
+from ...expose import url
 from ...globals import request, session
 from ...http import HTTP, redirect
 from ...security import uuid
@@ -43,16 +44,18 @@ class Auth(object):
             open(filename, 'w').write(key)
         return key
 
-    def url(self, args=[], vars=None, scheme=False):
-        q = urllib.quote
-        u = self.settings.base_url
-        if not isinstance(args, (list, tuple)):
-            args = [args]
-        u = u + '/' + '/'.join(q(a) for a in args)
-        if vars:
-            u = u + '?' + '&'.join('%s=%s' % (q(k), q(v))
-                                   for k, v in vars.iteritems())
-        return u
+    #def url(self, args=[], vars=None, scheme=False):
+    #    q = urllib.quote
+    #    u = self.settings.base_url
+    #    if not isinstance(args, (list, tuple)):
+    #        args = [args]
+    #    u = u + '/' + '/'.join(q(a) for a in args)
+    #    if vars:
+    #        u = u + '?' + '&'.join('%s=%s' % (q(k), q(v))
+    #                               for k, v in vars.iteritems())
+    #    return u
+    def url(self, args=[], vars={}, scheme=None):
+        return url(self.settings.base.url, args, vars, scheme=scheme)
 
     def __init__(self, app, db, usermodel=None, mailer=True, hmac_key=None,
                  hmac_key_file=None, signature=True, base_url=None,
@@ -75,8 +78,8 @@ class Auth(object):
         if hmac_key is None:
             hmac_key = self.get_or_create_key(app, hmac_key_file)
 
-        url_index = base_url or "/account"
-        url_login = url_index + "/login"
+        url_index = base_url or "account"
+        #url_login = url_index + "/login"
 
         settings = self.settings = sdict()
         settings.update(default_settings)
@@ -89,23 +92,23 @@ class Auth(object):
             #                servicevalidate='serviceValidate',
             #                proxyvalidate='proxyValidate',
             #                logout='logout'),
-            login_url=url_login,
-            logged_url=url_index+"/profile",
+            #login_url=url_login,
+            #logged_url=url_index+"/profile",
             download_url="/download",
             mailer=(mailer == True) and Mail(app) or mailer,
-            on_failed_authorization=url_index+"/not_authorized",
-            login_next=url_index+"/profile",
+            #on_failed_authorization=url_index+"/not_authorized",
+            #login_next=url_index+"/profile",
             login_methods=[self],
             login_form=self,
-            logout_next=url_index,
-            register_next=url_index,
-            verify_email_next=url_login,
-            profile_next=url_index,
-            retrieve_username_next=url_index,
-            retrieve_password_next=url_index,
-            request_reset_password_next=url_login,
-            reset_password_next=url_index,
-            change_password_next=url_index,
+            #logout_next=url_index,
+            #register_next=url_index,
+            #verify_email_next=url_login,
+            #profile_next=url_index,
+            #retrieve_username_next=url_index,
+            #retrieve_password_next=url_index,
+            #request_reset_password_next=url_login,
+            #reset_password_next=url_index,
+            #change_password_next=url_index,
             hmac_key=hmac_key
         )
         #: load user's settings
@@ -209,7 +212,7 @@ class Auth(object):
         """
 
         if not f:
-            redirect(self.url(args='login', vars=request.vars))
+            redirect(self.url('login', request.vars))
         #elif f in self.settings.actions_disabled:
         #    raise HTTP(404)
         if f in self.registered_actions:
@@ -266,6 +269,11 @@ class Auth(object):
         ]
         if getattr(user_model, '_auto_relations', True):
             user_model._hasmany_ref_ = many_refs
+        if user_model.validation.get('password') is None:
+            user_model.validation['password'] = {
+                'len': {'gt': self.settings.password_min_length},
+                'crypt': {'key': self.settings.hmac_key}
+            }
         #: AuthGroup
         group_model = models['group']
         if not hasattr(group_model, 'format'):
@@ -590,7 +598,7 @@ class Auth(object):
 
         # redirect user if it's already logged in
         if self.user:
-            redirect(settings.login_next)
+            redirect(self.settings.login_next or self.url('profile'))
 
         handler = handler(self, env)
 
