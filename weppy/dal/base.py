@@ -91,9 +91,9 @@ class DAL(_pyDAL):
                 model.db = self
                 # init model
                 obj = model()
-                getattr(obj, '_Model__define_props')()
-                getattr(obj, '_Model__define_relations')()
-                getattr(obj, '_Model__define_virtuals')()
+                obj._define_props_()
+                obj._define_relations_()
+                obj._define_virtuals_()
                 # define table and store in model
                 #model.fields = obj.fields
                 model.table = self.define_table(
@@ -104,7 +104,7 @@ class DAL(_pyDAL):
                 model.table._model_ = obj
                 model.id = model.table.id
                 # load user's definitions
-                getattr(obj, '_Model__define')()
+                obj._define_()
                 # set reference in db for model name
                 self.__setattr__(model.__name__, obj.table)
 
@@ -129,7 +129,8 @@ class Field(_Field):
     _pydal_types = {
         'int': 'integer', 'bool': 'boolean', 'list:int': 'list:integer'
     }
-    _inst_count = 0
+    _inst_count_ = 0
+    _obj_created_ = False
 
     def __init__(self, type='string', *args, **kwargs):
         self.modelname = None
@@ -171,8 +172,8 @@ class Field(_Field):
         self._args = args
         self._kwargs = kwargs
         #: increase creation counter (used to keep order of fields)
-        self._inst_count = Field._inst_count
-        Field._inst_count += 1
+        self._inst_count_ = Field._inst_count_
+        Field._inst_count_ += 1
 
     def _default_validation(self):
         rv = {}
@@ -203,6 +204,8 @@ class Field(_Field):
     #: `_make_field` will be called by `Model` class or `Form` class
     #  it will make weppy's Field class compatible with the pyDAL's one
     def _make_field(self, name, model=None):
+        if self._obj_created_:
+            return self
         if model is not None:
             self.modelname = model.__class__.__name__
         #: convert field type to pyDAL ones if needed
@@ -219,6 +222,7 @@ class Field(_Field):
         #: validators
         if not self.modelname:
             self._parse_validation()
+        self._obj_created_ = True
         return self
 
     def __str__(self):

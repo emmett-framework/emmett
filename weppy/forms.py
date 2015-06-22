@@ -22,9 +22,8 @@ __all__ = ['Form', 'DALForm']
 class Form(TAG):
     default_attrs = {
         '_action': '', '_method': 'POST', '_enctype': 'multipart/form-data',
-        'submit': 'Submit', 'formstyle': None, 'csrf': 'auto',
-        'keepvalues': False, 'onvalidation': None, 'id_prefix': '',
-        'upload': None
+        'submit': 'Submit', 'csrf': 'auto', 'keepvalues': False,
+        'onvalidation': None, 'id_prefix': '', 'upload': None
     }
 
     @staticmethod
@@ -37,21 +36,27 @@ class Form(TAG):
         for name, parameter in kwargs.iteritems():
             if isinstance(parameter, Field):
                 fields[name] = parameter
+        for name in fields.iterkeys():
+            if name in kwargs:
+                del kwargs[name]
         #: order fields correctly
         sorted_fields = []
         for name, field in fields.iteritems():
             sorted_fields.append((name, field))
-        sorted_fields.sort(key=lambda x: x[1]._inst_count)
-        #: process attributes
-        self.attributes = {}
-        for key, val in Form.default_attrs.items():
-            self.attributes = kwargs.get(key, val)
-        self.attributes['formstyle'] = self.attributes.get(
-            'formstyle', self._get_default_style())
+        sorted_fields.sort(key=lambda x: x[1]._inst_count_)
         #: init fields
         self.fields = []
         for name, obj in sorted_fields:
             self.fields.append(obj._make_field(name))
+        self._preprocess_(**kwargs)
+
+    def _preprocess_(self, **kwargs):
+        #: process attributes
+        self.attributes = {}
+        for key, val in Form.default_attrs.items():
+            self.attributes[key] = kwargs.get(key, val)
+        self.attributes['formstyle'] = self.attributes.get(
+            'formstyle', self._get_default_style())
         #: init the form
         self.errors = sdict()
         self.vars = sdict()
@@ -203,21 +208,21 @@ class DALForm(Form):
         self.table = table
         self.record = record or table(record_id)
         #: build fields for form
-        fields_dict = {}
+        self.fields = []
         if fields is not None:
             #: developer has selected specific fields
             for field in fields:
-                fields_dict[field] = table[field]
+                self.fields.append(table[field])
         else:
             #: use table fields
             for field in table:
                 if field.type != 'id' and field.writable and \
                         field.name not in exclude_fields:
-                    fields_dict[field.name] = field
+                    self.fields.append(field)
         #: use tablename for form id
         attributes['id_prefix'] = table._tablename+"_"
         #: finally init the form
-        Form.__init__(self, fields_dict, **attributes)
+        self._preprocess_(**attributes)
 
     def _validate_field(self, field, value):
         #: needed to handle IS_NOT_IN_DB validator

@@ -38,7 +38,7 @@ class MetaModel(type):
                 if hasattr(base, key):
                     super_relations[key] += getattr(base, key)
         #: set declared fields with correct order
-        current_fields.sort(key=lambda x: x[1]._inst_count)
+        current_fields.sort(key=lambda x: x[1]._inst_count_)
         declared_fields.update(OrderedDict(current_fields))
         new_class._declared_fields_ = declared_fields
         #: set relations references binding
@@ -156,21 +156,7 @@ class Model(object):
                 reference = reference[:-1]
         return reference, refname
 
-    def __define(self):
-        #if self.sign_table:
-        #    from .tools import Auth
-        #    fakeauth = Auth(DAL(None))
-        #    self.fields.extend([fakeauth.signature])
-        self.__define_validation()
-        self.__define_defaults()
-        self.__define_updates()
-        self.__define_representation()
-        self.__define_computations()
-        self.__define_actions()
-        self.__define_form_utils()
-        self.setup()
-
-    def __define_props(self):
+    def _define_props_(self):
         #: create pydal's Field elements
         self.fields = []
         for name, obj in self._declared_fields_.iteritems():
@@ -179,7 +165,7 @@ class Model(object):
                 setattr(self.__class__, name, obj)
             self.fields.append(obj._make_field(name, self))
 
-    def __define_relations(self):
+    def _define_relations_(self):
         bad_args_error = "belongs_to, has_one and has_many only accept " + \
             "strings or dicts as arguments"
         #: belongs_to are mapped with 'reference' type Field
@@ -234,7 +220,7 @@ class Model(object):
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
         return
 
-    def __define_virtuals(self):
+    def _define_virtuals_(self):
         err = 'virtualfield or fieldmethod cannot have same name as an' + \
             'existent field!'
         field_names = [field.name for field in self.fields]
@@ -246,6 +232,20 @@ class Model(object):
             else:
                 f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
             self.fields.append(f)
+
+    def _define_(self):
+        #if self.sign_table:
+        #    from .tools import Auth
+        #    fakeauth = Auth(DAL(None))
+        #    self.fields.extend([fakeauth.signature])
+        self.__define_validation()
+        self.__define_defaults()
+        self.__define_updates()
+        self.__define_representation()
+        self.__define_computations()
+        self.__define_actions()
+        self.__define_form_utils()
+        self.setup()
 
     def __define_validation(self):
         for field in self.fields:
@@ -359,5 +359,5 @@ class Model(object):
 
     @classmethod
     def form(cls, record=None, **kwargs):
-        from .forms import DALForm
+        from ..forms import DALForm
         return DALForm(cls.table, record, **kwargs)
