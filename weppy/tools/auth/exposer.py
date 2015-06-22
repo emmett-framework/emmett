@@ -66,8 +66,9 @@ class Exposer(object):
 
     def register(self):
         def process_form(form):
-            if form.vars.password != form.vars.password2:
+            if form.vars.password.password != form.vars.password2:
                 form.errors.password = "password mismatch"
+                form.errors.password2 = "password mismatch"
                 return
             for validation in onvalidation:
                 onvalidation(form)
