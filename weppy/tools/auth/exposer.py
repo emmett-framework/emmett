@@ -163,7 +163,7 @@ class Exposer(object):
                     #client_side=self.settings.client_side)
         return form
 
-    def verify_email(self, key, next=DEFAULT, onaccept=DEFAULT, log=DEFAULT):
+    def verify_email(self, key):
         user = self.table_user(registration_key=key)
         if not user:
             redirect(self.settings.login_url)
@@ -176,16 +176,14 @@ class Exposer(object):
         # make sure session has same user.registration_key as db record
         if self.user:
             self.user.registration_key = user.registration_key
-        if log is DEFAULT:
-            log = self.messages['verify_email_log']
-        if next is DEFAULT:
-            next = self.settings.verify_email_next
-        if onaccept is DEFAULT:
-            onaccept = self.settings.verify_email_onaccept
+        log = self.messages['verify_email_log']
+        nextv = self.settings.verify_email_next
+        onaccept = self.settings.verify_email_onaccept
         self.log_event(log, user)
         callback(onaccept, user)
-        redirect(next)
+        redirect(nextv)
 
+    # NEEDS REFACTOR
     def retrieve_username(self, next=DEFAULT, onvalidation=DEFAULT,
                           onaccept=DEFAULT, log=DEFAULT):
         from ..validators._old import inDb
@@ -240,6 +238,7 @@ class Exposer(object):
             redirect(next)
         return form
 
+    # NEEDS REFACTOR
     def reset_password(self, next=DEFAULT, onvalidation=DEFAULT,
                        onaccept=DEFAULT, log=DEFAULT):
         import time
@@ -288,6 +287,7 @@ class Exposer(object):
             redirect(next)
         return form
 
+    # NEEDS REFACTOR
     def request_reset_password(self, next=DEFAULT, onvalidation=DEFAULT,
                                onaccept=DEFAULT, log=DEFAULT):
         from ..validators import isEmail
@@ -345,6 +345,7 @@ class Exposer(object):
             redirect(next)
         return form
 
+    # NEEDS REFACTOR
     def retrieve_password(self, next=DEFAULT, onvalidation=DEFAULT,
                           onaccept=DEFAULT, log=DEFAULT):
         if self.settings.reset_password_requires_verification:
@@ -353,6 +354,7 @@ class Exposer(object):
         else:
             return self.reset_password(next, onvalidation, onaccept, log)
 
+    # NEEDS REFACTOR
     def change_password(self, next=DEFAULT, onvalidation=DEFAULT,
                         onaccept=DEFAULT, log=DEFAULT):
         def _same_psw(value):
@@ -444,6 +446,7 @@ class Exposer(object):
             redirect(nextv)
         return form
 
+    # NEEDS REFACTOR
     def groups(self):
         #: displays the groups and their roles for the logged in user
         if not self.is_logged_in():
