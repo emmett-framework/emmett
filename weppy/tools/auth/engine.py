@@ -55,7 +55,7 @@ class Auth(object):
     #                               for k, v in vars.iteritems())
     #    return u
     def url(self, args=[], vars={}, scheme=None):
-        return url(self.settings.base.url, args, vars, scheme=scheme)
+        return url(self.settings.base_url, args, vars, scheme=scheme)
 
     def __init__(self, app, db, usermodel=None, mailer=True, hmac_key=None,
                  hmac_key_file=None, signature=True, base_url=None,
