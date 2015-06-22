@@ -114,7 +114,7 @@ class Exposer(object):
             del form.vars['password2']
             # insert user
             form.vars.id = self.auth.table_user.insert(**form.vars)
-            row = self.auth.table_user[form.vars.id]
+            row = self.auth.table_user(id=form.vars.id)
             description = self.messages.group_description % form.vars
             if self.settings.create_user_groups:
                 group_id = self.auth.add_group(
