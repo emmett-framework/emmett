@@ -101,6 +101,15 @@ class Form(TAG):
             return self.input_vars._csrf_token in session._csrf_tokens
         return self.input_vars._csrf_token is 'undef'
 
+    def _get_input_val(self, field):
+        if field.type == 'boolean':
+            v = self.input_vars.get(field.name, False)
+            if v is not False:
+                v = True
+        else:
+            v = self.input_vars.get(field.name)
+        return v
+
     def _process(self):
         self._load_csrf()
         method = self.attributes['_method']
@@ -114,7 +123,7 @@ class Form(TAG):
             self.processed = True
             # validate input
             for field in self.fields:
-                value = self.input_vars.get(field.name)
+                value = self._get_input_val(field)
                 value, error = self._validate_field(field, value)
                 if error:
                     self.errors[field.name] = error
@@ -261,10 +270,6 @@ class DALForm(Form):
                     if isinstance(field.uploadfield, str):
                         self.vars[field.uploadfield] = source_file.read()
                     self.vars[field.name] = newfilename
-                #: handle booleans
-                if field.type == 'boolean':
-                    if self.vars[field.name] is None:
-                        self.vars[field.name] = False
             #: add default values to hidden fields if needed
             ffields = [field.name for field in self.fields]
             for field in self.table:
