@@ -72,7 +72,7 @@ class Exposer(object):
                 form.errors.password2 = "password mismatch"
                 return
             for validation in onvalidation:
-                onvalidation(form)
+                validation(form)
 
         #usermodel = self.settings.models.user
         if self.auth.is_logged_in():
