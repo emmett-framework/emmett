@@ -1,4 +1,3 @@
-import urllib
 from pydal.objects import Row, Set, Query
 from ...datastructures import sdict
 from ...expose import url
@@ -610,7 +609,7 @@ class Auth(object):
             snext = session._auth_next
 
         if handler.next is None:
-            unext = settings.login_next
+            unext = settings.login_next or self.url('profile')
             if snext:
                 unext = snext
         else:

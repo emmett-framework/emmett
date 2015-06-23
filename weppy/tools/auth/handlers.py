@@ -43,7 +43,8 @@ class DefaultLoginHandler(AuthLoginHandler):
             if self.auth.settings.username_case_sensitive:
                 v['lower'] = True
             self.loginfield = Field(validation=v)
-        self.passfield = Field('password')
+        passfield_valid = self.auth.settings.models.user.password._requires
+        self.passfield = Field('password', validation=passfield_valid)
         self.rememberfield = Field(
             'bool', default=True, label=T('Remember me')
         )

@@ -47,7 +47,8 @@ class Exposer(object):
         return self.auth._login_with_handler(DefaultLoginHandler)
 
     def logout(self):
-        nextv = get_vars_next() or self.settings.logout_next
+        nextv = (get_vars_next() or self.settings.logout_next or
+                 self.auth.url('login'))
         onlogout = self.settings.logout_onlogout
         if onlogout:
             onlogout(self.auth.user)
