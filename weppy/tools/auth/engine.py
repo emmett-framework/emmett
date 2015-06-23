@@ -236,8 +236,8 @@ class Auth(object):
             def_names = {
                 'user': 'user',
                 'group': 'authgroup',
-                'membership': 'membership',
-                'permission': 'permission',
+                'membership': 'authmembership',
+                'permission': 'authpermission',
                 'event': 'authevent'
             }
             for m in ['user', 'group', 'membership', 'permission', 'event']:
@@ -267,7 +267,7 @@ class Auth(object):
             {names['permission']+'s': {'via': names['group']+'s'}}
         ]
         if getattr(user_model, '_auto_relations', True):
-            user_model._hasmany_ref_ = many_refs
+            user_model._hasmany_ref_ = many_refs + user_model._hasmany_ref_
         if user_model.validation.get('password') is None:
             user_model.validation['password'] = {
                 'len': {'gt': self.settings.password_min_length},
@@ -285,7 +285,7 @@ class Auth(object):
             {names['user']+'s': {'via': names['membership']+'s'}}
         ]
         if getattr(group_model, '_auto_relations', True):
-            group_model._hasmany_ref_ = many_refs
+            group_model._hasmany_ref_ = many_refs + group_model._hasmany_ref_
         #: AuthMembership
         membership_model = models['membership']
         belongs_refs = [
@@ -293,21 +293,24 @@ class Auth(object):
             {names['group']: models['group'].__name__}
         ]
         if getattr(membership_model, '_auto_relations', True):
-            membership_model._belongs_ref_ = belongs_refs
+            membership_model._belongs_ref_ = \
+                belongs_refs + membership_model._belongs_ref_
         #: AuthPermission
         permission_model = models['permission']
         belongs_refs = [
             {names['group']: models['group'].__name__}
         ]
         if getattr(permission_model, '_auto_relations', True):
-            permission_model._belongs_ref_ = belongs_refs
+            permission_model._belongs_ref_ = \
+                belongs_refs + permission_model._belongs_ref_
         #: AuthEvent
         event_model = models['event']
         belongs_refs = [
             {names['user']: models['user'].__name__}
         ]
         if getattr(event_model, '_auto_relations', True):
-            event_model._belongs_ref_ = belongs_refs
+            event_model._belongs_ref_ = \
+                belongs_refs + event_model._belongs_ref_
         # SIGNATURE?
         models.user.auth = self
         self.db.define_models(

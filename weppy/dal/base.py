@@ -1,5 +1,6 @@
 import os
 from pydal import DAL as _pyDAL, Field as _Field
+from pydal.objects import Table as _Table
 from .._compat import copyreg
 from ..datastructures import sdict
 from ..handlers import Handler
@@ -23,6 +24,13 @@ class DALHandler(Handler):
 
     def on_end(self):
         self.db._adapter.close()
+
+
+class Table(_Table):
+    def _create_references(self):
+        self._referenced_by = []
+        self._references = []
+        return
 
 
 class DAL(_pyDAL):
@@ -96,10 +104,13 @@ class DAL(_pyDAL):
                 obj._define_virtuals_()
                 # define table and store in model
                 #model.fields = obj.fields
+                args = dict(
+                    migrate=obj.migrate,
+                    format=obj.format,
+                    table_class=Table
+                )
                 model.table = self.define_table(
-                    obj.tablename,
-                    *obj.fields,
-                    **dict(migrate=obj.migrate, format=obj.format)
+                    obj.tablename, *obj.fields, **args
                 )
                 model.table._model_ = obj
                 model.id = model.table.id
