@@ -226,10 +226,12 @@ class Field(_Field):
         return self
 
     def __str__(self):
+        if self._obj_created_:
+            return super(Field, self).__str__()
         return object.__str__(self)
 
     def __repr__(self):
-        if self.modelname and self.name:
+        if self.modelname and hasattr(self, 'name'):
             return "<%s.%s (%s) field>" % (self.modelname, self.name,
                                            self._type)
         return super(Field, self).__repr__()

@@ -153,7 +153,7 @@ class Exposer(object):
             self.auth.log_event(log, form.vars)
             callback(onaccept, form)
             if not nextv:
-                nextv = self.auth.url('profile')
+                nextv = self.auth.url('login')
             else:
                 nextv = replace_id(nextv, form)
             redirect(nextv)
