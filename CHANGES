@@ -1,6 +1,34 @@
 weppy changelog
 ===============
 
+Next
+----
+
+(Released date to be announced, codename to be selected)
+
+- Intruduced a real ORM inside weppy:
+  - Consequent new features:
+    - `belongs_to`, `has_one` and `has_many` apis for relations
+    - Automatic joins of attributes defined with new apis
+    - Cleaner `Model` definition syntax
+    - New naming convention based on singular for model and plural for tables
+    - Automatic tablenames based on `Model` classes' names
+  - Consequent changes:
+    - Fields are now defined as attributes of `Model`
+    - Some `Field` types are now procesed also considering the pythonic naming
+      ('integer' -> 'int', 'boolean' -> 'bool')
+    - `Field` class doesn't accept 'name' (first) parameter anymore
+    - `Model.entity` is now the more correct `Model.table`
+    - `Form` and `DALForm` classes now accepts dictionaries of fields
+      instead of lists
+    - `Auth` module has tablenames changed to new naming convention
+- Completely refactored validators
+- Introduced new validation syntax using dictionaries
+- `Auth` now includes virtualfields on session `user` object
+- Dropped python 2.6.x support
+- Bugfixes in forms
+
+
 Version 0.3
 -----------
 
