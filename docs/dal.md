@@ -79,11 +79,11 @@ class Post(Model):
     body = Field('text')
     summary = Field('text')
     
-    representation = {
+    repr_values = {
         "body": lambda row, value: markdown(value)
     }
 
-    validators = {
+    validation = {
         "title": {'presence': True},
         "body": {'presence': True}
     }
@@ -94,7 +94,7 @@ class Post(Model):
 
 ```
 
-As you can see, we added some validators, a representation rule to parse the markdown text of the post and produce html in the templates and a `computation` on the `summary` field. To use this model in your application you can use the `define_models()` method of the `DAL` class of weppy, as we seen in the example above:
+As you can see, we added some validation rules, a representation rule to parse the markdown text of the post and produce html in the templates and a `computation` on the `summary` field. To use this model in your application you can use the `define_models()` method of the `DAL` class of weppy, as we seen in the example above:
 
 ```python
 db.define_models(Post)
@@ -110,6 +110,10 @@ Class Post(Model):
 ```
 
 just ensure the name is valid for the DBMS you're using.
+
+> **Warning:**    
+> weppy doesn't have a *real* pluralization system to evaluate names, so in case the name you've chosen for your model doesn't have a *regular* plural in english, you should write down the correct plural with the `tablename` attribute. Just as an example, a model named `Mouse` will be translated in the *horrible* `"mouses"` tablename, so you should assign:   
+> `tablename = "mice"`
 
 Fields
 ------
@@ -146,19 +150,19 @@ Using the right field type ensure the right columns types inside your tables, an
 Validators
 ----------
 
-To implement a validation mechanism for your fields, you can use the `requires` parameter of the `Field` class, or the mapping `dict` with the name of the fields at the `validators` attribute inside your Model. Both method will end with the same result, just use the one you prefer:
+To implement a validation mechanism for your fields, you can use the `validation` parameter of the `Field` class, or the mapping `dict` with the name of the fields at the `validation` attribute inside your Model. Both method will produce the same result, just pick the one you prefer:
 
 ```python
-title = Field(requires={'presence': True})
+title = Field(validation={'presence': True})
 ```
 
 ```python
-validators = {
+validation = {
     'title': {'presence': True}
 }
 ```
 
-The validators you define will be used to validate the forms created from the models on the user input and inserts.   
+The validation rules you define will be used to validate the forms created from the models on the user input and inserts.   
 While you can find the complete list of available validators in the [appropriate chapter](./validation) of the documentation, here we list the default validation implemented by weppy on fields:
 
 | Field type | default validation | allow blank value |
@@ -182,17 +186,17 @@ While you can find the complete list of available validators in the [appropriate
 
 ### Disable default validation
 Sometimes you may want to disable the default validation implemented by weppy. Depending on your needs, you have two different ways.   
-When you need to disable the default validation on a single `Field`, you can use the `auto_requires` parameter:
+When you need to disable the default validation on a single `Field`, you can use the `auto_validation` parameter:
 
 ```python
-a = Field(auto_requires=False)
+a = Field(auto_validation=False)
 ```
 
-Otherwise, if you want to disable the default validation on every field of your `Model`, the `default_validators` attribute is handy:
+Otherwise, if you want to disable the default validation on every field of your `Model`, the `auto_validation` attribute is handy:
 
 ```python
 class MyModel(Model):
-    default_validators = False
+    auto_validation = False
 ```
 
 Relations
@@ -216,7 +220,7 @@ class Membership(Model):
 Now we have `1:N` relationship between `Group` and `Membership` and `1:1` relationship between `User` and `Membership`. To select from the database the rows that match some of the relationships, we should write the queries using the referenced attributes and the id's of the record involved.   
 Or we can use another way.
 
-### The easy way: belongs_to, has_one, has_many
+### The easy way: belongs\_to, has\_one, has\_many
 
 The simple and *magic* way is the usage of these three helpers. So how do they works? Let's see it with the same example, rewritten:
 
@@ -232,7 +236,7 @@ class Group(Model):
 
 class Membership(Model):
     belongs_to('user', 'group')
-    validators = {
+    validation = {
         'user': {'unique': True}
     }
 ```
@@ -278,56 +282,56 @@ So, if you use relationships quite often in your code, you will end with less li
 
 Obviously, you can use `reference` fields and write down your own `Model` methods as we will se in the next paragraphs; so finally, you can choose whatever way fits good for your project.
 
-Visibility
-----------
+Forms read-writes
+-----------------
 
-Visibility helps you to hide some attributes to users when you create forms:
+`form_rw` attribute of `Model` class helps you to hide some attributes to users when you create forms:
 
 ```python
-visibility = {
+form_rw = {
     'started': False,
-    'open': (False, True)
+    'open': (True, False)
 }
 ```
-Any item of the dictionary can be a `tuple`, where the first value define if the field should be writable by user and the second value define if the field should be readable, or `bool` that will set both values to the one given. By default, all fields are defined with visibility `True`.
+Any item of the dictionary can be a `tuple`, where the first value define if the field should be readable by the user and the second value define if the field should be writable, or `bool` that will set both values to the one given. By default, all fields are defined with *rw* at `True`.
 
-Labels
-------
+Form labels
+-----------
 Labels are useful to produce good titles for your fields in forms:
 
 ```python
-labels = {
+form_labels = {
     'started': T("Opening date:")
 }
 ```
-The labels will decorate the input fields in your forms. In this example we used the [weppy translator](./languages) object to automatically translate the string in the correct language.
+Labels will decorate the input fields in your forms. In this example we used the [weppy translator](./languages) object to automatically translate the string in the correct language.
 
-Comments
---------
-As for the labels, comments are useful to produce hints or helping blocks for your fields in forms:
+Form info
+---------
+As for the labels, `form_info` attribute is useful to produce hints or helping blocks for your fields in forms:
 
 ```python
-comments = {
+form_info = {
     'started': T("Insert the desired opening date for your event in YYYY-MM-DD format.")
 }
 ```
 
-Defaults
---------
+Default values
+--------------
 Helps you to set the default value for the field on record insertions:
 
 ```python
-default = {
+default_values = {
     'started': lambda: request.now
 }
 ```
 
-Updates
--------
-As for the `default` value we've seen before, `updates` helps you to set the default value for the field on record updates:
+Update values
+-------------
+As for the `default_values` attribute we've seen before, `update_values` helps you to set the default value for the field on record updates:
 
 ```python
-updates = {
+update_values = {
     'started': lambda: request.now
 }
 ```
@@ -338,10 +342,11 @@ Representation
 Sometimes you need to give a better representation for the value of your entity:
 
 ```python
-representation = {
+repr_values = {
     'started': lambda row, value: prettydate(value)
 }
 ```
+
 and you can render it using:
 
 ```python
@@ -351,13 +356,14 @@ MyModel.started.represent(record, record.started)
 Widgets
 -------
 
-Widgets are used to produce the relevant input part in the form produced from your model. Every `Field` object has a default widget depending on the type you defined, for example the *datetime* has an `<input>` html tag of type *text*. When you need to customize the look of your input parts in the form, you can use your defined widgets and pass them to the model with the appropriate attribute:
+Widgets are used to produce the relevant input part in the form produced from your model. Every `Field` object has a default widget depending on the type you defined, for example the *datetime* has an `<input>` html tag of type *text*. When you need to customize the look of your input blocks in the form, you can use your own widgets and pass them to the model with the appropriate attribute:
 
 ```python
-widgets = {
+form_widgets = {
     'started': my_custom_widget
 }
 ```
+
 where `my_custom_widget` usually look like this:
 
 ```python
@@ -373,10 +379,10 @@ Sometimes you need to access your model attributes when defining other features,
 
 ```python
 def setup(self):
-    # you can access the database, the entity and its fields
+    # you can access the database, the table and its fields
     db = self.db
-    entity = self.entity
-    field = self.entity.fieldname
+    table = self.table
+    field = self.table.fieldname
 ```
 
 Computations
