@@ -31,9 +31,11 @@ class Request(object):
             environ.get('HTTP_X_FORWARDED_PROTO', '').lower() == 'https' or \
             environ.get('HTTPS', '') == 'on' else 'http'
         self.name = '<module>.<func>'
-        self.hostname = environ['HTTP_HOST']
+        self.hostname = environ.get('HTTP_HOST') or '%s:%s' % \
+            (environ.get('SERVER_NAME', ''), environ.get('SERVER_PORT', ''))
         self.method = environ.get('REQUEST_METHOD', 'GET').lower()
-        self.path_info = environ['PATH_INFO']
+        self.path_info = environ.get('PATH_INFO') or \
+            environ.get('REQUEST_URI').split('?')[0]
         self.input = environ.get('wsgi.input')
         self._now_ref = environ['wpp.appnow']
         self.nowutc = environ['wpp.now.utc']
@@ -63,14 +65,14 @@ class Request(object):
         return json_vars
 
     def _parse_post_vars(self):
-        environ = self.environ
         post_vars = self._post_vars = sdict()
         if self.environ.get('CONTENT_TYPE', '')[:16] == 'application/json':
             json_vars = self.__parse_post_json()
             post_vars.update(json_vars)
             return
-        if self.input and environ.get('REQUEST_METHOD') in ('POST', 'PUT', 'DELETE', 'BOTH'):
-            dpost = cgi.FieldStorage(fp=self.input, environ=environ,
+        if self.input and self.environ.get('REQUEST_METHOD') in \
+                ('POST', 'PUT', 'DELETE', 'BOTH'):
+            dpost = cgi.FieldStorage(fp=self.input, environ=self.environ,
                                      keep_blank_values=1)
             try:
                 keys = sorted(dpost)
@@ -80,7 +82,8 @@ class Request(object):
                 dpk = dpost[key]
                 if not isinstance(dpk, list):
                     dpk = [dpk]
-                dpk = [item.value if not item.filename else item for item in dpk]
+                dpk = [item.value if not item.filename else item
+                       for item in dpk]
                 post_vars[key] = dpk
             for (key, value) in self._post_vars.iteritems():
                 if isinstance(value, list) and len(value) == 1:
@@ -88,13 +91,13 @@ class Request(object):
 
     def _parse_all_vars(self):
         self._vars = copy.copy(self.get_vars)
-        for key, value in self.post_vars.iteritems():
-            if not key in self._vars:
-                self._vars[key] = value
+        for key, val in self.post_vars.iteritems():
+            if key not in self._vars:
+                self._vars[key] = val
             else:
                 if not isinstance(self._vars[key], list):
                     self._vars[key] = [self._vars[key]]
-                self._vars[key] += value if isinstance(value, list) else [value]
+                self._vars[key] += val if isinstance(val, list) else [val]
 
     def _parse_client(self):
         import re
@@ -141,12 +144,13 @@ class Request(object):
     @property
     def env(self):
         """
-        lazily parse the environment variables into a storage,
-        for backward compatibility, it is slow
+        lazily parse the environment variables into a sdict
         """
         if not hasattr(self, '_env'):
-            self._env = sdict((k.lower().replace('.', '_'), v)
-                                for (k, v) in self.environ.iteritems())
+            self._env = sdict(
+                (k.lower().replace('.', '_'), v)
+                for (k, v) in self.environ.iteritems()
+            )
         return self._env
 
     @property
@@ -198,7 +202,6 @@ class Response(object):
 
 
 class Current(threading.local):
-
     def initialize(self, environ):
         self.__dict__.clear()
         self.environ = environ
@@ -207,10 +210,9 @@ class Current(threading.local):
         self.session = None
         self._language = environ.get('HTTP_ACCEPT_LANGUAGE')
 
-    ## keep this for templates?
     @property
     def T(self):
-        " lazily allocate the T object "
+        #: lazily allocate translator (mainly for templates)
         if not hasattr(self, '_t'):
             from .language import T
             self._t = T
