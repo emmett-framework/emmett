@@ -57,11 +57,11 @@ class TElement(object):
 
     def __str__(self):
         lang = self.language
-        #: use language provided by http_accept_language or
-        #  url (if forced by application)
         if lang is None:
+            #: use language provided by http_accept_language or
+            #  url (if forced by application), fallback on default language
             from ..globals import current
-            lang = current._language
+            lang = current._language or self.T.current_languages[0]
         return str(self.T.apply_filter(lang, self.m, self.s) if self.M else
                    self.T.translate(lang, self.m, self.s))
 
@@ -240,7 +240,7 @@ class TLanguage(object):
         if mt is not None:
             return mt
         # we did not find a translation
-        if message.find('##') > 0 and not '\n' in message:
+        if message.find('##') > 0 and '\n' not in message:
             # remove comments
             message = message.rsplit('##', 1)[0]
         # guess translation same as original
