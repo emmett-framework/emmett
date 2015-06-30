@@ -222,7 +222,9 @@ class AppModule(object):
 
     def expose(self, path=None, name=None, template=None, **kwargs):
         if name is not None and "." in name:
-            raise RuntimeError("App modules exposed names should not contains dots")
+            raise RuntimeError(
+                "App modules' exposed names should not contains dots"
+            )
         name = self.name+"."+(name or "")
         handlers = kwargs.get('handlers', [])
         helpers = kwargs.get('helpers', [])

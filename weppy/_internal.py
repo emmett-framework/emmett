@@ -63,7 +63,7 @@ def get_root_path(import_name):
 
 def create_missing_app_folders(app):
     try:
-        for subfolder in ['languages', 'logs']:
+        for subfolder in ['languages', 'logs', 'static']:
             path = os.path.join(app.root_path, subfolder)
             if not os.path.exists(path):
                 os.mkdir(path)

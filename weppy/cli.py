@@ -51,7 +51,7 @@ def prepare_exec_for_file(filename):
     elif os.path.split(filename)[1] == '__init__.py':
         filename = os.path.dirname(filename)
     else:
-        raise 'The file provided (%s) does exist but is not a valid Python file.'
+        raise 'The file provided (%s) does is not a valid Python file.'
     filename = os.path.realpath(filename)
 
     dirpath = filename
@@ -130,9 +130,11 @@ def set_app_value(ctx, param, value):
     ctx.ensure_object(ScriptInfo).app_import_path = value
 
 
-app_option = click.Option(['-a', '--app'],
+app_option = click.Option(
+    ['-a', '--app'],
     help='The application to run',
-    callback=set_app_value, is_eager=True)
+    callback=set_app_value, is_eager=True
+)
 
 
 class WeppyGroup(click.Group):

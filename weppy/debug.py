@@ -309,6 +309,7 @@ def make_frame_proxy(frame):
     proxy = TracebackFrameProxy(frame)
     if tproxy is None:
         return proxy
+
     def operation_handler(operation, *args, **kwargs):
         if operation in ('__getattribute__', '__getattr__'):
             return getattr(proxy, args[0])

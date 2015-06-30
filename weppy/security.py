@@ -110,7 +110,7 @@ def secure_dumps(data, encryption_key, hash_key=None, compression_level=None):
 
 
 def secure_loads(data, encryption_key, hash_key=None, compression_level=None):
-    if not ':' in data:
+    if ':' not in data:
         return None
     if not hash_key:
         hash_key = hashlib.sha1(encryption_key).hexdigest()
@@ -139,9 +139,11 @@ def _init_urandom():
     uuid.getnode() + int(time.time() * 1e3)
 
     This is a 48-bit number. It converts the number into 16 8-bit tokens.
-    It uses this value to initialize the entropy source ('/dev/urandom') and to seed random.
+    It uses this value to initialize the entropy source ('/dev/urandom')
+    and to seed random.
 
-    If os.random() is not supported, it falls back to using random and issues a warning.
+    If os.random() is not supported, it falls back to using random and issues
+    a warning.
     """
     node_id = uuidm.getnode()
     microseconds = int(time.time() * 1e6)
@@ -194,11 +196,9 @@ def fast_urandom16(urandom=[], locker=threading.RLock()):
 
 def uuid(ctokens=_UNPACKED_CTOKENS):
     """
-    This function follows from the following discussion:
-    http://groups.google.com/group/web2py-developers/browse_thread/thread/7fd5789a7da3f09
-
     It works like uuid.uuid4 except that tries to use os.urandom() if possible
-    and it XORs the output with the tokens uniquely associated with this machine.
+    and it XORs the output with the tokens uniquely associated with
+    this machine.
     """
     rand_longs = (random.getrandbits(64), random.getrandbits(64))
     if _HAVE_URANDOM:

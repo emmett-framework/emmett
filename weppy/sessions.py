@@ -34,7 +34,6 @@ class SessionCookieManager(Handler):
                 cookie_data, self.key), expires=3600)
         if not current.session:
             current.session = SessionData(expires=3600)
-        #(current.response.flash, current.session.flash) = (current.session.flash, None)
 
     def on_end(self):
         data = secure_dumps(sdict(current.session), self.key)

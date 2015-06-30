@@ -30,7 +30,7 @@ class ConfigData(sdict):
     #: like sdict, except it autogrows creating sub-sdict attributes.
     #  Useful for configurations.
     def _get(self, name):
-        if not name in self.keys():
+        if name not in self.keys():
             self[name] = sdict()
         return super(ConfigData, self).__getitem__(name)
 

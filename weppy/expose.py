@@ -170,7 +170,6 @@ class Expose(object):
             self.hostname or "<any>",
             self.path
         )
-        #self.application.log.info("exposing '%s' as '%s'" % (self.name, self.path))
         self.application.log.info("exposing '%s': %s" % (self.name, logstr))
         Expose._routing_stack.pop()
         return func
@@ -294,7 +293,9 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
         # urls like '.function' refers to main app module
         elif path.startswith('.'):
             if not hasattr(current, 'request'):
-                raise RuntimeError('cannot build url("%s",...) without current request' % path)
+                raise RuntimeError(
+                    'cannot build url("%s",...) without current request' % path
+                )
             module = current.request.name.rsplit('.', 1)[0]
             path = module + path
         # find correct route
@@ -312,7 +313,9 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
                     url = u
                     args = args[len(midargs)-1:]
                 else:
-                    raise RuntimeError('invalid url("%s",...): needs args for params' % path)
+                    raise RuntimeError(
+                        'invalid url("%s",...): needs args for params' % path
+                    )
             # try to use the correct hostname
             if url_host is not None:
                 try:
@@ -349,17 +352,23 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
         vars['_signature'] = sign(url)
     # add vars
     if vars:
-        url = url + '?' + '&'.join('%s=%s' % (q(k), q(v)) for k, v in vars.iteritems())
+        url = url + '?' + '&'.join(
+            '%s=%s' % (q(k), q(v)) for k, v in vars.iteritems()
+        )
     # scheme=True means to use current scheme
     if scheme is True:
         if not hasattr(current, 'request'):
-            raise RuntimeError('cannot build url("%s",...) without current request' % path)
+            raise RuntimeError(
+                'cannot build url("%s",...) without current request' % path
+            )
         scheme = current.request.scheme
     # add scheme and host
     if scheme:
         if host is None:
             if not hasattr(current, 'request'):
-                raise RuntimeError('cannot build url("%s",...) without current request' % path)
+                raise RuntimeError(
+                    'cannot build url("%s",...) without current request' % path
+                )
             host = current.request.hostname
         url = '%s://%s%s' % (scheme, host, url)
     return url
