@@ -46,7 +46,6 @@ class ValidateFromDict(object):
         return minv, maxv, inclusions
 
     def __call__(self, field, data):
-        # 'is', 'equals', 'not', 'match', 'length', 'presence', 'empty'
         validators = []
         #: parse 'presence' and 'empty'
         presence = data.get('presence')
@@ -56,7 +55,6 @@ class ValidateFromDict(object):
         #: parse 'is'
         _is = data.get('is')
         if _is is not None:
-            # TODO 'list'
             #: map types with fields
             if isinstance(_is, basestring):
                 #: map {'is': 'int'}
