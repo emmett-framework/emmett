@@ -21,10 +21,10 @@ from .helpers import options_sorter, translate
 class inRange(Validator):
     def __init__(self, minimum=None, maximum=None, include=(True, False),
                  message=None):
+        Validator.__init__(self, message)
         self.minimum = minimum
         self.maximum = maximum
         self.inc = include
-        self.message = message
 
     def _gt(self, val1, val2, eq=False):
         if eq:
@@ -65,8 +65,9 @@ class inSet(Validator):
     Check that value is one of the given list or set.
     """
 
-    def __init__(self, theset, labels=None, message='Value not allowed',
-                 multiple=False, zero=None, sort=False):
+    def __init__(self, theset, labels=None, multiple=False, zero=None,
+                 sort=False, message=None):
+        Validator.__init__(self, message)
         self.multiple = multiple
         #if isinstance(theset, dict):
         #    self.theset = [str(item) for item in theset]
@@ -79,7 +80,6 @@ class inSet(Validator):
         else:
             self.theset = [str(item) for item in theset]
             self.labels = labels
-        self.message = message
         self.zero = zero
         self.sort = sort
 

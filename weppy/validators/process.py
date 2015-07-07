@@ -22,7 +22,7 @@ class Cleanup(Validator):
 
     rule = re.compile('[^\x09\x0a\x0d\x20-\x7e]')
 
-    def __init__(self, regex=None):
+    def __init__(self, regex=None, message=None):
         self.regex = self.rule if regex is None else re.compile(regex)
 
     def __call__(self, value):
@@ -46,6 +46,7 @@ class Upper(Validator):
 
 class Urlify(Validator):
     """converts arbitrary text string to a valid url string"""
+    message = "Not convertible to url"
 
     def _urlify(self, s):
         """
@@ -81,8 +82,9 @@ class Urlify(Validator):
         # enforce maximum length
         return s[:self.maxlen]
 
-    def __init__(self, maxlen=80, check=False, message='Must be slug',
-                 keep_underscores=False):
+    def __init__(self, maxlen=80, check=False, keep_underscores=False,
+                 message=None):
+        Validator.__init__(self, message)
         self.maxlen = maxlen
         self.check = check
         self.message = message
@@ -127,10 +129,9 @@ class Crypt(Validator):
     """
 
     def __init__(self, key=None, algorithm='pbkdf2(1000,20,sha512)',
-                 message='Too short', salt=True):
+                 salt=True, message=None):
         self.key = key
         self.digest_alg = algorithm
-        self.message = message
         self.salt = salt
 
     def __call__(self, value):

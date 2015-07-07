@@ -105,7 +105,9 @@ class Allow(Validator):
 
 
 class isEmpty(Validator):
-    def __init__(self, message='No value allowed', empty_regex=None):
+    message = "No value allowed"
+
+    def __init__(self, empty_regex=None, message=None):
         Validator.__init__(self, message)
         if empty_regex is not None:
             self.empty_regex = re.compile(empty_regex)
@@ -115,17 +117,12 @@ class isEmpty(Validator):
     def __call__(self, value):
         value, empty = is_empty(value, empty_regex=self.empty_regex)
         if empty:
-            return value, None
+            return None, None
         return value, translate(self.message)
 
 
-class isntEmpty(Validator):
-    def __init__(self, message='Enter a value', empty_regex=None):
-        Validator.__init__(self, message)
-        if empty_regex is not None:
-            self.empty_regex = re.compile(empty_regex)
-        else:
-            self.empty_regex = None
+class isntEmpty(isEmpty):
+    message = "Cannot be empty"
 
     def __call__(self, value):
         value, empty = is_empty(value, empty_regex=self.empty_regex)
@@ -134,13 +131,10 @@ class isntEmpty(Validator):
         return value, None
 
 
-class isEmptyOr(Validator):
-    def __init__(self, other, null=None, empty_regex=None):
-        (self.other, self.null) = (other, null)
-        if empty_regex is not None:
-            self.empty_regex = re.compile(empty_regex)
-        else:
-            self.empty_regex = None
+class isEmptyOr(isEmpty):
+    def __init__(self, other, empty_regex=None, message=None):
+        isEmpty.__init__(self, empty_regex, message)
+        self.other = other
         if hasattr(other, 'multiple'):
             self.multiple = other.multiple
         if hasattr(other, 'options'):
@@ -164,7 +158,7 @@ class isEmptyOr(Validator):
     def __call__(self, value):
         value, empty = is_empty(value, empty_regex=self.empty_regex)
         if empty:
-            return (self.null, None)
+            return None, None
         if isinstance(self.other, (list, tuple)):
             error = None
             for item in self.other:
@@ -182,9 +176,11 @@ class isEmptyOr(Validator):
 
 
 class Equals(Validator):
-    def __init__(self, expression, message='No match'):
+    message = 'No match'
+
+    def __init__(self, expression, message=None):
+        Validator.__init__(self, message)
         self.expression = expression
-        self.message = message
 
     def __call__(self, value):
         if value == self.expression:
@@ -232,13 +228,14 @@ class hasLength(Validator):
         maxsize: maximum allowed length / size
         minsize: minimum allowed length / size
     """
+    message = 'Enter from %(min)g to %(max)g characters'
 
     def __init__(self, maxsize=256, minsize=0, include=(True, False),
-                 message='Enter from %(min)g to %(max)g characters'):
+                 message=None):
+        Validator.__init__(self, message)
         self.maxsize = maxsize
         self.minsize = minsize
         self.inc = include
-        self.message = message
 
     def _between(self, value):
         if self.inc[0]:
