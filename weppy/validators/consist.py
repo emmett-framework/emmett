@@ -122,11 +122,14 @@ class isDate(_is):
             strptime(value, str(self.format))
         return date(y, m, d)
 
+    def _check_instance(self, value):
+        return isinstance(value, date)
+
     def check(self, value):
-        if isinstance(value, date):
+        if self._check_instance(value):
             if self.timezone is not None:
-                val = value - timedelta(seconds=self.timezone*3600)
-            return val, None
+                value = value - timedelta(seconds=self.timezone*3600)
+            return value, None
         try:
             val = self._parse(value)
             if self.timezone is not None:
@@ -174,6 +177,9 @@ class isDatetime(isDate):
         (y, m, d, hh, mm, ss, t0, t1, t2) = \
             strptime(value, str(self.format))
         return datetime(y, m, d, hh, mm, ss)
+
+    def _check_instance(self, value):
+        return isinstance(value, datetime)
 
     def _formatter_obj(self, year, value):
         return datetime(year, value.month, value.day, value.hour, value.minute,

@@ -4,6 +4,17 @@ from ...globals import current, request
 from ...security import uuid
 
 
+def _now():
+    if hasattr(current, 'request'):
+        return request.now
+    return datetime.utcnow()
+
+
+class TimestampedModel(Model):
+    created_at = Field('datetime', default=_now, rw=False)
+    updated_at = Field('datetime', default=_now, update=_now, rw=False)
+
+
 class AuthModel(Model):
     auth = None
 
@@ -59,7 +70,7 @@ class AuthModel(Model):
                 self.auth.settings[setting] = l
 
 
-class AuthUserBasic(AuthModel):
+class AuthUserBasic(AuthModel, TimestampedModel):
     format = '%(email)s (%(id)s)'
     #: injected by Auth
     #  has_many(
@@ -93,7 +104,7 @@ class AuthUser(AuthUserBasic):
     }
 
 
-class AuthGroup(Model):
+class AuthGroup(TimestampedModel):
     format = '%(role)s (%(id)s)'
     #: injected by Auth
     #  has_many(
@@ -111,13 +122,13 @@ class AuthGroup(Model):
     }
 
 
-class AuthMembership(Model):
+class AuthMembership(TimestampedModel):
     #: injected by Auth
     #  belongs_to({'user': 'AuthUser'}, {'authgroup': 'AuthGroup'})
     pass
 
 
-class AuthPermission(Model):
+class AuthPermission(TimestampedModel):
     #: injected by Auth
     #  belongs_to({'authgroup': 'AuthGroup'})
 
@@ -136,17 +147,15 @@ class AuthPermission(Model):
     }
 
 
-class AuthEvent(Model):
+class AuthEvent(TimestampedModel):
     #: injected by Auth
     #  belongs_to({'user': 'AuthUser'})
 
-    time_stamp = Field('datetime')
     client_ip = Field()
     origin = Field(length=512, notnull=True)
     description = Field('text', notnull=True)
 
     default_values = {
-        'time_stamp': lambda: datetime.utcnow(),
         'client_ip': lambda:
             request.client if hasattr(current, 'request') else 'unavailable',
         'origin': 'auth',
@@ -155,7 +164,6 @@ class AuthEvent(Model):
 
     #: labels injected by Auth
     form_labels = {
-        'time_stamp': 'Timestamp',
         'client_ip': 'Client IP',
         'origin': 'Origin',
         'description': 'Description'

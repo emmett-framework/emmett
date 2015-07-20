@@ -333,11 +333,11 @@ def test_validation(db):
     assert len(errors) == 1
     mario = {'name': 'mario', 'surname': 'draghi'}
     mario = Person.create(mario)
-    assert len(mario.errors) == 0
+    assert len(mario.errors.keys()) == 0
     assert mario.id == 1
     thing = {'name': 'euro', 'person': mario.id, 'color': 'red', 'uid': 'lol'}
     thing = Thing.create(thing)
-    assert len(thing.errors) == 0
+    assert len(thing.errors.keys()) == 0
     thing = {'name': 'euro2', 'person': mario.id, 'color': 'red', 'uid': 'lol'}
     errors = Thing.validate(thing)
     assert len(errors) == 1
@@ -360,70 +360,70 @@ def test_multi(db):
     #: everything ok
     res = Mixed.create(base_data)
     assert res.id == 1
-    assert len(res.errors) == 0
+    assert len(res.errors.keys()) == 0
     #: invalid belongs
     vals = dict(base_data)
     del vals['person']
     res = Mixed.create(vals)
     assert res.id is None
-    assert len(res.errors) == 1
+    assert len(res.errors.keys()) == 1
     assert 'person' in res.errors
     #: invalid date range
     vals = dict(base_data)
     vals['date'] = '{0:%d/%m/%Y}'.format(datetime.utcnow()-timedelta(days=2))
     res = Mixed.create(vals)
     assert res.id is None
-    assert len(res.errors) == 1
+    assert len(res.errors.keys()) == 1
     assert 'date' in res.errors
     #: invalid date format
     vals['date'] = '76-12-1249'
     res = Mixed.create(vals)
     assert res.id is None
-    assert len(res.errors) == 1
+    assert len(res.errors.keys()) == 1
     assert 'date' in res.errors
     #: invalid in
     vals = dict(base_data)
     vals['type'] = ' '
     res = Mixed.create(vals)
     assert res.id is None
-    assert len(res.errors) == 1
+    assert len(res.errors.keys()) == 1
     assert 'type' in res.errors
     #: empty number
     vals = dict(base_data)
     vals['number'] = None
     res = Mixed.create(vals)
     assert res.id == 2
-    assert len(res.errors) == 0
+    assert len(res.errors.keys()) == 0
     #: invalid number
     vals = dict(base_data)
     vals['number'] = 'asd'
     res = Mixed.create(vals)
     assert res.id is None
-    assert len(res.errors) == 1
+    assert len(res.errors.keys()) == 1
     assert 'number' in res.errors
     #: invalid empty
     vals = dict(base_data)
     vals['dont'] = '2'
     res = Mixed.create(vals)
     assert res.id is None
-    assert len(res.errors) == 1
+    assert len(res.errors.keys()) == 1
     assert 'dont' in res.errors
     #: invalid presence
     vals = dict(base_data)
     vals['yep'] = ''
     res = Mixed.create(vals)
     assert res.id is None
-    assert len(res.errors) == 1
+    assert len(res.errors.keys()) == 1
     assert 'yep' in res.errors
     #: invalid password
     vals = dict(base_data)
     vals['psw'] = ''
     res = Mixed.create(vals)
     assert res.id is None
-    assert len(res.errors) == 1
+    assert len(res.errors.keys()) == 1
     assert 'psw' in res.errors
     vals['psw'] = 'aksjfalsdkjflkasjdflkajsldkjfalslkdfjaslkdjf'
     res = Mixed.create(vals)
     assert res.id is None
-    assert len(res.errors) == 1
+    assert len(res.errors.keys()) == 1
     assert 'psw' in res.errors

@@ -329,22 +329,23 @@ class Model(object):
 
     @classmethod
     def create(cls, *args, **kwargs):
-        rv = sdict(id=None)
-        vals = sdict()
-        errors = sdict()
+        #rv = sdict(id=None)
+        #vals = sdict()
+        #errors = sdict()
         if args:
             if isinstance(args[0], (dict, sdict)):
                 for key in list(args[0]):
                     kwargs[key] = args[0][key]
-        for field in cls.table.fields:
-            value = kwargs.get(field)
-            vals[field], error = cls.table[field].validate(value)
-            if error:
-                errors[field] = error
-        if not errors:
-            rv.id = cls.table.insert(**vals)
-        rv.errors = errors
-        return rv
+        #for field in cls.table.fields:
+        #    value = kwargs.get(field)
+        #    vals[field], error = cls.table[field].validate(value)
+        #    if error:
+        #        errors[field] = error
+        #if not errors:
+        #    rv.id = cls.table.insert(**vals)
+        #rv.errors = errors
+        #return rv
+        return cls.table.validate_and_insert(**kwargs)
 
     @classmethod
     def validate(cls, row):
