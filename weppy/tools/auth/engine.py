@@ -230,24 +230,24 @@ class Auth(object):
         else:
             return True
 
-    def define_models(self):
-        def get_modelnames():
-            rv = {}
-            def_names = {
-                'user': 'user',
-                'group': 'authgroup',
-                'membership': 'authmembership',
-                'permission': 'authpermission',
-                'event': 'authevent'
-            }
-            for m in ['user', 'group', 'membership', 'permission', 'event']:
-                if self.settings.models[m] == default_settings.models[m]:
-                    rv[m] = def_names[m]
-                else:
-                    rv[m] = self.settings.models[m].__name__.lower()
-            return rv
+    def __get_modelnames(self):
+        rv = {}
+        def_names = {
+            'user': 'user',
+            'group': 'authgroup',
+            'membership': 'authmembership',
+            'permission': 'authpermission',
+            'event': 'authevent'
+        }
+        for m in ['user', 'group', 'membership', 'permission', 'event']:
+            if self.settings.models[m] == default_settings.models[m]:
+                rv[m] = def_names[m]
+            else:
+                rv[m] = self.settings.models[m].__name__.lower()
+        return rv
 
-        names = get_modelnames()
+    def define_models(self):
+        names = self.__get_modelnames()
         models = self.settings.models
         #: AuthUser
         user_model = models['user']
@@ -729,7 +729,7 @@ class Auth(object):
         group_id = self.table_group.insert(
             role=role, description=description)
         self.log_event(self.messages['add_group_log'],
-                       dict(authgroup=group_id, role=role))
+                       dict(group_id=group_id, role=role))
         return group_id
 
     def del_group(self, group_id):
@@ -831,50 +831,31 @@ class Auth(object):
         return ret
 
     def has_permission(self, name='any', table_name='', record_id=0,
-                       user_id=None, group_id=None):
+                       user=None, group=None):
         """
         checks if user_id or current logged in user is member of a group
         that has 'name' permission on 'table_name' and 'record_id'
         if group_id is passed, it checks whether the group has the permission
         """
-
-        if not group_id and self.settings.everybody_group_id and \
-            self.has_permission(
-                name, table_name, record_id, user_id=None,
-                group_id=self.settings.everybody_group_id):
-                    return True
-
-        if not user_id and not group_id and self.user:
-            user_id = self.user.id
-        if user_id:
-            rows = self.db(self.table_membership.user_id == user_id).select(
-                self.table_membership.group_id)
-            groups = set([row.group_id for row in rows])
-            if group_id and group_id not in groups:
+        names = self.__get_modelnames()
+        query = (
+            (self.table_permission.name == name) &
+            (self.table_permission.table_name == table_name) &
+            (self.table_permission.record_id == record_id)
+        )
+        if user is not None:
+            parent = self.table_user(id=user)
+        elif group is not None:
+            parent = self.table_group(id=group)
+        else:
+            if not self.user:
                 return False
-        else:
-            groups = set([group_id])
-        rows = self.db(self.table_permission.name == name)(
-            self.table_permission.table_name == str(table_name))(
-            self.table_permission.record_id == record_id).select(
-            self.table_permission.group_id)
-        groups_required = set([row.group_id for row in rows])
-        if record_id:
-            rows = self.db(self.table_permission.name == name)(
-                self.table_permission.table_name == str(table_name))(
-                self.table_permission.record_id == 0).select(
-                self.table_permission.group_id)
-            groups_required = groups_required.union(set(
-                [row.group_id for row in rows]))
-        if groups.intersection(groups_required):
-            r = True
-        else:
-            r = False
-        if user_id:
-            self.log_event(self.messages['has_permission_log'],
-                           dict(user=user_id, name=name,
-                                table_name=table_name, record_id=record_id))
-        return r
+            parent = self.user
+
+        rows = parent[names['permission']+'s'](query=query)
+        if rows:
+            return True
+        return False
 
     def add_permission(self, group_id, name='any', table_name='', record_id=0):
         """
@@ -883,7 +864,7 @@ class Auth(object):
 
         if group_id == 0:
             group_id = self.user_group()
-        record = self.db(self.table_permission.group_id == group_id)(
+        record = self.db(self.table_permission.authgroup == group_id)(
             self.table_permission.name == name)(
             self.table_permission.table_name == str(table_name))(
             self.table_permission.record_id == long(record_id)).select(
@@ -892,10 +873,10 @@ class Auth(object):
             id = record.id
         else:
             id = self.table_permission.insert(
-                group_id=group_id, name=name, table_name=str(table_name),
+                authgroup=group_id, name=name, table_name=str(table_name),
                 record_id=long(record_id))
         self.log_event(self.messages['add_permission_log'],
-                       dict(permission_id=id, authgroup=group_id,
+                       dict(permission_id=id, group_id=group_id,
                             name=name, table_name=table_name,
                             record_id=record_id))
         return id
@@ -907,9 +888,9 @@ class Auth(object):
 
         self.log_event(
             self.messages['del_permission_log'],
-            dict(authgroup=group_id, name=name, table_name=table_name,
+            dict(group_id=group_id, name=name, table_name=table_name,
                  record_id=record_id))
-        return self.db(self.table_permission.group_id == group_id)(
+        return self.db(self.table_permission.authgroup == group_id)(
             self.table_permission.name == name)(
             self.table_permission.table_name == str(table_name))(
             self.table_permission.record_id == long(record_id)).delete()

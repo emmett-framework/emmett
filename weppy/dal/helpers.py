@@ -27,7 +27,7 @@ class HasManySet(LazySet):
     def __call__(self, query=None, **kwargs):
         if query is None:
             return self.select(**kwargs)
-        return LazySet.__call__(self, query, **kwargs)
+        return LazySet.__call__(self, query).select(**kwargs)
 
     def add(self, **data):
         rv = None
@@ -60,7 +60,7 @@ class HasManyViaSet(Set):
     def __call__(self, query=None, **kwargs):
         if query is None:
             return self.select(self._rfield, **kwargs)
-        return Set.__call__(self, query, **kwargs)
+        return Set.__call__(self, query).select(**kwargs)
 
     def add(self, obj):
         # works for 3 tables way only!
