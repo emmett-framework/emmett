@@ -144,7 +144,10 @@ class inDB(Validator):
         # TODO: parse set if is not table
 
     def _get_set(self):
-        return self.db(self.db[self.set].id > 0).select().as_list()
+        self.db._adapter.reconnect()
+        rv = self.db(self.db[self.set].id > 0).select().as_list()
+        self.db._adapter.close()
+        return rv
 
     def options(self, zero=True):
         records = self._get_set()
@@ -152,12 +155,12 @@ class inDB(Validator):
             items = [(r['id'], str(r[self.label_field]))
                      for (i, r) in enumerate(records)]
         else:
-            items = [(r['id'], self.db[self.set][self.field]._format % r)
+            items = [(r['id'], self.db[self.set]._format % r)
                      for (i, r) in enumerate(records)]
-        if self.sort:
-            items.sort(options_sorter)
-        if zero and self.zero is not None and not self.multiple:
-            items.insert(0, ('', self.zero))
+        #if self.sort:
+        #    items.sort(options_sorter)
+        #if zero and self.zero is not None and not self.multiple:
+        #    items.insert(0, ('', self.zero))
         return items
 
     def __call__(self, value):
@@ -184,13 +187,12 @@ class notInDB(Validator):
         self.field = field
         self.record_id = None
 
-    def set_self_id(self, rid):
-        self.record_id = rid
-
     def __call__(self, value):
         field = self.db[self.set][self.field]
         row = self.db(field == value).select().first()
         if row:
-            if row.id != self.record_id:
+            from ..globals import current
+            record_id = getattr(current, '_form_validation_record_id_', None)
+            if row.id != record_id:
                 return value, translate(self.message)
         return value, None

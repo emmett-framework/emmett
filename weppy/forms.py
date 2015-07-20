@@ -92,9 +92,6 @@ class Form(TAG):
         if len(session._csrf_tokens) > 10:
             session._csrf_tokens = {}
 
-    def _validate_field(self, field, value):
-        return field.validate(value)
-
     @property
     def _submitted(self):
         if self.csrf:
@@ -124,7 +121,7 @@ class Form(TAG):
             # validate input
             for field in self.fields:
                 value = self._get_input_val(field)
-                value, error = self._validate_field(field, value)
+                value, error = field.validate(value)
                 if error:
                     self.errors[field.name] = error
                 else:
@@ -233,19 +230,15 @@ class DALForm(Form):
         #: finally init the form
         self._preprocess_(**attributes)
 
-    def _validate_field(self, field, value):
-        #: needed to handle IS_NOT_IN_DB validator
-        if self.record:
-            requires = field.requires or []
-            if not isinstance(requires, (list, tuple)):
-                requires = [requires]
-            for item in requires:
-                if hasattr(item, 'set_self_id'):
-                    item.set_self_id(self.record.id)
-        return Form._validate_field(self, field, value)
-
     def _process(self):
+        #: send record id to validators if needed
+        current._form_validation_record_id_ = None
+        if self.record:
+            current._form_validation_record_id_ = self.record.id
+        #: load super `_process`
         Form._process(self)
+        #: clear current and run additional operations for DAL
+        del current._form_validation_record_id_
         if self.accepted:
             for field in self.fields:
                 #: handle uploads
@@ -302,9 +295,7 @@ class FormStyle(object):
                 return field.represent(value)
             return value
 
-        options = field.requires[0].options() if \
-            isinstance(field.requires, (list, tuple)) else \
-            field.requires.options()
+        options = field.requires[0].options()
         option_items = [(k, represent(n)) for k, n in options]
         return option_items
 
@@ -359,7 +350,7 @@ class FormStyle(object):
             return 'selected' if str(value) == str(k) else None
 
         options = FormStyle._field_options(field)
-        if field.requires.multiple:
+        if field.requires[0].multiple:
             return FormStyle.widget_multiple(attr, field, value, options,
                                              _class=_class, _id=_id)
         option_items = [tag.option(n, _value=k, _selected=selected(k))
@@ -407,8 +398,6 @@ class FormStyle(object):
             else:
                 elements.append(tag.div(tag.a(_value, _href=url)))
             requires = field.requires or []
-            if not isinstance(requires, (list, tuple)):
-                requires = [requires]
             # delete checkbox
             from .validators import isEmptyOr
             if not requires or (isinstance(v, isEmptyOr) for v in requires):
@@ -434,15 +423,16 @@ class FormStyle(object):
         if field.widget:
             return field.widget(field, value), True
         wtype = field._type.split(":")[0]
-        if hasattr(field.requires, 'options'):
+        if wtype != 'bool' and len(field.requires) and \
+                hasattr(field.requires[0], 'options'):
             wtype = 'select'
-        if wtype.startswith('reference'):
+        elif wtype.startswith('reference'):
             wtype = 'int'
         widget_id = self.attr["id_prefix"] + field.name
         try:
             return getattr(self, "widget_"+wtype)(
                 self.attr, field, value, _id=widget_id), False
-        except:
+        except AttributeError:
             raise RuntimeError("Missing form widget for field %s of type %s" %
                                (field.name, wtype))
 

@@ -34,6 +34,20 @@ class Validator(object):
         return value, None
 
 
+class ParentValidator(Validator):
+    def __init__(self, children, message=None):
+        Validator.__init__(self, message)
+        if not isinstance(children, (list, tuple)):
+            children = [children]
+        self.children = children
+
+    def formatter(self, value):
+        for child in self.children:
+            if hasattr(child, 'formatter') and child(value)[1] != None:
+                return child.formatter(value)
+        return value
+
+
 class _is(Validator):
     rule = None
     message = "Invalid value"
@@ -66,39 +80,29 @@ class Not(Validator):
         return value, None
 
 
-class Any(Validator):
-    def __init__(self, validators, message=None):
-        Validator.__init__(self, message)
-        self.conditions = validators
-
-    def formatter(self, value):
-        # Use the formatter of the first subvalidator that has a formatter
-        for condition in self.conditions:
-            if hasattr(condition, 'formatter') and condition(value)[1] != None:
-                return condition.formatter(value)
-
+class Any(ParentValidator):
     def __call__(self, value):
-        for condition in self.conditions:
-            value, error = condition(value)
+        for child in self.children:
+            value, error = child(value)
             if error is None:
                 break
         return value, error
 
 
-class Allow(Validator):
-    def __init__(self, value, validators, message=None):
-        Validator.__init__(self, message)
-        if not isinstance(validators, (list, tuple)):
-            validators = [validators]
-        self.conditions = validators
+class Allow(ParentValidator):
+    def __init__(self, value, children, message=None):
+        ParentValidator.__init__(self, children, message)
         self.value = value
+
+    def formatter(self, value):
+        return value
 
     def __call__(self, value):
         val = value
         comparing = self.value() if callable(self.value) else self.value
         if value is not comparing:
-            for condition in self.conditions:
-                value, error = condition(value)
+            for child in self.children:
+                value, error = child(value)
                 if error:
                     return val, error
         return value, None
@@ -131,48 +135,36 @@ class isntEmpty(isEmpty):
         return value, None
 
 
-class isEmptyOr(isEmpty):
-    def __init__(self, other, empty_regex=None, message=None):
-        isEmpty.__init__(self, empty_regex, message)
-        self.other = other
-        if hasattr(other, 'multiple'):
-            self.multiple = other.multiple
-        if hasattr(other, 'options'):
-            self.options = self._options
+class isEmptyOr(ParentValidator, isEmpty):
+    def __init__(self, children, empty_regex=None, message=None):
+        ParentValidator.__init__(self, children, message)
+        isEmpty.__init__(self, empty_regex)
+        for child in children:
+            if hasattr(child, 'multiple'):
+                self.multiple = child.multiple
+                break
+        for child in children:
+            if hasattr(child, 'options'):
+                self._options_ = child.options
+                self.options = self._get_options_
+                break
 
-    def _options(self):
-        options = self.other.options()
+    def _get_options_(self):
+        options = self._options_()
         if (not options or options[0][0] != '') and not self.multiple:
             options.insert(0, ('', ''))
         return options
-
-    def set_self_id(self, id):
-        if isinstance(self.other, (list, tuple)):
-            for item in self.other:
-                if hasattr(item, 'set_self_id'):
-                    item.set_self_id(id)
-        else:
-            if hasattr(self.other, 'set_self_id'):
-                self.other.set_self_id(id)
 
     def __call__(self, value):
         value, empty = is_empty(value, empty_regex=self.empty_regex)
         if empty:
             return None, None
-        if isinstance(self.other, (list, tuple)):
-            error = None
-            for item in self.other:
-                value, error = item(value)
-                if error:
-                    break
-            return value, error
-        else:
-            return self.other(value)
-
-    def formatter(self, value):
-        if hasattr(self.other, 'formatter'):
-            return self.other.formatter(value)
-        return value
+        error = None
+        for child in self.children:
+            value, error = child(value)
+            if error:
+                break
+        return value, error
 
 
 class Equals(Validator):

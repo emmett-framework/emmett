@@ -295,7 +295,7 @@ def test_presence(db):
     assert len(Thing.color.requires) == 2
     assert isinstance(Thing.color.requires[0], hasLength)
     assert isinstance(Thing.color.requires[1], inSet)
-    assert isinstance(Thing.person.requires[1], inDB)
+    assert isinstance(Thing.person.requires[0], inDB)
 
 
 def test_unique(db):
@@ -306,9 +306,9 @@ def test_allow(db):
     assert isinstance(Allowed.a.requires[0], Allow)
     assert isinstance(Allowed.b.requires[0], isEmptyOr)
     assert isinstance(Allowed.c.requires[0], isEmptyOr)
-    assert isinstance(Allowed.a.requires[0].conditions[1], inSet)
-    assert isinstance(Allowed.b.requires[0].other[1], inSet)
-    assert isinstance(Allowed.c.requires[0].other[1], inSet)
+    assert isinstance(Allowed.a.requires[0].children[1], inSet)
+    assert isinstance(Allowed.b.requires[0].children[1], inSet)
+    assert isinstance(Allowed.c.requires[0].children[1], inSet)
 
 
 def test_validation(db):
