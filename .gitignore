@@ -5,4 +5,7 @@
 .pydevproject
 build/*
 dist/*
+tests/databases/*
+tests/logs/*
+tests/private/*
 weppy.egg-info/*

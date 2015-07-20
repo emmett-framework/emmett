@@ -29,7 +29,7 @@ class MetaModel(type):
         super_relations = sdict(
             _belongs_ref_=[], _hasone_ref_=[], _hasmany_ref_=[]
         )
-        for base in reversed(new_class.__mro__):
+        for base in reversed(new_class.__mro__[1:]):
             # collect fields from base class
             if hasattr(base, '_declared_fields_'):
                 #all_fields.update(base._all_fields_)

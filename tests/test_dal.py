@@ -181,13 +181,52 @@ class NeedSplit(Model):
     name = Field()
 
 
+class Zoo(Model):
+    has_many('animals', 'elephants')
+    name = Field()
+
+
+class Animal(Model):
+    belongs_to('zoo')
+    name = Field()
+
+    @virtualfield('doublename')
+    def get_double_name(self, row):
+        return row.name*2
+
+    @virtualfield('pretty')
+    def get_pretty(self, row):
+        return row.name
+
+    @before_insert
+    def bi(self):
+        pass
+
+    @before_insert
+    def bi2(self):
+        pass
+
+
+class Elephant(Animal):
+    belongs_to('mouse')
+    color = Field()
+
+    @virtualfield('pretty')
+    def get_pretty(self, row):
+        return row.name+" "+row.color
+
+    @before_insert
+    def bi2(self):
+        pass
+
+
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
     db = DAL(app, config=sdict(uri='sqlite://dal.db'))
     db.define_models([
         Stuff, Person, Thing, Feature, Price, Doctor, Patient, Appointment,
-        House, Mouse, NeedSplit
+        House, Mouse, NeedSplit, Zoo, Animal, Elephant
     ])
     return db
 
@@ -321,3 +360,20 @@ def test_tablenames(db):
     assert db.House == db.houses
     assert db.Mouse == db.mice
     assert db.NeedSplit == db.need_splits
+
+
+def test_inheritance(db):
+    assert 'name' in db.Animal.fields
+    assert 'name' in db.Elephant.fields
+    assert 'zoo' in db.Animal.fields
+    assert 'zoo' in db.Elephant.fields
+    assert 'color' in db.Elephant.fields
+    assert 'color' not in db.Animal.fields
+    assert Elephant._declared_virtuals_['get_double_name'] is \
+        Animal._declared_virtuals_['get_double_name']
+    assert Elephant._declared_virtuals_['get_pretty'] is not \
+        Animal._declared_virtuals_['get_pretty']
+    assert Elephant._declared_callbacks_['bi'] is \
+        Animal._declared_callbacks_['bi']
+    assert Elephant._declared_callbacks_['bi2'] is not \
+        Animal._declared_callbacks_['bi2']
