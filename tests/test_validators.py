@@ -16,7 +16,7 @@ from weppy.dal import DAL, Model, Field, has_many, belongs_to
 from weppy.validators import isEmptyOr, hasLength, isInt, isFloat, isDate, \
     isTime, isDatetime, isJSON, isntEmpty, inSet, inDB, isEmail, isUrl, isIP, \
     isImage, inRange, Equals, Lower, Upper, Cleanup, Urlify, Crypt, notInDB, \
-    Allow, Not
+    Allow, Not, Matches
 
 
 class A(Model):
@@ -137,6 +137,16 @@ class Eq(Model):
     }
 
 
+class Match(Model):
+    a = Field()
+    b = Field()
+
+    validation = {
+        'a': {'match': 'ab'},
+        'b': {'match': {'expression': 'ab', 'strict': True}}
+    }
+
+
 class Person(Model):
     has_many('things')
 
@@ -191,8 +201,8 @@ def db():
     app = App(__name__)
     db = DAL(app, config=sdict(uri='sqlite://validators.db'))
     db.define_models([
-        A, AA, AAA, B, Consist, Len, Inside, Num, Eq, Proc, Person, Thing,
-        Allowed, Mixed
+        A, AA, AAA, B, Consist, Len, Inside, Num, Eq, Match, Proc, Person,
+        Thing, Allowed, Mixed
     ])
     return db
 
@@ -271,6 +281,11 @@ def test_eq(db):
     assert isinstance(Eq.b.requires[1], Equals)
     assert isinstance(Eq.c.requires[1], Not)
     assert isinstance(Eq.c.requires[1].conditions[0], Equals)
+
+
+def test_match(db):
+    assert isinstance(Match.a.requires[1], Matches)
+    assert isinstance(Match.b.requires[1], Matches)
 
 
 def test_processors(db):
@@ -442,7 +457,20 @@ def test_validation(db):
     errors = Eq.validate(d)
     assert 'c' in errors and len(errors) == 1
     #: 'match'
-    # TODO
+    match_data = {'a': 'abc', 'b': 'ab'}
+    errors = Match.validate(match_data)
+    assert not errors
+    d = dict(match_data)
+    d['a'] = 'lol'
+    errors = Match.validate(d)
+    assert 'a' in errors and len(errors) == 1
+    d = dict(match_data)
+    d['b'] = 'abc'
+    errors = Match.validate(d)
+    assert 'b' in errors and len(errors) == 1
+    d['b'] = 'lol'
+    errors = Match.validate(d)
+    assert 'b' in errors and len(errors) == 1
     #: 'allow'
     allow_data = {'a': 'a', 'b': 'a', 'c': 'a'}
     errors = Allowed.validate(allow_data)

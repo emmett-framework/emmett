@@ -187,7 +187,30 @@ Basically the `'equals'` validators perform a `==` check between the input value
 Match input
 -----------
 
-*section under writing*
+When you want to validate a match of a regex *expression*, you can use the `'match'` validation helper. For example, let say you want to validate a ZIP code:
+
+```python
+zip = Field(validation={'match': '^\d{5}(-\d{4})?$'})
+```
+
+or a phone number:
+
+```python
+phone = Field(validation={'match': '^1?((-)\d{3}-?|\(\d{3}\))\d{3}-?\d{4}$'})
+```
+
+`'match'` also accepts two some parameters:   
+
+- the `search` parameter (default to `False`), which will use the regex method `search` instead of the `match` one
+- the `strict` parameter (default to `False`), which will only matches the beginning of the string.
+
+In this example, due to the `strict` parameter, the value for the first field will pass validation and the second won't:
+
+```python
+normal = Field(validation={'match': 'ab'})
+strict = Field(validation={'match': {'expression': 'ab', 'strict': True}})
+Model.validate({'normal': 'abc', 'strict': 'abc'})
+```
 
 Exclusion
 ---------
