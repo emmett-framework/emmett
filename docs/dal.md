@@ -278,7 +278,7 @@ group = user.membership.group
 So, if you use relationships quite often in your code, you will end with less lines of code.
 
 > *Technical note:*   
-> `has_one` and `has_many` don't create columns inside your tables. While `belongs_to` adds a `reference` Field inside your model, and you will have a column for the id of the referenced record, `has_one` will create a `Field.Virtual` object that will be computed on selects, and `has_many` will create a `Field.Method` object that will be computed on call.
+> `has_one` and `has_many` don't create columns inside your tables. While `belongs_to` adds a `reference` Field inside your model, and you will have a column for the id of the referenced record, `has_one` and `has_many` will create a `Field.Virtual` object that will be included in the rows on selects.
 
 Obviously, you can use `reference` fields and write down your own `Model` methods as we will se in the next paragraphs; so finally, you can choose whatever way fits good for your project.
 
@@ -523,12 +523,12 @@ But how you can define your methods?
 Let's say, for example that you want a shortcut for querying record in your model `Series` with the same basic condition, like the case when you need to call in several parts of your code only records owned by the authenticated user. Assuming you have your user id stored in session, you can write down something like this in your model:
 
 ```python
-@modelmethod
-def find_owned(db, entity, query=None):
-    _query = (entity.owner == session.user)
+@classmethod
+def find_owned(cls, query=None):
+    _query = (cls.owner == session.user)
     if query:
         _query = _query & query
-    return db(_query).select()
+    return cls.db(_query).select()
 ```
 now you can do:
 
@@ -537,7 +537,7 @@ my_series = Series.find_owned()
 ```
 and you're done.
 
-As you observed, `modelmethod` decorator requires that your method accepts `db` and `entity` as first parameters. In fact, these methods are available on the class, and you don't have the `self` access to the instance. But weppy automatically provides you a shortcut to the database and the table with these parameters.
+As you observed, you can just use the standard `classmethod` decorator of the python language.
 
 > **Note:**   
 > Accessing `Model.method()` refers to the model itself, while `db.Model.attribute` refers to the table instance you created with your model.
