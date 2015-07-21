@@ -1,4 +1,7 @@
-from pydal.objects import Row, Set, Query
+import base64
+import os
+import time
+from pydal.objects import Row
 from ...datastructures import sdict
 from ...expose import url
 from ...globals import request, session
@@ -13,22 +16,9 @@ from .models import AuthModel
 
 
 class Auth(object):
-    """
-    Class for authentication, authorization, role based access control.
-
-    Includes:
-
-    - registration and profile
-    - login and logout
-    - username and password retrieval
-    - event logging
-    - role creation and assignment
-    - user defined group/role based permission
-    """
     registered_actions = {}
 
     def get_or_create_key(self, app, filename=None, alg='sha512'):
-        import os
         if not filename:
             path = os.path.join(app.root_path, 'private')
             if not os.path.exists(path):
@@ -43,43 +33,19 @@ class Auth(object):
             open(filename, 'w').write(key)
         return key
 
-    #def url(self, args=[], vars=None, scheme=False):
-    #    q = urllib.quote
-    #    u = self.settings.base_url
-    #    if not isinstance(args, (list, tuple)):
-    #        args = [args]
-    #    u = u + '/' + '/'.join(q(a) for a in args)
-    #    if vars:
-    #        u = u + '?' + '&'.join('%s=%s' % (q(k), q(v))
-    #                               for k, v in vars.iteritems())
-    #    return u
     def url(self, args=[], vars={}, scheme=None):
         return url(self.settings.base_url, args, vars, scheme=scheme)
 
     def __init__(self, app, db, usermodel=None, mailer=True, hmac_key=None,
-                 hmac_key_file=None, signature=True, base_url=None,
-                 csrf_prevention=True, **kwargs):
-        """
-        auth=Auth(app, db)
-
-        - db has to be the database where to create tables for authentication
-        - mailer=Mail(...) or None (no mailed) or True (make a mailer)
-        - hmac_key can be a hmac_key or hmac_key=Auth.get_or_create_key()
-        - base_url (where is the user action?)
-        - cas_provider (delegate authentication to the URL, CAS2)
-        """
-        #TEMP
-        self.app = app
-        #
+                 hmac_key_file=None, base_url=None, csrf_prevention=True,
+                 **kwargs):
         self.db = db
         self.csrf_prevention = csrf_prevention
-
+        #: generate hmac_key if needed
         if hmac_key is None:
             hmac_key = self.get_or_create_key(app, hmac_key_file)
-
+        #: init settings
         url_index = base_url or "account"
-        #url_login = url_index + "/login"
-
         settings = self.settings = sdict()
         settings.update(default_settings)
         settings.update(
@@ -91,66 +57,37 @@ class Auth(object):
             #                servicevalidate='serviceValidate',
             #                proxyvalidate='proxyValidate',
             #                logout='logout'),
-            #login_url=url_login,
-            #logged_url=url_index+"/profile",
             download_url="/download",
             mailer=(mailer == True) and Mail(app) or mailer,
-            #on_failed_authorization=url_index+"/not_authorized",
-            #login_next=url_index+"/profile",
             login_methods=[self],
             login_form=self,
-            #logout_next=url_index,
-            #register_next=url_index,
-            #verify_email_next=url_login,
-            #profile_next=url_index,
-            #retrieve_username_next=url_index,
-            #retrieve_password_next=url_index,
-            #request_reset_password_next=url_login,
-            #reset_password_next=url_index,
-            #change_password_next=url_index,
             hmac_key=hmac_key
         )
         #: load user's settings
         for key, value in app.config.auth.items():
             if key in self.settings.keys():
                 self.settings[key] = value
-
         #: load messages
         messages = self.messages = sdict()
         messages.update(default_messages)
         messages.update(self.settings.messages)
-
-        #if signature:
-        #    self.define_signature()
-        #else:
-        #    self.signature = None
-
-        _use_signature = kwargs.get('sign_tables')
-
+        #: init models
         self._usermodel = None
         if usermodel:
             if not issubclass(usermodel, AuthModel):
                 raise RuntimeError('%s is an invalid user model' %
                                    usermodel.__name__)
             self.settings.models.user = usermodel
-        #if usermodel:
-        #    from ..dal import AuthModel
-        #    if not issubclass(usermodel, AuthModel):
-        #        raise RuntimeError('%s is an invalid user model' %
-        #                           usermodel.__name__)
-        #    self._init_usermodel(usermodel, _use_signature)
-        #else:
-        #    self.define_tables(_use_signature)
         self.define_models()
+        #: load exposer
         self.exposer = Exposer(self)
-
         #: define allowed actions
         default_actions = [
             'login', 'logout', 'register', 'verify_email',
             'retrieve_username', 'retrieve_password',
             'reset_password', 'request_reset_password',
-            'change_password', 'profile', 'groups',
-            #'impersonate',
+            'change_password', 'profile',
+            #'groups', 'impersonate',
             'not_authorized']
         for k in default_actions:
             if k not in self.settings.actions_disabled:
@@ -212,8 +149,6 @@ class Auth(object):
 
         if not f:
             redirect(self.url('login', request.vars))
-        #elif f in self.settings.actions_disabled:
-        #    raise HTTP(404)
         if f in self.registered_actions:
             if a is not None:
                 return self.registered_actions[f](a)
@@ -251,15 +186,6 @@ class Auth(object):
         models = self.settings.models
         #: AuthUser
         user_model = models['user']
-        #model_format = '%(first_name)s %(last_name)s (%(id)s)'
-        #if not self.settings.user_firstname_lastname:
-        #    delattr(user_model, 'first_name')
-        #    delattr(user_model, 'last_name')
-        #    del user_model.form_labels['first_name']
-        #    del user_model.form_labels['last_name']
-        #    model_format = '%(email)s (%(id)s)'
-        #if not hasattr(user_model, 'format'):
-        #    setattr(user_model, 'format', model_format)
         many_refs = [
             {names['membership']+'s': models['membership'].__name__},
             {names['event']+'s': models['event'].__name__},
@@ -277,8 +203,6 @@ class Auth(object):
         group_model = models['group']
         if not hasattr(group_model, 'format'):
             setattr(group_model, 'format', '%(role)s (%(id)s)')
-        #if not group_model.form_labels:
-        #    setattr(group_model, 'form_labels', labels)
         many_refs = [
             {names['membership']+'s': models['membership'].__name__},
             {names['permission']+'s': models['permission'].__name__},
@@ -311,7 +235,6 @@ class Auth(object):
         if getattr(event_model, '_auto_relations', True):
             event_model._belongs_ref_ = \
                 belongs_refs + event_model._belongs_ref_
-        # SIGNATURE?
         models.user.auth = self
         self.db.define_models(
             models.user, models.group, models.membership, models.permission,
@@ -321,90 +244,7 @@ class Auth(object):
         for key, value in models.iteritems():
             self._model_names[key] = value.__name__
 
-    def enable_record_versioning(self, tables, archive_db=None,
-                                 archive_names='%(tablename)s_archive',
-                                 current_record='current_record',
-                                 current_record_label=None):
-        """
-        to enable full record versioning (including auth tables):
-
-        auth = Auth(db)
-        auth.define_tables(signature=True)
-        # define our own tables
-        db.define_table('mything',Field('name'),auth.signature)
-        auth.enable_record_versioning(tables=db)
-
-        tables can be the db (all table) or a list of tables.
-        only tables with modified_by and modified_on fiels (as created
-        by auth.signature) will have versioning. Old record versions will be
-        in table 'mything_archive' automatically defined.
-
-        when you enable enable_record_versioning, records are never
-        deleted but marked with is_active=False.
-
-        enable_record_versioning enables a common_filter for
-        every table that filters out records with is_active = False
-
-        Important: If you use auth.enable_record_versioning,
-        do not use auth.archive or you will end up with duplicates.
-        auth.archive does explicitly what enable_record_versioning
-        does automatically.
-
-        """
-        current_record_label = current_record_label or T(
-            current_record.replace('_', ' ').title())
-        for table in tables:
-            fieldnames = table.fields()
-            if 'id' in fieldnames and 'modified_on' in fieldnames and \
-               not current_record in fieldnames:
-                table._enable_record_versioning(
-                    archive_db=archive_db,
-                    archive_name=archive_names,
-                    current_record=current_record,
-                    current_record_label=current_record_label)
-
-    def define_signature(self):
-        settings = self.settings
-        reference_user = 'reference %s' % settings.table_user_name
-
-        def lazy_user(auth=self):
-            return auth.user_id
-
-        def represent(id, record=None, s=settings):
-            try:
-                user = s.table_user(id)
-                return '%s %s' % (user.get("first_name", user.get("email")),
-                                  user.get("last_name", ''))
-            except:
-                return id
-        ondelete = self.settings.ondelete
-        self.signature = Table(
-            self.db, 'auth_signature',
-            Field('is_active', 'boolean',
-                  default=True,
-                  readable=False, writable=False,
-                  label='Is Active'),
-            Field('created_on', 'datetime',
-                  default=lambda: datetime.now(),
-                  writable=False, readable=False,
-                  label='Created On'),
-            Field('created_by',
-                  reference_user,
-                  default=lazy_user, represent=represent,
-                  writable=False, readable=False,
-                  label='Created By', ondelete=ondelete),
-            Field('modified_on', 'datetime',
-                  update=lambda: datetime.now(),
-                  default=lambda: datetime.now(),
-                  writable=False, readable=False,
-                  label='Modified On'),
-            Field('modified_by',
-                  reference_user, represent=represent,
-                  default=lazy_user, update=lazy_user,
-                  writable=False, readable=False,
-                  label='Modified By',  ondelete=ondelete))
-
-    def log_event(self, description, vars=None, origin='auth'):
+    def log_event(self, description, vars={}, origin='auth'):
         """
         usage:
 
@@ -416,7 +256,6 @@ class Auth(object):
             user_id = self.user.id
         else:
             user_id = None  # user unknown
-        vars = vars or {}
         # log messages should not be translated
         if type(description).__name__ == 'TElement':
             description = description.m
@@ -431,7 +270,6 @@ class Auth(object):
             If the user exists already then password is updated.
             If the user doesn't yet exist, then they are created.
         """
-        #table_user = self.table_user()
         user = None
         checks = []
         # make a guess about who this user is
@@ -485,7 +323,8 @@ class Auth(object):
         perform basic login.
 
         :param basic_auth_realm: optional basic http authentication realm.
-        :type basic_auth_realm: str or unicode or function or callable or boolean.
+        :type basic_auth_realm: str or unicode or function or callable or
+                                boolean.
 
         reads current.request.env.http_authorization
         and returns basic_allowed,basic_accepted,user.
@@ -498,10 +337,9 @@ class Auth(object):
         is to skip sending any challenge.
 
         """
-        import base64
         if not self.settings.allow_basic_login:
             return (False, False, False)
-        basic = request.env.http_authorization
+        basic = request.environ['HTTP_AUTHORIZATION']
         if basic_auth_realm:
             if callable(basic_auth_realm):
                 basic_auth_realm = basic_auth_realm()
@@ -535,33 +373,23 @@ class Auth(object):
             last_visit=request.now,
             expiration=self.settings.expiration,
             hmac_key=uuid())
-        #self.update_groups()
-
-    def _get_login_settings(self):
-        userfield = self.settings.login_userfield or 'username' \
-            if 'username' in self.table_user.fields else 'email'
-        passfield = self.settings.password_field
-        return sdict(table_user=self.table_user, userfield=userfield,
-                     passfield=passfield)
 
     def login_bare(self, username, password):
         """
         logins user as specified by username (or email) and password
         """
-        settings = self._get_login_settings()
-        user = self.table_user(**{settings.userfield: username})
-        if user and user.get(settings.passfield, False):
-            password = self.table_user[settings.passfield].validate(
+        userfield = self.settings.login_userfield
+        user = self.table_user(**{userfield: username})
+        if user and user.get('password', False):
+            password = self.table_user['password'].validate(
                 password)[0]
-            if not user.registration_key and password == \
-               user[settings.passfield]:
+            if not user.registration_key and password == user['password']:
                 self.login_user(user)
                 return user
         else:
             # user not in database try other login methods
             for login_method in self.settings.login_methods:
-                if login_method != self and \
-                   login_method(username, password):
+                if login_method != self and login_method(username, password):
                     self.user = username
                     return username
         return False
@@ -571,16 +399,15 @@ class Auth(object):
         registers a user as specified by username (or email)
         and a raw password.
         """
-        settings = self._get_login_settings()
-        if not fields.get(settings.passfield):
+        userfield = self.settings.login_userfield
+        if not fields.get('password'):
             raise ValueError("register_bare: " +
                              "password not provided or invalid")
-        elif not fields.get(settings.userfield):
+        elif not fields.get(userfield):
             raise ValueError("register_bare: " +
                              "userfield not provided or invalid")
-        fields[settings.passfield] = \
-            self.table_user[settings.passfield].validate(
-                fields[settings.passfield])[0]
+        fields['password'] = self.table_user['password'].validate(
+            fields['password'])[0]
         user = self.get_or_create_user(
             fields, login=False, get=False,
             update_fields=self.settings.update_fields)
@@ -661,71 +488,26 @@ class Auth(object):
         redirect(unext)
 
     def is_logged_in(self):
-        """
-        checks if the user is logged in and returns True/False.
-        if so user is in auth.user as well as in session.auth.user
-        """
-
-        if self.user:
-            return True
-        return False
-
-    def random_password(self):
-        import string
-        import random
-        password = ''
-        specials = r'!#$*'
-        for i in range(0, 3):
-            password += random.choice(string.lowercase)
-            password += random.choice(string.uppercase)
-            password += random.choice(string.digits)
-            password += random.choice(specials)
-        return ''.join(random.sample(password, len(password)))
+        return True if self.user else False
 
     def email_reset_password(self, user):
-        import time
         reset_password_key = str(int(time.time())) + '-' + uuid()
         link = self.url('reset_password', vars={"key": reset_password_key},
                         scheme=True)
         d = dict(user)
         d.update(dict(key=reset_password_key, link=link))
         if self.settings.mailer and self.settings.mailer.send(
-           to=user.email,
-           subject=self.messages.reset_password_subject,
-           message=self.messages.reset_password % d):
+                to=user.email,
+                subject=self.messages.reset_password_subject,
+                message=self.messages.reset_password % d):
             user.update_record(reset_password_key=reset_password_key)
             return True
         return False
-
-    def run_login_onaccept(self):
-        onaccept = self.settings.login_onaccept
-        if onaccept:
-            form = sdict(dict(vars=self.user))
-            if not isinstance(onaccept, (list, tuple)):
-                onaccept = [onaccept]
-            for callback in onaccept:
-                callback(form)
-
-    """
-    def update_groups(self):
-        if not self.user:
-            return
-        user_groups = {}
-        if self._auth:
-            self._auth.user_groups = user_groups
-        memberships = self.db(
-            self.table_membership.user_id == self.user.id).select()
-        for membership in memberships:
-            group = self.table_group(membership.group_id)
-            if group:
-                user_groups[membership.group_id] = group.role
-    """
 
     def add_group(self, role, description=''):
         """
         creates a group associated to a role
         """
-
         group_id = self.table_group.insert(
             role=role, description=description)
         self.log_event(self.messages['add_group_log'],
@@ -739,7 +521,6 @@ class Auth(object):
         self.db(self.table_group.id == group_id).delete()
         self.db(self.table_membership.group_id == group_id).delete()
         self.db(self.table_permission.group_id == group_id).delete()
-        #self.update_groups()
         self.log_event(self.messages.del_group_log, dict(authgroup=group_id))
 
     def id_group(self, role):
@@ -771,7 +552,6 @@ class Auth(object):
         """
         checks if user is member of group_id or role
         """
-
         group_id = group_id or self.id_group(role)
         try:
             group_id = int(group_id)
@@ -794,7 +574,6 @@ class Auth(object):
         gives user_id membership of group_id or role
         if user is None than user_id is that of current logged in user
         """
-
         group_id = group_id or self.id_group(role)
         try:
             group_id = int(group_id)
@@ -808,7 +587,6 @@ class Auth(object):
         else:
             id = self.table_membership.insert(group_id=group_id,
                                               user_id=user_id)
-        #self.update_groups()
         self.log_event(self.messages['add_membership_log'],
                        dict(user=user_id, authgroup=group_id))
         return id
@@ -818,7 +596,6 @@ class Auth(object):
         revokes membership from group_id to user_id
         if user_id is None than user_id is that of current logged in user
         """
-
         group_id = group_id or self.id_group(role)
         if not user_id and self.user:
             user_id = self.user.id
@@ -827,7 +604,6 @@ class Auth(object):
         ret = self.db(self.table_membership.user_id
                       == user_id)(self.table_membership.group_id
                                   == group_id).delete()
-        #self.update_groups()
         return ret
 
     def has_permission(self, name='any', table_name='', record_id=0,
@@ -885,7 +661,6 @@ class Auth(object):
         """
         revokes group_id 'name' access to 'table_name' and 'record_id'
         """
-
         self.log_event(
             self.messages['del_permission_log'],
             dict(group_id=group_id, name=name, table_name=table_name,
@@ -895,17 +670,8 @@ class Auth(object):
             self.table_permission.table_name == str(table_name))(
             self.table_permission.record_id == long(record_id)).delete()
 
+    """
     def accessible_query(self, name, table, user_id=None):
-        """
-        returns a query with all accessible records for user_id or
-        the current logged in user
-        this method does not work on GAE because uses JOIN and IN
-
-        example:
-
-           db(auth.accessible_query('read', db.mytable)).select(db.mytable.ALL)
-
-        """
         if not user_id:
             user_id = self.user_id
         db = self.db
@@ -938,7 +704,6 @@ class Auth(object):
                 self.table_permission.record_id))
         return query
 
-    """
     @staticmethod
     def archive(form, archive_table=None, current_record='current_record',
                 archive_current=False, fields=None):

@@ -10,9 +10,9 @@
 """
 
 
-def abort(code):
+def abort(code, body=''):
     from .http import HTTP
-    raise HTTP(code)
+    raise HTTP(code, body)
 
 
 def stream_file(path):
