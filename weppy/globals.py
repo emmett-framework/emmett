@@ -202,6 +202,8 @@ class Response(object):
 
 
 class Current(threading.local):
+    _language = None
+
     def initialize(self, environ):
         self.__dict__.clear()
         self.environ = environ
