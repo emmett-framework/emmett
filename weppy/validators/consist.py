@@ -22,7 +22,7 @@ from datetime import date, time, datetime, timedelta
 from time import strptime
 from .basic import Validator, _is, Matches
 from .helpers import translate, _UTC, url_split_regex, official_url_schemes, \
-    unofficial_url_schemes, unicode_to_ascii_url
+    unofficial_url_schemes, unicode_to_ascii_url, official_top_level_domains
 
 _utc = _UTC()
 
@@ -83,7 +83,7 @@ class isTime(_is):
                       '(?P<s>[0-9]*))?((?P<d>[ap]m))?')
 
     def __call__(self, value):
-        return _is.__call__(self, value.lower())
+        return _is.__call__(self, value.lower() if value else value)
 
     def check(self, value):
         val = self.rule.match(value)
@@ -433,7 +433,7 @@ class _isHTTPUrl(Validator):
                  message=None):
         Validator.__init__(self, message)
         self.allowed_schemes = schemes or self.http_schemes
-        self.allowed_tlds = tlds or self.official_top_level_domains
+        self.allowed_tlds = tlds or official_top_level_domains
         self.prepend_scheme = prepend_scheme
         for i in self.allowed_schemes:
             if i not in self.http_schemes:

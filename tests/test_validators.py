@@ -313,14 +313,169 @@ def test_allow(db):
 
 def test_validation(db):
     #: 'is'
+    is_data = {
+        'name': 'foo',
+        'val': 1,
+        'fval': 1.5,
+        'text': 'Lorem ipsum',
+        'password': 'notverysecret',
+        'd': '{:%Y-%m-%d}'.format(datetime.utcnow()),
+        't': '15:23',
+        'dt': '2015-12-23 15:23:00',
+        'json': '{}'
+    }
+    errors = A.validate(is_data)
+    assert not errors
+    d = dict(is_data)
+    d['val'] = 'foo'
+    errors = A.validate(d)
+    assert 'val' in errors and len(errors) == 1
+    d = dict(is_data)
+    d['fval'] = 'bar'
+    errors = A.validate(d)
+    assert 'fval' in errors and len(errors) == 1
+    d = dict(is_data)
+    d['d'] = 'foo'
+    errors = A.validate(d)
+    assert 'd' in errors and len(errors) == 1
+    d = dict(is_data)
+    d['t'] = 'bar'
+    errors = A.validate(d)
+    assert 't' in errors and len(errors) == 1
+    d = dict(is_data)
+    d['dt'] = 'foo'
+    errors = A.validate(d)
+    assert 'dt' in errors and len(errors) == 1
+    d = dict(is_data)
+    d['json'] = 'bar'
+    errors = A.validate(d)
+    assert 'json' in errors and len(errors) == 1
+    errors = Consist.validate({'email': 'foo'})
+    assert 'email' in errors
+    errors = Consist.validate({'url': 'notanurl'})
+    assert 'url' in errors
+    errors = Consist.validate({'ip': 'foo'})
+    assert 'ip' in errors
     #: 'len'
+    len_data = {'a': '12345', 'b': '12345', 'c': '12345', 'd': '12345'}
+    errors = Len.validate(len_data)
+    assert not errors
+    d = dict(len_data)
+    d['a'] = 'ciao'
+    errors = Len.validate(d)
+    assert 'a' in errors and len(errors) == 1
+    d = dict(len_data)
+    d['b'] = 'ciao'
+    errors = Len.validate(d)
+    assert 'b' in errors and len(errors) == 1
+    d = dict(len_data)
+    d['b'] = '1234567890123'
+    errors = Len.validate(d)
+    assert 'b' in errors and len(errors) == 1
+    d = dict(len_data)
+    d['c'] = 'ciao'
+    errors = Len.validate(d)
+    assert 'c' in errors and len(errors) == 1
+    d = dict(len_data)
+    d['c'] = '1234567890123'
+    errors = Len.validate(d)
+    assert 'c' in errors and len(errors) == 1
+    d = dict(len_data)
+    d['d'] = 'ciao'
+    errors = Len.validate(d)
+    assert 'd' in errors and len(errors) == 1
+    d = dict(len_data)
+    d['d'] = '1234567890123'
+    errors = Len.validate(d)
+    assert 'd' in errors and len(errors) == 1
     #: 'in'
+    in_data = {'a': 'a', 'b': 2}
+    errors = Inside.validate(in_data)
+    assert not errors
+    d = dict(in_data)
+    d['a'] = 'c'
+    errors = Inside.validate(d)
+    assert 'a' in errors and len(errors) == 1
+    d = dict(in_data)
+    d['b'] = 0
+    errors = Inside.validate(d)
+    assert 'b' in errors and len(errors) == 1
+    d = dict(in_data)
+    d['b'] = 7
+    errors = Inside.validate(d)
+    assert 'b' in errors and len(errors) == 1
     #: 'gt', 'lt', 'gte', 'lte'
+    num_data = {'a': 1, 'b': 4, 'c': 2}
+    errors = Num.validate(num_data)
+    assert not errors
+    d = dict(num_data)
+    d['a'] = 0
+    errors = Num.validate(d)
+    assert 'a' in errors and len(errors) == 1
+    d = dict(num_data)
+    d['b'] = 5
+    errors = Num.validate(d)
+    assert 'b' in errors and len(errors) == 1
+    d = dict(num_data)
+    d['c'] = 0
+    errors = Num.validate(d)
+    assert 'c' in errors and len(errors) == 1
+    d = dict(num_data)
+    d['c'] = 5
+    errors = Num.validate(d)
+    assert 'c' in errors and len(errors) == 1
     #: 'equals'
+    eq_data = {'a': 'asd', 'b': 2, 'c': 2.3}
+    errors = Eq.validate(eq_data)
+    assert not errors
+    d = dict(eq_data)
+    d['a'] = 'lol'
+    errors = Eq.validate(d)
+    assert 'a' in errors and len(errors) == 1
+    d = dict(eq_data)
+    d['b'] = 3
+    errors = Eq.validate(d)
+    assert 'b' in errors and len(errors) == 1
     #: 'not'
+    d = dict(eq_data)
+    d['c'] = 2.4
+    errors = Eq.validate(d)
+    assert 'c' in errors and len(errors) == 1
     #: 'match'
+    # TODO
     #: 'allow'
+    allow_data = {'a': 'a', 'b': 'a', 'c': 'a'}
+    errors = Allowed.validate(allow_data)
+    assert not errors
+    d = dict(allow_data)
+    d['a'] = None
+    errors = Allowed.validate(d)
+    assert not errors
+    d['a'] = 'foo'
+    errors = Allowed.validate(d)
+    assert 'a' in errors and len(errors) == 1
+    d = dict(allow_data)
+    d['b'] = ''
+    errors = Allowed.validate(d)
+    assert not errors
+    d['b'] = None
+    errors = Allowed.validate(d)
+    assert not errors
+    d['b'] = 'foo'
+    errors = Allowed.validate(d)
+    assert 'b' in errors and len(errors) == 1
+    d = dict(allow_data)
+    d['c'] = ''
+    errors = Allowed.validate(d)
+    assert not errors
+    d['c'] = None
+    errors = Allowed.validate(d)
+    assert not errors
+    d['c'] = 'foo'
+    errors = Allowed.validate(d)
+    assert 'c' in errors and len(errors) == 1
     #: processing validators
+    # TODO
     #: 'presence'
     mario = {'name': 'mario'}
     errors = Person.validate(mario)
