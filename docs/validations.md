@@ -23,13 +23,15 @@ class Person(Model):
 
     validation = {
         'email': {'is': 'email'},
-        'website': {'is': 'url'}
+        'website': {'is': 'url', 'message': 'You must insert a valid url'}
     }
 ```
 
 The result of using `Field`'s validation parameter or `Model`'s validation attribute will be the same: is basically a matter of personal coding style.
 
-So, what are the built-in validation helpers? Let's see them specifically.
+As you've seen with the *website* field in the example, you can always customize the error message resulting from the validation.
+
+Now, let's see the available built-in validation helpers.
 
 Presence and absence of input
 -----------------------------
@@ -199,7 +201,7 @@ or a phone number:
 phone = Field(validation={'match': '^1?((-)\d{3}-?|\(\d{3}\))\d{3}-?\d{4}$'})
 ```
 
-`'match'` also accepts two some parameters:   
+`'match'` also accepts some parameters:   
 
 - the `search` parameter (default to `False`), which will use the regex method `search` instead of the `match` one
 - the `strict` parameter (default to `False`), which will only matches the beginning of the string.
