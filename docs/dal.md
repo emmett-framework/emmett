@@ -147,7 +147,7 @@ Available types for Field definition are:
 
 Using the right field type ensure the right columns types inside your tables, and allows you to benefit from the default validation implemented by weppy.
 
-Validators
+Validation
 ----------
 
 To implement a validation mechanism for your fields, you can use the `validation` parameter of the `Field` class, or the mapping `dict` with the name of the fields at the `validation` attribute inside your Model. Both method will produce the same result, just pick the one you prefer:

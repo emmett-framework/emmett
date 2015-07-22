@@ -82,7 +82,7 @@ In the first examples, we ensured that the input values were emails or urls. Thi
 | image | (for *upload* fields) ensure the input is an image file |
 | list:*type* | ensure is a list with elements of given *type* (available with all `'is'` values except for *image* and *json*) |
 
-Since many options of the `'is'` validators ensure a specific python type, on validation the input values will also be converted to the right type: an input which should be `'int'` and that it comes as a string from the form, will be converted as an `int` object for all the other validators, or for your post-validation code.
+Since many options of the `'is'` validator ensure a specific python type, on validation the input values will also be converted to the right type: an input which should be `'int'` and that it comes as a string from the form, will be converted as an `int` object for all the other validators, or for your post-validation code.
 
 Here are some examples of `'is'` validation helper:
 
@@ -157,7 +157,7 @@ and if you have an *int* field, you can also use the convenient `'range'` option
 number = Field('int', validation={'in': {'range': (1, 10)}})
 ```
 
-The `'in'` validators also accepts some specific options, in particular:
+The `'in'` validator also accepts some specific options, in particular:
 
 | parameter | description |
 | --- | --- |
@@ -193,7 +193,7 @@ Sometimes you need to validate only a specific value for a field. weppy provides
 accept_terms = Field(validation={'equals': 'yes'})
 ```
 
-Basically the `'equals'` validators perform a `==` check between the input value and the one given.
+Basically the `'equals'` validator perform a `==` check between the input value and the one given.
 
 Match input
 -----------

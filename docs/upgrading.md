@@ -24,7 +24,7 @@ Version 0.4
 
 weppy 0.4 introduces a lot of major changes that break backward compatibility on the `DAL`, `Auth`, validation and forms modules among all the prior versions. These changes are a consequence of the introduction of a real ORM inside weppy (while prior versions just had a layer of abstraction over the database).
 
-Please also keep in mind that weppy 0.4 **dropped support for python 2.6.x**. Please upgrade your python interpreter to 2.7.
+Please also keep in mind that weppy 0.4 **dropped support of python 2.6.x**. Please upgrade your python interpreter to 2.7.
 
 Next paragraphs describe the relevant changes for your application in order to upgrade the code from weppy 0.3.
 
@@ -119,9 +119,10 @@ also, we added new validators that replace the removed ones:
 
 weppy 0.4 also introduces some new features you may want to take advantage of:
 
-- `Model` class now auto-generate the name for the table (if not specified). Read more in the [DAL chapter](./dal#models)
+- `Field` class now support pythonic naming for old *integer* and *boolean* types: you can now write *int* and *bool*
+- `Model` class now auto-generate the name for the table, if not specified (read more in the [DAL chapter](./dal#models))
 - `belongs_to`, `has_one` and `has_many` apis are now available for relations in your models (read more in the [DAL chapter](./dal#relations))
-- You can now disable default validation in `Field` and `Model` ([DAL chapter](./dal#validators))
+- You can now disable default validation in `Field` and `Model` (read more in the [DAL chapter](./dal#validation))
 - The `abort` helper now also accept a `body` parameter with which you can customize the body of the returned HTTP error
 
 Version 0.3
