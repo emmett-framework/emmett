@@ -13,6 +13,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from __future__ import print_function
 import os
 import sys
 import click
@@ -192,10 +193,10 @@ def run_command(info, host, port, reloader):
     app = info.load_app()
     app.debug = True
     if os.environ.get('WEPPY_RUN_MAIN') != 'true':
-        app.log.info("> Serving weppy application %s" % app.import_name)
+        print("> Serving weppy application %s" % app.import_name)
         quit_msg = "(press CTRL+C to quit)"
-        app.log.info("> weppy application %s running on http://%s:%i %s" %
-                     (app.import_name, host, port, quit_msg))
+        print("> weppy application %s running on http://%s:%i %s" %
+              (app.import_name, host, port, quit_msg))
     if reloader:
         from ._reloader import run_with_reloader
         run_with_reloader(app, host, port)

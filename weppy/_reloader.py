@@ -13,6 +13,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from __future__ import print_function
 import os
 import sys
 import time
@@ -120,12 +121,11 @@ class ReloaderLoop(object):
     # `eventlet.monkey_patch`) before we get here
     _sleep = staticmethod(time.sleep)
 
-    def __init__(self, app, reloader_paths=None, extra_files=None, interval=1):
+    def __init__(self, reloader_paths=None, extra_files=None, interval=1):
         self.reloader_paths = reloader_paths
         self.extra_files = set(os.path.abspath(x)
                                for x in extra_files or ())
         self.interval = interval
-        self.log = app.log.info
 
     def run(self):
         pass
@@ -135,7 +135,8 @@ class ReloaderLoop(object):
         but running the reloader thread.
         """
         while 1:
-            self.log('> Restarting (%s mode)' % self.name)
+            #self.log('> Restarting (%s mode)' % self.name)
+            print('> Restarting (%s mode)' % self.name)
             args = [sys.executable] + sys.argv
             new_environ = os.environ.copy()
             new_environ['WEPPY_RUN_MAIN'] = 'true'
@@ -154,7 +155,8 @@ class ReloaderLoop(object):
 
     def trigger_reload(self, filename):
         filename = os.path.abspath(filename)
-        self.log('> Detected change in %r, reloading' % filename)
+        #self.log('> Detected change in %r, reloading' % filename)
+        print('> Detected change in %r, reloading' % filename)
         sys.exit(3)
 
 
@@ -191,7 +193,7 @@ def run_with_reloader(app, host, port, extra_files=None, interval=1,
                       reloader_type='auto', reloader_paths=None):
     """Run the given function in an independent python interpreter."""
     import signal
-    reloader = reloader_loops[reloader_type](app, reloader_paths, extra_files,
+    reloader = reloader_loops[reloader_type](reloader_paths, extra_files,
                                              interval)
     signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
     try:
