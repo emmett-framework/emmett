@@ -16,7 +16,7 @@ from weppy.dal import DAL, Model, Field, has_many, belongs_to
 from weppy.validators import isEmptyOr, hasLength, isInt, isFloat, isDate, \
     isTime, isDatetime, isJSON, isntEmpty, inSet, inDB, isEmail, isUrl, isIP, \
     isImage, inRange, Equals, Lower, Upper, Cleanup, Urlify, Crypt, notInDB, \
-    Allow, Not, Matches, Any
+    Allow, Not, Matches, Any, isList
 
 
 class A(Model):
@@ -62,12 +62,16 @@ class Consist(Model):
     url = Field()
     ip = Field()
     image = Field('upload')
+    emails = Field('list:string')
+    emailsplit = Field('list:string')
 
     validation = {
         'email': {'is': 'email'},
         'url': {'is': 'url'},
         'ip': {'is': 'ip'},
-        'image': {'is': 'image'}
+        'image': {'is': 'image'},
+        'emails': {'is': 'list:email'},
+        'emailsplit': {'is': {'list:email': {'splitter': ',;'}}}
     }
 
 
@@ -249,6 +253,8 @@ def test_is(db):
     assert isinstance(Consist.url.requires[0], isUrl)
     assert isinstance(Consist.ip.requires[0], isIP)
     assert isinstance(Consist.image.requires[0], isImage)
+    assert isinstance(Consist.emails.requires[0], isList)
+    assert isinstance(Consist.emails.requires[0].children[0], isEmail)
 
 
 def test_len(db):
@@ -288,7 +294,7 @@ def test_eq(db):
     assert isinstance(Eq.a.requires[1], Equals)
     assert isinstance(Eq.b.requires[1], Equals)
     assert isinstance(Eq.c.requires[1], Not)
-    assert isinstance(Eq.c.requires[1].conditions[0], Equals)
+    assert isinstance(Eq.c.requires[1].children[0], Equals)
 
 
 def test_match(db):
@@ -383,6 +389,14 @@ def test_validation(db):
     assert 'url' in errors
     errors = Consist.validate({'ip': 'foo'})
     assert 'ip' in errors
+    errors = Consist.validate({'emails': 'foo'})
+    assert 'emails' in errors
+    errors = Consist.validate({'emailsplit': 'foo'})
+    assert 'emailsplit' in errors
+    errors = Consist.validate({'emailsplit': '1@asd.com, 2@asd.com'})
+    assert 'emailsplit' not in errors
+    errors = Consist.validate({'emails': ['1@asd.com', '2@asd.com']})
+    assert 'emails' not in errors
     #: 'len'
     len_data = {'a': '12345', 'b': '12345', 'c': '12345', 'd': '12345'}
     errors = Len.validate(len_data)

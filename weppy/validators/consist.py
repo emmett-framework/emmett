@@ -20,7 +20,7 @@ import struct
 import urllib
 from datetime import date, time, datetime, timedelta
 from time import strptime
-from .basic import Validator, _is, Matches
+from .basic import Validator, ParentValidator, _is, Matches
 from .helpers import translate, _UTC, url_split_regex, official_url_schemes, \
     unofficial_url_schemes, unicode_to_ascii_url, official_top_level_domains
 
@@ -206,18 +206,15 @@ class isEmail(_is):
         return value, translate(self.message)
 
 
-class isList(Validator):
-    message = "Invalid value"
-
-    def __init__(self, validators, splitter=None, message=None):
-        Validator.__init__(self, message)
-        self.conditions = validators
+class isList(ParentValidator):
+    def __init__(self, children, splitter=None, message=None):
+        ParentValidator.__init__(self, children, message)
         self.splitter = None
         if splitter:
             self.splitter = re.compile('[^'+splitter+'\s]+')
 
     def __call__(self, value):
-        if self.splitter is not None:
+        if self.splitter is not None and isinstance(value, basestring):
             values = self.splitter.findall(value)
         else:
             if not isinstance(value, list):
@@ -228,8 +225,8 @@ class isList(Validator):
         nvals = []
         for val in values:
             v = val
-            for condition in self.conditions:
-                v, e = condition(v)
+            for child in self.children:
+                v, e = child(v)
                 if e:
                     return val, e
             nvals.append(v)

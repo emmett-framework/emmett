@@ -62,19 +62,13 @@ class _is(Validator):
         return value, None
 
 
-class Not(Validator):
+class Not(ParentValidator):
     message = "Value not allowed"
-
-    def __init__(self, validators, message=None):
-        Validator.__init__(self, message)
-        if not isinstance(validators, (list, tuple)):
-            validators = [validators]
-        self.conditions = validators
 
     def __call__(self, value):
         val = value
-        for condition in self.conditions:
-            value, error = condition(value)
+        for child in self.children:
+            value, error = child(value)
             if error is None:
                 return val, translate(self.message)
         return value, None

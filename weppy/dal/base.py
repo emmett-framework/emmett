@@ -198,7 +198,7 @@ class Field(_Field):
         if self._type in ['string', 'text', 'password']:
             rv['len'] = {'lt': self.length}
         if self._type == 'list:int':
-            rv['_is'] = {'list': 'int'}
+            rv['_is'] = {'list:int'}
         if self.notnull or self._type.startswith('reference') or \
                 self._type.startswith('list:reference'):
             rv['presence'] = True

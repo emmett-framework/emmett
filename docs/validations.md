@@ -80,8 +80,17 @@ In the first examples, we ensured that the input values were emails or urls. Thi
 | ip | ensure is a valid ip |
 | json | ensure is valid json content |
 | image | (for *upload* fields) ensure the input is an image file |
+| list:*type* | ensure is a list with elements of given *type* (available with all `'is'` values except for *image* and *json*) |
 
 Since many options of the `'is'` validators ensure a specific python type, on validation the input values will also be converted to the right type: an input which should be `'int'` and that it comes as a string from the form, will be converted as an `int` object for all the other validators, or for your post-validation code.
+
+Here are some examples of `'is'` validation helper:
+
+```
+price = Field('float', validation={'is': {'float': {'dot': ','}}})
+emails = Field('list:string', validation={'is': {'list:email': {'splitter': ';'}}})
+urls = Field('list:string', validation={'is': 'list:url'})
+```
 
 Note that, since `'is'` validator ensure the input is valid for the given type, it's like an implicit `{'presence': True}`, so you don't need to add `'presence'` when you use it.
 

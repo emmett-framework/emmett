@@ -141,7 +141,7 @@ Available types for Field definition are:
 | upload | `str` |
 | reference *tablename* | `int` or `pydal.objects.Row` (depends on context) |
 | list:string | `list` of `str` |
-| list:integer | `list` of `int` |
+| list:int | `list` of `int` |
 | list:reference *tablename* | `list` of `int` or `pydal.objects.Rows` |
 | json | `json` |
 
@@ -177,7 +177,8 @@ While you can find the complete list of available validators in the [appropriate
 | time | `{'is': 'time'}` | no |
 | datetime | `{'is': 'datetime'}` | no |
 | reference *tablename* | `{'presence': True}` | no |
-| list:reference *tablename* | `None` | no |
+| list:int | `{'is': 'list:int'}`| no |
+| list:reference *tablename* | `{'presence': True}` | no |
 | json | `{'is': 'json'}` | no |
 
 > **Tip:**    

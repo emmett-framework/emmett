@@ -21,13 +21,13 @@ class ValidateFromDict(object):
     numkeys = {'gt': False, 'gte': True, 'lt': False, 'lte': True}
 
     def __init__(self):
-        self.iskeys = {
+        self.is_validators = {
             'int': isInt, 'float': isFloat, 'decimal': isDecimal,
             'date': isDate, 'time': isTime, 'datetime': isDatetime,
             'email': isEmail, 'url': isUrl, 'ip': isIP, 'json': isJSON,
             'image': isImage, 'alphanumeric': isAlphanumeric
         }
-        self.prockeys = {
+        self.proc_validators = {
             'crypt': Crypt, 'lower': Lower, 'upper': Upper, 'urlify': Urlify,
             'clean': Cleanup
         }
@@ -45,6 +45,50 @@ class ValidateFromDict(object):
                     inclusions[1] = include
         return minv, maxv, inclusions
 
+    def parse_is(self, data):
+        #: map types with fields
+        if isinstance(data, basestring):
+            #: map {'is': 'int'}
+            key = data
+            options = {}
+        elif isinstance(data, dict):
+            #: map {'is': {'float': {'dot': ','}}}
+            key = list(data)[0]
+            options = data[key]
+        else:
+            raise SyntaxError("'is' validator accepts only string or dict")
+        validator = self.is_validators.get(key)
+        return validator(**options) if validator else None
+
+    def parse_is_list(self, data):
+        #: map types with 'list' fields
+        key = ''
+        options = {}
+        suboptions = {}
+        lopts = ['splitter']
+        if isinstance(data, basestring):
+            #: map {'is': 'list:int'}
+            key = data
+        elif isinstance(data, dict):
+            #: map {'is': {'list:float': {'dot': ',', 'splitter': ';'}}}
+            key = list(data)[0]
+            suboptions = data[key]
+            for opt in list(suboptions):
+                if opt in lopts:
+                    options[opt] = suboptions[opt]
+                    del suboptions[opt]
+        else:
+            raise SyntaxError("'is' validator accepts only string or dict")
+        try:
+            keyspecs = key.split(':')
+            subkey = keyspecs[1].strip()
+            assert keyspecs[0].strip() == 'list'
+        except:
+            subkey = '_missing_'
+        validator = self.is_validators.get(subkey)
+        return isList(
+            [validator(**suboptions)], **options) if validator else None
+
     def __call__(self, field, data):
         validators = []
         #: parse 'presence' and 'empty'
@@ -55,49 +99,12 @@ class ValidateFromDict(object):
         #: parse 'is'
         _is = data.get('is')
         if _is is not None:
-            #: map types with fields
-            if isinstance(_is, basestring):
-                #: map {'is': 'int'}
-                key = _is
-                options = {}
-            elif isinstance(_is, dict):
-                #: map {'is': {'int': {'message': 'asd'}}}
-                key = list(_is)[0]
-                options = _is[key]
-            else:
-                raise SyntaxError("'is' validator accepts only string or dict")
-            validator = self.iskeys.get(key)
-            if validator is not None:
-                validators.append(validator(**options))
-            else:
-                if key == 'list':
-                    if isinstance(options, basestring):
-                        #: map {'is': {'list': 'int'}}
-                        validator = self.iskeys.get(options)
-                        options = {}
-                    elif isinstance(options, dict):
-                        #: map {'is': {'list': {'int': {'message': 'asd'}}}}
-                        if 'splitter' in options:
-                            _splitter = options['splitter']
-                            subkeys = list(options)-['splitter']
-                            subkey = subkeys[0]
-                        else:
-                            _splitter = None
-                            subkey = list(options)[0]
-                        options = options[subkey]
-                        validator = self.iskeys.get(subkey)
-                    else:
-                        raise SyntaxError(
-                            "{'is': {'list': ..} validator accepts only " +
-                            "string or dict"
-                        )
-                    validators.append(
-                        isList([validator(**options)], _splitter)
-                    )
-                else:
-                    raise SyntaxError(
-                        "Unknown type %s for 'is' validator" % _is
-                    )
+            validator = self.parse_is(_is) or self.parse_is_list(_is)
+            if validator is None:
+                raise SyntaxError(
+                    "Unknown type %s for 'is' validator" % data
+                )
+            validators.append(validator)
         #: parse 'len'
         _len = data.get('len')
         if _len is not None:
@@ -156,7 +163,7 @@ class ValidateFromDict(object):
             else:
                 validators.append(Matches(data['match']))
         #: parse transforming validators
-        for key, vclass in self.prockeys.iteritems():
+        for key, vclass in self.proc_validators.iteritems():
             if key in data:
                 options = {}
                 if isinstance(data[key], dict):
@@ -174,9 +181,13 @@ class ValidateFromDict(object):
         #: common options ('format', 'message')
         if 'format' in data:
             for validator in validators:
-                if hasattr(validator, 'format'):
-                    validator.format = data['format']
-                    break
+                children = [validator]
+                if hasattr(validator, 'children'):
+                    children += validator.children
+                for child in children:
+                    if hasattr(child, 'format'):
+                        child.format = data['format']
+                        break
         if 'message' in data:
             for validator in validators:
                 validator.message = data['message']
