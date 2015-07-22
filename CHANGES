@@ -29,7 +29,6 @@ Next
 - Bugfixes in forms
 - Refactored `Auth` module
 - Added `body` parameter to `abort` helper (optional)
-- Added `query` parameter to `HasManySet.__call__` and `HasManyViaSet.__call__`
 - Updated jQuery to v1.11.3
 
 

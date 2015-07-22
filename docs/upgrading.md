@@ -19,6 +19,111 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 0.4
+-----------
+
+weppy 0.4 introduces a lot of major changes that break backward compatibility on the `DAL`, `Auth`, validation and forms modules among all the prior versions. These changes are a consequence of the introduction of a real ORM inside weppy (while prior versions just had a layer of abstraction over the database).
+
+Please also keep in mind that weppy 0.4 **dropped support for python 2.6.x**. Please upgrade your python interpreter to 2.7.
+
+Next paragraphs describe the relevant changes for your application in order to upgrade the code from weppy 0.3.
+
+### Field class without name parameter
+
+The `Field` class previously required a `name` as first parameter. In weppy 0.4 the name is injected by weppy depending on the name of the variable you use for store the field instance.
+
+As an immediate consequence, fields are now `Model` attributes, instead of elements of the `fields` attribute which is no more available. Your model should be upgraded from the old notation:
+
+```python
+class Thing(Model):
+    fields = [
+        Field('name'),
+        Field('value', 'integer')
+    ]
+```
+
+to the new (and more convenient):
+
+```python
+class Thing(Model):
+    name = Field()
+    value = Field('integer')
+```
+
+You should also update all your `Form` instances, since you should pass a `dict` of fields instead of a `list` as first parameter, so from:
+
+```python
+form = Form([Field('name'), Field('value', 'integer')])
+```
+
+to:
+
+```python
+form = Form({'name': Field(), 'value': Field('int')})
+```
+
+### Renamed attributes in Model class
+We changed the nomenclature of the `Model` class attributes to a *proper* one. Here is the complete list of old names vs the new ones:
+
+| old name | new name |
+| --- | --- |
+| validators | validation |
+| defaults | default_values |
+| updates | update_values |
+| representation | repr_values |
+| visibility | form_rw |
+| labels | form_labels |
+| comments | form_info |
+| widgets | form_widgets |
+
+Please, update your models to the new structure.   
+Also, note that the previously available attribute `Model.entity` is now the more appropriate `Model.table`.
+
+### New validation system
+
+weppy 0.4 introduces a totally refactored validation mechanism, and a new syntax for validation. In particular, the suggested syntax now uses dictionaries instead of lists of validator classes for validation.
+
+Since this change removed *quite a lot* of previously available validators, we suggest you to convert your validation to the new system, which is documented in the [appropriate chapter](./validations).
+
+If you still want to use the old notation, here is the list of changes in validators classes:
+
+| validator | change |
+| --- | --- |
+| isIntInRange | removed |
+| isFloatInRange | removed |
+| isDecimalInRange | removed |
+| isDateInRange | removed |
+| isDatetimeInRange | removed |
+| isEmailList | removed |
+| isListOf | renamed into `isList` |
+| isStrong | deprecated (available under `weppy.validators._old`) |
+| inDb | deprecated (available under `weppy.validators._old`) |
+| notInDb | deprecated (available under `weppy.validators._old`) |
+| FilenameMatches | deprecated (available under `weppy.validators._old`) |
+| anyOf | renamed to `Any` |
+| Slug | renamed to `Urlify` |
+
+also, we added new validators that replace the removed ones:
+
+| validator | in place of |
+| --- | --- |
+| inRange | all the old *range* validators |
+| inDB | inDb |
+| notInDB | notInDb |
+
+### Changes in Auth tables
+
+*under writing*
+
+### New features
+
+weppy 0.4 also introduces some new features you may want to take advantage of:
+
+- `Model` class now auto-generate the name for the table (if not specified). Read more in the [DAL chapter](./dal#models)
+- `belongs_to`, `has_one` and `has_many` apis are now available for relations in your models (read more in the [DAL chapter](./dal#relations))
+- You can now disable default validation in `Field` and `Model` ([DAL chapter](./dal#validators))
+- The `abort` helper now also accept a `body` parameter with which you can customize the body of the returned HTTP error
+
 Version 0.3
 -----------
 
@@ -32,7 +137,7 @@ Version 0.2
 
 weppy 0.2 introduces some major changes in the code that break backward compatibility among the 0.1 *developer preview*. These changes were made to simplify the coding flow for developers and to have more consistent APIs.
 
-If you're upgrading your application from weppy 0.1, next paragraphs describe the changes relevant for your application.
+If you're upgrading your application from weppy 0.1, next paragraphs describe the relevant changes for your application.
 
 ### sdict in place of Storage
 
