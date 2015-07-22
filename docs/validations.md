@@ -231,6 +231,17 @@ color = Field(validation={'not': {'in': ['white', 'black']}})
 
 Basically the `'not'` validator takes another validation as argument and check the opposite result.
 
+Any
+---
+
+Sometimes you need to validate an input value that respond to *any* of the given validations. Under this circumstances, you can use the `'any'` validation helper:
+
+```python
+myfield = Field(validation={'any': {'is': 'email', 'in': ['foo', 'bar']}})
+```
+
+Obviously the `'any'` validator takes other validations as argument and validate the value if any of the children validations pass.
+
 Transformations
 ---------------
 
