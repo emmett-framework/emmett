@@ -202,8 +202,8 @@ class MyModel(Model):
 
 Relations
 ---------
-As you've seen from the `Field` types, weppy provides the `reference` field type to create relationships between tables. So how you should use them?   
-Let's say we want to create some membership system of users in groups. We probably end up writing something like this:
+As you've seen from the `Field` paragraph, weppy provides the *reference* field type to create relationships between tables. So, how should we use it?   
+Let's say we want to create a membership system of users in groups. We probably end up writing something like this:
 
 ```python
 class User(Model):
@@ -218,12 +218,12 @@ class Membership(Model):
     group = Field('reference groups')
 ```
 
-Now we have `1:N` relationship between `Group` and `Membership` and `1:1` relationship between `User` and `Membership`. To select from the database the rows that match some of the relationships, we should write the queries using the referenced attributes and the id's of the record involved.   
-Or we can use another way.
+Now we have *1:N* relationship between `Group` and `Membership` and *1:1* relationship between `User` and `Membership`. To select from the database the rows that match some of the relationships, we should write the queries using the referenced attributes and the id's of the record involved.   
+Or we can use the included helpers to avoid that.
 
-### The easy way: belongs\_to, has\_one, has\_many
+### Defining relations using belongs\_to, has\_one, has\_many
 
-The simple and *magic* way is the usage of these three helpers. So how do they works? Let's see it with the same example, rewritten:
+weppy provides these three helpers to simplify operations with related entities. So how do they works? Let's see it with the above example, rewritten:
 
 ```python
 class User(Model):
@@ -232,11 +232,12 @@ class User(Model):
     age = Field('int')
 
 class Group(Model):
-    has_many('memberships')
+    has_many('memberships', {'users': {'via': 'memberships'}})
     name = Field()
 
 class Membership(Model):
     belongs_to('user', 'group')
+
     validation = {
         'user': {'unique': True}
     }
@@ -244,36 +245,33 @@ class Membership(Model):
 
 > – Dude, wait.. This is not more compact. I see more lines to do the same thing.
 
-Right, we wrote more lines to do the same thing as above, but we have some advantages over the first method. In particular if we want to get all the memberships of a certain group, with the first notation we should write:
+Right, we wrote more lines to do the same thing as above, but we have some advantages over the first method. In fact, if we want to get all users of a certain group, in the first scenario we should write:
 
 ```python
 group = db.Group(name="admins")
 memberships = db(db.Membership.group == group.id).select()
+users = []
 for membership in membership:
-    user = membership.user
+    users.append(membership.user)
 ```
 
-while the `has_many` helper implements the `memberships` method on the `Group` model:
+while the `has_many` helper implements the `memberships` and the `users` methods on the `Group` model:
 
 ```python
-group = db.Group(name="admins")
-for membership in group.memberships():
-    user = membership.user
+admins = db.Group(name="admins").users()
 ```
 
 In the same way, if you want to get the group of a certain user, with the first method you have to write:
 
 ```python
 user = db.User(name="mario")
-membership = db.Membership(user=user.id)
-group = membership.group
+group = db.Membership(user=user.id).group
 ```
 
 while with the `has_one` helper:
 
 ```python
-user = db.User(name="mario")
-group = user.membership.group
+group = db.User(name="mario").membership.group
 ```
 
 So, if you use relationships quite often in your code, you will end with less lines of code.
@@ -282,6 +280,125 @@ So, if you use relationships quite often in your code, you will end with less li
 > `has_one` and `has_many` don't create columns inside your tables. While `belongs_to` adds a `reference` Field inside your model, and you will have a column for the id of the referenced record, `has_one` and `has_many` will create a `Field.Virtual` object that will be included in the rows on selects.
 
 Obviously, you can use `reference` fields and write down your own `Model` methods as we will se in the next paragraphs; so finally, you can choose whatever way fits good for your project.
+
+### Specify models in relations
+
+As per default behavior, `belongs_to`, `has_one` and `has_many` use the passed argument both for the attribute naming and the other model you're referencing to, so:
+
+- `belongs_to('user')` will add a `user` field to your model referenced to `User` model
+- `has_one('user')` will add a virtual `user` attribute to your rows referenced to `User` model
+- `has_many('things')` will add a virtual `things` attribute to your rows referenced to `Thing` model
+
+Sometimes, you want to use a different name for the attribute, let's say, as an example, you need an `owner` attribute for the relation with the `User` model. You can reach this just writing:
+
+```python
+belongs_to({'owner': 'User'})
+has_one({'owner': 'User'})
+```
+
+The same works with `has_many` helper, and you will use it also in scenarios where your model names are not *regular plurals* in english, so for example, if you have a `Mouse` model, you will specify the relation:
+
+```python
+has_many({'mice': 'Mouse'})
+```
+
+> – Ok dude, what if I have a custom name for the foreign key? How do I specify that?   
+> - *You don't have to. weppy will handle it automatically*
+
+In fact, let's say you have a model named `Activity` which has a N:1 relation with `User` and you have the foreign key referred to `User` named `user_id` instead of `user`:
+
+```python
+class User(Model):
+    has_many('activities')
+
+class Activity(Model):
+    belongs_to({'user_id': 'User'})
+```
+
+then your relation will work out of the box, since weppy will map `activites` with the `user_id` foreign key in the `Activity` model.
+
+### has\_many 'via'
+
+As you've seen from the example above, the `has_many` helper also has a `via` option which you can use to export relationships trough other models.
+
+The first use-case of the `via` option is the same of the example, and is useful when you need to access all the records accessible with the `belongs_to` of a membership table:
+
+```python
+class User(Model):
+    has_many('memberships', {'things': {'via': 'memberships'}})
+    name = Field()
+
+class Thing(Model):
+    has_many('memberships', {'users': {'via': 'memberships'}})
+    name = Field()
+
+class Membership(Model):
+    belongs_to('user', 'thing')
+```
+
+so you can access directly `user.things()` and `thing.users()`.
+
+The `via` can be useful also when you have something like this:
+
+```python
+class University(Model):
+    has_many('courses', {'attendants': {'via': 'courses'}})
+
+class Course(Model):
+    belongs_to('university')
+    has_many('attendants')
+
+class Attendand(Model):
+    belongs_to('course')
+```
+
+in this case, you can access all the attendants of a university simply with `university.attendants()` (obviously you can access the university from the attendant using `attendant.course.university`).
+
+### has\_many methods
+
+Every time you use the `has_many` helper, weppy add an attribute of type `Set` (pydal's class) with the specified name on the `Row` object you've selected. Let's see it with the above example of users and things:
+
+```python
+>>> u = db.User(id=1)
+>>> u.memberships
+<Set (memberships.user = 1)>
+>>> u.things
+<Set ((memberships.user = 1) AND (memberships.thing = things.id))>
+```
+
+Since the object is a specific set of your database responding to a query, you have all the standard methods to run operations on in:
+
+| method | description |
+| --- | --- |
+| count | count the records in the set |
+| select | get the records of the set |
+| update | update all the records in the set |
+| validate\_and\_update | perform a validation and update the records |
+| delete | delete all the records in the set |
+| add | add a row to the set |
+
+As you observed, until now we used a shortcut for the `select` method just calling the set:
+
+```python
+>>> u.things.select()
+<Rows (1)>
+>>> u.things()
+<Rows (1)>
+```
+
+While all the methods described are quite intuitive, and works in the same way of running operations on tables, the add option can be quite useful when you need to add a relation to an existing object:
+
+```python
+>>> cube = db.Thing(name="cube")
+>>> user = db.User(id=1)
+>>> user.things.add(cube)
+```
+
+which is just another way of doing:
+
+```python
+>>> db.Membership.insert(user=user, thing=thing)
+```
 
 Forms read-writes
 -----------------
