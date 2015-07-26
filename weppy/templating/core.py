@@ -88,6 +88,8 @@ class Templater(object):
         return code, parserdata
 
     def render(self, source='', path=None, filename=None, context={}):
+        if isinstance(context, sdict):
+            context = dict(context)
         if 'asis' not in context:
             context['asis'] = asis
         if 'load_component' not in context:
