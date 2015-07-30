@@ -53,7 +53,7 @@ so you should end with this directory structure:
 Now you can test your application simply issuing the following command (inside the *bloggy* folder):
 
 ```bash
-weppy --app bloggy.py run
+> weppy --app bloggy.py run
 ```
 
 and you will see a message telling you that server has started along with the address at which you can access it.
@@ -71,14 +71,15 @@ The first step in coding our application is to create the database schema. In bl
 * The comments table
 
 Now, this might sounds complicated, but actually it's not. In fact, we can actually skip all the schema about users since weppy includes an authorization module that automatically creates the tables we need.   
-So, how we build our schema? We will use the default `AuthModel` class for the users related tables, which will create the `auth_user` table, and the `Model` class for the other tables:
+So, how we build our schema? We will use the default `AuthUser` class for the users table and authorization system, and the `Model` class for the other tables:
 
 ```python
 from weppy import request, session
-from weppy.dal import Field, Model, AuthModel
+from weppy.dal import Field, Model
+from weppy.tools.auth import AuthUser
 
-class User(AuthModel):
-    # will create "auth_user" table and groups/permissions ones
+class User(AuthUser):
+    # will create "users" table and groups/permissions ones
     has_many('posts', 'comments')
 
 
@@ -150,6 +151,7 @@ db.define_models(Post, Comment)
 But wait, how we add the admin user who can write the posts? We can write a `setup` function which allow us to do that. Let's write:
 
 ```python
+@app.command('setup')
 def setup():
     # create the user
     user = db.User.validate_and_insert(
@@ -167,14 +169,13 @@ def setup():
 
 The code is quite self-explanatory: it will add an user who can sign in with the "walter@massivedynamics.com" email and "pocketuniverse" as the password, then create an admin group and add the *Walter* user to this group.
 
-Now you can just start a python shell and run:
+Also, notice that we added the `@app.command` decorator, which allow us to run our setup function using the *weppy* command from shell:
 
-```python
->>> from bloggy import setup
->>> setup()
+```bash
+> weppy --app bloggy.py setup
 ```
 
-and we have everything ready to start writing and *exposing* our functions.
+so that we have everything ready to start writing and *exposing* our functions.
 
 Exposing functions
 ------------------

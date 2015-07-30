@@ -1,6 +1,7 @@
 from weppy import App, request, session, url, redirect, abort
-from weppy.dal import DAL, Field, Model, AuthModel, belongs_to, has_many
-from weppy.tools import Auth, requires
+from weppy.dal import DAL, Field, Model, belongs_to, has_many
+from weppy.tools import requires
+from weppy.tools.auth import Auth, AuthUser
 from weppy.sessions import SessionCookieManager
 
 
@@ -8,7 +9,7 @@ app = App(__name__)
 
 
 #: define models
-class User(AuthModel):
+class User(AuthUser):
     # will create "auth_user" table and groups/permissions ones
     has_many('posts', 'comments')
 
@@ -61,6 +62,7 @@ db.define_models(Post, Comment)
 
 
 #: setup helping function
+@app.command('setup')
 def setup():
     # create the user
     user = db.User.validate_and_insert(

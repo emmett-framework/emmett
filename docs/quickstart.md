@@ -1,4 +1,3 @@
-
 Getting started
 ===============
 
@@ -14,16 +13,16 @@ app = App(__name__)
 
 @app.expose("/")
 def hello():
- return "Hello world!"
+    return "Hello world!"
 
 if __name__ == "__main__":
- app.run()
+    app.run()
 ```
 
 Here it is. Save it as *hello.py* and run it with your python interpreter:
 
 ```bash
-$ python hello.py
+> python hello.py
 App running on 127.0.0.1:8000
 ```
 
