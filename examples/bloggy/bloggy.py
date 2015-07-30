@@ -104,7 +104,7 @@ def one(pid):
     comments = post.comments(orderby=~Comment.date)
     form = Comment.form(onvalidation=_validate_comment)
     if form.accepted:
-        redirect(url('post', pid))
+        redirect(url('one', pid))
     return locals()
 
 
