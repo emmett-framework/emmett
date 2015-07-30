@@ -142,22 +142,28 @@ mymodule.common_handlers = [RequireHandler(some_condition, otherwise)]
 
 just remember to not add access control over your authorization exposed function, otherwise your user won't be able to login.
 
-Database tables
----------------
-*section under writing*
-
-Authorization system with Models
+Authorization models
 --------------------------------
-You can obviously use the Auth module with the [database Models layer](./dal#models). You just have to define your user model:
+
+The `Auth` module define five models (and obviously the five related database tables) under default behavior:
+
+- `AuthUser`
+- `AuthGroup`
+- `AuthMembership`
+- `AuthPermission`
+- `AuthEvent`
+
+Now, you can customize the models subclassing them, and the first you want to is the one referred to the user, on which you can add your fields, for example an avatar. You will define your `User` model:
 
 ```python
-from weppy.dal import Field, AuthModel
+from weppy.dal import Field
+from weppy.tools.auth import AuthUser
 
 
-class User(AuthModel):
-    avatar = Field("upload", uploadfolder='uploads')
+class User(AuthUser):
+    avatar = Field("upload", uploadfolder="uploads")
     
-    profile_visibility = {
+    form_profile_rw = {
         "avatar": True
     }
 ```
@@ -169,8 +175,22 @@ from weppy.tools import Auth
 auth = Auth(app, db, usermodel=User)
 ```
 
-As you can see, defining an `AuthModel` is quite the same as for a `Model`, except that the fields you define will be the additional fields you want to add to the user table, and instead of the `visibility` attribute you have `profile_visibility` and `register_visibility` to treat separately the field access during user registration and when the user edits its own profile.
+As you can see, defining your using model subclassing `AuthUser` is quite the same as for a `Model`, except that the fields you define will be the additional fields you want to add to the user table, and instead of the `form_rw` attribute you have `form_profile_rw` and `form_registration_rw` to treat separately the field access during user registration and when the user edits its own profile.
 As the default visibility is set to `False` for any extra field you have defined, in the above example the client will be able to upload an avatar for its account only with the profile function and not during the registration.
+
+The default fields included in the `AuthUser` model are:
+
+- email
+- password
+- first_name
+- last_name
+
+plus some other columns need by the system and hidden to the users.
+
+If you don't want to have the `first_name` and `last_name` fields inside your user model (they are set to be not-null), you can subclass the `AuthUserBasic` model instead, available under `weppy.tools.auth.models` which doesn't include them.
+
+### Auth relations
+*section under writing*
 
 Auth module configuration
 -------------------------
