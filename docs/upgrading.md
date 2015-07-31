@@ -131,7 +131,31 @@ Moreover, we also changed the name of the columns involved in relations, in part
 - `auth_permissions` have changed `group_id` to `authgroup`
 - `auth_events` have changed `user_id` to `user`
 
-*section under completion*
+We suggest you to **manually do these changes** executing the proper sql commands with your database.
+
+If you're not sure on what to do, we also provide a migration script, which tries to migrate the data. Please, **do a full backup of your database before running the script**. You can use it as follows:
+
+- Download the script [weppy_04_upgrade](https://raw.github.com/gi0baro/weppy/master/scripts/weppy_04_upgrade.py) and put it in the directory of your application
+- Run the command `weppy --app yourappname shell` (with your application name) and in the console:
+
+```python
+>>> from yourappname import app, db
+>>> from weppy_04_upgrade import before_upgrade
+>>> before_upgrade(app, db)
+done
+```
+
+- Rewrite your models to apply the correct changes mentioned above
+- Run the command `weppy --app yourname shell` (with your application name) and in the console:
+
+```python
+>>> from yourappname import app, db, auth
+>>> from weppy_04_upgrade import after_upgrade
+>>> after_upgrade(app, db, auth)
+done
+```
+
+Then your auth tables should be good. The script created a *03dump.json* into your application folder that you can safely delete among with the script itself.
 
 ### New features
 
