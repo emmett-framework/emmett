@@ -514,14 +514,15 @@ class Auth(object):
                        dict(group_id=group_id, role=role))
         return group_id
 
-    def del_group(self, group_id):
+    def del_group(self, group):
         """
         deletes a group
         """
-        self.db(self.table_group.id == group_id).delete()
-        self.db(self.table_membership.group_id == group_id).delete()
-        self.db(self.table_permission.group_id == group_id).delete()
-        self.log_event(self.messages.del_group_log, dict(authgroup=group_id))
+        names = self.__get_modelnames()
+        self.db(self.table_membership[names['group']] == group).delete()
+        self.db(self.table_permission[names['group']] == group).delete()
+        self.db(self.table_group.id == group).delete()
+        self.log_event(self.messages.del_group_log, dict(authgroup=group))
 
     def id_group(self, role):
         """
@@ -532,12 +533,11 @@ class Auth(object):
             return None
         return rows[0].id
 
-    def user_group(self, user_id=None):
+    def user_group(self, user=None):
         """
         returns the group_id of the group uniquely associated to this user
-        i.e. role=user:[user_id]
         """
-        return self.id_group(self.user_group_role(user_id))
+        return self.id_group(self.user_group_role(user))
 
     def user_group_role(self, user_id=None):
         if not self.settings.create_user_groups:
@@ -548,62 +548,64 @@ class Auth(object):
             user = self.user
         return self.settings.create_user_groups % user
 
-    def has_membership(self, group_id=None, user_id=None, role=None):
+    def has_membership(self, group=None, user=None, role=None):
         """
-        checks if user is member of group_id or role
+        checks if user is member of group or role
         """
-        group_id = group_id or self.id_group(role)
+        names = self.__get_modelnames()
+        group = group or self.id_group(role)
         try:
-            group_id = int(group_id)
+            group = int(group)
         except:
-            group_id = self.id_group(group_id)  # interpret group_id as a role
-        if not user_id and self.user:
-            user_id = self.user.id
-        if group_id and user_id and self.db(
-           (self.table_membership.user_id == user_id) &
-           (self.table_membership.group_id == group_id)).select():
+            group = self.id_group(group)
+        if not user and self.user:
+            user = self.user.id
+        if group and user and self.db(
+                (self.table_membership[names['user']] == user) &
+                (self.table_membership[names['group']] == group)).select():
             r = True
         else:
             r = False
         self.log_event(self.messages['has_membership_log'],
-                       dict(user=user_id, authgroup=group_id, check=r))
+                       dict(user=user, authgroup=group, check=r))
         return r
 
-    def add_membership(self, group_id=None, user_id=None, role=None):
+    def add_membership(self, group=None, user=None, role=None):
         """
-        gives user_id membership of group_id or role
-        if user is None than user_id is that of current logged in user
+        gives user membership of group or role
         """
-        group_id = group_id or self.id_group(role)
+        names = self.__get_modelnames()
+        group = group or self.id_group(role)
         try:
-            group_id = int(group_id)
+            group = int(group)
         except:
-            group_id = self.id_group(group_id)  # interpret group_id as a role
-        if not user_id and self.user:
-            user_id = self.user.id
-        record = self.table_membership(user_id=user_id, group_id=group_id)
+            group = self.id_group(group)
+        if not user and self.user:
+            user = self.user.id
+        data = {names['user']: user, names['group']: group}
+        record = self.table_membership(**data)
         if record:
             return record.id
         else:
-            id = self.table_membership.insert(group_id=group_id,
-                                              user_id=user_id)
+            rid = self.table_membership.insert(**data)
         self.log_event(self.messages['add_membership_log'],
-                       dict(user=user_id, authgroup=group_id))
-        return id
+                       dict(user=user, authgroup=group))
+        return rid
 
-    def del_membership(self, group_id=None, user_id=None, role=None):
+    def del_membership(self, group=None, user=None, role=None):
         """
-        revokes membership from group_id to user_id
-        if user_id is None than user_id is that of current logged in user
+        revokes membership from group to user
+        if user is None than user is that of current logged in user
         """
-        group_id = group_id or self.id_group(role)
-        if not user_id and self.user:
-            user_id = self.user.id
+        names = self.__get_modelnames()
+        group = group or self.id_group(role)
+        if not user and self.user:
+            user = self.user.id
         self.log_event(self.messages['del_membership_log'],
-                       dict(user=user_id, authgroup=group_id))
-        ret = self.db(self.table_membership.user_id
-                      == user_id)(self.table_membership.group_id
-                                  == group_id).delete()
+                       dict(user=user, authgroup=group))
+        ret = self.db(
+            (self.table_membership[names['user']] == user) &
+            (self.table_membership[names['group']] == group)).delete()
         return ret
 
     def has_permission(self, name='any', table_name='', record_id=0,
@@ -633,42 +635,49 @@ class Auth(object):
             return True
         return False
 
-    def add_permission(self, group_id, name='any', table_name='', record_id=0):
+    def add_permission(self, group, name='any', table_name='', record_id=0):
         """
-        gives group_id 'name' access to 'table_name' and 'record_id'
+        gives group 'name' access to 'table_name' and 'record_id'
         """
-
-        if group_id == 0:
-            group_id = self.user_group()
-        record = self.db(self.table_permission.authgroup == group_id)(
-            self.table_permission.name == name)(
-            self.table_permission.table_name == str(table_name))(
-            self.table_permission.record_id == long(record_id)).select(
+        names = self.__get_modelnames()
+        if group == 0:
+            group = self.user_group()
+        query = (
+            (self.table_permission[names['group']] == group) &
+            (self.table_permission.name == name) &
+            (self.table_permission.table_name == str(table_name)) &
+            (self.table_permission.record_id == long(record_id))
+        )
+        record = self.db(query).select(
             limitby=(0, 1), orderby_on_limitby=False).first()
         if record:
-            id = record.id
+            rid = record.id
         else:
-            id = self.table_permission.insert(
-                authgroup=group_id, name=name, table_name=str(table_name),
-                record_id=long(record_id))
+            data = {
+                names['group']: group, 'name': name,
+                'table_name': str(table_name), 'record_id': long(record_id)}
+            rid = self.table_permission.insert(**data)
         self.log_event(self.messages['add_permission_log'],
-                       dict(permission_id=id, group_id=group_id,
+                       dict(permission_id=id, group_id=group,
                             name=name, table_name=table_name,
                             record_id=record_id))
-        return id
+        return rid
 
-    def del_permission(self, group_id, name='any', table_name='', record_id=0):
+    def del_permission(self, group, name='any', table_name='', record_id=0):
         """
         revokes group_id 'name' access to 'table_name' and 'record_id'
         """
+        names = self.__get_modelnames()
         self.log_event(
             self.messages['del_permission_log'],
-            dict(group_id=group_id, name=name, table_name=table_name,
+            dict(group_id=group, name=name, table_name=table_name,
                  record_id=record_id))
-        return self.db(self.table_permission.authgroup == group_id)(
-            self.table_permission.name == name)(
-            self.table_permission.table_name == str(table_name))(
-            self.table_permission.record_id == long(record_id)).delete()
+        return self.db(
+            (self.table_permission[names['group']] == group) &
+            (self.table_permission.name == name) &
+            (self.table_permission.table_name == str(table_name)) &
+            (self.table_permission.record_id == long(record_id))
+        ).delete()
 
     """
     def accessible_query(self, name, table, user_id=None):

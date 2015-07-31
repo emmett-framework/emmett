@@ -14,7 +14,7 @@ app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
 
 db = DAL(app)
-auth = Auth(app, db, base_url='/account')
+auth = Auth(app, db)
 
 app.common_handlers = [
     SessionCookieManager('myverysecretkey'),
@@ -43,22 +43,31 @@ The `Auth` module of weppy exposes (with the default settings):
 * http://.../{baseurl}/retrieve_username
 * http://.../{baseurl}/retrieve_password
 * http://.../{baseurl}/reset_password
+* http://.../{baseurl}/request\_reset\_password
 * http://.../{baseurl}/change_password
 * http://.../{baseurl}/profile
 
 and it also creates all the database tables needed, from users to groups and memberships ones.
 
-You can obviously change the base url for the authorization function:
+You can obviously change the routing url for the authorization function:
 
 ```python
-auth = Auth(app, db, base_url='/mycontrol')
+@app.expose('/myurl(/<str:f>)?(/<str:k>)?')
+def accunt(f, k):
+    # code
+```
 
-@app.expose('/mycontrol(/<str:f>)?(/<str:k>)?')
-def account(f, k):
+and even change the name of the exposed function, but if you do that, you mast tell to the `Auth` module to use it to generate urls:
+
+```python
+auth = Auth(app, db, base_url='mycontrol')
+
+@app.expose('/myurl(/<str:f>)?(/<str:k>)?')
+def mycontrol(f, k):
     form = auth(f, k)
     return dict(form=form)
 ```
-you just need to remember using the `"/name(/<str:f>)?(/<str:k>)?"` format for exposing your account function, otherwise the authorization module won't work properly.
+otherwise the authorization module won't work properly.
 
 ###Disable specific actions
 You may want to disable some actions exposed by the authorization module, let's say for example you don't want the `retrieve_username` functionality. To do that, just edit your application configuration:
@@ -143,7 +152,7 @@ mymodule.common_handlers = [RequireHandler(some_condition, otherwise)]
 just remember to not add access control over your authorization exposed function, otherwise your user won't be able to login.
 
 Authorization models
---------------------------------
+--------------------
 
 The `Auth` module define five models (and obviously the five related database tables) under default behavior:
 
@@ -190,7 +199,72 @@ plus some other columns need by the system and hidden to the users.
 If you don't want to have the `first_name` and `last_name` fields inside your user model (they are set to be not-null), you can subclass the `AuthUserBasic` model instead, available under `weppy.tools.auth.models` which doesn't include them.
 
 ### Auth relations
+
 *section under writing*
+
+Users management
+---------------
+
+Thanks to the models and relations defined by the `Auth` module, you can easily manage the users in your application. Let's say, for example, you want to add a **group** of administrators:
+
+```python
+admins = auth.add_group('administrators')
+```
+
+then you can add users to the administrators' group easily:
+
+```python
+admin = db.User(id=42)
+# 1st way:
+auth.add_membership(admins, admin)
+# 2nd way:
+auth.add_membership('administrators', admin)
+# 3rd way:
+admins.users.add(admin)
+# 4th way:
+admin.authgroups.add(admins)
+```
+
+Once you have added groups and memberships, you can use the `has_membership` helper of the `Auth` model (that we've already seen before in the *requires* paragraph):
+
+```python
+# on the logged user:
+auth.has_membership('administrators')
+# specifying a user:
+auth.has_membership('administrator', user)
+```
+
+and you can obviously get all the groups user has membership with using relation:
+
+```python
+user.authgroups()
+```
+
+But weppy's `Auth` module also have a finer management for users, considering permissions:
+
+```python
+auth.add_permission(admins, 'ban_users')
+```
+
+As you got from the example, this allows you to bind specific permissions to groups, and then checks for them both on groups and users:
+
+```python
+# on the logged user:
+auth.has_permission('ban_users')
+# on specific user:
+auth.has_permission('ban_users', user=admin)
+# on specific group:
+auth.has_permission('ban_users', group=admins)
+```
+
+weppy's `Auth` permissions also support more details, like a model name and a record:
+
+```python
+maintenance = db.Preference(name='maintenance').first()
+auth.add_permission(admins, 'write', 'Setting', maintenance.id)
+# then you will check
+auth.has_permission('write', 'Setting', maintenance.id)
+```
 
 Auth module configuration
 -------------------------
