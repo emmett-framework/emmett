@@ -184,7 +184,7 @@ from weppy.tools import Auth
 auth = Auth(app, db, usermodel=User)
 ```
 
-As you can see, defining your using model subclassing `AuthUser` is quite the same as for a `Model`, except that the fields you define will be the additional fields you want to add to the user table, and instead of the `form_rw` attribute you have `form_profile_rw` and `form_registration_rw` to treat separately the field access during user registration and when the user edits its own profile.
+As you can see, defining your user model subclassing `AuthUser` is quite the same as for a `Model`, except that the fields you define will be the additional fields you want to add to the user table, and instead of the `form_rw` attribute you have `form_profile_rw` and `form_registration_rw` to treat separately the field access during user registration and when the user edits its own profile.
 As the default visibility is set to `False` for any extra field you have defined, in the above example the client will be able to upload an avatar for its account only with the profile function and not during the registration.
 
 The default fields included in the `AuthUser` model are:
@@ -198,7 +198,55 @@ plus some other columns need by the system and hidden to the users.
 
 If you don't want to have the `first_name` and `last_name` fields inside your user model (they are set to be not-null), you can subclass the `AuthUserBasic` model instead, available under `weppy.tools.auth.models` which doesn't include them.
 
+Before seeing how to customize the remaining auth models, let's see which relations are available as default.
+
 ### Auth relations
+
+The default `Auth` configuration gives you the ability to use these `has_many` relations on the `AuthUser` model (and any model subclassing it):
+
+```python
+user = db.AuthUser(id=1)
+# referring membership records
+user.authmemberships()
+# referring group records
+user.authgroups()
+# referring permission records
+user.authpermissions()
+# referring event records
+user.authevents()
+```
+
+The `AuthGroup` model has these `has_many` relations:
+
+```python
+group = db.AuthGroup(id=1)
+# referring user records
+group.users()
+# referring permission records
+group.authpermissions()
+```
+
+Consequentially, `AuthMembership`, `AuthPermission` and `AuthEvent` have the inverse `belongs_to` relations:
+
+```python
+membership = db.AuthMembership(id=1)
+# referred user record
+membership.user
+# referred group record
+membership.authgroup
+
+permission = db.AuthPermission(id=1)
+# referred group record
+permission.authgroup
+
+event = db.AuthEvent(id=1)
+# referred user record
+event.user
+```
+
+*section under writing*
+
+### Customizing auth models
 
 *section under writing*
 
