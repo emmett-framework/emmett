@@ -305,17 +305,17 @@ has_many({'mice': 'Mouse'})
 > – Ok dude, what if I have a custom name for the foreign key? How do I specify that?   
 > - *You don't have to. weppy will handle it automatically*
 
-In fact, let's say you have a model named `Activity` which has a N:1 relation with `User` and you have the foreign key referred to `User` named `user_id` instead of `user`:
+In fact, let's say you have a model named `Thing` which has a N:1 relation with `User` and you have the foreign key referred to `User` named `user_id` instead of `user`:
 
 ```python
 class User(Model):
-    has_many('activities')
+    has_many('things')
 
-class Activity(Model):
+class Thing(Model):
     belongs_to({'user_id': 'User'})
 ```
 
-then your relation will work out of the box, since weppy will map `activites` with the `user_id` foreign key in the `Activity` model.
+then your relation will work out of the box, since weppy will map `things` with the `user_id` foreign key in the `Thing` model.
 
 ### has\_many 'via'
 
