@@ -62,6 +62,7 @@ The main differences between using *web2py* or *pyDAL* directly, in comparison w
 
 - `DAL` class needs your `app` object as first parameter to work, and you store the configuration for the database in your `app.config` attribute
 - `Field` class in weppy doesn't accept the name for the field as the first parameter. This is because when you define your fields the name is captured by the attribute itself.
+- in weppy you can access tables both with table names and model names, so `db.Post` and `db.posts` will give the same object
 
 Let's go further and inspect the models layer provided by weppy.
 

@@ -113,7 +113,25 @@ also, we added new validators that replace the removed ones:
 
 ### Changes in Auth tables
 
-*under writing*
+Since weppy 0.4 introduces a new naming convention for models and tables, the old authorization tables were rewritten.
+
+The first consequence is that new `Auth` tables have changed names:
+
+| old name | new name |
+| --- | --- |
+| auth\_user | auth\_users |
+| auth\_group | auth\_groups |
+| auth\_membership | auth\_memberships |
+| auth\_permission | auth\_permissions |
+| auth\_event | auth\_events |
+
+Moreover, we also changed the name of the columns involved in relations, in particular:
+
+- `auth_memberships` have changed `user_id` and `group_id` to `user` and `authgroup`
+- `auth_permissions` have changed `group_id` to `authgroup`
+- `auth_events` have changed `user_id` to `user`
+
+*section under completion*
 
 ### New features
 
@@ -123,7 +141,7 @@ weppy 0.4 also introduces some new features you may want to take advantage of:
 - `Model` class now auto-generate the name for the table, if not specified (read more in the [DAL chapter](./dal#models))
 - `belongs_to`, `has_one` and `has_many` apis are now available for relations in your models (read more in the [DAL chapter](./dal#relations))
 - You can now disable default validation in `Field` and `Model` (read more in the [DAL chapter](./dal#validation))
-- The `abort` helper now also accept a `body` parameter with which you can customize the body of the returned HTTP error
+- The `abort` helper now also accept a `body` parameter which allows you to customize the body of the returned HTTP error
 
 Version 0.3
 -----------
