@@ -413,6 +413,12 @@ form_rw = {
 ```
 Any item of the dictionary can be a `tuple`, where the first value define if the field should be readable by the user and the second value define if the field should be writable, or `bool` that will set both values to the one given. By default, all fields are defined with *rw* at `True`.
 
+You may prefer to explicit passing read-writes values to the fields, using `rw` parameter:
+
+```python
+started = Field('datetime', rw=False)
+```
+
 Form labels
 -----------
 Labels are useful to produce good titles for your fields in forms:
@@ -424,6 +430,12 @@ form_labels = {
 ```
 Labels will decorate the input fields in your forms. In this example we used the [weppy translator](./languages) object to automatically translate the string in the correct language.
 
+You can also use the `label` parameter of `Field` class:
+
+```python
+started = Field('datetime', label=T("Opening date:"))
+```
+
 Form info
 ---------
 As for the labels, `form_info` attribute is useful to produce hints or helping blocks for your fields in forms:
@@ -432,6 +444,12 @@ As for the labels, `form_info` attribute is useful to produce hints or helping b
 form_info = {
     'started': T("Insert the desired opening date for your event in YYYY-MM-DD format.")
 }
+```
+
+You can also use the `info` parameter of `Field` class:
+
+```python
+started = Field('datetime', info=T("some description here"))
 ```
 
 Default values
@@ -444,6 +462,12 @@ default_values = {
 }
 ```
 
+Which is the same of the `default` parameter of `Field` class:
+
+```python
+started = Field('datetime', default=lambda: request.now)
+```
+
 Update values
 -------------
 As for the `default_values` attribute we've seen before, `update_values` helps you to set the default value for the field on record updates:
@@ -452,6 +476,12 @@ As for the `default_values` attribute we've seen before, `update_values` helps y
 update_values = {
     'started': lambda: request.now
 }
+```
+
+Or you can use the `update` parameter of `Field` class:
+
+```python
+started = Field('datetime', update=lambda: request.now)
 ```
 
 Representation
@@ -471,6 +501,12 @@ and you can render it using:
 MyModel.started.represent(record, record.started)
 ```
 
+You may prefer to explicit passing representation rules to the signle fields, using `representation` parameter:
+
+```python
+started = Field('datetime', representation=lambda row, value: prettydate(value))
+```
+
 Widgets
 -------
 
@@ -488,6 +524,12 @@ where `my_custom_widget` usually look like this:
 def my_custom_widget(field, value):
     # some processing
     return myhtmlinput
+```
+
+And you can also use the `widget` parameter of `Field` class:
+
+```python
+started = Field('datetime', widget=my_custom_widget)
 ```
 
 The 'setup' helper
