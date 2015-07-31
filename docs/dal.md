@@ -680,12 +680,12 @@ Other methods pre-defined in weppy are:
 | create | insert a new record with the values passed (field=value) if they pass the validation |
 
 But how you can define your methods?   
-Let's say, for example that you want a shortcut for querying record in your model `Series` with the same basic condition, like the case when you need to call in several parts of your code only records owned by the authenticated user. Assuming you have your user id stored in session, you can write down something like this in your model:
+Let's say, for example that you want a shortcut for querying record in your model `Show` with the same basic condition, as in the case you need to call in several parts of your code only shows going to air today. Assuming you have a `air_on` field of type *date* in your model, you can write down something like this:
 
 ```python
 @classmethod
-def find_owned(cls, query=None):
-    _query = (cls.owner == session.user)
+def onair_today(cls, query=None):
+    _query = (cls.air_on == datetime.utcnow().date())
     if query:
         _query = _query & query
     return cls.db(_query).select()
@@ -693,7 +693,7 @@ def find_owned(cls, query=None):
 now you can do:
 
 ```python
-my_series = Series.find_owned()
+today_shows = Show.onair_today()
 ```
 and you're done.
 
