@@ -1,6 +1,8 @@
 Validations
 ===========
 
+*New in version 0.4*
+
 Validations are used to ensure that only valid data is parsed and/or stored from forms and user interactions. For example, it may be important to your application to ensure that every user provides a valid email address, or that an input field contains a valid number, or a date with the right format.
 
 The validation mechanism in weppy is the same both if you're using independent forms or model's ones, and is built to be easy to use, provides built-in helpers for common needs, but also allows you to create your own validation methods as well.

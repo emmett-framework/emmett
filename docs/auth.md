@@ -154,6 +154,8 @@ just remember to not add access control over your authorization exposed function
 Authorization models
 --------------------
 
+*New in version 0.4*
+
 The `Auth` module define five models (and obviously the five related database tables) under default behavior:
 
 - `AuthUser`

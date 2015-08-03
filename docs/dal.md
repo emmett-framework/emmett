@@ -150,7 +150,6 @@ Using the right field type ensure the right columns types inside your tables, an
 
 Validation
 ----------
-
 To implement a validation mechanism for your fields, you can use the `validation` parameter of the `Field` class, or the mapping `dict` with the name of the fields at the `validation` attribute inside your Model. Both method will produce the same result, just pick the one you prefer:
 
 ```python
@@ -223,6 +222,7 @@ Now we have *1:N* relationship between `Group` and `Membership` and *1:1* relati
 Or we can use the included helpers to avoid that.
 
 ### Defining relations using belongs\_to, has\_one, has\_many
+*New in version 0.4*
 
 weppy provides these three helpers to simplify operations with related entities. So how do they works? Let's see it with the above example, rewritten:
 
@@ -283,7 +283,6 @@ So, if you use relationships quite often in your code, you will end with less li
 Obviously, you can use `reference` fields and write down your own `Model` methods as we will se in the next paragraphs; so finally, you can choose whatever way fits good for your project.
 
 ### Specify models in relations
-
 As per default behavior, `belongs_to`, `has_one` and `has_many` use the passed argument both for the attribute naming and the other model you're referencing to, so:
 
 - `belongs_to('user')` will add a `user` field to your model referenced to `User` model
@@ -319,7 +318,6 @@ class Thing(Model):
 then your relation will work out of the box, since weppy will map `things` with the `user_id` foreign key in the `Thing` model.
 
 ### has\_many 'via'
-
 As you've seen from the example above, the `has_many` helper also has a `via` option which you can use to export relationships trough other models.
 
 The first use-case of the `via` option is the same of the example, and is useful when you need to access all the records accessible with the `belongs_to` of a membership table:
@@ -356,7 +354,6 @@ class Attendand(Model):
 in this case, you can access all the attendants of a university simply with `university.attendants()` (obviously you can access the university from the attendant using `attendant.course.university`).
 
 ### has\_many methods
-
 Every time you use the `has_many` helper, weppy add an attribute of type `Set` (pydal's class) with the specified name on the `Row` object you've selected. Let's see it with the above example of users and things:
 
 ```python
@@ -401,9 +398,11 @@ which is just another way of doing:
 >>> db.Membership.insert(user=user, thing=thing)
 ```
 
-Forms read-writes
------------------
+Model helpers and fields options
+--------------------------------
+As you've seen for validations, weppy models have some reserved attributes which define some options for the fields inside your models. All the options listed in the next sections are available also as parameters of the `Field` class, and you can choose how to organize your code depending on your needs.
 
+###Forms read-writes
 `form_rw` attribute of `Model` class helps you to hide some attributes to users when you create forms:
 
 ```python
@@ -420,8 +419,7 @@ You may prefer to explicit passing read-writes values to the fields, using `rw` 
 started = Field('datetime', rw=False)
 ```
 
-Form labels
------------
+###Form labels
 Labels are useful to produce good titles for your fields in forms:
 
 ```python
@@ -437,8 +435,7 @@ You can also use the `label` parameter of `Field` class:
 started = Field('datetime', label=T("Opening date:"))
 ```
 
-Form info
----------
+###Form info
 As for the labels, `form_info` attribute is useful to produce hints or helping blocks for your fields in forms:
 
 ```python
@@ -453,8 +450,7 @@ You can also use the `info` parameter of `Field` class:
 started = Field('datetime', info=T("some description here"))
 ```
 
-Default values
---------------
+###Default values
 Helps you to set the default value for the field on record insertions:
 
 ```python
@@ -469,8 +465,7 @@ Which is the same of the `default` parameter of `Field` class:
 started = Field('datetime', default=lambda: request.now)
 ```
 
-Update values
--------------
+###Update values
 As for the `default_values` attribute we've seen before, `update_values` helps you to set the default value for the field on record updates:
 
 ```python
@@ -485,9 +480,7 @@ Or you can use the `update` parameter of `Field` class:
 started = Field('datetime', update=lambda: request.now)
 ```
 
-Representation
---------------
-
+###Representation
 Sometimes you need to give a better representation for the value of your entity:
 
 ```python
@@ -508,9 +501,7 @@ You may prefer to explicit passing representation rules to the signle fields, us
 started = Field('datetime', representation=lambda row, value: prettydate(value))
 ```
 
-Widgets
--------
-
+###Widgets
 Widgets are used to produce the relevant input part in the form produced from your model. Every `Field` object has a default widget depending on the type you defined, for example the *datetime* has an `<input>` html tag of type *text*. When you need to customize the look of your input blocks in the form, you can use your own widgets and pass them to the model with the appropriate attribute:
 
 ```python
@@ -533,9 +524,8 @@ And you can also use the `widget` parameter of `Field` class:
 started = Field('datetime', widget=my_custom_widget)
 ```
 
-The 'setup' helper
-------------------
-
+The Model's setup helper
+------------------------
 Sometimes you need to access your model attributes when defining other features, but, until now, we couldn't access the class or the instance itself. To avoid this problem, you can use the `setup` method of the model:
 
 ```python
@@ -548,7 +538,6 @@ def setup(self):
 
 Computations
 ------------
-
 Sometimes you need some field values to be *computed* using other fields. For example:
 
 ```python
@@ -567,7 +556,6 @@ The function that does computation has to accept the row as parameter, and the c
 
 Callbacks
 ---------
-
 When you need to perform certain computations on specific conditions, weppy helps you with the callbacks decorators, which will be invoked automatically. Here is the complete list of available decorators, with the parameters that will be passed to your decorated function:
 
 | decorator | parameters |
@@ -592,7 +580,6 @@ def update_avatar_thumb(self, s, fields):
 
 Virtual fields
 --------------
-
 An alternative option to *computed* fields are the virtual ones. Considering the same example for the computations we can instead write:
 
 ```python
@@ -616,7 +603,6 @@ for item in items:
 
 Field methods
 -------------
-
 Another option for computed fields is to use the `fieldmethod` decorator:
 
 ```python
@@ -665,7 +651,6 @@ print item.availability()
 
 Model methods
 -------------
-
 You can also define methods that will be available on the Model class itself. For instance, every weppy model comes with some pre-defined methods, for example:
 
 ```python
