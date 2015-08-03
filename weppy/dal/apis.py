@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+    weppy.dal.apis
+    --------------
+
+    Provides apis for dal.
+
+    :copyright: (c) 2015 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
+
 from .helpers import Reference, Callback
 
 

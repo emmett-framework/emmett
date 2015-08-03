@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+    weppy.dal.base
+    --------------
+
+    Provides base pyDAL implementation for weppy.
+
+    :copyright: (c) 2015 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
+
 import os
 from pydal import DAL as _pyDAL, Field as _Field
 from pydal.objects import Table as _Table

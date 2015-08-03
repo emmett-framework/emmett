@@ -1,3 +1,18 @@
+# -*- coding: utf-8 -*-
+"""
+    weppy.tools.auth.exposer
+    ------------------------
+
+    Provides the exposed functions and logics for the authorization system.
+
+    :copyright: (c) 2015 by Giovanni Barillari
+
+    Based on the web2py's auth module (http://www.web2py.com)
+    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+
+    :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
+"""
+
 import time
 from ...dal import Field
 from ...forms import Form, DALForm

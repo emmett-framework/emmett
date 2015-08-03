@@ -1,3 +1,14 @@
+"""
+    weppy_04_upgrade
+    ----------------
+
+    A basic script which dumps 0.3 auth tables' contents and insert dumped
+    data into 0.4 tables with correct structure.
+
+    :copyright: (c) 2015 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
+
 import json
 import os
 

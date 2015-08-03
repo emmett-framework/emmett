@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+    weppy.tools.auth.models
+    -----------------------
+
+    Provides models for the authorization system.
+
+    :copyright: (c) 2015 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
+
 from datetime import datetime
 from ...dal import Model, Field
 from ...globals import current, request

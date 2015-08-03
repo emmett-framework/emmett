@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+    weppy.tools.auth.handlers
+    -------------------------
+
+    Provides handlers for the authorization system.
+
+    :copyright: (c) 2015 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
+
 from datetime import timedelta
 from ...dal import Field
 from ...datastructures import sdict

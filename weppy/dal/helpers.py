@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+    weppy.dal.helpers
+    -----------------
+
+    Provides helpers for dal.
+
+    :copyright: (c) 2015 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
+
 import re
 from pydal.objects import Set, LazySet
 
@@ -152,43 +163,3 @@ def make_tablename(classname):
     words = re.findall('[A-Z][^A-Z]*', classname)
     tablename = '_'.join(words)
     return tablename.lower()+"s"
-
-
-"""
-def _default_validators(db, field):
-    requires = []
-    if db and field.type.startswith('reference') and \
-            field.type.find('.') < 0 and \
-            field.type[10:] in db.tables:
-        referenced = db[field.type[10:]]
-        if hasattr(referenced, '_format') and referenced._format:
-            requires = _validators.inDb(db, referenced._id, referenced._format)
-            if field.unique:
-                requires._and = _validators.notInDb(db, field)
-            if field.tablename == field.type[10:]:
-                return _validators.isEmptyOr(requires)
-            return requires
-    elif db and field.type.startswith('list:reference') and \
-            field.type.find('.') < 0 and \
-            field.type[15:] in db.tables:
-        referenced = db[field.type[15:]]
-        if hasattr(referenced, '_format') and referenced._format:
-            requires = _validators.inDb(db, referenced._id, referenced._format,
-                                        multiple=True)
-        else:
-            requires = _validators.inDb(db, referenced._id, multiple=True)
-        if field.unique:
-            requires._and = _validators.notInDb(db, field)
-        if not field.notnull:
-            requires = _validators.isEmptyOr(requires)
-        return requires
-
-    if field.unique:
-        requires.append(_validators.notInDb(db, field))
-    sff = ['in', 'do', 'da', 'ti', 'de', 'bo']
-    if field.notnull and not field.type[:2] in sff:
-        requires.append(_validators.isntEmpty())
-    elif not field.notnull and field.type[:2] in sff and requires:
-        requires[0] = _validators.isEmptyOr(requires[0])
-    return requires
-"""

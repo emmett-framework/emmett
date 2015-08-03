@@ -1,3 +1,18 @@
+# -*- coding: utf-8 -*-
+"""
+    weppy.tools.auth.engine
+    -----------------------
+
+    Provides the weppy authorization system.
+
+    :copyright: (c) 2015 by Giovanni Barillari
+
+    Based on the web2py's auth module (http://www.web2py.com)
+    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+
+    :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
+"""
+
 import base64
 import os
 import time

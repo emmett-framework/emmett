@@ -1,3 +1,18 @@
+# -*- coding: utf-8 -*-
+"""
+    weppy.tools.auth.helpers
+    ------------------------
+
+    Provides helpers for the authorization system.
+
+    :copyright: (c) 2015 by Giovanni Barillari
+
+    Based on the web2py's auth module (http://www.web2py.com)
+    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+
+    :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
+"""
+
 from ...globals import request
 from ...http import redirect
 

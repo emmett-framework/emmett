@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+    weppy.dal.models
+    ----------------
+
+    Provides model layer for weppy's dal.
+
+    :copyright: (c) 2015 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
+
 from collections import OrderedDict
 from .apis import computation, virtualfield, fieldmethod
 from .base import Field, _Field, sdict
