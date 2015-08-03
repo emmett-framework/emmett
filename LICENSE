@@ -39,10 +39,10 @@ Due to the original license limitations, some of these components are
 distributed under LGPLv3 license, in particular:
 
     * weppy/language
-    * weppy/validators
-    * weppy/tools/auth.py
-    * weppy/tools/mail.py
     * weppy/security.py
+    * weppy/tools/auth
+    * weppy/tools/mail.py
+    * weppy/validators
 
 Other derived components are distributed under BSD license, in particular:
 

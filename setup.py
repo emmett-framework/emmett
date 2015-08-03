@@ -17,7 +17,7 @@ Links
 from setuptools import setup
 setup(
     name='weppy',
-    version='0.4-dev',
+    version='0.4',
     url='http://github.com/gi0baro/weppy/',
     license='BSD',
     author='Giovanni Barillari',
@@ -33,7 +33,7 @@ setup(
     install_requires=[
         'click>=0.6',
         'pyaes',
-        'pyDAL>=15.05.26',
+        'pyDAL>=15.07',
         'pyyaml'
     ],
     classifiers=[
