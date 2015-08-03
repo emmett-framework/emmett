@@ -209,7 +209,7 @@ def run_command(info, host, port, reloader):
 def shell_command(info):
     import code
     app = info.load_app()
-    banner = 'Python %s on %s\nWeppy shell on app: %s' % (
+    banner = 'Python %s on %s\nweppy shell on app: %s' % (
         sys.version,
         sys.platform,
         app.import_name

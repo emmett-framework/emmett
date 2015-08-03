@@ -19,5 +19,6 @@
 - extensions
 - patterns
 - debug_and_logging
+- cli
 - deployment
 - upgrading
