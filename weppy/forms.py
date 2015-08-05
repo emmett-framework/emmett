@@ -11,6 +11,7 @@
 
 import uuid
 
+from ._compat import iteritems, iterkeys
 from .dal import Field
 from .datastructures import sdict
 from .globals import current, request, session
@@ -33,15 +34,15 @@ class Form(TAG):
 
     def __init__(self, fields={}, **kwargs):
         #: get fields from kwargs
-        for name, parameter in kwargs.iteritems():
+        for name, parameter in iteritems(kwargs):
             if isinstance(parameter, Field):
                 fields[name] = parameter
-        for name in fields.iterkeys():
+        for name in iterkeys(fields):
             if name in kwargs:
                 del kwargs[name]
         #: order fields correctly
         sorted_fields = []
-        for name, field in fields.iteritems():
+        for name, field in iteritems(fields):
             sorted_fields.append((name, field))
         sorted_fields.sort(key=lambda x: x[1]._inst_count_)
         #: init fields
@@ -155,7 +156,7 @@ class Form(TAG):
             styler._proc_element(field, value, error)
         styler.add_buttons()
         styler._add_formkey(self.formkey)
-        for key, value in self.attributes.get('hidden', {}).iteritems():
+        for key, value in iteritems(self.attributes.get('hidden', {})):
             styler._add_hidden(key, value)
         return styler.render()
 
@@ -196,7 +197,7 @@ class Form(TAG):
             hidden = cat()
             hidden.append(tag.input(_name='_csrf_token', _type='hidden',
                                     _value=self.formkey))
-            for key, value in self.attributes.get('hidden', {}).iteritems():
+            for key, value in iteritems(self.attributes.get('hidden', {})):
                 hidden.append(tag.input(_name=key, _type='hidden',
                               _value=value))
             # provides end attribute

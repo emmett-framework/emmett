@@ -16,7 +16,7 @@
 from cgi import escape
 import os
 
-from .._compat import implements_bool
+from .._compat import implements_bool, iteritems, iterkeys
 from ..tags import asis, xmlescape
 from .helpers import regex_backslash, regex_plural, regex_plural_dict, \
     regex_plural_tuple, regex_language, DEFAULT_NPLURALS, \
@@ -329,7 +329,7 @@ class Translator(object):
                                                   writable=writable)
 
     def build_translator(self, language):
-        all_languages = set(lang for lang in self.possible_languages.iterkeys()
+        all_languages = set(lang for lang in iterkeys(self.possible_languages)
                             if lang != 'default')
         # compare "aa-bb" | "aa" from *language* parameter
         # with strings from langlist using such alghorythm:
@@ -377,7 +377,7 @@ class Translator(object):
             if isinstance(symbols, dict):
                 symbols.update(
                     (key, xmlescape(value).translate(ttab_in))
-                    for key, value in symbols.iteritems()
+                    for key, value in iteritems(symbols)
                     if not isinstance(value, NUMBERS))
             else:
                 if not isinstance(symbols, tuple):
@@ -520,7 +520,7 @@ class Translator(object):
             if isinstance(symbols, dict):
                 symbols.update(
                     (key, str(value).translate(ttab_in))
-                    for key, value in symbols.iteritems()
+                    for key, value in iteritems(symbols)
                     if not isinstance(value, NUMBERS))
             else:
                 if not isinstance(symbols, tuple):

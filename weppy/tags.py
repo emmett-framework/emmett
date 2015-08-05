@@ -12,6 +12,7 @@
 import re
 import threading
 
+from ._compat import iteritems
 from .libs.sanitizer import sanitize
 
 __all__ = ['tag', 'cat', 'safe', 'asis']
@@ -173,7 +174,7 @@ class TAG(object):
             if k.startswith('_') and v is not None)
         da = self.attributes.get('data', {})
         ca_data = ' '.join(
-            'data-%s="%s"' % (k, xmlescape(v)) for k, v in da.iteritems())
+            'data-%s="%s"' % (k, xmlescape(v)) for k, v in iteritems(da))
         if ca_data:
             ca = ca + ' ' + ca_data
         ca = ' ' + ca if ca else ''

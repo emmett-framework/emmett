@@ -10,6 +10,7 @@
 """
 
 from collections import OrderedDict
+from .._compat import iteritems
 from .apis import computation, virtualfield, fieldmethod
 from .base import Field, _Field, sdict
 from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
@@ -57,36 +58,33 @@ class MetaModel(type):
         items = []
         for item in belongs_to._references_.values():
             items += item.reference
-        #setattr(new_class, "_belongs_ref_", items)
         new_class._belongs_ref_ = super_relations._belongs_ref_ + items
         belongs_to._references_ = {}
         items = []
         for item in has_one._references_.values():
             items += item.reference
-        #setattr(new_class, "_hasone_ref_", items)
         new_class._hasone_ref_ = super_relations._hasone_ref_ + items
         has_one._references_ = {}
         items = []
         for item in has_many._references_.values():
             items += item.reference
-        #setattr(new_class, "_hasmany_ref_", items)
         new_class._hasmany_ref_ = super_relations._hasmany_ref_ + items
         has_many._references_ = {}
         #: set virtuals
         all_virtuals = {}
-        for k, v in getattr(new_class, '_declared_virtuals_', {}).iteritems():
+        for k, v in iteritems(getattr(new_class, '_declared_virtuals_', {})):
             all_virtuals[k] = v
         all_virtuals.update(virtual_fields)
         new_class._declared_virtuals_ = all_virtuals
         #: set computations
         all_computations = {}
-        for k, v in getattr(new_class, '_declared_computations_', {}).iteritems():
+        for k, v in iteritems(getattr(new_class, '_declared_computations_', {})):
             all_computations[k] = v
         all_computations.update(computations)
         new_class._declared_computations_ = all_computations
         #: set callbacks
         all_callbacks = {}
-        for k, v in getattr(new_class, '_declared_callbacks_', {}).iteritems():
+        for k, v in iteritems(getattr(new_class, '_declared_callbacks_', {})):
             all_callbacks[k] = v
         all_callbacks.update(callbacks)
         new_class._declared_callbacks_ = all_callbacks
@@ -170,7 +168,7 @@ class Model(object):
     def _define_props_(self):
         #: create pydal's Field elements
         self.fields = []
-        for name, obj in self._declared_fields_.iteritems():
+        for name, obj in iteritems(self._declared_fields_):
             if obj.modelname is not None:
                 obj = Field(*obj._args, **obj._kwargs)
                 setattr(self.__class__, name, obj)
@@ -235,7 +233,7 @@ class Model(object):
         err = 'virtualfield or fieldmethod cannot have same name as an' + \
             'existent field!'
         field_names = [field.name for field in self.fields]
-        for name, obj in self._declared_virtuals_.iteritems():
+        for name, obj in iteritems(self._declared_virtuals_):
             if obj.field_name in field_names:
                 raise RuntimeError(err)
             if isinstance(obj, fieldmethod):
@@ -288,7 +286,7 @@ class Model(object):
         err = 'computations should have the name of an existing field to ' +\
             'compute!'
         field_names = [field.name for field in self.fields]
-        for name, obj in self._declared_computations_.iteritems():
+        for name, obj in iteritems(self._declared_computations_):
             if obj.field_name not in field_names:
                 raise RuntimeError(err)
             # TODO add check virtuals
@@ -296,7 +294,7 @@ class Model(object):
                 lambda row, obj=obj, self=self: obj.f(self, row)
 
     def __define_actions(self):
-        for name, obj in self._declared_callbacks_.iteritems():
+        for name, obj in iteritems(self._declared_callbacks_):
             for t in obj.t:
                 if t in ["_before_insert", "_before_delete", "_after_delete"]:
                     getattr(self.table, t).append(

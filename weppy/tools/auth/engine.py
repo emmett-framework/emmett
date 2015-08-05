@@ -17,6 +17,7 @@ import base64
 import os
 import time
 from pydal.objects import Row
+from ..._compat import iteritems
 from ...datastructures import sdict
 from ...expose import url
 from ...globals import request, session
@@ -256,7 +257,7 @@ class Auth(object):
             models.event
         )
         self._model_names = sdict()
-        for key, value in models.iteritems():
+        for key, value in iteritems(models):
             self._model_names[key] = value.__name__
 
     def log_event(self, description, vars={}, origin='auth'):

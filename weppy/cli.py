@@ -17,6 +17,7 @@ from __future__ import print_function
 import os
 import sys
 import click
+from ._compat import iteritems
 
 
 def find_best_app(module):
@@ -32,7 +33,7 @@ def find_best_app(module):
             return app
 
     # Otherwise find the only object that is a weppy App instance.
-    matches = [v for k, v in module.__dict__.iteritems()
+    matches = [v for k, v in iteritems(module.__dict__)
                if isinstance(v, App)]
 
     if len(matches) == 1:

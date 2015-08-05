@@ -11,6 +11,7 @@
 
 import re
 from pydal.objects import Set, LazySet
+from .._compat import iteritems
 
 
 class Reference(object):
@@ -97,7 +98,7 @@ class HasManyViaWrap(object):
         self.via = via
 
     def _get_belongs(self, db, model, value):
-        for key, val in db[model]._model_._belongs_ref_.iteritems():
+        for key, val in iteritems(db[model]._model_._belongs_ref_):
             if val == value:
                 return key
         return None

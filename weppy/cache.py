@@ -16,7 +16,7 @@ import threading
 import tempfile
 from hashlib import md5
 
-from ._compat import pickle, integer_types
+from ._compat import pickle, integer_types, iteritems
 from .libs.portalocker import LockedFile
 
 __all__ = ['Cache']
@@ -312,7 +312,7 @@ class Cache(object):
     def __init__(self, **kwargs):
         #: load handlers
         handlers = []
-        for key, val in kwargs.iteritems():
+        for key, val in iteritems(kwargs):
             if key == "default":
                 continue
             handlers.append((key, val))

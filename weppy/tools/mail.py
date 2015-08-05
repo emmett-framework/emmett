@@ -16,6 +16,7 @@ import time
 import smtplib
 from email import MIMEBase, MIMEMultipart, MIMEText, Encoders, Header, \
     message_from_string, Charset
+from .._compat import iteritems
 from ..utils import read_file
 from ..datastructures import sdict
 from ..libs.contenttype import contenttype
@@ -591,7 +592,7 @@ class Mail(object):
         payload['Subject'] = encoded_or_raw(subject.decode(encoding))
         payload['Date'] = time.strftime("%a, %d %b %Y %H:%M:%S +0000",
                                         time.gmtime())
-        for k, v in headers.iteritems():
+        for k, v in iteritems(headers):
             payload[k] = encoded_or_raw(v.decode(encoding))
         result = {}
         try:

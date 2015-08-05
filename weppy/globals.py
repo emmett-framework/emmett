@@ -15,7 +15,7 @@ import copy
 import json
 import threading
 
-from ._compat import SimpleCookie
+from ._compat import SimpleCookie, iteritems
 from ._internal import ObjectProxy, LimitedStream
 from .datastructures import sdict
 from .helpers import get_flashed_messages
@@ -46,7 +46,7 @@ class Request(object):
         query_string = self.environ.get('QUERY_STRING', '')
         dget = cgi.parse_qs(query_string, keep_blank_values=1)
         get_vars = self._get_vars = sdict(dget)
-        for (key, value) in get_vars.iteritems():
+        for key, value in iteritems(get_vars):
             if isinstance(value, list) and len(value) == 1:
                 get_vars[key] = value[0]
 
@@ -85,13 +85,13 @@ class Request(object):
                 dpk = [item.value if not item.filename else item
                        for item in dpk]
                 post_vars[key] = dpk
-            for (key, value) in self._post_vars.iteritems():
+            for key, value in iteritems(self._post_vars):
                 if isinstance(value, list) and len(value) == 1:
                     post_vars[key] = value[0]
 
     def _parse_all_vars(self):
         self._vars = copy.copy(self.get_vars)
-        for key, val in self.post_vars.iteritems():
+        for key, val in iteritems(self.post_vars):
             if key not in self._vars:
                 self._vars[key] = val
             else:
@@ -149,7 +149,7 @@ class Request(object):
         if not hasattr(self, '_env'):
             self._env = sdict(
                 (k.lower().replace('.', '_'), v)
-                for (k, v) in self.environ.iteritems()
+                for k, v in iteritems(self.environ)
             )
         return self._env
 
@@ -191,10 +191,10 @@ class Response(object):
     def get_meta(self):
         s = '\n'.join(
             '<meta name="%s" content="%s" />\n' % (k, xmlescape(v))
-            for k, v in (self.meta or {}).iteritems())
+            for k, v in iteritems(self.meta or {}))
         s += '\n'.join(
             '<meta property="%s" content="%s" />\n' % (k, xmlescape(v))
-            for k, v in (self.meta_prop or {}).iteritems())
+            for k, v in iteritems(self.meta_prop or {}))
         return s
 
     __getitem__ = object.__getattribute__

@@ -14,6 +14,7 @@ import re
 import os
 import urllib
 
+from ._compat import iteritems
 from .handlers import Handler, _wrapWithHandlers
 from .templating import render
 from .globals import current
@@ -353,7 +354,7 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
     # add vars
     if vars:
         url = url + '?' + '&'.join(
-            '%s=%s' % (q(k), q(v)) for k, v in vars.iteritems()
+            '%s=%s' % (q(k), q(v)) for k, v in iteritems(vars)
         )
     # scheme=True means to use current scheme
     if scheme is True:
