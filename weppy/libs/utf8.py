@@ -13,6 +13,8 @@
 import __builtin__
 __all__ = ['Utf8']
 
+from __future__ import print_function
+
 repr_escape_tab = {}
 for i in range(1, 32):
     repr_escape_tab[i] = ur'\x%02x' % i
@@ -751,8 +753,8 @@ if __name__ == '__main__':
         reload(sys)
         sys.setdefaultencoding("UTF-8")
         import doctest
-        print "DOCTESTS STARTED..."
+        print("DOCTESTS STARTED...")
         doctest.testmod()
-        print "DOCTESTS FINISHED"
+        print("DOCTESTS FINISHED")
 
     doctests()

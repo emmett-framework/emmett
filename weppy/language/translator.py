@@ -16,16 +16,19 @@
 from cgi import escape
 import os
 
-from .._compat import implements_bool, iteritems, iterkeys
+from .._compat import PY2, implements_bool, iteritems, iterkeys
 from ..tags import asis, xmlescape
 from .helpers import regex_backslash, regex_plural, regex_plural_dict, \
     regex_plural_tuple, regex_language, DEFAULT_NPLURALS, \
     DEFAULT_GET_PLURAL_ID, DEFAULT_CONSTRUCT_PLURAL_FORM, \
     read_possible_languages, read_dict, write_dict, read_plural_dict, \
-    write_plural_dict, Utf8, ttab_in, ttab_out, upper_fun, title_fun, cap_fun
+    write_plural_dict, ttab_in, ttab_out, upper_fun, title_fun, cap_fun
 from .cache import get_from_cache
 
-NUMBERS = (int, long, float)
+if PY2:
+    NUMBERS = (int, long, float)
+else:
+    NUMBERS = (int, float)
 
 
 #: The single 'translator string element', is created when user calls
@@ -53,7 +56,10 @@ class TElement(object):
             self.is_copy = False
 
     def __repr__(self):
-        return "<lazyT %s>" % (repr(Utf8(self.m)), )
+        if PY2:
+            from .helpers import Utf8
+            return "<lazyT %s>" % (repr(Utf8(self.m)), )
+        return "<lazyT %s>" % (repr(self.m), )
 
     def __str__(self):
         lang = self.language

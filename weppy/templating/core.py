@@ -12,7 +12,7 @@
 import os
 import cgi
 import sys
-from .._compat import StringIO
+from .._compat import StringIO, reduce
 from ..globals import current
 from ..http import HTTP
 from ..tags import asis
@@ -98,7 +98,7 @@ class Templater(object):
         code, parserdata = self.parse(path, filename, source, context)
         self.inject(context)
         try:
-            exec code in context
+            exec(code, context)
         except:
             from ..debug import make_traceback
             exc_info = sys.exc_info()

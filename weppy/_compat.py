@@ -24,7 +24,10 @@ if PY2:
     itervalues = lambda d: d.itervalues()
     iteritems = lambda d: d.iteritems()
     integer_types = (int, long)
+    string_types = (str, unicode)
+    basestring = basestring
 
+    reduce = reduce
     hashlib_md5 = hashlib.md5
 
     def implements_iterator(cls):
@@ -37,8 +40,7 @@ if PY2:
         del cls.__bool__
         return cls
 
-    def reraise(tp, value, tb=None):
-        raise tp, value, tb
+    exec('def reraise(tp, value, tb=None):\n raise tp, value, tb')
 else:
     from http.cookies import SimpleCookie
     from io import StringIO
@@ -48,7 +50,10 @@ else:
     itervalues = lambda d: iter(d.values())
     iteritems = lambda d: iter(d.items())
     integer_types = (int, )
+    string_types = (str,)
+    basestring = str
 
+    from functools import reduce
     hashlib_md5 = lambda s: hashlib.md5(bytes(s, 'utf8'))
 
     implements_iterator = _identity
@@ -58,3 +63,19 @@ else:
         if value.__traceback__ is not tb:
             raise value.with_traceback(tb)
         raise value
+
+
+def with_metaclass(meta, *bases):
+    """Create a base class with a metaclass."""
+    # This requires a bit of explanation: the basic idea is to make a dummy
+    # metaclass for one level of class instantiation that replaces itself with
+    # the actual metaclass.
+    class metaclass(meta):
+        __call__ = type.__call__
+        __init__ = type.__init__
+
+        def __new__(cls, name, this_bases, d):
+            if this_bases is None:
+                return type.__new__(cls, name, (), d)
+            return meta(name, bases, d)
+    return metaclass('temporary_class', None, {})

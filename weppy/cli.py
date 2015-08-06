@@ -38,7 +38,9 @@ def find_best_app(module):
 
     if len(matches) == 1:
         return matches[0]
-    raise 'Failed to find application in module "%s".' % module.__name__
+    raise Exception(
+        'Failed to find application in module "%s".' % module.__name__
+    )
 
 
 def prepare_exec_for_file(filename):

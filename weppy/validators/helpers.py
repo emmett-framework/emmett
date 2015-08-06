@@ -13,7 +13,7 @@
 
 import re
 from datetime import tzinfo, timedelta
-from .._compat import StringIO
+from .._compat import StringIO, string_types
 from ..globals import current
 from ..security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
 
@@ -21,7 +21,7 @@ from ..security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
 def translate(text):
     if text is None:
         return None
-    elif isinstance(text, (str, unicode)):
+    elif isinstance(text, string_types):
         return current.T(text)
     return str(text)
 

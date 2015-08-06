@@ -10,7 +10,7 @@
 """
 
 from collections import OrderedDict
-from .._compat import iteritems
+from .._compat import iteritems, with_metaclass
 from .apis import computation, virtualfield, fieldmethod
 from .base import Field, _Field, sdict
 from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
@@ -91,9 +91,7 @@ class MetaModel(type):
         return new_class
 
 
-class Model(object):
-    __metaclass__ = MetaModel
-
+class Model(with_metaclass(MetaModel)):
     db = None
     table = None
 

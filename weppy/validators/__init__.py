@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .._compat import iteritems
+from .._compat import iteritems, basestring
 from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, \
     hasLength, Not, Allow, isEmpty, Any
 from .consist import isInt, isFloat, isDecimal, isDate, isTime, isDatetime, \

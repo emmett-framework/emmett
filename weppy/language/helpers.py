@@ -12,11 +12,16 @@
 import pkgutil
 import re
 import os
-from string import maketrans
+
+from .._compat import PY2
+if PY2:
+    from string import maketrans
+    from ..libs.utf8 import Utf8
+else:
+    maketrans = str.maketrans
 
 from .cache import clear_cache, getcfs
 from ..libs.portalocker import read_locked, LockedFile
-from ..libs.utf8 import Utf8
 
 
 regex_backslash = re.compile(r"\\([\\{}%])")

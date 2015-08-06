@@ -45,7 +45,12 @@ import hmac
 import hashlib
 from struct import Struct
 from operator import xor
-from itertools import izip, starmap
+from weppy._compat import PY2
+if PY2:
+    from itertools import izip, starmap
+else:
+    izip = zip
+    from itertools import starmap
 
 
 _pack_int = Struct('>I').pack

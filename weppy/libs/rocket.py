@@ -4,6 +4,8 @@
 # Copyright (c) 2011 Timothy Farrell
 # Modified by Massimo Di Pierro
 
+from __future__ import print_function
+
 # Import System Modules
 import sys
 import errno
@@ -1681,7 +1683,7 @@ class WSGIWorker(Worker):
                 environ['SSL_CLIENT_RAW_CERT'] = \
                     peercert and ssl.DER_cert_to_PEM_cert(peercert)
             except Exception:
-                print sys.exc_info()[1]
+                print(sys.exc_info()[1])
         else:
             environ['wsgi.url_scheme'] = 'http'
 
