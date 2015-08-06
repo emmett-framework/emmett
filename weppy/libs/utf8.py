@@ -9,11 +9,10 @@
     :copyright: by Massimo di Pierro
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
+from __future__ import print_function
 
 import __builtin__
 __all__ = ['Utf8']
-
-from __future__ import print_function
 
 repr_escape_tab = {}
 for i in range(1, 32):
