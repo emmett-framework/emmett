@@ -182,13 +182,10 @@ class Exposer(object):
                 flash(self.messages.email_sent)
             if self.settings.registration_requires_approval and \
                not self.settings.registration_requires_verification:
-                self.auth.table_user[form.vars.id] = dict(
-                    registration_key='pending')
+                row.update_record(registration_key='pending')
                 flash(self.messages.registration_pending)
             elif (not self.settings.registration_requires_verification or
                     self.settings.login_after_registration):
-                if not self.settings.registration_requires_verification:
-                    row.update_record(registration_key='')
                 flash(self.messages.registration_successful)
                 self.auth.login_user(row)
                 flash(self.messages.logged_in)

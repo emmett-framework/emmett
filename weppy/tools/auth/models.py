@@ -10,7 +10,7 @@
 """
 
 from datetime import datetime
-from ...dal import Model, Field
+from ...dal import Model, Field, before_insert
 from ...globals import current, request
 from ...security import uuid
 
@@ -93,7 +93,7 @@ class AuthUserBasic(AuthModel, TimestampedModel):
 
     email = Field(length=512, unique=True)
     password = Field('password', length=512)
-    registration_key = Field(length=512, rw=False, default=lambda: uuid())
+    registration_key = Field(length=512, rw=False, default='')
     reset_password_key = Field(length=512, rw=False, default='')
     registration_id = Field(length=512, rw=False, default='')
 
@@ -101,6 +101,12 @@ class AuthUserBasic(AuthModel, TimestampedModel):
         'email': 'E-mail',
         'password': 'Password'
     }
+
+    @before_insert
+    def set_registration_key(self, fields):
+        if self.auth.settings.registration_requires_verification and not \
+                fields.get('registration_key'):
+            fields['registration_key'] = uuid()
 
 
 class AuthUser(AuthUserBasic):
