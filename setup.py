@@ -17,7 +17,7 @@ Links
 from setuptools import setup
 setup(
     name='weppy',
-    version='0.4',
+    version='0.4.1',
     url='http://github.com/gi0baro/weppy/',
     license='BSD',
     author='Giovanni Barillari',
