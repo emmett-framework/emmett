@@ -10,6 +10,7 @@
 """
 
 from datetime import timedelta
+from ..._compat import itervalues
 from ...dal import Field
 from ...datastructures import sdict
 from ...forms import Form
@@ -134,7 +135,7 @@ class AuthManager(Handler):
         #: the Auth() instance
         self.auth = auth
         self._virtuals = []
-        for field in self.auth.settings.models.user.table.fields:
+        for field in itervalues(self.auth.settings.models.user.table):
             if isinstance(field, (Field.Virtual, Field.Method)):
                 self._virtuals.append(field)
 
@@ -148,10 +149,16 @@ class AuthManager(Handler):
         #: inject virtual fields on session data
         for field in self._virtuals:
             if isinstance(field, Field.Virtual):
-                self.auth.user[field.name] = field.f(self._user_as_row)
+                try:
+                    self.auth.user[field.name] = field.f(self._user_as_row)
+                except:
+                    pass
             if isinstance(field, Field.Method):
-                self.auth.user[field.name] = \
-                    lambda s=self: field.f(s._user_as_row)
+                try:
+                    self.auth.user[field.name] = \
+                        lambda s=self, field=field: field.f(s._user_as_row)
+                except:
+                    pass
 
     def on_start(self):
         # check auth session is valid
