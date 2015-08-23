@@ -24,14 +24,14 @@ class MetaModel(type):
             return new_class
         #: collect declared attributes
         current_fields = []
-        virtual_fields = {}
+        virtual_fields = []
         computations = {}
         callbacks = {}
         for key, value in list(attrs.items()):
             if isinstance(value, Field):
                 current_fields.append((key, value))
             elif isinstance(value, virtualfield):
-                virtual_fields[key] = value
+                virtual_fields.append((key, value))
             elif isinstance(value, computation):
                 computations[key] = value
             elif isinstance(value, Callback):
@@ -53,6 +53,7 @@ class MetaModel(type):
         current_fields.sort(key=lambda x: x[1]._inst_count_)
         declared_fields.update(OrderedDict(current_fields))
         new_class._declared_fields_ = declared_fields
+        virtual_fields.sort(key=lambda x: x[1]._inst_count_)
         #: set relations references binding
         from .apis import belongs_to, has_one, has_many
         items = []
@@ -71,7 +72,7 @@ class MetaModel(type):
         new_class._hasmany_ref_ = super_relations._hasmany_ref_ + items
         has_many._references_ = {}
         #: set virtuals
-        all_virtuals = {}
+        all_virtuals = OrderedDict()
         for k, v in iteritems(getattr(new_class, '_declared_virtuals_', {})):
             all_virtuals[k] = v
         all_virtuals.update(virtual_fields)
@@ -173,6 +174,7 @@ class Model(with_metaclass(MetaModel)):
             self.fields.append(obj._make_field(name, self))
 
     def _define_relations_(self):
+        self._virtual_relations_ = OrderedDict()
         bad_args_error = "belongs_to, has_one and has_many only accept " + \
             "strings or dicts as arguments"
         #: belongs_to are mapped with 'reference' type Field
@@ -195,7 +197,7 @@ class Model(with_metaclass(MetaModel)):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference, refname = self.__parse_relation(item)
-                self._declared_virtuals_[refname] = \
+                self._virtual_relations_[refname] = \
                     virtualfield(refname)(HasOneWrap(reference))
             delattr(self.__class__, '_hasone_ref_')
         #: has_many are mapped with virtualfield()
@@ -211,7 +213,7 @@ class Model(with_metaclass(MetaModel)):
                     via = reference.get('via')
                 if via is not None:
                     #: maps has_many({'things': {'via': 'otherthings'}})
-                    self._declared_virtuals_[refname] = virtualfield(refname)(
+                    self._virtual_relations_[refname] = virtualfield(refname)(
                         HasManyViaWrap(refname, via)
                     )
                 else:
@@ -220,7 +222,7 @@ class Model(with_metaclass(MetaModel)):
                     #  has_many({'things': {'class': 'Model'}})
                     if rclass is not None:
                         reference = rclass
-                    self._declared_virtuals_[refname] = virtualfield(refname)(
+                    self._virtual_relations_[refname] = virtualfield(refname)(
                         HasManyWrap(reference)
                     )
                 hasmany_references[refname] = reference
@@ -231,14 +233,15 @@ class Model(with_metaclass(MetaModel)):
         err = 'virtualfield or fieldmethod cannot have same name as an' + \
             'existent field!'
         field_names = [field.name for field in self.fields]
-        for name, obj in iteritems(self._declared_virtuals_):
-            if obj.field_name in field_names:
-                raise RuntimeError(err)
-            if isinstance(obj, fieldmethod):
-                f = _Field.Method(obj.field_name, VirtualWrap(self, obj))
-            else:
-                f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
-            self.fields.append(f)
+        for attr in ['_virtual_relations_', '_declared_virtuals_']:
+            for name, obj in iteritems(getattr(self, attr, {})):
+                if obj.field_name in field_names:
+                    raise RuntimeError(err)
+                if isinstance(obj, fieldmethod):
+                    f = _Field.Method(obj.field_name, VirtualWrap(self, obj))
+                else:
+                    f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
+                self.fields.append(f)
 
     def _define_(self):
         #if self.sign_table:
