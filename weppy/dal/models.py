@@ -24,36 +24,47 @@ class MetaModel(type):
             return new_class
         #: collect declared attributes
         current_fields = []
-        virtual_fields = []
+        current_vfields = []
         computations = {}
         callbacks = {}
         for key, value in list(attrs.items()):
             if isinstance(value, Field):
                 current_fields.append((key, value))
             elif isinstance(value, virtualfield):
-                virtual_fields.append((key, value))
+                current_vfields.append((key, value))
             elif isinstance(value, computation):
                 computations[key] = value
             elif isinstance(value, Callback):
                 callbacks[key] = value
         #: get super declared attributes
         declared_fields = OrderedDict()
+        declared_vfields = OrderedDict()
         super_relations = sdict(
             _belongs_ref_=[], _hasone_ref_=[], _hasmany_ref_=[]
         )
+        declared_computations = {}
+        declared_callbacks = {}
         for base in reversed(new_class.__mro__[1:]):
-            # collect fields from base class
+            #: collect fields from base class
             if hasattr(base, '_declared_fields_'):
-                #all_fields.update(base._all_fields_)
                 declared_fields.update(base._declared_fields_)
+            #: collect relations from base class
             for key in list(super_relations):
                 if hasattr(base, key):
                     super_relations[key] += getattr(base, key)
-        #: set declared fields with correct order
+            #: collect virtuals from base class
+            if hasattr(base, '_declared_virtuals_'):
+                declared_vfields.update(base._declared_virtuals_)
+            #: collect computations from base class
+            if hasattr(base, '_declared_computations_'):
+                declared_computations.update(base._declared_computations_)
+            #: collect callbacks from base class
+            if hasattr(base, '_declared_callbacks_'):
+                declared_callbacks.update(base._declared_callbacks_)
+        #: set fields with correct order
         current_fields.sort(key=lambda x: x[1]._inst_count_)
-        declared_fields.update(OrderedDict(current_fields))
+        declared_fields.update(current_fields)
         new_class._declared_fields_ = declared_fields
-        virtual_fields.sort(key=lambda x: x[1]._inst_count_)
         #: set relations references binding
         from .apis import belongs_to, has_one, has_many
         items = []
@@ -71,24 +82,16 @@ class MetaModel(type):
             items += item.reference
         new_class._hasmany_ref_ = super_relations._hasmany_ref_ + items
         has_many._references_ = {}
-        #: set virtuals
-        all_virtuals = OrderedDict()
-        for k, v in iteritems(getattr(new_class, '_declared_virtuals_', {})):
-            all_virtuals[k] = v
-        all_virtuals.update(virtual_fields)
-        new_class._declared_virtuals_ = all_virtuals
+        #: set virtual fields with correct order
+        current_vfields.sort(key=lambda x: x[1]._inst_count_)
+        declared_vfields.update(current_vfields)
+        new_class._declared_virtuals_ = declared_vfields
         #: set computations
-        all_computations = {}
-        for k, v in iteritems(getattr(new_class, '_declared_computations_', {})):
-            all_computations[k] = v
-        all_computations.update(computations)
-        new_class._declared_computations_ = all_computations
+        declared_computations.update(computations)
+        new_class._declared_computations_ = declared_computations
         #: set callbacks
-        all_callbacks = {}
-        for k, v in iteritems(getattr(new_class, '_declared_callbacks_', {})):
-            all_callbacks[k] = v
-        all_callbacks.update(callbacks)
-        new_class._declared_callbacks_ = all_callbacks
+        declared_callbacks.update(callbacks)
+        new_class._declared_callbacks_ = declared_callbacks
         return new_class
 
 
