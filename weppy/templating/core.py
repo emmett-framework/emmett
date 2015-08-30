@@ -12,7 +12,7 @@
 import os
 import cgi
 import sys
-from .._compat import StringIO, reduce
+from .._compat import PY2, StringIO, reduce, string_types
 from ..globals import current
 from ..http import HTTP
 from ..tags import asis
@@ -39,9 +39,9 @@ class DummyResponse():
                     pass
         if body is None:
             # make it a string
-            if not isinstance(data, (str, unicode)):
+            if not isinstance(data, string_types):
                 data = str(data)
-            elif isinstance(data, unicode):
+            elif PY2 and isinstance(data, unicode):
                 data = data.encode('utf8', 'xmlcharrefreplace')
             body = cgi.escape(data, True).replace("'", "&#x27;")
         self.body.write(body)
@@ -62,7 +62,7 @@ class Templater(object):
     def load(self, filename):
         try:
             file_obj = open(filename, 'rb')
-            source = file_obj.read()
+            source = file_obj.read().decode('utf8')
             file_obj.close()
         except IOError:
             raise RuntimeError('Unable to open template file: ' + filename)

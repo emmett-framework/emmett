@@ -12,7 +12,7 @@
 import re
 import threading
 
-from ._compat import iteritems
+from ._compat import PY2, iteritems, string_types
 from .libs.sanitizer import sanitize
 
 __all__ = ['tag', 'cat', 'safe', 'asis']
@@ -30,9 +30,9 @@ def xmlescape(s, quote=True):
     if isinstance(s, TAG):
         return s.xml()
     # otherwise, make it a string
-    if not isinstance(s, (str, unicode)):
+    if not isinstance(s, string_types):
         s = str(s)
-    elif isinstance(s, unicode):
+    elif PY2 and isinstance(s, unicode):
         s = s.encode('utf8', 'xmlcharrefreplace')
     s = s.replace("&", "&amp;")  # Must be done first!
     s = s.replace("<", "&lt;")

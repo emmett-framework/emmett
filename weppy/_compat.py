@@ -29,6 +29,7 @@ if PY2:
 
     reduce = reduce
     hashlib_md5 = hashlib.md5
+    hashlib_sha1 = hashlib.sha1
 
     def implements_iterator(cls):
         cls.next = cls.__next__
@@ -40,7 +41,21 @@ if PY2:
         del cls.__bool__
         return cls
 
+    def implements_to_string(cls):
+        cls.__unicode__ = cls.__str__
+        cls.__str__ = lambda x: x.__unicode__().encode('utf-8')
+        return cls
+
     exec('def reraise(tp, value, tb=None):\n raise tp, value, tb')
+
+    def to_bytes(obj, charset='utf8', errors='strict'):
+        if obj is None:
+            return None
+        if isinstance(obj, (bytes, bytearray, buffer)):
+            return bytes(obj)
+        if isinstance(obj, unicode):
+            return obj.encode(charset, errors)
+        raise TypeError('Expected bytes')
 else:
     from http.cookies import SimpleCookie
     from io import StringIO
@@ -55,14 +70,25 @@ else:
 
     from functools import reduce
     hashlib_md5 = lambda s: hashlib.md5(bytes(s, 'utf8'))
+    hashlib_sha1 = lambda s: hashlib.sha1(bytes(s, 'utf8'))
 
     implements_iterator = _identity
     implements_bool = _identity
+    implements_to_string = _identity
 
     def reraise(tp, value, tb=None):
         if value.__traceback__ is not tb:
             raise value.with_traceback(tb)
         raise value
+
+    def to_bytes(obj, charset='utf8', errors='strict'):
+        if obj is None:
+            return None
+        if isinstance(obj, (bytes, bytearray, memoryview)):
+            return bytes(obj)
+        if isinstance(obj, str):
+            return obj.encode(charset, errors)
+        raise TypeError('Expected bytes')
 
 
 def with_metaclass(meta, *bases):

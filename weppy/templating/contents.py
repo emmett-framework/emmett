@@ -13,7 +13,10 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from .._compat import implements_to_string
 
+
+@implements_to_string
 class Node(object):
     """
     Basic Container Object
@@ -32,6 +35,7 @@ class Node(object):
         return str(self.value).split("\n")[1:]
 
 
+@implements_to_string
 class SuperNode(Node):
     def __init__(self, name='', pre_extend=False):
         self.name = name
@@ -61,6 +65,7 @@ def output_aux(node, blocks):
         else str(node)
 
 
+@implements_to_string
 class BlockNode(Node):
     """
     Block Container.
@@ -133,6 +138,7 @@ class BlockNode(Node):
         return ''.join(output_aux(node, blocks) for node in self.nodes)
 
 
+@implements_to_string
 class Content(BlockNode):
     """
     Parent Container -- Used as the root level BlockNode.

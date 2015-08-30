@@ -25,7 +25,7 @@ import base64
 import zlib
 import pyaes
 
-from ._compat import PY2, pickle
+from ._compat import PY2, pickle, hashlib_sha1, to_bytes
 from .libs.pbkdf2 import pbkdf2_hex
 
 if PY2:
@@ -93,32 +93,35 @@ DIGEST_ALG_BY_SIZE = {
 
 
 def _pad(s, n=32, padchar='.'):
-    return s + (32 - len(s) % 32) * padchar
+    expected_len = ((len(s) + n) - len(s) % n)
+    return s.ljust(expected_len, to_bytes(padchar))
+    #return s + (32 - len(s) % 32) * padchar
 
 
 def secure_dumps(data, encryption_key, hash_key=None, compression_level=None):
     if not hash_key:
-        hash_key = hashlib.sha1(encryption_key).hexdigest()
+        hash_key = hashlib_sha1(encryption_key).hexdigest()
     dump = pickle.dumps(data)
     if compression_level:
         dump = zlib.compress(dump, compression_level)
-    key = _pad(encryption_key[:32])
+    key = _pad(to_bytes(encryption_key[:32]))
     aes = pyaes.AESModeOfOperationCFB(key, iv=key[:16], segment_size=8)
     encrypted_data = base64.urlsafe_b64encode(aes.encrypt(_pad(dump)))
-    signature = hmac.new(hash_key, encrypted_data).hexdigest()
-    return signature + ':' + encrypted_data
+    signature = hmac.new(to_bytes(hash_key), encrypted_data).hexdigest()
+    return to_bytes(signature+':') + encrypted_data
 
 
 def secure_loads(data, encryption_key, hash_key=None, compression_level=None):
     if ':' not in data:
         return None
     if not hash_key:
-        hash_key = hashlib.sha1(encryption_key).hexdigest()
+        hash_key = hashlib_sha1(encryption_key).hexdigest()
     signature, encrypted_data = data.split(':', 1)
-    actual_signature = hmac.new(hash_key, encrypted_data).hexdigest()
+    actual_signature = hmac.new(
+        to_bytes(hash_key), to_bytes(encrypted_data)).hexdigest()
     if signature != actual_signature:
         return None
-    key = _pad(encryption_key[:32])
+    key = _pad(to_bytes(encryption_key[:32]))
     aes = pyaes.AESModeOfOperationCFB(key, iv=key[:16], segment_size=8)
     try:
         data = aes.decrypt(base64.urlsafe_b64decode(encrypted_data))

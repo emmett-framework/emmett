@@ -55,7 +55,7 @@ class HTTP(Exception):
         self.status_code = status_code
         self.status_name = HTTP.status_codes.get(status_code, status_code)
         self.body = body
-        self.headers = headers.items() if headers else []
+        self.headers = list(headers.items()) if headers else []
         if cookies:
             self.headers += HTTP.cookies2header(cookies)
         #if status_code != 200:

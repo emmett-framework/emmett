@@ -15,10 +15,12 @@
 
 import os
 from re import compile, sub, escape, DOTALL
+from .._compat import implements_to_string
 from .contents import Node, SuperNode, BlockNode, Content
 from .helpers import TemplateError
 
 
+@implements_to_string
 class TemplateParser(object):
     default_delimiters = ('{{', '}}')
     r_tag = compile(r'(\{\{.*?\}\})', DOTALL)
@@ -144,9 +146,9 @@ class TemplateParser(object):
         "Make sure str works exactly the same as python 3"
         return self.to_string()
 
-    def __unicode__(self):
-        "Make sure str works exactly the same as python 3"
-        return self.to_string()
+    #def __unicode__(self):
+    #    "Make sure str works exactly the same as python 3"
+    #    return self.to_string()
 
     def reindent(self, text):
         """
