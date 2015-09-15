@@ -40,6 +40,7 @@ class DALHandler(Handler):
 class Table(_Table):
     def _create_references(self):
         self._referenced_by = []
+        self._referenced_by_list = []
         self._references = []
         return
 
