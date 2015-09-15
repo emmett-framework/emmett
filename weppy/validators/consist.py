@@ -20,6 +20,7 @@ import struct
 import urllib
 from datetime import date, time, datetime, timedelta
 from time import strptime
+from .._compat import PY2
 from .basic import Validator, ParentValidator, _is, Matches
 from .helpers import translate, _UTC, url_split_regex, official_url_schemes, \
     unofficial_url_schemes, unicode_to_ascii_url, official_top_level_domains
@@ -534,7 +535,11 @@ class isUrl(Validator):
         else:
             raise SyntaxError("invalid mode '%s' in isUrl" % self.mode)
 
-        if type(value) != unicode:
+        # TODO: find a better solution
+        if not PY2:
+            return subValidator(value)
+        #
+        if isinstance(value, unicode):
             return subValidator(value)
         else:
             try:
