@@ -13,7 +13,7 @@
 import re
 import os
 
-from ._compat import PY2, iteritems
+from ._compat import PY2, iteritems, text_type, to_native
 from .handlers import Handler, _wrapWithHandlers
 from .templating import render
 from .globals import current
@@ -237,8 +237,8 @@ class Expose(object):
         #: build the right output
         response = current.response
         try:
-            if isinstance(output, str):
-                response.output = [output]
+            if isinstance(output, text_type):
+                response.output = [to_native(output)]
             elif isinstance(output, dict):
                 if 'current' not in output:
                     output['current'] = current
@@ -250,7 +250,7 @@ class Expose(object):
                                 templatename, output)
                 response.output = [output]
             elif isinstance(output, TAG):
-                response.output = [output.to_html()]
+                response.output = [str(output)]
             elif hasattr(output, '__iter__'):
                 response.output = output
             else:

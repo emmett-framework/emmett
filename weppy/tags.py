@@ -12,7 +12,7 @@
 import re
 import threading
 
-from ._compat import iteritems, text_type, implements_to_string, to_unicode, to_native
+from ._compat import iteritems, text_type, implements_to_string, to_unicode, to_native, string_types
 from .libs.sanitizer import sanitize
 
 __all__ = ['tag', 'cat', 'safe', 'asis']
@@ -183,8 +183,6 @@ class TAG(object):
             co = u''.join(htmlescape(v) for v in self.components)
             return u'<%s%s>%s</%s>' % (name, ca, co, name)
 
-    __repr__ = __str__
-
 
 class METATAG(object):
     def __getattr__(self, name):
@@ -223,10 +221,9 @@ class safe(TAG):
         if self.sanitize:
             return sanitize(to_native(self.text), self.allowed_tags.keys(),
                             self.allowed_tags)
-        #if not isinstance(self.text, basestring):
-        #    return str(self.text)
-        #return self.text
-        return to_unicode(self.text)
+        if not isinstance(self.text, text_type):
+            self.text = to_unicode(self.text)
+        return self.text
 
 
 def asis(text):

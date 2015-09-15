@@ -34,7 +34,7 @@ else:
 
 #: The single 'translator string element', is created when user calls
 #  T('string'), and will be translated when loaded in templates or converted to
-#  a string (via str() or repr())
+#  a string (via str())
 @implements_bool
 @implements_to_string
 class TElement(object):

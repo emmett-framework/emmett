@@ -12,7 +12,7 @@
 import os
 import cgi
 import sys
-from .._compat import PY2, StringIO, reduce, string_types
+from .._compat import StringIO, reduce, string_types, to_native, to_unicode
 from ..globals import current
 from ..http import HTTP
 from ..tags import asis
@@ -27,22 +27,26 @@ class DummyResponse():
     def __init__(self):
         self.body = StringIO()
 
+    @staticmethod
+    def _to_native(data):
+        if not isinstance(data, string_types):
+            data = str(data)
+        if not isinstance(data, str):
+            data = to_native(data, 'xmlcharrefreplace')
+        return data
+
     def write(self, data, escape=True):
         body = None
         if not escape:
-            body = str(data)
+            body = self._to_native(data)
         else:
             if hasattr(data, 'to_html'):
                 try:
-                    body = data.to_html()
+                    body = to_native(data.to_html())
                 except:
                     pass
         if body is None:
-            # make it a string
-            if not isinstance(data, string_types):
-                data = str(data)
-            elif PY2 and isinstance(data, unicode):
-                data = data.encode('utf8', 'xmlcharrefreplace')
+            data = self._to_native(data)
             body = cgi.escape(data, True).replace("'", "&#x27;")
         self.body.write(body)
 
@@ -60,9 +64,10 @@ class Templater(object):
                       self.loaders.get(fext, []), (path, name))
 
     def load(self, filename):
+        # return source as unicode str
         try:
-            file_obj = open(filename, 'rb')
-            source = file_obj.read().decode('utf8')
+            file_obj = open(filename, 'r')
+            source = to_unicode(file_obj.read())
             file_obj.close()
         except IOError:
             raise RuntimeError('Unable to open template file: ' + filename)
@@ -70,7 +75,7 @@ class Templater(object):
 
     def prerender(self, source, filename):
         return reduce(lambda s, e: e.preprocess(s, filename),
-                      self.renders, str(source))
+                      self.renders, source)
 
     def inject(self, context):
         for extension in self.renders:

@@ -15,9 +15,10 @@
 
 import os
 from re import compile, sub, escape, DOTALL
-from .._compat import implements_to_string
-from .contents import Node, SuperNode, BlockNode, Content
+from .._compat import implements_to_string, to_unicode
+from .contents import Node, BlockNode, Content
 from .helpers import TemplateError
+from .lexers import default_lexers
 
 
 @implements_to_string
@@ -66,7 +67,8 @@ class TemplateParser(object):
         #    self.lexers = lexers
         #else:
         #    self.lexers = {}
-        self.lexers = self.templater.lexers
+        self.lexers = default_lexers
+        self.lexers.update(self.templater.lexers)
 
         # Path of templates
         self.path = path
@@ -121,34 +123,21 @@ class TemplateParser(object):
                     writer_escape=True):
         if use_writer:
             if not writer_escape:
-                value = "\n%s(%s, escape=False)" % (self.writer, value)
+                value = u"\n%s(%s, escape=False)" % (self.writer, value)
             else:
-                value = "\n%s(%s)" % (self.writer, value)
+                value = u"\n%s(%s)" % (self.writer, value)
         else:
-            value = "\n%s" % value
+            value = u"\n%s" % value
         return Node(value, pre_extend=pre_extend, template=self.name,
                     lines=self.current_lines)
 
     def create_htmlnode(self, value, pre_extend=False):
-        value = "\n%s(%r, escape=False)" % (self.writer, value)
+        value = u"\n%s(%r, escape=False)" % (self.writer, value)
         return Node(value, pre_extend=pre_extend, template=self.name,
                     lines=self.current_lines)
 
-    def to_string(self):
-        """
-        Return the parsed template with correct indentation.
-
-        Used to make it easier to port to python3.
-        """
-        return self.reindent(str(self.content))
-
     def __str__(self):
-        "Make sure str works exactly the same as python 3"
-        return self.to_string()
-
-    #def __unicode__(self):
-    #    "Make sure str works exactly the same as python 3"
-    #    return self.to_string()
+        return self.reindent(to_unicode(self.content))
 
     def reindent(self, text):
         """
@@ -194,7 +183,7 @@ class TemplateParser(object):
             k = max(k, 0)
 
             # Add the indentation!
-            new_lines.append(' ' * (4 * k) + line)
+            new_lines.append(u' ' * (4 * k) + line)
 
             # Bank account back to 0 again :(
             credit = 0
@@ -219,7 +208,7 @@ class TemplateParser(object):
 
         # This must come before so that we can raise an error with the
         # right content.
-        new_text = '\n'.join(new_lines)
+        new_text = u'\n'.join(new_lines)
 
         if k > 0:
             #self._raise_error('missing "pass" in view', new_text)
@@ -354,15 +343,14 @@ class TemplateParser(object):
         self.content = t_content
 
     def parse(self, text):
-        from ..expose import url
         # Basically, r_tag.split will split the text into
         # an array containing, 'non-tag', 'tag', 'non-tag', 'tag'
         # so if we alternate this variable, we know
         # what to look for. This is alternate to
         # line.startswith("{{")
-        in_tag = False
-        extend = None
-        pre_extend = True
+        self._in_tag = False
+        self._needs_extend = None
+        self._is_pre_extend = True
 
         # Use a list to store everything in
         # This is because later the code will "look ahead"
@@ -389,7 +377,7 @@ class TemplateParser(object):
                 # Our current element in the stack.
                 top = stack[-1]
 
-                if in_tag:
+                if self._in_tag:
                     line = i
 
                     # Get rid of '{{' and '}}'
@@ -423,7 +411,7 @@ class TemplateParser(object):
                             # {{ include }}
                             # {{ end }}
                             name = v[0]
-                            value = ''
+                            value = u''
                         else:
                             # Example
                             # {{ block pie }}
@@ -437,127 +425,14 @@ class TemplateParser(object):
                     # retain their formatting, but squish down to one
                     # line in the rendered template.
 
-                    # First check if we have any custom lexers
-                    if name in self.lexers:
-                        # Pass the information to the lexer
-                        # and allow it to inject in the environment
-
-                        # You can define custom names such as
-                        # '{{<<variable}}' which could potentially
-                        # write unescaped version of the variable.
-                        evalue = eval(value, self.context) if value else None
-                        self.lexers[name](parser=self,
-                                          value=evalue,
-                                          top=top,
-                                          stack=stack)
-
-                    elif name == '=':
-                        # So we have a variable to insert into
-                        # the template
-                        node = self.create_node(value, pre_extend)
-                        top.append(node)
-
-                    elif name == 'block' and not value.startswith('='):
-                        # Make a new node with name.
-                        node = self.create_block(value.strip(), pre_extend)
-
-                        # Append this node to our active node
-                        top.append(node)
-
-                        # Make sure to add the node to the stack.
-                        # so anything after this gets added
-                        # to this node. This allows us to
-                        # "nest" nodes.
-                        stack.append(node)
-
-                    elif name == 'end' and not value.startswith('='):
-                        # We are done with this node.
-
-                        # Save an instance of it
-                        self.blocks[top.name] = top
-
-                        # Pop it.
-                        stack.pop()
-
-                    elif name == 'super' and not value.startswith('='):
-                        # Get our correct target name
-                        # If they just called {{super}} without a name
-                        # attempt to assume the top blocks name.
-                        if value:
-                            target_node = value
-                        else:
-                            target_node = top.name
-
-                        # Create a SuperNode instance
-                        node = SuperNode(name=target_node,
-                                         pre_extend=pre_extend)
-
-                        # Add this to our list to be taken care of
-                        self.super_nodes.append(node)
-
-                        # And put in in the tree
-                        top.append(node)
-
-                    elif name == 'include' and not value.startswith('='):
-                        # If we know the target file to include
-                        if value:
-                            self.include(top, value)
-
-                        # Otherwise, make a temporary include node
-                        # That the child node will know to hook into.
-                        else:
-                            include_node = BlockNode(
-                                name='__include__' + self.name,
-                                pre_extend=pre_extend,
-                                delimiters=self.delimiters)
-                            top.append(include_node)
-
-                    elif name == 'include_helpers' and \
-                            not value.startswith('='):
-                        helpers = [
-                            '<script type="text/javascript" ' +
-                            'src="/__weppy__/jquery.min.js"></script>',
-                            '<script type="text/javascript" ' +
-                            'src="/__weppy__/helpers.js"></script>']
-                        node = self.create_htmlnode(
-                            "\n".join(h for h in helpers), pre_extend)
-                        top.append(node)
-
-                    elif name == 'include_meta' and not value.startswith('='):
-                        if not value:
-                            value = 'current.response.get_meta()'
-                        node = self.create_node(value, pre_extend,
-                                                writer_escape=False)
-                        top.append(node)
-
-                    elif name == 'include_static' and not \
-                            value.startswith('='):
-                        surl = eval(value, self.context)
-                        file_name = surl.split("?")[0]
-                        surl = url('static', file_name)
-                        file_ext = file_name.rsplit(".", 1)[-1]
-                        if file_ext == 'js':
-                            static = '<script type="text/javascript" src="' + \
-                                surl + '"></script>'
-                        elif file_ext == "css":
-                            static = '<link rel="stylesheet" href="' + surl + \
-                                '" type="text/css" />'
-                        else:
-                            static = None
-                        if static:
-                            node = self.create_htmlnode(static, pre_extend)
-                            top.append(node)
-
-                    elif name == 'extend' and not value.startswith('='):
-                        # We need to extend the following
-                        # template.
-                        extend = value
-                        pre_extend = False
-
+                    # Check presence of an appropriate lexer
+                    lexer = self.lexers.get(name)
+                    if lexer and not value.startswith('='):
+                        lexer(parser=self, value=value)
                     else:
                         # If we don't know where it belongs
                         # we just add it anyways without formatting.
-                        if line and in_tag:
+                        if line and self._in_tag:
 
                             # Split on the newlines >.<
                             tokens = line.split('\n')
@@ -577,27 +452,27 @@ class TemplateParser(object):
                                 if token.startswith('='):
                                     if token.endswith('\\'):
                                         continuation = True
-                                        tokens[k] = "%s(%s" % (
+                                        tokens[k] = u"%s(%s" % (
                                             self.writer, token[1:].strip())
                                     else:
-                                        tokens[k] = "%s(%s)" % (
+                                        tokens[k] = u"%s(%s)" % (
                                             self.writer, token[1:].strip())
                                 elif continuation:
-                                    tokens[k] += ')'
+                                    tokens[k] += u')'
                                     continuation = False
 
-                            buf = '\n'.join(tokens)
-                            node = self.create_node(buf, pre_extend,
+                            buf = u'\n'.join(tokens)
+                            node = self.create_node(buf, self._is_pre_extend,
                                                     use_writer=False)
                             top.append(node)
 
                 else:
                     # It is HTML so just include it.
-                    node = self.create_htmlnode(i, pre_extend)
+                    node = self.create_htmlnode(i, self._is_pre_extend)
                     top.append(node)
 
             # Remember: tag, not tag, tag, not tag
-            in_tag = not in_tag
+            self._in_tag = not self._in_tag
 
         # Make a list of items to remove from child
         to_rm = []
@@ -619,5 +494,5 @@ class TemplateParser(object):
             self.child_super_nodes.remove(node)
 
         # If we need to extend a template.
-        if extend:
-            self.extend(extend)
+        if self._needs_extend:
+            self.extend(self._needs_extend)
