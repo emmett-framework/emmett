@@ -17,7 +17,7 @@ from cgi import escape
 import os
 
 from .._compat import PY2, implements_bool, implements_to_string, iteritems, \
-    iterkeys
+    iterkeys, to_unicode
 from ..tags import asis, htmlescape
 from .helpers import regex_backslash, regex_plural, regex_plural_dict, \
     regex_plural_tuple, regex_language, DEFAULT_NPLURALS, \
@@ -67,8 +67,9 @@ class TElement(object):
             #  url (if forced by application), fallback on default language
             from ..globals import current
             lang = current._language or self.T.current_languages[0]
-        return str(self.T.apply_filter(lang, self.m, self.s) if self.M else
-                   self.T.translate(lang, self.m, self.s))
+        # return str(self.T.apply_filter(lang, self.m, self.s) if self.M else
+        #            self.T.translate(lang, self.m, self.s))
+        return self.T.translate(lang, self.m, self.s)
 
     def __eq__(self, other):
         return str(self) == str(other)
@@ -223,7 +224,7 @@ class TLanguage(object):
                     return form
         return word
 
-    def get_t(self, message, prefix=''):
+    def get_t(self, message, prefix=u''):
         """
         use ## to add a comment into a translation string
         the comment can be useful do discriminate different possible
@@ -236,11 +237,6 @@ class TLanguage(object):
         the ## notation is ignored in multiline strings and strings that
         start with ##. this is to allow markmin syntax to be translated
         """
-        ## NEED A RETHINK ON UNICODE HERE
-        #if isinstance(message, unicode):
-        #    message = message.encode('utf8')
-        #if isinstance(prefix, unicode):
-        #    prefix = prefix.encode('utf8')
         key = prefix + message
         mt = self.get(key)
         if mt is not None:
@@ -259,8 +255,8 @@ class TLanguage(object):
     def translate(self, message):
         if self.cached:
             return get_from_cache(self.filename, message,
-                                  lambda: self.get_t(message))
-        return self.get_t(message)
+                                  lambda: to_unicode(self.get_t(message)))
+        return to_unicode(self.get_t(message))
 
 
 #: The main translator object, responsible of creating elements and loading
@@ -525,7 +521,9 @@ class Translator(object):
         if symbols or symbols == 0 or symbols == "":
             if isinstance(symbols, dict):
                 symbols.update(
-                    (key, str(value).translate(ttab_in))
+                    (
+                        key, to_unicode(value).translate(ttab_in)
+                        if value else u'')
                     for key, value in iteritems(symbols)
                     if not isinstance(value, NUMBERS))
             else:
@@ -533,7 +531,8 @@ class Translator(object):
                     symbols = (symbols,)
                 symbols = tuple(
                     value if isinstance(value, NUMBERS)
-                    else str(value).translate(ttab_in)
+                    else (
+                        to_unicode(value).translate(ttab_in) if value else u'')
                     for value in symbols)
             message = self.params_substitution(lang, message, symbols)
         return message.translate(ttab_out)

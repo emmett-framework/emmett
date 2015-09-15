@@ -242,5 +242,20 @@ def title_fun(s):
 def cap_fun(s):
     return to_unicode(s).capitalize().encode('utf-8')
 
-ttab_in = maketrans("\\%{}", '\x1c\x1d\x1e\x1f')
-ttab_out = maketrans('\x1c\x1d\x1e\x1f', "\\%{}")
+
+def _make_ttabin():
+    ltrans = u"\\%{}"
+    rtrans = u'\x1c\x1d\x1e\x1f'
+    return dict((ord(char), rtrans) for char in ltrans)
+
+
+def _make_ttabout():
+    ltrans = u'\x1c\x1d\x1e\x1f'
+    rtrans = u"\\%{}"
+    return dict((ord(char), rtrans) for char in ltrans)
+
+
+#ttab_in = maketrans(u"\\%{}", u'\x1c\x1d\x1e\x1f')
+#ttab_out = maketrans(u'\x1c\x1d\x1e\x1f', u"\\%{}")
+ttab_in = _make_ttabin()
+ttab_out = _make_ttabout()
