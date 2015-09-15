@@ -48,11 +48,11 @@ def simple_hash(text, key='', salt='', digest_alg='md5'):
         h = digest_alg(text + key + salt)
     elif digest_alg.startswith('pbkdf2'):  # latest and coolest!
         iterations, keylen, alg = digest_alg[7:-1].split(',')
-        return pbkdf2_hex(text, salt, int(iterations),
+        return pbkdf2_hex(to_bytes(text), to_bytes(salt), int(iterations),
                           int(keylen), get_digest(alg))
     elif key:  # use hmac
         digest_alg = get_digest(digest_alg)
-        h = hmac.new(to_bytes(key + salt), text, digest_alg)
+        h = hmac.new(to_bytes(key + salt), to_bytes(text), digest_alg)
     else:  # compatible with third party systems
         h = hashlib.new(digest_alg)
         h.update(text + salt)

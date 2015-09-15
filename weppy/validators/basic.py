@@ -16,7 +16,7 @@
 import re
 from cgi import FieldStorage
 from os import SEEK_END, SEEK_SET
-from .._compat import text_type, to_unicode
+from .._compat import text_type, to_unicode, to_native
 from .helpers import translate, is_empty
 
 
@@ -262,7 +262,7 @@ class hasLength(Validator):
                 return (value, None)
         elif isinstance(value, text_type):
             if self._between(len(value)):
-                return (value.encode('utf8'), None)
+                return (to_native(value), None)
         elif isinstance(value, (tuple, list)):
             if self._between(len(value)):
                 return (value, None)

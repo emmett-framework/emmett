@@ -40,12 +40,13 @@
     :copyright: (c) Copyright 2011 by Armin Ronacher.
     :license: BSD, see LICENSE for more details.
 """
+import codecs
 import sys
 import hmac
 import hashlib
 from struct import Struct
 from operator import xor
-from weppy._compat import PY2
+from weppy._compat import PY2, xrange, to_bytes, to_native
 if PY2:
     from itertools import izip, starmap
 else:
@@ -58,7 +59,8 @@ _pack_int = Struct('>I').pack
 
 def pbkdf2_hex(data, salt, iterations=1000, keylen=24, hashfunc=None):
     """Like :func:`pbkdf2_bin` but returns a hex encoded string."""
-    return pbkdf2_bin(data, salt, iterations, keylen, hashfunc).encode('hex')
+    rv = pbkdf2_bin(data, salt, iterations, keylen, hashfunc)
+    return to_native(codecs.encode(rv, 'hex_codec'))
 
 
 def pbkdf2_bin(data, salt, iterations=1000, keylen=24, hashfunc=None):
@@ -68,25 +70,28 @@ def pbkdf2_bin(data, salt, iterations=1000, keylen=24, hashfunc=None):
     a different hashlib `hashfunc` can be provided.
     """
     hashfunc = hashfunc or hashlib.sha1
-    mac = hmac.new(data, None, hashfunc)
+    mac = hmac.HMAC(data, None, hashfunc)
+    if not keylen:
+        keylen = mac.digest_size
+
     def _pseudorandom(x, mac=mac):
         h = mac.copy()
         h.update(x)
-        return map(ord, h.digest())
-    buf = []
+        return bytearray(h.digest())
+    buf = bytearray()
     for block in xrange(1, -(-keylen // mac.digest_size) + 1):
         rv = u = _pseudorandom(salt + _pack_int(block))
         for i in xrange(iterations - 1):
-            u = _pseudorandom(''.join(map(chr, u)))
-            rv = starmap(xor, izip(rv, u))
+            u = _pseudorandom(bytes(u))
+            rv = bytearray(starmap(xor, izip(rv, u)))
         buf.extend(rv)
-    return ''.join(map(chr, buf))[:keylen]
+    return bytes(buf[:keylen])
 
 
 def test():
     failed = []
     def check(data, salt, iterations, keylen, expected):
-        rv = pbkdf2_hex(data, salt, iterations, keylen)
+        rv = pbkdf2_hex(to_bytes(data), to_bytes(salt), iterations, keylen)
         if rv != expected:
             sys.stdout.write('Test failed:\n')
             sys.stdout.write('  Expected:   %s\n' % expected)

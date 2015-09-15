@@ -30,6 +30,7 @@ if PY2:
     basestring = basestring
 
     reduce = reduce
+    xrange = xrange
     hashlib_md5 = hashlib.md5
     hashlib_sha1 = hashlib.sha1
     from string import maketrans
@@ -80,6 +81,7 @@ else:
     basestring = str
 
     from functools import reduce
+    xrange = range
     hashlib_md5 = lambda s: hashlib.md5(bytes(s, 'utf8'))
     hashlib_sha1 = lambda s: hashlib.sha1(bytes(s, 'utf8'))
     maketrans = str.maketrans

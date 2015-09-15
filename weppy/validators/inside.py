@@ -13,7 +13,7 @@
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
-
+from .._compat import integer_types
 from .basic import Validator
 from .helpers import options_sorter, translate
 
@@ -55,7 +55,7 @@ class inRange(Validator):
                 message += ' greater than or equal to %(min)s'
             elif maximum is not None:
                 message += ' less than or equal to %(max)s'
-        if type(maximum) in [int, long]:
+        if isinstance(maximum, integer_types):
             maximum -= 1
         return translate(message) % dict(min=minimum, max=maximum)
 
@@ -104,8 +104,7 @@ class inSet(Validator):
                 values = [value]
         else:
             values = [value]
-        thestrset = [str(x) for x in self.theset]
-        failures = [x for x in values if not str(x) in thestrset]
+        failures = [x for x in values if str(x) not in self.theset]
         if failures and self.theset:
             if self.multiple and (value is None or value == ''):
                 return ([], None)
