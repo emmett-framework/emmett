@@ -23,14 +23,14 @@ class WeppyLexer(TemplateLexer):
 
 
 class DefineLexer(WeppyLexer):
-    def parse(self, value):
+    def process(self, value):
         #: insert a variable in the template
         node = self.parser.create_node(value, self.parser._is_pre_extend)
         self.top.append(node)
 
 
 class BlockLexer(WeppyLexer):
-    def parse(self, value):
+    def process(self, value):
         #: create a new node with name
         node = self.parser.create_block(
             value.strip(), self.parser._is_pre_extend)
@@ -42,7 +42,7 @@ class BlockLexer(WeppyLexer):
 
 
 class EndLexer(WeppyLexer):
-    def parse(self, value):
+    def process(self, value):
         #: we are done with this node, let's store the instance
         self.parser.blocks[self.top.name] = self.top
         #: and pop it
@@ -50,7 +50,7 @@ class EndLexer(WeppyLexer):
 
 
 class SuperLexer(WeppyLexer):
-    def parse(self, value):
+    def process(self, value):
         #: get correct target name, if not provided assume the top block
         target_node = value if value else self.top.name
         #: create a SuperNode instance
@@ -63,7 +63,7 @@ class SuperLexer(WeppyLexer):
 
 
 class IncludeLexer(WeppyLexer):
-    def parse(self, value):
+    def process(self, value):
         #: if we have a value, just call the parser function
         if value:
             self.parser.include(self.top, value)
@@ -71,14 +71,14 @@ class IncludeLexer(WeppyLexer):
         #  will know to hook into.
         else:
             include_node = BlockNode(
-                name='__include__' + self.name,
+                name='__include__' + self.parser.name,
                 pre_extend=self.parser._is_pre_extend,
                 delimiters=self.parser.delimiters)
             self.top.append(include_node)
 
 
 class ExtendLexer(WeppyLexer):
-    def parse(self, value):
+    def process(self, value):
         #: extend the proper template
         self.parser._needs_extend = value
         self.parser._is_pre_extend = False
@@ -91,14 +91,14 @@ class HelpersLexer(WeppyLexer):
         '<script type="text/javascript" ' +
         'src="/__weppy__/helpers.js"></script>']
 
-    def parse(self, value):
+    def process(self, value):
         node = self.parser.create_htmlnode(
             u"\n".join(h for h in self.helpers), self.parser._is_pre_extend)
         self.top.append(node)
 
 
 class MetaLexer(WeppyLexer):
-    def parse(self, value):
+    def process(self, value):
         if not value:
             value = u'current.response.get_meta()'
         node = self.parser.create_node(
@@ -109,7 +109,7 @@ class MetaLexer(WeppyLexer):
 class StaticLexer(WeppyLexer):
     evaluate_value = True
 
-    def parse(self, value):
+    def process(self, value):
         from ..expose import url
         file_name = value.split("?")[0]
         surl = to_unicode(url('static', file_name))
