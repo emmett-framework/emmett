@@ -250,7 +250,7 @@ class Expose(object):
                                 templatename, output)
                 response.output = [output]
             elif isinstance(output, TAG):
-                response.output = [output.xml()]
+                response.output = [output.to_html()]
             elif hasattr(output, '__iter__'):
                 response.output = output
             else:

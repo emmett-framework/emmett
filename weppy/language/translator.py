@@ -16,8 +16,9 @@
 from cgi import escape
 import os
 
-from .._compat import PY2, implements_bool, iteritems, iterkeys
-from ..tags import asis, xmlescape
+from .._compat import PY2, implements_bool, implements_to_string, iteritems, \
+    iterkeys
+from ..tags import asis, htmlescape
 from .helpers import regex_backslash, regex_plural, regex_plural_dict, \
     regex_plural_tuple, regex_language, DEFAULT_NPLURALS, \
     DEFAULT_GET_PLURAL_ID, DEFAULT_CONSTRUCT_PLURAL_FORM, \
@@ -35,6 +36,7 @@ else:
 #  T('string'), and will be translated when loaded in templates or converted to
 #  a string (via str() or repr())
 @implements_bool
+@implements_to_string
 class TElement(object):
     m = s = T = language = None
     M = is_copy = False
@@ -56,10 +58,7 @@ class TElement(object):
             self.is_copy = False
 
     def __repr__(self):
-        if PY2:
-            from .helpers import Utf8
-            return "<lazyT %s>" % (repr(Utf8(self.m)), )
-        return "<lazyT %s>" % (repr(self.m), )
+        return "<lazyT %s>" % repr(self.m)
 
     def __str__(self):
         lang = self.language
@@ -111,7 +110,7 @@ class TElement(object):
     def __bool__(self):
         return len(self.m) > 0
 
-    def xml(self):
+    def to_html(self):
         return str(self) if self.M else escape(str(self))
 
     def encode(self, *a, **b):
@@ -383,7 +382,7 @@ class Translator(object):
         if symbols or symbols == 0 or symbols == "":
             if isinstance(symbols, dict):
                 symbols.update(
-                    (key, xmlescape(value).translate(ttab_in))
+                    (key, htmlescape(value).translate(ttab_in))
                     for key, value in iteritems(symbols)
                     if not isinstance(value, NUMBERS))
             else:
@@ -391,7 +390,7 @@ class Translator(object):
                     symbols = (symbols,)
                 symbols = tuple(
                     value if isinstance(value, NUMBERS)
-                    else xmlescape(value).translate(ttab_in)
+                    else htmlescape(value).translate(ttab_in)
                     for value in symbols)
             message = self.params_substitution(message, symbols)
         return asis(message.translate(ttab_out))

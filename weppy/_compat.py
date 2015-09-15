@@ -23,6 +23,8 @@ if PY2:
     iterkeys = lambda d: d.iterkeys()
     itervalues = lambda d: d.itervalues()
     iteritems = lambda d: d.iteritems()
+
+    text_type = unicode
     integer_types = (int, long)
     string_types = (str, unicode)
     basestring = basestring
@@ -30,6 +32,7 @@ if PY2:
     reduce = reduce
     hashlib_md5 = hashlib.md5
     hashlib_sha1 = hashlib.sha1
+    from string import maketrans
 
     def implements_iterator(cls):
         cls.next = cls.__next__
@@ -56,6 +59,12 @@ if PY2:
         if isinstance(obj, unicode):
             return obj.encode(charset, errors)
         raise TypeError('Expected bytes')
+
+    def to_native(obj, charset='utf8', errors='strict'):
+        if obj is None or isinstance(obj, str):
+            return obj
+        return obj.encode(charset, errors)
+
 else:
     from http.cookies import SimpleCookie
     from io import StringIO
@@ -64,6 +73,8 @@ else:
     iterkeys = lambda d: iter(d.keys())
     itervalues = lambda d: iter(d.values())
     iteritems = lambda d: iter(d.items())
+
+    text_type = str
     integer_types = (int, )
     string_types = (str,)
     basestring = str
@@ -71,6 +82,7 @@ else:
     from functools import reduce
     hashlib_md5 = lambda s: hashlib.md5(bytes(s, 'utf8'))
     hashlib_sha1 = lambda s: hashlib.sha1(bytes(s, 'utf8'))
+    maketrans = str.maketrans
 
     implements_iterator = _identity
     implements_bool = _identity
@@ -90,18 +102,26 @@ else:
             return obj.encode(charset, errors)
         raise TypeError('Expected bytes')
 
+    def to_native(obj, charset='utf8', errors='strict'):
+        if obj is None or isinstance(obj, str):
+            return obj
+        return obj.decode(charset, errors)
+
 
 def with_metaclass(meta, *bases):
     """Create a base class with a metaclass."""
-    # This requires a bit of explanation: the basic idea is to make a dummy
-    # metaclass for one level of class instantiation that replaces itself with
-    # the actual metaclass.
-    class metaclass(meta):
-        __call__ = type.__call__
-        __init__ = type.__init__
-
+    # This requires a bit of explanation: the basic idea is to make a
+    # dummy metaclass for one level of class instantiation that replaces
+    # itself with the actual metaclass.
+    class metaclass(type):
         def __new__(cls, name, this_bases, d):
-            if this_bases is None:
-                return type.__new__(cls, name, (), d)
             return meta(name, bases, d)
-    return metaclass('temporary_class', None, {})
+    return type.__new__(metaclass, 'temporary_class', (), {})
+
+
+def to_unicode(obj, charset='utf8', errors='strict'):
+    if obj is None:
+        return None
+    if not isinstance(obj, bytes):
+        return text_type(obj)
+    return obj.decode(charset, errors)

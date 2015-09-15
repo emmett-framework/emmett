@@ -12,7 +12,7 @@ import decimal
 import json as json_parser
 from ._compat import PY2
 from .language.translator import TElement
-from .tags import TAG, tag, xmlescape
+from .tags import TAG, tag, htmlescape
 from .datastructures import sdict
 
 
@@ -66,7 +66,7 @@ def _xml_rec(value, key, quote=True):
     elif hasattr(value, 'as_dict') and callable(value.as_dict):
         return str(_xml_rec(value.as_dict(), '', quote))
     else:
-        return xmlescape(value, quote)
+        return htmlescape(value, quote)
 
 
 def xml(value, encoding='UTF-8', key='document', quote=True):

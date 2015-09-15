@@ -19,7 +19,7 @@ from ._compat import SimpleCookie, iteritems
 from ._internal import ObjectProxy, LimitedStream
 from .datastructures import sdict
 from .helpers import get_flashed_messages
-from .tags import xmlescape
+from .tags import htmlescape
 from .libs.contenttype import contenttype
 
 
@@ -190,10 +190,10 @@ class Response(object):
 
     def get_meta(self):
         s = '\n'.join(
-            '<meta name="%s" content="%s" />\n' % (k, xmlescape(v))
+            '<meta name="%s" content="%s" />\n' % (k, htmlescape(v))
             for k, v in iteritems(self.meta or {}))
         s += '\n'.join(
-            '<meta property="%s" content="%s" />\n' % (k, xmlescape(v))
+            '<meta property="%s" content="%s" />\n' % (k, htmlescape(v))
             for k, v in iteritems(self.meta_prop or {}))
         return s
 

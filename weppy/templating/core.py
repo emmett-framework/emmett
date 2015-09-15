@@ -32,9 +32,9 @@ class DummyResponse():
         if not escape:
             body = str(data)
         else:
-            if hasattr(data, 'xml') and callable(data.xml):
+            if hasattr(data, 'to_html'):
                 try:
-                    body = data.xml()
+                    body = data.to_html()
                 except:
                     pass
         if body is None:

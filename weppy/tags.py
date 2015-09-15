@@ -12,7 +12,7 @@
 import re
 import threading
 
-from ._compat import PY2, iteritems, string_types
+from ._compat import iteritems, text_type, implements_to_string, to_unicode, to_native
 from .libs.sanitizer import sanitize
 
 __all__ = ['tag', 'cat', 'safe', 'asis']
@@ -20,7 +20,7 @@ __all__ = ['tag', 'cat', 'safe', 'asis']
 THREAD_LOCAL = threading.local()
 
 
-def xmlescape(s, quote=True):
+def htmlescape(s, quote=True):
     """
     returns an escaped string of the provided text s
     s: the text to be escaped
@@ -28,12 +28,10 @@ def xmlescape(s, quote=True):
     """
     # first try the xml function
     if isinstance(s, TAG):
-        return s.xml()
+        return s.to_html()
     # otherwise, make it a string
-    if not isinstance(s, string_types):
-        s = str(s)
-    elif PY2 and isinstance(s, unicode):
-        s = s.encode('utf8', 'xmlcharrefreplace')
+    if not isinstance(s, text_type):
+        s = to_unicode(s)
     s = s.replace("&", "&amp;")  # Must be done first!
     s = s.replace("<", "&lt;")
     s = s.replace(">", "&gt;")
@@ -43,6 +41,7 @@ def xmlescape(s, quote=True):
     return s
 
 
+@implements_to_string
 class TAG(object):
     rules = {'ul': ['li'],
              'ol': ['li'],
@@ -60,17 +59,17 @@ class TAG(object):
         self.parent = None
         self.components = []
         self.attributes = {}
-        if hasattr(THREAD_LOCAL, "stack") and THREAD_LOCAL.stack:
-            THREAD_LOCAL.stack[-1].append(self)
+        if hasattr(THREAD_LOCAL, "_tags_stack") and THREAD_LOCAL._tags_stack:
+            THREAD_LOCAL._tags_stack[-1].append(self)
 
     def __enter__(self):
-        if not hasattr(THREAD_LOCAL, "stack"):
-            THREAD_LOCAL.stack = []
-        THREAD_LOCAL.stack.append(self)
+        if not hasattr(THREAD_LOCAL, "_tags_stack"):
+            THREAD_LOCAL._tags_stack = []
+        THREAD_LOCAL._tags_stack.append(self)
         return self
 
     def __exit__(self, type, value, traceback):
-        THREAD_LOCAL.stack.pop(-1)
+        THREAD_LOCAL._tags_stack.pop(-1)
 
     @staticmethod
     def wrap(component, rules):
@@ -114,7 +113,7 @@ class TAG(object):
             yield item
 
     def __str__(self):
-        return self.xml()
+        return self.to_html()
 
     def __add__(self, other):
         return cat(self, other)
@@ -166,23 +165,23 @@ class TAG(object):
                 tags.add(self)
         return tags
 
-    def xml(self):
+    def to_html(self):
         name = self.name
-        ca = ' '.join(
-            '%s="%s"' % (k[1:], k[1:] if v == True else xmlescape(v))
+        ca = u' '.join(
+            u'%s="%s"' % (k[1:], k[1:] if v == True else htmlescape(v))
             for (k, v) in sorted(self.attributes.items())
             if k.startswith('_') and v is not None)
         da = self.attributes.get('data', {})
-        ca_data = ' '.join(
-            'data-%s="%s"' % (k, xmlescape(v)) for k, v in iteritems(da))
+        ca_data = u' '.join(
+            u'data-%s="%s"' % (k, htmlescape(v)) for k, v in iteritems(da))
         if ca_data:
-            ca = ca + ' ' + ca_data
-        ca = ' ' + ca if ca else ''
+            ca = ca + u' ' + ca_data
+        ca = u' ' + ca if ca else u''
         if name in self._self_closed:
-            return '<%s%s />' % (name, ca)
+            return u'<%s%s />' % (name, ca)
         else:
-            co = ''.join(xmlescape(v) for v in self.components)
-            return '<%s%s>%s</%s>' % (name, ca, co, name)
+            co = u''.join(htmlescape(v) for v in self.components)
+            return u'<%s%s>%s</%s>' % (name, ca, co, name)
 
     __repr__ = __str__
 
@@ -202,8 +201,8 @@ class cat(TAG):
         self.components = [c for c in components]
         self.attributes = {}
 
-    def xml(self):
-        return ''.join(xmlescape(v) for v in self.components)
+    def to_html(self):
+        return u''.join(htmlescape(v) for v in self.components)
 
 
 class safe(TAG):
@@ -220,13 +219,14 @@ class safe(TAG):
         self.sanitize = sanitize
         self.allowed_tags = allowed_tags or safe.default_allowed_tags
 
-    def xml(self):
+    def to_html(self):
         if self.sanitize:
-            return sanitize(self.text, self.allowed_tags.keys(),
+            return sanitize(to_native(self.text), self.allowed_tags.keys(),
                             self.allowed_tags)
-        if not isinstance(self.text, basestring):
-            return str(self.text)
-        return self.text
+        #if not isinstance(self.text, basestring):
+        #    return str(self.text)
+        #return self.text
+        return to_unicode(self.text)
 
 
 def asis(text):

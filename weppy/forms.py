@@ -201,12 +201,12 @@ class Form(TAG):
                 hidden.append(tag.input(_name=key, _type='hidden',
                               _value=value))
             # provides end attribute
-            end = '%s</form>' % hidden.xml()
+            end = '%s</form>' % hidden.to_html()
             custom.end = asis(end)
         return self._custom
 
-    def xml(self):
-        return self._render().xml()
+    def to_html(self):
+        return self._render().to_html()
 
 
 class DALForm(Form):
