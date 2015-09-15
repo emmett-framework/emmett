@@ -13,6 +13,7 @@
 
 import re
 import unicodedata
+from .._compat import to_unicode
 from .basic import Validator
 from .helpers import translate, LazyCrypt
 
@@ -54,9 +55,7 @@ class Urlify(Validator):
         if (keep_underscores): underscores are retained in the string
         else: underscores are translated to hyphens (default)
         """
-        # to unicode
-        if isinstance(s, str):
-            s = s.decode('utf-8')
+        s = to_unicode(s)
         # to lowercase
         s = s.lower()
         # replace special characters

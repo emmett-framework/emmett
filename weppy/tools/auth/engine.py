@@ -17,7 +17,7 @@ import base64
 import os
 import time
 from pydal.objects import Row
-from ..._compat import iteritems
+from ..._compat import iteritems, to_unicode
 from ...datastructures import sdict
 from ...expose import url
 from ...globals import request, session
@@ -359,10 +359,9 @@ class Auth(object):
         if basic_auth_realm:
             if callable(basic_auth_realm):
                 basic_auth_realm = basic_auth_realm()
-            elif isinstance(basic_auth_realm, (unicode, str)):
-                basic_realm = unicode(basic_auth_realm)
             elif basic_auth_realm is True:
                 basic_realm = u'' + request.application
+            basic_realm = to_unicode(basic_realm)
             http_401 = HTTP(
                 401, u'Not Authorized',
                 **{'WWW-Authenticate': u'Basic realm="' + basic_realm + '"'})

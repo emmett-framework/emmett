@@ -10,10 +10,9 @@
 """
 
 import os
-import sys
 import time
 import tempfile
-from ._compat import PY2, pickle
+from ._compat import pickle, to_native
 from .security import secure_loads, secure_dumps, uuid
 from .handlers import Handler
 from .globals import current, request, response
@@ -67,8 +66,7 @@ class SessionFSManager(Handler):
         self.domain = domain
 
     def _get_filename(self, sid):
-        if PY2 and isinstance(sid, unicode):
-            sid = sid.encode(sys.getfilesystemencoding() or 'utf-8')
+        sid = to_native(sid)
         return os.path.join(self._path, self._filename_template % sid)
 
     def _load(self, sid):

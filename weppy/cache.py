@@ -14,9 +14,8 @@ import time
 import heapq
 import threading
 import tempfile
-from hashlib import md5
 
-from ._compat import pickle, integer_types, iteritems
+from ._compat import pickle, integer_types, iteritems, hashlib_md5
 from .libs.portalocker import LockedFile
 
 __all__ = ['Cache']
@@ -200,9 +199,7 @@ class DiskCache(BaseCache):
                     pass
 
     def _get_filename(self, key):
-        if isinstance(key, unicode):
-            key = key.encode('utf-8')
-        khash = md5(key).hexdigest()
+        khash = hashlib_md5(key).hexdigest()
         return os.path.join(self._path, khash)
 
     def _del_file(self, filename):
