@@ -20,7 +20,7 @@ import struct
 import urllib
 from datetime import date, time, datetime, timedelta
 from time import strptime
-from .._compat import PY2
+from .._compat import PY2, basestring
 from .basic import Validator, ParentValidator, _is, Matches
 from .helpers import translate, _UTC, url_split_regex, official_url_schemes, \
     unofficial_url_schemes, unicode_to_ascii_url, official_top_level_domains
