@@ -32,7 +32,7 @@ class DummyResponse():
         if not isinstance(data, string_types):
             data = str(data)
         if not isinstance(data, str):
-            data = to_native(data, 'xmlcharrefreplace')
+            data = to_native(data, 'utf8', 'xmlcharrefreplace')
         return data
 
     def write(self, data, escape=True):
