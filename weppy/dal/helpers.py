@@ -36,10 +36,11 @@ class HasOneWrap(object):
 
 
 class HasManySet(LazySet):
-    def __call__(self, query=None, **kwargs):
+    def __call__(self, *args, **kwargs):
+        query = kwargs.get('query')
         if query is None:
-            return self.select(**kwargs)
-        return LazySet.__call__(self, query).select(**kwargs)
+            return self.select(*args, **kwargs)
+        return LazySet.__call__(self, query).select(*args, **kwargs)
 
     def add(self, **data):
         rv = None
@@ -69,10 +70,13 @@ class HasManyViaSet(Set):
         self._via = via
         Set.__init__(self, db, query, **kwargs)
 
-    def __call__(self, query=None, **kwargs):
+    def __call__(self, *args, **kwargs):
+        query = kwargs.get('query')
+        if not args:
+            args = [self._rfield]
         if query is None:
-            return self.select(self._rfield, **kwargs)
-        return Set.__call__(self, query).select(**kwargs)
+            return self.select(*args, **kwargs)
+        return Set.__call__(self, query).select(*args, **kwargs)
 
     def add(self, obj):
         # works for 3 tables way only!
