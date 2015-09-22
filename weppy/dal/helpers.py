@@ -38,7 +38,9 @@ class HasOneWrap(object):
 class HasManySet(LazySet):
     def __call__(self, *args, **kwargs):
         query = kwargs.get('query')
-        if query is None:
+        if query is not None:
+            del kwargs['query']
+        else:
             return self.select(*args, **kwargs)
         return LazySet.__call__(self, query).select(*args, **kwargs)
 
@@ -74,7 +76,9 @@ class HasManyViaSet(Set):
         query = kwargs.get('query')
         if not args:
             args = [self._rfield]
-        if query is None:
+        if query is not None:
+            del kwargs['query']
+        else:
             return self.select(*args, **kwargs)
         return Set.__call__(self, query).select(*args, **kwargs)
 
