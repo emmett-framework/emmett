@@ -29,7 +29,7 @@ weppy is currently released in beta stage.
 * That the code may contain *noteworthy* bugs
 * That you can use it on production but cannot blame the developers if something goes wrong
 
-Also, please keep in mind that currently weppy doesn't provide support to python 3.
+weppy provides support for python 2.7, 3.3 and 3.4 versions.
 
 ## How can I help?
 
