@@ -33,7 +33,6 @@ if PY2:
     xrange = xrange
     hashlib_md5 = hashlib.md5
     hashlib_sha1 = hashlib.sha1
-    from string import maketrans
 
     def implements_iterator(cls):
         cls.next = cls.__next__
@@ -84,7 +83,6 @@ else:
     xrange = range
     hashlib_md5 = lambda s: hashlib.md5(bytes(s, 'utf8'))
     hashlib_sha1 = lambda s: hashlib.sha1(bytes(s, 'utf8'))
-    maketrans = str.maketrans
 
     implements_iterator = _identity
     implements_bool = _identity

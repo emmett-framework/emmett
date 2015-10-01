@@ -106,7 +106,7 @@ rendered_value = """
         <div class="page">
             <a href="/" class="title"><h1>Test</h1></a>
             <div class="nav">
-                <a href="/">partly cloudy</a>
+                <a href="/">nuvolosità variabile</a>
             </div>
             <ul class="posts">
                 <li>
@@ -126,12 +126,12 @@ rendered_value = """
 
 
 def test_render(app):
+    current._language = 'it'
     r = render(
         app, app.template_path, 'test.html', {
             'current': current, 'posts': [{'title': 'foo'}, {'title': 'bar'}]
         }
     )
-    print(r)
     assert "".join([l.strip() for l in r.splitlines()]) == \
         "".join([l.strip() for l in rendered_value.splitlines()])
 

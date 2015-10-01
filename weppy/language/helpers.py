@@ -14,7 +14,7 @@ import os
 import pkgutil
 import re
 
-from .._compat import to_unicode, to_bytes, maketrans
+from .._compat import PY2, to_unicode, to_bytes
 from .cache import clear_cache, getcfs
 from ..libs.portalocker import read_locked, LockedFile
 
@@ -98,11 +98,9 @@ def write_plural_dict(filename, contents):
         fp = LockedFile(filename, 'wb')
         fp.write(to_bytes(u'#!/usr/bin/env python\n{\n# "singular form (0)": ["first plural form (1)", "second plural form (2)", ...],\n'))
         # coding: utf8\n{\n')
-        for key in sorted(contents,
-                          lambda x, y: cmp(to_unicode(x).lower(),
-                                           to_unicode(y).lower())):
-            forms = u'[' + u','.join(form for form in contents[key]) + u']'
-            val = u'%s: %s,\n' % (key, forms)
+        for key in sorted(contents):
+            forms = u'[' + u','.join('"'+form+'"' for form in contents[key]) + u']'
+            val = u'"%s": %s,\n' % (key, forms)
             fp.write(to_bytes(val))
         fp.write(to_bytes(u'}\n'))
     except (IOError, OSError):
@@ -126,13 +124,17 @@ def read_dict_aux(filename):
     lang_text = read_locked(filename).replace('\r\n', '\n')
     clear_cache(filename)
     try:
-        return safe_eval(lang_text) or {}
+        rv = safe_eval(lang_text) or {}
+        if PY2:
+            for key, val in rv.items():
+                rv[to_unicode(key)] = to_unicode(val)
     except Exception:
         #e = sys.exc_info()[1]
         #status = 'Syntax error in %s (%s)' % (filename, e)
         #logging.error(status)
         status = 'Syntax error in %s' % filename
-        return {'__corrupted__': status}
+        rv = {'__corrupted__': status}
+    return rv
 
 
 def read_dict(filename):
@@ -150,10 +152,8 @@ def write_dict(filename, contents):
     except (IOError, OSError):
         return
     fp.write(to_bytes(u'# coding: utf8\n{\n'))
-    for key in sorted(contents,
-                      lambda x, y: cmp(to_unicode(x).lower(),
-                                       to_unicode(y).lower())):
-        val = u'%s: %s,\n' % (key, contents[key])
+    for key in sorted(contents):
+        val = u'"%s": "%s",\n' % (key, contents[key])
         fp.write(to_bytes(val))
     fp.write(to_bytes(u'}\n'))
     fp.close()

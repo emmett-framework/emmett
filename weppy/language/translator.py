@@ -237,6 +237,7 @@ class TLanguage(object):
         the ## notation is ignored in multiline strings and strings that
         start with ##. this is to allow markmin syntax to be translated
         """
+        message = to_unicode(message)
         key = prefix + message
         mt = self.get(key)
         if mt is not None:
@@ -254,8 +255,9 @@ class TLanguage(object):
 
     def translate(self, message):
         if self.cached:
-            return get_from_cache(self.filename, message,
-                                  lambda: to_unicode(self.get_t(message)))
+            return get_from_cache(
+                self.filename, to_unicode(message),
+                lambda: to_unicode(self.get_t(message)))
         return to_unicode(self.get_t(message))
 
 
