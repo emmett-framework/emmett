@@ -37,12 +37,7 @@ class HasOneWrap(object):
 
 class HasManySet(LazySet):
     def __call__(self, *args, **kwargs):
-        query = kwargs.get('query')
-        if query is not None:
-            del kwargs['query']
-        else:
-            return self.select(*args, **kwargs)
-        return LazySet.__call__(self, query).select(*args, **kwargs)
+        return self.select(*args, **kwargs)
 
     def add(self, **data):
         rv = None
@@ -73,18 +68,13 @@ class HasManyViaSet(Set):
         Set.__init__(self, db, query, **kwargs)
 
     def __call__(self, *args, **kwargs):
-        query = kwargs.get('query')
         if not args:
             args = [self._rfield]
-        if query is not None:
-            del kwargs['query']
-        else:
-            return self.select(*args, **kwargs)
-        return Set.__call__(self, query).select(*args, **kwargs)
+        return self.select(*args, **kwargs)
 
-    def add(self, obj):
+    def add(self, obj, **kwargs):
         # works for 3 tables way only!
-        nrow = dict()
+        nrow = kwargs
         rv = None
         #: get belongs reference of current model
         self_field = self.db[self._via]._model_._belongs_ref_[self._model]
