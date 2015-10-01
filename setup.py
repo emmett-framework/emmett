@@ -14,10 +14,19 @@ Links
 
 """
 
+import re
+import ast
 from setuptools import setup
+
+_version_re = re.compile(r'__version__\s+=\s+(.*)')
+
+with open('weppy/__init__.py', 'rb') as f:
+    version = str(ast.literal_eval(_version_re.search(
+        f.read().decode('utf-8')).group(1)))
+
 setup(
     name='weppy',
-    version='0.5-dev',
+    version=version,
     url='http://github.com/gi0baro/weppy/',
     license='BSD',
     author='Giovanni Barillari',
