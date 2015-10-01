@@ -39,8 +39,8 @@ def test_define(app):
     ) == "[0, 1, 2, 3, 4]"
 
 
-def test_superblock(app):
-    pass
+# def test_superblock(app):
+#     pass
 
 
 def test_helpers(app):
@@ -136,5 +136,5 @@ def test_render(app):
         "".join([l.strip() for l in rendered_value.splitlines()])
 
 
-def test_cache(app):
-    pass
+# def test_cache(app):
+#     pass
