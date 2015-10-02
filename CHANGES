@@ -1,6 +1,18 @@
 weppy changelog
 ===============
 
+Version 0.5
+-----------
+
+Released on October 2nd 2015, codename Elnath
+
+- Introduced python 3 support
+- Introduced multiple inheritance support on `Model` class
+- Added optional keyed arguments support to `HasManyViaSet.add` for additional
+  columns on join tables
+- Minor bugfixes
+
+
 Version 0.4
 -----------
 
