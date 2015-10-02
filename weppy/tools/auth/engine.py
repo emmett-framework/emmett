@@ -380,7 +380,7 @@ class Auth(object):
         login the user = db.auth_user(id)
         """
         user = Row(user)
-        for key, value in user.items():
+        for key, value in list(user.items()):
             if callable(value) or key == 'password':
                 delattr(user, key)
         session.auth = sdict(
