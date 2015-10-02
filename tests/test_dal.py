@@ -168,6 +168,21 @@ class Appointment(Model):
     date = Field('datetime')
 
 
+class User(Model):
+    name = Field()
+    has_many('memberships', {'organizations': {'via': 'memberships'}})
+
+
+class Organization(Model):
+    name = Field()
+    has_many('memberships', {'users': {'via': 'memberships'}})
+
+
+class Membership(Model):
+    belongs_to('user', 'organization')
+    role = Field()
+
+
 class House(Model):
     name = Field()
 
@@ -226,7 +241,8 @@ def db():
     db = DAL(app, config=sdict(uri='sqlite://dal.db'))
     db.define_models([
         Stuff, Person, Thing, Feature, Price, Doctor, Patient, Appointment,
-        House, Mouse, NeedSplit, Zoo, Animal, Elephant
+        User, Organization, Membership, House, Mouse, NeedSplit, Zoo, Animal,
+        Elephant
     ])
     return db
 
@@ -354,6 +370,18 @@ def test_relations(db):
     assert len(doctor.appointments()) == 1
     assert len(patient.doctors()) == 1
     assert len(patient.appointments()) == 1
+    joe = db.User.insert(name='joe')
+    jim = db.User.insert(name='jim')
+    org = db.Organization.insert(name='')
+    org.users.add(joe, role='admin')
+    org.users.add(jim, role='manager')
+    assert len(org.users()) == 2
+    assert len(joe.organizations()) == 1
+    assert len(jim.organizations()) == 1
+    assert joe.organizations().first().id == org
+    assert jim.organizations().first().id == org
+    assert joe.memberships().first().role == 'admin'
+    assert jim.memberships().first().role == 'manager'
 
 
 def test_tablenames(db):

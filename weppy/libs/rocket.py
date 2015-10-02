@@ -4,6 +4,9 @@
 # Copyright (c) 2011 Timothy Farrell
 # Modified by Massimo Di Pierro
 
+from __future__ import print_function
+from weppy._compat import iteritems, to_bytes
+
 # Import System Modules
 import sys
 import errno
@@ -1429,7 +1432,7 @@ class Worker(Thread):
             raise BadRequest
 
         req = match.groupdict()
-        for k, v in req.iteritems():
+        for k, v in iteritems(req):
             if not v:
                 req[k] = ""
             if k == 'path':
@@ -1653,7 +1656,7 @@ class WSGIWorker(Worker):
         environ = self.base_environ.copy()
 
         # Grab the headers
-        for k, v in self.read_headers(sock_file).iteritems():
+        for k, v in iteritems(self.read_headers(sock_file)):
             environ[str('HTTP_' + k)] = v
 
         # Add CGI Variables
@@ -1681,7 +1684,7 @@ class WSGIWorker(Worker):
                 environ['SSL_CLIENT_RAW_CERT'] = \
                     peercert and ssl.DER_cert_to_PEM_cert(peercert)
             except Exception:
-                print sys.exc_info()[1]
+                print(sys.exc_info()[1])
         else:
             environ['wsgi.url_scheme'] = 'http'
 
@@ -1770,7 +1773,7 @@ class WSGIWorker(Worker):
                 if self.chunked:
                     self.conn.sendall(b('%x\r\n%s\r\n' % (len(data), data)))
                 else:
-                    self.conn.sendall(data)
+                    self.conn.sendall(to_bytes(data))
             except socket.timeout:
                 self.closeConnection = True
             except socket.error:

@@ -1,0 +1,10 @@
+{{extend 'layout.html'}}
+
+<ul class="posts">
+{{for post in posts:}}
+    <li>
+        <h2>{{=post['title']}}</h2>
+        <hr />
+    </li>
+{{pass}}
+</ul>

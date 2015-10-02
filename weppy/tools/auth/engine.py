@@ -17,6 +17,7 @@ import base64
 import os
 import time
 from pydal.objects import Row
+from ..._compat import iteritems, to_unicode
 from ...datastructures import sdict
 from ...expose import url
 from ...globals import request, session
@@ -256,7 +257,7 @@ class Auth(object):
             models.event
         )
         self._model_names = sdict()
-        for key, value in models.iteritems():
+        for key, value in iteritems(models):
             self._model_names[key] = value.__name__
 
     def log_event(self, description, vars={}, origin='auth'):
@@ -358,10 +359,9 @@ class Auth(object):
         if basic_auth_realm:
             if callable(basic_auth_realm):
                 basic_auth_realm = basic_auth_realm()
-            elif isinstance(basic_auth_realm, (unicode, str)):
-                basic_realm = unicode(basic_auth_realm)
             elif basic_auth_realm is True:
                 basic_realm = u'' + request.application
+            basic_realm = to_unicode(basic_realm)
             http_401 = HTTP(
                 401, u'Not Authorized',
                 **{'WWW-Authenticate': u'Basic realm="' + basic_realm + '"'})
@@ -380,7 +380,7 @@ class Auth(object):
         login the user = db.auth_user(id)
         """
         user = Row(user)
-        for key, value in user.items():
+        for key, value in list(user.items()):
             if callable(value) or key == 'password':
                 delattr(user, key)
         session.auth = sdict(

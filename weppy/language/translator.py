@@ -16,22 +16,27 @@
 from cgi import escape
 import os
 
-from .._compat import implements_bool
-from ..tags import asis, xmlescape
+from .._compat import PY2, implements_bool, implements_to_string, iteritems, \
+    iterkeys, to_unicode
+from ..tags import asis, htmlescape
 from .helpers import regex_backslash, regex_plural, regex_plural_dict, \
     regex_plural_tuple, regex_language, DEFAULT_NPLURALS, \
     DEFAULT_GET_PLURAL_ID, DEFAULT_CONSTRUCT_PLURAL_FORM, \
     read_possible_languages, read_dict, write_dict, read_plural_dict, \
-    write_plural_dict, Utf8, ttab_in, ttab_out, upper_fun, title_fun, cap_fun
+    write_plural_dict, ttab_in, ttab_out, upper_fun, title_fun, cap_fun
 from .cache import get_from_cache
 
-NUMBERS = (int, long, float)
+if PY2:
+    NUMBERS = (int, long, float)
+else:
+    NUMBERS = (int, float)
 
 
 #: The single 'translator string element', is created when user calls
 #  T('string'), and will be translated when loaded in templates or converted to
-#  a string (via str() or repr())
+#  a string (via str())
 @implements_bool
+@implements_to_string
 class TElement(object):
     m = s = T = language = None
     M = is_copy = False
@@ -53,7 +58,7 @@ class TElement(object):
             self.is_copy = False
 
     def __repr__(self):
-        return "<lazyT %s>" % (repr(Utf8(self.m)), )
+        return "<lazyT %s>" % repr(self.m)
 
     def __str__(self):
         lang = self.language
@@ -62,8 +67,9 @@ class TElement(object):
             #  url (if forced by application), fallback on default language
             from ..globals import current
             lang = current._language or self.T.current_languages[0]
-        return str(self.T.apply_filter(lang, self.m, self.s) if self.M else
-                   self.T.translate(lang, self.m, self.s))
+        # return str(self.T.apply_filter(lang, self.m, self.s) if self.M else
+        #            self.T.translate(lang, self.m, self.s))
+        return self.T.translate(lang, self.m, self.s)
 
     def __eq__(self, other):
         return str(self) == str(other)
@@ -105,7 +111,7 @@ class TElement(object):
     def __bool__(self):
         return len(self.m) > 0
 
-    def xml(self):
+    def to_html(self):
         return str(self) if self.M else escape(str(self))
 
     def encode(self, *a, **b):
@@ -218,7 +224,7 @@ class TLanguage(object):
                     return form
         return word
 
-    def get_t(self, message, prefix=''):
+    def get_t(self, message, prefix=u''):
         """
         use ## to add a comment into a translation string
         the comment can be useful do discriminate different possible
@@ -231,10 +237,7 @@ class TLanguage(object):
         the ## notation is ignored in multiline strings and strings that
         start with ##. this is to allow markmin syntax to be translated
         """
-        if isinstance(message, unicode):
-            message = message.encode('utf8')
-        if isinstance(prefix, unicode):
-            prefix = prefix.encode('utf8')
+        message = to_unicode(message)
         key = prefix + message
         mt = self.get(key)
         if mt is not None:
@@ -252,9 +255,10 @@ class TLanguage(object):
 
     def translate(self, message):
         if self.cached:
-            return get_from_cache(self.filename, message,
-                                  lambda: self.get_t(message))
-        return self.get_t(message)
+            return get_from_cache(
+                self.filename, to_unicode(message),
+                lambda: to_unicode(self.get_t(message)))
+        return to_unicode(self.get_t(message))
 
 
 #: The main translator object, responsible of creating elements and loading
@@ -329,7 +333,7 @@ class Translator(object):
                                                   writable=writable)
 
     def build_translator(self, language):
-        all_languages = set(lang for lang in self.possible_languages.iterkeys()
+        all_languages = set(lang for lang in iterkeys(self.possible_languages)
                             if lang != 'default')
         # compare "aa-bb" | "aa" from *language* parameter
         # with strings from langlist using such alghorythm:
@@ -376,15 +380,15 @@ class Translator(object):
         if symbols or symbols == 0 or symbols == "":
             if isinstance(symbols, dict):
                 symbols.update(
-                    (key, xmlescape(value).translate(ttab_in))
-                    for key, value in symbols.iteritems()
+                    (key, htmlescape(value).translate(ttab_in))
+                    for key, value in iteritems(symbols)
                     if not isinstance(value, NUMBERS))
             else:
                 if not isinstance(symbols, tuple):
                     symbols = (symbols,)
                 symbols = tuple(
                     value if isinstance(value, NUMBERS)
-                    else xmlescape(value).translate(ttab_in)
+                    else htmlescape(value).translate(ttab_in)
                     for value in symbols)
             message = self.params_substitution(message, symbols)
         return asis(message.translate(ttab_out))
@@ -519,15 +523,18 @@ class Translator(object):
         if symbols or symbols == 0 or symbols == "":
             if isinstance(symbols, dict):
                 symbols.update(
-                    (key, str(value).translate(ttab_in))
-                    for key, value in symbols.iteritems()
+                    (
+                        key, to_unicode(value).translate(ttab_in)
+                        if value else u'')
+                    for key, value in iteritems(symbols)
                     if not isinstance(value, NUMBERS))
             else:
                 if not isinstance(symbols, tuple):
                     symbols = (symbols,)
                 symbols = tuple(
                     value if isinstance(value, NUMBERS)
-                    else str(value).translate(ttab_in)
+                    else (
+                        to_unicode(value).translate(ttab_in) if value else u'')
                     for value in symbols)
             message = self.params_substitution(lang, message, symbols)
         return message.translate(ttab_out)

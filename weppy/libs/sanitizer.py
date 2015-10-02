@@ -10,12 +10,18 @@
 
 """
 
-
-from htmllib import HTMLParser
+from weppy._compat import PY2
+if PY2:
+    from htmllib import HTMLParser
+    from urlparse import urlparse
+    from htmlentitydefs import entitydefs
+else:
+    from html.parser import HTMLParser
+    from urllib.parse import urlparse
+    from html.entities import entitydefs
 from cgi import escape
-from urlparse import urlparse
 from formatter import AbstractFormatter
-from htmlentitydefs import entitydefs
+
 from xml.sax.saxutils import quoteattr
 
 __all__ = ['sanitize']

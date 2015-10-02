@@ -154,6 +154,6 @@ def read_locked(filename):
 
 
 def write_locked(filename, data):
-    fp = LockedFile(filename, 'w')
+    fp = LockedFile(filename, 'wb')
     data = fp.write(data)
     fp.close()

@@ -18,7 +18,7 @@ import inspect
 import os
 import sys
 from types import TracebackType, CodeType
-from ._compat import PY2, reraise
+from ._compat import PY2, reraise, iteritems
 from .templating.helpers import TemplateError
 
 
@@ -211,7 +211,7 @@ class Frame(object):
         if not hasattr(self, '_sourcelines'):
             try:
                 with open(self.filename, 'rb') as file:
-                    source = file.read()
+                    source = file.read().decode('utf8')
             except IOError:
                 source = '<unavailable>'
             self._sourcelines = source.splitlines()
@@ -244,7 +244,7 @@ class Frame(object):
     def render_locals(self):
         if not hasattr(self, '_rendered_locals'):
             self._rendered_locals = dict()
-            for k, v in self.locals.iteritems():
+            for k, v in iteritems(self.locals):
                 try:
                     self._rendered_locals[k] = str(v)
                 except:
@@ -294,14 +294,14 @@ def debug_handler(tb):
     from .templating.core import DummyResponse
     from .templating.parser import TemplateParser
     view_file = open(view, 'rb')
-    view_source = view_file.read()
+    view_source = view_file.read().decode('utf8')
     view_file.close()
     context = {'_DummyResponse_': DummyResponse(), 'tb': tb}
     from .datastructures import sdict
     t_dict = sdict(lexers={})
     code = str(TemplateParser(t_dict, view_source,
                context=context, path=''))
-    exec(code) in context
+    exec(code, context)
     return context['_DummyResponse_'].body.getvalue()
 
 

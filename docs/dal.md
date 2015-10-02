@@ -373,6 +373,7 @@ Since the object is a specific set of your database responding to a query, you h
 | update | update all the records in the set |
 | validate\_and\_update | perform a validation and update the records |
 | delete | delete all the records in the set |
+| where | return a subset given additional queries |
 | add | add a row to the set |
 
 As you observed, until now we used a shortcut for the `select` method just calling the set:

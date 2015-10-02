@@ -10,6 +10,7 @@
 """
 
 from collections import OrderedDict
+from .._compat import iteritems, with_metaclass
 from .apis import computation, virtualfield, fieldmethod
 from .base import Field, _Field, sdict
 from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
@@ -23,79 +24,78 @@ class MetaModel(type):
             return new_class
         #: collect declared attributes
         current_fields = []
-        virtual_fields = {}
+        current_vfields = []
         computations = {}
         callbacks = {}
         for key, value in list(attrs.items()):
             if isinstance(value, Field):
                 current_fields.append((key, value))
             elif isinstance(value, virtualfield):
-                virtual_fields[key] = value
+                current_vfields.append((key, value))
             elif isinstance(value, computation):
                 computations[key] = value
             elif isinstance(value, Callback):
                 callbacks[key] = value
         #: get super declared attributes
         declared_fields = OrderedDict()
+        declared_vfields = OrderedDict()
         super_relations = sdict(
             _belongs_ref_=[], _hasone_ref_=[], _hasmany_ref_=[]
         )
+        declared_computations = {}
+        declared_callbacks = {}
         for base in reversed(new_class.__mro__[1:]):
-            # collect fields from base class
+            #: collect fields from base class
             if hasattr(base, '_declared_fields_'):
-                #all_fields.update(base._all_fields_)
                 declared_fields.update(base._declared_fields_)
+            #: collect relations from base class
             for key in list(super_relations):
                 if hasattr(base, key):
                     super_relations[key] += getattr(base, key)
-        #: set declared fields with correct order
+            #: collect virtuals from base class
+            if hasattr(base, '_declared_virtuals_'):
+                declared_vfields.update(base._declared_virtuals_)
+            #: collect computations from base class
+            if hasattr(base, '_declared_computations_'):
+                declared_computations.update(base._declared_computations_)
+            #: collect callbacks from base class
+            if hasattr(base, '_declared_callbacks_'):
+                declared_callbacks.update(base._declared_callbacks_)
+        #: set fields with correct order
         current_fields.sort(key=lambda x: x[1]._inst_count_)
-        declared_fields.update(OrderedDict(current_fields))
+        declared_fields.update(current_fields)
         new_class._declared_fields_ = declared_fields
         #: set relations references binding
         from .apis import belongs_to, has_one, has_many
         items = []
         for item in belongs_to._references_.values():
             items += item.reference
-        #setattr(new_class, "_belongs_ref_", items)
         new_class._belongs_ref_ = super_relations._belongs_ref_ + items
         belongs_to._references_ = {}
         items = []
         for item in has_one._references_.values():
             items += item.reference
-        #setattr(new_class, "_hasone_ref_", items)
         new_class._hasone_ref_ = super_relations._hasone_ref_ + items
         has_one._references_ = {}
         items = []
         for item in has_many._references_.values():
             items += item.reference
-        #setattr(new_class, "_hasmany_ref_", items)
         new_class._hasmany_ref_ = super_relations._hasmany_ref_ + items
         has_many._references_ = {}
-        #: set virtuals
-        all_virtuals = {}
-        for k, v in getattr(new_class, '_declared_virtuals_', {}).iteritems():
-            all_virtuals[k] = v
-        all_virtuals.update(virtual_fields)
-        new_class._declared_virtuals_ = all_virtuals
+        #: set virtual fields with correct order
+        current_vfields.sort(key=lambda x: x[1]._inst_count_)
+        declared_vfields.update(current_vfields)
+        new_class._declared_virtuals_ = declared_vfields
         #: set computations
-        all_computations = {}
-        for k, v in getattr(new_class, '_declared_computations_', {}).iteritems():
-            all_computations[k] = v
-        all_computations.update(computations)
-        new_class._declared_computations_ = all_computations
+        declared_computations.update(computations)
+        new_class._declared_computations_ = declared_computations
         #: set callbacks
-        all_callbacks = {}
-        for k, v in getattr(new_class, '_declared_callbacks_', {}).iteritems():
-            all_callbacks[k] = v
-        all_callbacks.update(callbacks)
-        new_class._declared_callbacks_ = all_callbacks
+        declared_callbacks.update(callbacks)
+        new_class._declared_callbacks_ = declared_callbacks
         return new_class
 
 
-class Model(object):
-    __metaclass__ = MetaModel
-
+class Model(with_metaclass(MetaModel)):
     db = None
     table = None
 
@@ -170,13 +170,14 @@ class Model(object):
     def _define_props_(self):
         #: create pydal's Field elements
         self.fields = []
-        for name, obj in self._declared_fields_.iteritems():
+        for name, obj in iteritems(self._declared_fields_):
             if obj.modelname is not None:
                 obj = Field(*obj._args, **obj._kwargs)
                 setattr(self.__class__, name, obj)
             self.fields.append(obj._make_field(name, self))
 
     def _define_relations_(self):
+        self._virtual_relations_ = OrderedDict()
         bad_args_error = "belongs_to, has_one and has_many only accept " + \
             "strings or dicts as arguments"
         #: belongs_to are mapped with 'reference' type Field
@@ -199,7 +200,7 @@ class Model(object):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference, refname = self.__parse_relation(item)
-                self._declared_virtuals_[refname] = \
+                self._virtual_relations_[refname] = \
                     virtualfield(refname)(HasOneWrap(reference))
             delattr(self.__class__, '_hasone_ref_')
         #: has_many are mapped with virtualfield()
@@ -215,7 +216,7 @@ class Model(object):
                     via = reference.get('via')
                 if via is not None:
                     #: maps has_many({'things': {'via': 'otherthings'}})
-                    self._declared_virtuals_[refname] = virtualfield(refname)(
+                    self._virtual_relations_[refname] = virtualfield(refname)(
                         HasManyViaWrap(refname, via)
                     )
                 else:
@@ -224,7 +225,7 @@ class Model(object):
                     #  has_many({'things': {'class': 'Model'}})
                     if rclass is not None:
                         reference = rclass
-                    self._declared_virtuals_[refname] = virtualfield(refname)(
+                    self._virtual_relations_[refname] = virtualfield(refname)(
                         HasManyWrap(reference)
                     )
                 hasmany_references[refname] = reference
@@ -235,14 +236,15 @@ class Model(object):
         err = 'virtualfield or fieldmethod cannot have same name as an' + \
             'existent field!'
         field_names = [field.name for field in self.fields]
-        for name, obj in self._declared_virtuals_.iteritems():
-            if obj.field_name in field_names:
-                raise RuntimeError(err)
-            if isinstance(obj, fieldmethod):
-                f = _Field.Method(obj.field_name, VirtualWrap(self, obj))
-            else:
-                f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
-            self.fields.append(f)
+        for attr in ['_virtual_relations_', '_declared_virtuals_']:
+            for name, obj in iteritems(getattr(self, attr, {})):
+                if obj.field_name in field_names:
+                    raise RuntimeError(err)
+                if isinstance(obj, fieldmethod):
+                    f = _Field.Method(obj.field_name, VirtualWrap(self, obj))
+                else:
+                    f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
+                self.fields.append(f)
 
     def _define_(self):
         #if self.sign_table:
@@ -288,7 +290,7 @@ class Model(object):
         err = 'computations should have the name of an existing field to ' +\
             'compute!'
         field_names = [field.name for field in self.fields]
-        for name, obj in self._declared_computations_.iteritems():
+        for name, obj in iteritems(self._declared_computations_):
             if obj.field_name not in field_names:
                 raise RuntimeError(err)
             # TODO add check virtuals
@@ -296,7 +298,7 @@ class Model(object):
                 lambda row, obj=obj, self=self: obj.f(self, row)
 
     def __define_actions(self):
-        for name, obj in self._declared_callbacks_.iteritems():
+        for name, obj in iteritems(self._declared_callbacks_):
             for t in obj.t:
                 if t in ["_before_insert", "_before_delete", "_after_delete"]:
                     getattr(self.table, t).append(

@@ -42,19 +42,24 @@ class TemplateExtension(object):
 
 
 class TemplateLexer(object):
+    evaluate_value = True
+
     def __init__(self, extension):
         self.ext = extension
 
-    def __call__(self, parser=None, value=None, top=None, stack=None):
+    def __call__(self, parser, value=None):
         self.parser = parser
-        self.process(value, top, stack)
+        if self.evaluate_value and value is not None:
+            value = eval(value, self.parser.context)
+        self.process(value)
 
-    def write(self, line, escape=False):
-        if escape:
-            s = "\n%s('%s', escape=True)" % (self.writer, line)
-        else:
-            s = "\n%s('%s', escape=False)" % (self.writer, line)
-        return s
+    @property
+    def stack(self):
+        return self.parser.stack
 
-    def process(self, value, top, stack):
-        pass
+    @property
+    def top(self):
+        return self.parser.stack[-1]
+
+    def process(self, value):
+        return value

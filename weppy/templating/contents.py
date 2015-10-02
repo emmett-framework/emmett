@@ -13,7 +13,21 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from .._compat import implements_to_string, to_unicode
 
+
+def _gen_output(node, blocks):
+    if isinstance(node, BlockNode):
+        if node.name in blocks:
+            rv = blocks[node.name].output(blocks)
+        else:
+            rv = node.output(blocks)
+    else:
+        rv = to_unicode(node)
+    return rv
+
+
+@implements_to_string
 class Node(object):
     """
     Basic Container Object
@@ -26,12 +40,13 @@ class Node(object):
         self.lines = lines or (None, None)
 
     def __str__(self):
-        return str(self.value)
+        return to_unicode(self.value)
 
     def _rendered_lines(self):
-        return str(self.value).split("\n")[1:]
+        return str(self).split("\n")[1:]
 
 
+@implements_to_string
 class SuperNode(Node):
     def __init__(self, name='', pre_extend=False):
         self.name = name
@@ -40,27 +55,15 @@ class SuperNode(Node):
 
     def __str__(self):
         if self.value:
-            return str(self.value)
+            return to_unicode(self.value)
         else:
-            return ''
+            return u''
 
     def __repr__(self):
         return "%s->%s" % (self.name, self.value)
 
 
-def output_aux(node, blocks):
-    # If we have a block level
-    #   If we can override this block.
-    #     Override block from vars.
-    #   Else we take the default
-    # Else its just a string
-    return (blocks[node.name].output(blocks)
-            if node.name in blocks else
-            node.output(blocks)) \
-        if isinstance(node, BlockNode) \
-        else str(node)
-
-
+@implements_to_string
 class BlockNode(Node):
     """
     Block Container.
@@ -93,8 +96,8 @@ class BlockNode(Node):
         """
         Get this BlockNodes content, not including child Nodes
         """
-        return ''.join(str(node) for node in self.nodes
-                       if not isinstance(node, BlockNode))
+        return u''.join(str(node) for node in self.nodes
+                        if not isinstance(node, BlockNode))
 
     def append(self, node):
         """
@@ -130,9 +133,10 @@ class BlockNode(Node):
         blocks -- Dictionary of blocks that are extending
         from this template.
         """
-        return ''.join(output_aux(node, blocks) for node in self.nodes)
+        return u''.join(_gen_output(node, blocks) for node in self.nodes)
 
 
+@implements_to_string
 class Content(BlockNode):
     """
     Parent Container -- Used as the root level BlockNode.
@@ -152,7 +156,7 @@ class Content(BlockNode):
         self.template = name
 
     def __str__(self):
-        return ''.join(output_aux(node, self.blocks) for node in self.nodes)
+        return u''.join(_gen_output(node, self.blocks) for node in self.nodes)
 
     def _insert(self, other, index=0):
         """

@@ -13,7 +13,7 @@
 
 import re
 from datetime import tzinfo, timedelta
-from .._compat import StringIO
+from .._compat import StringIO, string_types, to_unicode
 from ..globals import current
 from ..security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
 
@@ -21,7 +21,7 @@ from ..security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
 def translate(text):
     if text is None:
         return None
-    elif isinstance(text, (str, unicode)):
+    elif isinstance(text, string_types):
         return current.T(text)
     return str(text)
 
@@ -31,7 +31,7 @@ def options_sorter(x, y):
 
 
 def is_empty(value, empty_regex=None):
-    if isinstance(value, (str, unicode)):
+    if isinstance(value, string_types):
         value = value.strip()
         if empty_regex is not None and empty_regex.match(value):
             value = ''
@@ -259,7 +259,7 @@ def unicode_to_ascii_url(url, prepend_scheme):
         #Try appending a scheme to see if that fixes the problem
         scheme_to_prepend = prepend_scheme or 'http'
         groups = url_split_regex.match(
-            unicode(scheme_to_prepend) + u'://' + url).groups()
+            to_unicode(scheme_to_prepend) + u'://' + url).groups()
     #if we still can't find the authority
     if not groups[3]:
         raise Exception('No authority component found, ' +

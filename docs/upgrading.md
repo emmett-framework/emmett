@@ -19,6 +19,15 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 0.5
+-----------
+
+weppy 0.5 introduces python 3 support. Fortunately, there are no changes in the main code that require changes in your application code.
+
+> **Note:**   
+> Internally, weppy dropped an old library for utf8 utilities, needed for the translator. Since this part of weppy had been rewritten for python 3 support, the usage of that library (`Utf8` class) is no longer required. If you used it in your own code, please make the appropriate changes in order to drop it.
+
+
 Version 0.4
 -----------
 

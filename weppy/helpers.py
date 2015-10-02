@@ -8,6 +8,7 @@
     :copyright: (c) 2015 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
+from ._compat import string_types
 
 
 def abort(code, body=''):
@@ -44,7 +45,7 @@ def stream_dbfile(db, name):
     except IOError:
         abort(404)
     from .globals import request, response
-    if isinstance(fullfilename, (str, unicode)):
+    if isinstance(fullfilename, string_types):
         #: handle file uploads
         from .stream import streamer
         raise streamer(request.environ, fullfilename, headers=response.headers)

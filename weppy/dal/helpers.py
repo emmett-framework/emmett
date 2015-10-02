@@ -11,6 +11,7 @@
 
 import re
 from pydal.objects import Set, LazySet
+from .._compat import iteritems
 
 
 class Reference(object):
@@ -35,10 +36,8 @@ class HasOneWrap(object):
 
 
 class HasManySet(LazySet):
-    def __call__(self, query=None, **kwargs):
-        if query is None:
-            return self.select(**kwargs)
-        return LazySet.__call__(self, query).select(**kwargs)
+    def __call__(self, *args, **kwargs):
+        return self.select(*args, **kwargs)
 
     def add(self, **data):
         rv = None
@@ -68,14 +67,14 @@ class HasManyViaSet(Set):
         self._via = via
         Set.__init__(self, db, query, **kwargs)
 
-    def __call__(self, query=None, **kwargs):
-        if query is None:
-            return self.select(self._rfield, **kwargs)
-        return Set.__call__(self, query).select(**kwargs)
+    def __call__(self, *args, **kwargs):
+        if not args:
+            args = [self._rfield]
+        return self.select(*args, **kwargs)
 
-    def add(self, obj):
+    def add(self, obj, **kwargs):
         # works for 3 tables way only!
-        nrow = dict()
+        nrow = kwargs
         rv = None
         #: get belongs reference of current model
         self_field = self.db[self._via]._model_._belongs_ref_[self._model]
@@ -97,7 +96,7 @@ class HasManyViaWrap(object):
         self.via = via
 
     def _get_belongs(self, db, model, value):
-        for key, val in db[model]._model_._belongs_ref_.iteritems():
+        for key, val in iteritems(db[model]._model_._belongs_ref_):
             if val == value:
                 return key
         return None

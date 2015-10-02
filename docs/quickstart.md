@@ -51,6 +51,7 @@ def user(username):
 
 @app.expose('/double/<int:number>')
 def double(number):
+    number = int(number)
     return "%d * 2 = %d" % (number, number*2)
 ```
 
@@ -63,6 +64,9 @@ It's quite simple, isn't it? And which are the types of variables you can use? H
 | date | accepts date strings in format *YYYY-MM-DD* |
 | alpha | accepts strings containing only literals |
 | any | accepts any path (also with slashes) |
+
+> **Note:**    
+> the type specification won't change the type of the input variables, that will always be strings (as they are parts of the url). If you want to use these parts as real integers or dates, you have to parse them depending on your needs.
 
 So basically, if we try to open the url for the `double` function of the last example with a string, like '/double/foo', it won't match and weppy will return a 404 error.
 

@@ -12,13 +12,18 @@
 
 import re
 import os
-import urllib
 
+from ._compat import PY2, iteritems, text_type, to_native
 from .handlers import Handler, _wrapWithHandlers
 from .templating import render
 from .globals import current
 from .tags import TAG
 from .http import HTTP
+
+if PY2:
+    from urllib import quote as uquote
+else:
+    from urllib.parse import quote as uquote
 
 __all__ = ['Expose', 'url']
 
@@ -232,8 +237,8 @@ class Expose(object):
         #: build the right output
         response = current.response
         try:
-            if isinstance(output, str):
-                response.output = [output]
+            if isinstance(output, text_type):
+                response.output = [to_native(output)]
             elif isinstance(output, dict):
                 if 'current' not in output:
                     output['current'] = current
@@ -245,7 +250,7 @@ class Expose(object):
                                 templatename, output)
                 response.output = [output]
             elif isinstance(output, TAG):
-                response.output = [output.xml()]
+                response.output = [str(output)]
             elif hasattr(output, '__iter__'):
                 response.output = output
             else:
@@ -277,7 +282,6 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
         url('/myurl') # a normal url
     """
 
-    q = urllib.quote
     if not isinstance(args, (list, tuple)):
         args = [args]
     # allow user to use url('static', 'file')
@@ -308,7 +312,7 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
                 u = ""
                 if len(args) >= len(midargs)-1:
                     for i in range(0, len(midargs)-1):
-                        u += midargs[i]+q(str(args[i]))
+                        u += midargs[i]+uquote(str(args[i]))
                     u += midargs[-1]
                     url = u
                     args = args[len(midargs)-1:]
@@ -346,14 +350,14 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
     if args:
         if not isinstance(args, (list, tuple)):
             args = (args,)
-        url = url + '/' + '/'.join(q(str(a)) for a in args)
+        url = url + '/' + '/'.join(uquote(str(a)) for a in args)
     # add signature
     if sign:
         vars['_signature'] = sign(url)
     # add vars
     if vars:
         url = url + '?' + '&'.join(
-            '%s=%s' % (q(k), q(v)) for k, v in vars.iteritems()
+            '%s=%s' % (uquote(k), uquote(v)) for k, v in iteritems(vars)
         )
     # scheme=True means to use current scheme
     if scheme is True:

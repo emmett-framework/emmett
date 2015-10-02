@@ -13,6 +13,7 @@ import sys
 import os
 import click
 from yaml import load as ymlload
+from ._compat import basestring
 from ._internal import get_root_path, create_missing_app_folders
 from .utils import dict_to_sdict
 from .expose import Expose

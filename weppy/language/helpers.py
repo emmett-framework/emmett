@@ -9,14 +9,14 @@
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
+import ast
+import os
 import pkgutil
 import re
-import os
-from string import maketrans
 
+from .._compat import PY2, to_unicode, to_bytes
 from .cache import clear_cache, getcfs
 from ..libs.portalocker import read_locked, LockedFile
-from ..libs.utf8 import Utf8
 
 
 regex_backslash = re.compile(r"\\([\\{}%])")
@@ -95,16 +95,14 @@ def write_plural_dict(filename, contents):
     if '__corrupted__' in contents:
         return
     try:
-        fp = LockedFile(filename, 'w')
-        fp.write('#!/usr/bin/env python\n{\n# "singular form (0)": ["first plural form (1)", "second plural form (2)", ...],\n')
+        fp = LockedFile(filename, 'wb')
+        fp.write(to_bytes(u'#!/usr/bin/env python\n{\n# "singular form (0)": ["first plural form (1)", "second plural form (2)", ...],\n'))
         # coding: utf8\n{\n')
-        for key in sorted(contents,
-                          lambda x, y: cmp(unicode(x, 'utf-8').lower(),
-                                           unicode(y, 'utf-8').lower())):
-            forms = '[' + ','.join([repr(Utf8(form))
-                                   for form in contents[key]]) + ']'
-            fp.write('%s: %s,\n' % (repr(Utf8(key)), forms))
-        fp.write('}\n')
+        for key in sorted(contents):
+            forms = u'[' + u','.join('"'+form+'"' for form in contents[key]) + u']'
+            val = u'"%s": %s,\n' % (key, forms)
+            fp.write(to_bytes(val))
+        fp.write(to_bytes(u'}\n'))
     except (IOError, OSError):
         #if not is_gae:
         #    logging.warning('Unable to write to file %s' % filename)
@@ -116,7 +114,6 @@ def write_plural_dict(filename, contents):
 def safe_eval(text):
     if text.strip():
         try:
-            import ast
             return ast.literal_eval(text)
         except ImportError:
             return eval(text, {}, {})
@@ -127,13 +124,17 @@ def read_dict_aux(filename):
     lang_text = read_locked(filename).replace('\r\n', '\n')
     clear_cache(filename)
     try:
-        return safe_eval(lang_text) or {}
+        rv = safe_eval(lang_text) or {}
+        if PY2:
+            for key, val in rv.items():
+                rv[to_unicode(key)] = to_unicode(val)
     except Exception:
         #e = sys.exc_info()[1]
         #status = 'Syntax error in %s (%s)' % (filename, e)
         #logging.error(status)
         status = 'Syntax error in %s' % filename
-        return {'__corrupted__': status}
+        rv = {'__corrupted__': status}
+    return rv
 
 
 def read_dict(filename):
@@ -147,15 +148,14 @@ def write_dict(filename, contents):
     if '__corrupted__' in contents:
         return
     try:
-        fp = LockedFile(filename, 'w')
+        fp = LockedFile(filename, 'wb')
     except (IOError, OSError):
         return
-    fp.write('# coding: utf8\n{\n')
-    for key in sorted(contents,
-                      lambda x, y: cmp(unicode(x, 'utf-8').lower(),
-                                       unicode(y, 'utf-8').lower())):
-        fp.write('%s: %s,\n' % (repr(Utf8(key)), repr(Utf8(contents[key]))))
-    fp.write('}\n')
+    fp.write(to_bytes(u'# coding: utf8\n{\n'))
+    for key in sorted(contents):
+        val = u'"%s": "%s",\n' % (key, contents[key])
+        fp.write(to_bytes(val))
+    fp.write(to_bytes(u'}\n'))
     fp.close()
 
 
@@ -232,15 +232,30 @@ def read_possible_languages(langpath):
 
 
 def upper_fun(s):
-    return unicode(s, 'utf-8').upper().encode('utf-8')
+    return to_unicode(s).upper().encode('utf-8')
 
 
 def title_fun(s):
-    return unicode(s, 'utf-8').title().encode('utf-8')
+    return to_unicode(s).title().encode('utf-8')
 
 
 def cap_fun(s):
-    return unicode(s, 'utf-8').capitalize().encode('utf-8')
+    return to_unicode(s).capitalize().encode('utf-8')
 
-ttab_in = maketrans("\\%{}", '\x1c\x1d\x1e\x1f')
-ttab_out = maketrans('\x1c\x1d\x1e\x1f', "\\%{}")
+
+def _make_ttabin():
+    ltrans = u"\\%{}"
+    rtrans = u'\x1c\x1d\x1e\x1f'
+    return dict((ord(char), rtrans) for char in ltrans)
+
+
+def _make_ttabout():
+    ltrans = u'\x1c\x1d\x1e\x1f'
+    rtrans = u"\\%{}"
+    return dict((ord(char), rtrans) for char in ltrans)
+
+
+#ttab_in = maketrans(u"\\%{}", u'\x1c\x1d\x1e\x1f')
+#ttab_out = maketrans(u'\x1c\x1d\x1e\x1f', u"\\%{}")
+ttab_in = _make_ttabin()
+ttab_out = _make_ttabout()

@@ -1,3 +1,5 @@
+__version__ = '0.5'
+
 from .app import App, AppModule
 from .expose import url
 from .http import redirect

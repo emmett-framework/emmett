@@ -9,6 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from .._compat import iteritems, basestring
 from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, \
     hasLength, Not, Allow, isEmpty, Any
 from .consist import isInt, isFloat, isDecimal, isDate, isTime, isDatetime, \
@@ -34,7 +35,7 @@ class ValidateFromDict(object):
 
     def parse_num_comparisons(self, data, minv=None, maxv=None):
         inclusions = [True, False]
-        for key, include in self.numkeys.iteritems():
+        for key, include in iteritems(self.numkeys):
             val = data.get(key)
             if val is not None:
                 if key[0] == "g":
@@ -163,7 +164,7 @@ class ValidateFromDict(object):
             else:
                 validators.append(Matches(data['match']))
         #: parse transforming validators
-        for key, vclass in self.proc_validators.iteritems():
+        for key, vclass in iteritems(self.proc_validators):
             if key in data:
                 options = {}
                 if isinstance(data[key], dict):

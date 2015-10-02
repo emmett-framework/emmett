@@ -14,10 +14,19 @@ Links
 
 """
 
+import re
+import ast
 from setuptools import setup
+
+_version_re = re.compile(r'__version__\s+=\s+(.*)')
+
+with open('weppy/__init__.py', 'rb') as f:
+    version = str(ast.literal_eval(_version_re.search(
+        f.read().decode('utf-8')).group(1)))
+
 setup(
     name='weppy',
-    version='0.4.2',
+    version=version,
     url='http://github.com/gi0baro/weppy/',
     license='BSD',
     author='Giovanni Barillari',
@@ -33,7 +42,7 @@ setup(
     install_requires=[
         'click>=0.6',
         'pyaes',
-        'pyDAL>=15.07',
+        'pyDAL>=15.9',
         'pyyaml'
     ],
     classifiers=[
@@ -44,6 +53,7 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 3',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],

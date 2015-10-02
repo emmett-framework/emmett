@@ -1,4 +1,5 @@
 import re
+from .._compat import to_unicode, to_native
 from .basic import Validator
 from .consist import isEmail
 from .helpers import translate, options_sorter
@@ -9,12 +10,12 @@ class isStrong(object):
     """
     enforces complexity requirements on a field
     """
-    lowerset = frozenset(unicode('abcdefghijklmnopqrstuvwxyz'))
-    upperset = frozenset(unicode('ABCDEFGHIJKLMNOPQRSTUVWXYZ'))
-    numberset = frozenset(unicode('0123456789'))
-    sym1set = frozenset(unicode('!@#$%^&*()'))
-    sym2set = frozenset(unicode('~`-_=+[]{}\\|;:\'",.<>?/'))
-    otherset = frozenset(unicode('0123456789abcdefghijklmnopqrstuvwxyz'))
+    lowerset = frozenset(u'abcdefghijklmnopqrstuvwxyz')
+    upperset = frozenset(u'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    numberset = frozenset(u'0123456789')
+    sym1set = frozenset(u'!@#$%^&*()')
+    sym2set = frozenset(u'~`-_=+[]{}\\|;:\'",.<>?/')
+    otherset = frozenset(u'0123456789abcdefghijklmnopqrstuvwxyz')
 
     def __init__(self, min=None, max=None, upper=None, lower=None, number=None,
                  entropy=None,
@@ -126,8 +127,7 @@ class isStrong(object):
         other = set()
         seen = set()
         lastset = None
-        if isinstance(string, str):
-            string = unicode(string, encoding='utf8')
+        string = to_unicode(string)
         for c in string:
             # classify this character
             inset = isStrong.otherset
@@ -418,10 +418,7 @@ class notInDb(Validator):
         self.record_id = id
 
     def __call__(self, value):
-        if isinstance(value, unicode):
-            value = value.encode('utf8')
-        else:
-            value = str(value)
+        value = to_native(to_unicode(value))
         if not value.strip():
             return value, translate(self.error_message)
         if value in self.allowed_override:

@@ -14,11 +14,24 @@
 import os
 import time
 import smtplib
-from email import MIMEBase, MIMEMultipart, MIMEText, Encoders, Header, \
-    message_from_string, Charset
+
+from .._compat import iteritems, PY2
 from ..utils import read_file
 from ..datastructures import sdict
 from ..libs.contenttype import contenttype
+
+if PY2:
+    from email.MIMEBase import MIMEBase
+    from email import MIMEMultipart, MIMEText, Encoders, Header, \
+        message_from_string, Charset
+else:
+    from email import message_from_string
+    from email.mime.base import MIMEBase
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email import encoders as Encoders
+    from email.header import Header
+    from email.charset import Charset
 
 
 class Mail(object):
@@ -29,7 +42,7 @@ class Mail(object):
     Works with SMTP and Google App Engine.
     """
 
-    class Attachment(MIMEBase.MIMEBase):
+    class Attachment(MIMEBase):
         """
         Email attachment
 
@@ -97,7 +110,7 @@ class Mail(object):
                 content_type = contenttype(filename)
             self.my_filename = filename
             self.my_payload = payload
-            MIMEBase.MIMEBase.__init__(self, *content_type.split('/', 1))
+            MIMEBase.__init__(self, *content_type.split('/', 1))
             self.set_payload(payload)
             self['Content-Disposition'] = 'attachment; filename="%s"' % filename
             if not content_id is None:
@@ -437,12 +450,12 @@ class Mail(object):
                     # insert the origin payload
                     payload.attach(payload_in)
                     # insert the detached signature
-                    p = MIMEBase.MIMEBase("application", 'pgp-signature')
+                    p = MIMEBase("application", 'pgp-signature')
                     p.set_payload(sig.read())
                     payload.attach(p)
                     # it's just a trick to handle the no encryption case
                     payload_in = payload
-                except errors.GPGMEError, ex:
+                except errors.GPGMEError as ex:
                     self.error = "GPG error: %s" % ex.getstring()
                     return False
             ############################################
@@ -477,13 +490,13 @@ class Mail(object):
                                                           boundary=None,
                                                           _subparts=None,
                                                           **dict(protocol="application/pgp-encrypted"))
-                    p = MIMEBase.MIMEBase("application", 'pgp-encrypted')
+                    p = MIMEBase("application", 'pgp-encrypted')
                     p.set_payload("Version: 1\r\n")
                     payload.attach(p)
-                    p = MIMEBase.MIMEBase("application", 'octet-stream')
+                    p = MIMEBase("application", 'octet-stream')
                     p.set_payload(cipher.read())
                     payload.attach(p)
-                except errors.GPGMEError, ex:
+                except errors.GPGMEError as ex:
                     self.error = "GPG error: %s" % ex.getstring()
                     return False
         #######################################################
@@ -507,7 +520,7 @@ class Mail(object):
             # need m2crypto
             try:
                 from M2Crypto import BIO, SMIME, X509
-            except Exception, e:
+            except Exception as e:
                 self.error = "Can't load M2Crypto module"
                 return False
             msg_bio = BIO.MemoryBuffer(payload_in.as_string())
@@ -519,7 +532,7 @@ class Mail(object):
                 try:
                     s.load_key(x509_sign_keyfile, x509_sign_certfile,
                                callback=lambda x: sign_passphrase)
-                except Exception, e:
+                except Exception as e:
                     self.error = "Something went wrong on certificate / private key loading: <%s>" % str(e)
                     return False
                 try:
@@ -532,7 +545,7 @@ class Mail(object):
                     p7 = s.sign(msg_bio, flags=flags)
                     msg_bio = BIO.MemoryBuffer(payload_in.as_string(
                     ))  # Recreate coz sign() has consumed it.
-                except Exception, e:
+                except Exception as e:
                     self.error = "Something went wrong on signing: <%s> %s" % (
                         str(e), str(flags))
                     return False
@@ -556,7 +569,7 @@ class Mail(object):
                     else:
                         tmp_bio.write(payload_in.as_string())
                     p7 = s.encrypt(tmp_bio)
-                except Exception, e:
+                except Exception as e:
                     self.error = "Something went wrong on encrypting: <%s>" % str(e)
                     return False
 
@@ -591,7 +604,7 @@ class Mail(object):
         payload['Subject'] = encoded_or_raw(subject.decode(encoding))
         payload['Date'] = time.strftime("%a, %d %b %Y %H:%M:%S +0000",
                                         time.gmtime())
-        for k, v in headers.iteritems():
+        for k, v in iteritems(headers):
             payload[k] = encoded_or_raw(v.decode(encoding))
         result = {}
         try:
@@ -638,7 +651,7 @@ class Mail(object):
                 result = server.sendmail(
                     sender, to, payload.as_string())
                 server.quit()
-        except Exception, e:
+        except Exception as e:
             self.app.log.warn('Mail.send failure:%s' % e)
             self.result = result
             self.error = e
