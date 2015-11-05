@@ -388,8 +388,7 @@ You will need quite often to build forms for your web application. weppy provide
 Let's see how to use it with an example:
 
 ```python
-form weppy import Field, Form
-from weppy.validators import inSet
+from weppy import Field, Form
 
 # create a form
 @app.expose('/form')
