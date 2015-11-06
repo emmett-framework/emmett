@@ -9,6 +9,8 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from ._compat import text_type, to_bytes
+
 
 class HTTP(Exception):
     status_codes = {
@@ -51,10 +53,10 @@ class HTTP(Exception):
         505: 'HTTP VERSION NOT SUPPORTED',
     }
 
-    def __init__(self, status_code, body='', headers=None, cookies=None):
+    def __init__(self, status_code, body=u'', headers=None, cookies=None):
         self.status_code = status_code
         self.status_name = HTTP.status_codes.get(status_code, status_code)
-        self.body = body
+        self._set_body(body)
         self.headers = list(headers.items()) if headers else []
         if cookies:
             self.headers += HTTP.cookies2header(cookies)
@@ -62,15 +64,21 @@ class HTTP(Exception):
         #    if str(status_code)[0] == '4' and len(self.body) < 512:
         #        self.body += '<!-- %s //-->' % ('x' * 512)  # trick IE
 
+    def _set_body(self, body):
+        if body is None:
+            self.body = []
+        elif isinstance(body, (text_type, bytes, bytearray)):
+            body = to_bytes(body)
+            self.body = [body]
+        else:
+            self.body = body
+
     def to(self, environ, start_response):
         start_response(
             "%s %s" % (self.status_code, self.status_name), self.headers)
         if environ.get('REQUEST_METHOD', '') == 'HEAD':
-            return ['']
-        elif isinstance(self.body, str):
-            return [self.body]
-        else:
-            return self.body
+            return [to_bytes('')]
+        return self.body
 
     @staticmethod
     def cookies2header(cookies):
