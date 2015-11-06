@@ -13,6 +13,7 @@
 import cgi
 import copy
 import json
+import re
 import threading
 
 from ._compat import SimpleCookie, iteritems
@@ -100,7 +101,6 @@ class Request(object):
                 self._vars[key] += val if isinstance(val, list) else [val]
 
     def _parse_client(self):
-        import re
         regex_client = re.compile('[\w\-:]+(\.[\w\-]+)*\.?')
         g = regex_client.search(self.environ.get('HTTP_X_FORWARDED_FOR', ''))
         client = (g.group() or '').split(',')[0] if g else None
@@ -112,7 +112,7 @@ class Request(object):
                 client = '::1'
             else:
                 client = '127.0.0.1'  # IPv4
-        self._client = client
+        return client
 
     @property
     def now(self):
@@ -156,15 +156,16 @@ class Request(object):
     @property
     def cookies(self):
         " lazily parse the request cookies "
-        if not hasattr(self, '_request_cookies'):
+        if not hasattr(self, '_cookies'):
             self._cookies = SimpleCookie()
-            self._cookies.load(self.environ.get('HTTP_COOKIE', ''))
+            for cookie in self.environ.get('HTTP_COOKIE', '').split(';'):
+                self._cookies.load(cookie)
         return self._cookies
 
     @property
     def client(self):
         if not hasattr(self, '_client'):
-            self._parse_client()
+            self._client = self._parse_client()
         return self._client
 
     @property
