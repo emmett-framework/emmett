@@ -237,9 +237,7 @@ class Expose(object):
         #: build the right output
         response = current.response
         try:
-            if isinstance(output, text_type):
-                response.output = [to_native(output)]
-            elif isinstance(output, dict):
+            if isinstance(output, dict):
                 if 'current' not in output:
                     output['current'] = current
                 if 'url' not in output:
@@ -248,13 +246,11 @@ class Expose(object):
                     '.<ext>', Expose.application.template_default_extension)
                 output = render(Expose.application, route.template_path,
                                 templatename, output)
-                response.output = [output]
-            elif isinstance(output, TAG):
-                response.output = [str(output)]
-            elif hasattr(output, '__iter__'):
+                response.output = output
+            elif isinstance(output, text_type) or hasattr(output, '__iter__'):
                 response.output = output
             else:
-                response.output = [str(output)]
+                response.output = str(output)
         except:
             Expose._after_dispatch(route)
             raise

@@ -5,7 +5,7 @@
 # Modified by Massimo Di Pierro
 
 from __future__ import print_function
-from weppy._compat import iteritems, to_bytes
+from weppy._compat import iteritems
 
 # Import System Modules
 import sys
@@ -1773,7 +1773,7 @@ class WSGIWorker(Worker):
                 if self.chunked:
                     self.conn.sendall(b('%x\r\n%s\r\n' % (len(data), data)))
                 else:
-                    self.conn.sendall(to_bytes(data))
+                    self.conn.sendall(data)
             except socket.timeout:
                 self.closeConnection = True
             except socket.error:
