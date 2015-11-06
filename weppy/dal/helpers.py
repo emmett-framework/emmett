@@ -73,7 +73,7 @@ class HasManyViaSet(Set):
         return self.select(*args, **kwargs)
 
     def add(self, obj, **kwargs):
-        # works for 3 tables way only!
+        # works on join tables only!
         nrow = kwargs
         rv = None
         #: get belongs reference of current model
@@ -88,6 +88,18 @@ class HasManyViaSet(Set):
         if not errors:
             rv = self.db[self._via].insert(**nrow)
         return rv, errors
+
+    def remove(self, obj):
+        # works on join tables only!
+        #: get belongs reference of current model
+        self_field = self.db[self._via]._model_._belongs_ref_[self._model]
+        #: get other model belongs data
+        other_model = self._rfield._table._model_.__class__.__name__
+        other_field = self.db[self._via]._model_._belongs_ref_[other_model]
+        #: delete
+        return self.db(
+            (self.db[self._via][self_field] == self._rid) &
+            (self.db[self._via][other_field] == obj.id)).delete()
 
 
 class HasManyViaWrap(object):
@@ -121,7 +133,7 @@ class HasManyViaWrap(object):
         for vianame, viaby in stack:
             belongs = self._get_belongs(db, step_model, vianame[:-1])
             if belongs:
-                #: 3 tables way
+                #: join table way
                 lbelongs = step_model
                 _query = (db[step_model][vianame[:-1]] == db[belongs].id)
                 sel_field = db[belongs].ALL
