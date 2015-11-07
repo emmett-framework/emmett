@@ -19,6 +19,7 @@ import os
 from .._compat import PY2, implements_bool, implements_to_string, iteritems, \
     iterkeys, to_unicode
 from ..tags import asis, htmlescape
+from ..utils import cachedprop
 from .helpers import regex_backslash, regex_plural, regex_plural_dict, \
     regex_plural_tuple, regex_language, DEFAULT_NPLURALS, \
     DEFAULT_GET_PLURAL_ID, DEFAULT_CONSTRUCT_PLURAL_FORM, \
@@ -154,16 +155,20 @@ class TLanguage(object):
             self.pmtime = 0
             self.plural_file = None
 
+    def _read_t(self):
+        if self.filename is None:
+            return {}
+        return read_dict(self.filename)
+
+    @cachedprop
+    def _t(self):
+        return self._read_t()
+
     @property
     def t(self):
-        if not hasattr(self, "_t"):
-            if self.filename is None:
-                self._t = {}
-            else:
-                if not self.cached:
-                    return read_dict(self.filename)
-                self._t = read_dict(self.filename)
-        return self._t
+        if self.cached:
+            return self._t
+        return self._read_t()
 
     def set(self, key, message):
         # [WARN]: if it's not cached, is safe?
@@ -179,16 +184,20 @@ class TLanguage(object):
             return message
         return self.translator.default_translator.t.get(key, message)
 
+    def _read_pl(self):
+        if self.plural_file is None or self.pmtime == 0:
+            return {}
+        return read_plural_dict(self.plural_file)
+
+    @cachedprop
+    def _pl(self):
+        return self._read_pl()
+
     @property
     def pl(self):
-        if not hasattr(self, "_pl"):
-            if self.plural_file is None or self.pmtime == 0:
-                self._pl = {}
-            else:
-                if not self.cached:
-                    return read_plural_dict(self.plural_file)
-                self._pl = read_plural_dict(self.plural_file)
-        return self._pl
+        if self.cached:
+            return self._pl
+        return self._read_pl()
 
     def plural(self, word, n):
         """ get plural form of word for number *n*

@@ -15,7 +15,7 @@ import click
 from yaml import load as ymlload
 from ._compat import basestring
 from ._internal import get_root_path, create_missing_app_folders
-from .utils import dict_to_sdict
+from .utils import dict_to_sdict, cachedprop
 from .expose import Expose
 from .datastructures import sdict, ConfigData
 from .wsgi import error_handler
@@ -69,22 +69,21 @@ class App(object):
         self.template_preloaders = {}
         self.template_lexers = {}
 
-    @property
+    @cachedprop
     def name(self):
         """The name of the application. This is usually the import name
         with the difference that it's guessed from the run file if the
         import name is main.
         """
-        if not hasattr(self, "_name"):
-            if self.import_name == '__main__':
-                fn = getattr(sys.modules['__main__'], '__file__', None)
-                if fn is None:
-                    self._name = '__main__'
-                else:
-                    self._name = os.path.splitext(os.path.basename(fn))[0]
+        if self.import_name == '__main__':
+            fn = getattr(sys.modules['__main__'], '__file__', None)
+            if fn is None:
+                rv = '__main__'
             else:
-                self._name = self.import_name
-        return self._name
+                rv = os.path.splitext(os.path.basename(fn))[0]
+        else:
+            rv = self.import_name
+        return rv
 
     @property
     def expose(self):

@@ -16,6 +16,7 @@ from .dal import Field
 from .datastructures import sdict
 from .globals import current, request, session
 from .tags import tag, TAG, cat, asis
+from .utils import cachedprop
 
 __all__ = ['Form', 'DALForm']
 
@@ -160,50 +161,49 @@ class Form(TAG):
             styler._add_hidden(key, value)
         return styler.render()
 
-    @property
+    @cachedprop
     def custom(self):
-        if not hasattr(self, '_custom'):
-            # init
-            self._custom = custom = sdict()
-            custom.dspval = sdict()
-            custom.inpval = sdict()
-            custom.label = sdict()
-            custom.comment = sdict()
-            custom.widget = sdict()
-            # load selected styler
-            styler = self.attributes['formstyle'](self.attributes)
-            styler.on_start()
-            # load data
-            for field in self.fields:
-                value = self.input_vars.get(field.name)
-                custom.dspval[field.name] = self.input_vars[field.name]
-                custom.inpval[field.name] = self.input_vars[field.name]
-                custom.label[field.name] = field.label
-                custom.comment[field.name] = field.comment
-                widget, wfield = styler._get_widget(field, value)
-                if not wfield:
-                    styler.style_widget(widget)
-                custom.widget[field.name] = widget
-            # add submit
-            custom.submit = tag.input(_type="submit",
-                                      value=self.attributes['submit'])
-            # provides begin attribute
-            begin = '<form action="%s" method="%s" enctype="%s">' % \
-                (self.attributes['_action'],
-                 self.attributes['_method'],
-                 self.attributes['_enctype'])
-            custom.begin = asis(begin)
-            # add hidden stuffs to get weppy process working
-            hidden = cat()
-            hidden.append(tag.input(_name='_csrf_token', _type='hidden',
-                                    _value=self.formkey))
-            for key, value in iteritems(self.attributes.get('hidden', {})):
-                hidden.append(tag.input(_name=key, _type='hidden',
-                              _value=value))
-            # provides end attribute
-            end = '%s</form>' % hidden.to_html()
-            custom.end = asis(end)
-        return self._custom
+        # init
+        custom = sdict()
+        custom.dspval = sdict()
+        custom.inpval = sdict()
+        custom.label = sdict()
+        custom.comment = sdict()
+        custom.widget = sdict()
+        # load selected styler
+        styler = self.attributes['formstyle'](self.attributes)
+        styler.on_start()
+        # load data
+        for field in self.fields:
+            value = self.input_vars.get(field.name)
+            custom.dspval[field.name] = self.input_vars[field.name]
+            custom.inpval[field.name] = self.input_vars[field.name]
+            custom.label[field.name] = field.label
+            custom.comment[field.name] = field.comment
+            widget, wfield = styler._get_widget(field, value)
+            if not wfield:
+                styler.style_widget(widget)
+            custom.widget[field.name] = widget
+        # add submit
+        custom.submit = tag.input(_type="submit",
+                                  value=self.attributes['submit'])
+        # provides begin attribute
+        begin = '<form action="%s" method="%s" enctype="%s">' % \
+            (self.attributes['_action'],
+             self.attributes['_method'],
+             self.attributes['_enctype'])
+        custom.begin = asis(begin)
+        # add hidden stuffs to get weppy process working
+        hidden = cat()
+        hidden.append(tag.input(_name='_csrf_token', _type='hidden',
+                                _value=self.formkey))
+        for key, value in iteritems(self.attributes.get('hidden', {})):
+            hidden.append(tag.input(_name=key, _type='hidden',
+                          _value=value))
+        # provides end attribute
+        end = '%s</form>' % hidden.to_html()
+        custom.end = asis(end)
+        return custom
 
     def to_html(self):
         return self._render().to_html()
