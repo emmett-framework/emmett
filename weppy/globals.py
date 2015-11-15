@@ -114,6 +114,7 @@ class Request(object):
                 if not isinstance(rv[key], list):
                     rv[key] = [rv[key]]
                 rv[key] += val if isinstance(val, list) else [val]
+        return rv
 
     @cachedprop
     def cookies(self):
