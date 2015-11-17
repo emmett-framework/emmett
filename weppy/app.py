@@ -170,12 +170,12 @@ class App(object):
         r = Rocket((host, port), 'wsgi', {'wsgi_app': self})
         r.start()
 
-    def run(self, host=None, port=None, reloader=True):
+    def run(self, host=None, port=None, reloader=True, debug=True):
         if host is None:
             host = "127.0.0.1"
         if port is None:
             port = 8000
-        self.debug = True
+        self.debug = debug
         if os.environ.get('WEPPY_RUN_MAIN') != 'true':
             quit_msg = "(press CTRL+C to quit)"
             self.log.info("> weppy application %s running on http://%s:%i %s" %
