@@ -24,7 +24,7 @@ from weppy import App, session
 from weppy.sessions import SessionCookieManager
 
 app = App(__name__)
-app.common_handlers = [SessionCookieManager('myverysecretkey')]
+app.expose.common_handlers = [SessionCookieManager('myverysecretkey')]
 
 @app.expose("/counter")
 # previous code
