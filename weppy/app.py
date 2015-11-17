@@ -90,6 +90,22 @@ class App(object):
     def expose(self):
         return Expose
 
+    @property
+    def common_handlers(self):
+        return self.expose.common_handlers
+
+    @common_handlers.setter
+    def common_handlers(self, handlers):
+        self.expose.common_handlers = handlers
+
+    @property
+    def common_helpers(self):
+        return self.expose.common_helpers
+
+    @common_helpers.setter
+    def common_helpers(self, helpers):
+        self.expose.common_helpers = helpers
+
     def on_error(self, code):
         def decorator(f):
             self.error_handlers[code] = f

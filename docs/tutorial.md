@@ -187,7 +187,7 @@ In this tutorial, the cookie support for session will be enough (and we will use
 
 ```python
 from weppy.sessions import SessionCookieManager
-app.expose.common_handlers = [
+app.common_handlers = [
     SessionCookieManager('Walternate'),
     db.handler, auth.handler
 ]
