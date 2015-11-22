@@ -48,6 +48,9 @@ class HasManySet(LazySet):
             rv = self.db[self.tablename].insert(**data)
         return rv, errors
 
+    def remove(self, obj):
+        return self.db(self.db[self.tablename].id == obj.id).delete()
+
 
 class HasManyWrap(object):
     def __init__(self, ref):
