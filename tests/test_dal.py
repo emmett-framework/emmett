@@ -10,13 +10,14 @@
 """
 
 import pytest
+from datetime import datetime, timedelta
 from pydal.objects import Table
 from pydal import Field as _Field
 
 from weppy import App, sdict
 from weppy.dal import DAL, Field, Model, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
-    virtualfield, fieldmethod, has_one, has_many, belongs_to
+    virtualfield, fieldmethod, has_one, has_many, belongs_to, scope
 from weppy.validators import isntEmpty, hasLength
 from weppy.validators._old import notInDb
 
@@ -126,7 +127,7 @@ class Stuff(Model):
 
 
 class Person(Model):
-    has_many('things', {'features': {'via': 'things'}})
+    has_many('things', {'features': {'via': 'things'}}, 'subscriptions')
 
     name = Field()
     age = Field('integer')
@@ -235,6 +236,26 @@ class Elephant(Animal):
         pass
 
 
+class Subscription(Model):
+    belongs_to('person')
+
+    name = Field()
+    status = Field('int')
+    expires_at = Field('datetime')
+
+    STATUS = {'active': 1, 'suspended': 2, 'other': 3}
+
+    @scope('expired')
+    def get_expired(self):
+        return self.expires_at < datetime.now()
+
+    @scope('of_status')
+    def filter_status(self, *statuses):
+        if len(statuses) == 1:
+            return self.status == self.STATUS[statuses[0]]
+        return self.status.belongs(*[self.STATUS[v] for v in statuses])
+
+
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
@@ -242,7 +263,7 @@ def db():
     db.define_models([
         Stuff, Person, Thing, Feature, Price, Doctor, Patient, Appointment,
         User, Organization, Membership, House, Mouse, NeedSplit, Zoo, Animal,
-        Elephant
+        Elephant, Subscription
     ])
     return db
 
@@ -405,3 +426,28 @@ def test_inheritance(db):
         Animal._declared_callbacks_['bi']
     assert Elephant._declared_callbacks_['bi2'] is not \
         Animal._declared_callbacks_['bi2']
+
+
+def test_scopes(db):
+    p = db.Person.insert(name="Walter", age=50)
+    s = db.Subscription.insert(
+        name="a", expires_at=datetime.now()-timedelta(hours=20), person=p,
+        status=1)
+    s2 = db.Subscription.insert(
+        name="b", expires_at=datetime.now()+timedelta(hours=20), person=p,
+        status=2)
+    db.Subscription.insert(
+        name="c", expires_at=datetime.now()+timedelta(hours=20), person=p,
+        status=3)
+    rows = db(db.Subscription.id > 0).expired().select()
+    assert len(rows) == 1 and rows[0].id == s
+    rows = p.subscriptions.expired().select()
+    assert len(rows) == 1 and rows[0].id == s
+    rows = Subscription.expired().select()
+    assert len(rows) == 1 and rows[0].id == s
+    rows = db(db.Subscription.id > 0).of_status('active', 'suspended').select()
+    assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
+    rows = p.subscriptions.of_status('active', 'suspended').select()
+    assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
+    rows = Subscription.of_status('active', 'suspended').select()
+    assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2

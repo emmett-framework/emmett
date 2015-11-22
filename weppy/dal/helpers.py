@@ -10,8 +10,9 @@
 """
 
 import re
-from pydal.objects import Set, LazySet
+#from pydal.objects import Set, LazySet
 from .._compat import iteritems
+from .base import Set, LazySet
 
 
 class Reference(object):
@@ -65,7 +66,7 @@ class HasManyViaSet(Set):
         self._model = model
         self._rid = rid
         self._via = via
-        Set.__init__(self, db, query, **kwargs)
+        Set.__init__(self, db, query, model=db[model]._model_, **kwargs)
 
     def __call__(self, *args, **kwargs):
         if not args:
@@ -155,6 +156,16 @@ class VirtualWrap(object):
 
     def __call__(self, row, *args, **kwargs):
         return self.virtual.f(self.model, row, *args, **kwargs)
+
+
+class ScopeWrap(object):
+    def __init__(self, set, model, scope):
+        self.set = set
+        self.model = model
+        self.scope = scope
+
+    def __call__(self, *args, **kwargs):
+        return self.set.where(self.scope(self.model, *args, **kwargs))
 
 
 class Callback(object):

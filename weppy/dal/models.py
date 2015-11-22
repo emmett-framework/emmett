@@ -11,10 +11,10 @@
 
 from collections import OrderedDict
 from .._compat import iteritems, with_metaclass
-from .apis import computation, virtualfield, fieldmethod
+from .apis import computation, virtualfield, fieldmethod, scope
 from .base import Field, _Field, sdict
 from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
-    VirtualWrap, Callback, make_tablename
+    VirtualWrap, ScopeWrap, Callback, make_tablename
 
 
 class MetaModel(type):
@@ -27,6 +27,7 @@ class MetaModel(type):
         current_vfields = []
         computations = {}
         callbacks = {}
+        scopes = {}
         for key, value in list(attrs.items()):
             if isinstance(value, Field):
                 current_fields.append((key, value))
@@ -36,6 +37,8 @@ class MetaModel(type):
                 computations[key] = value
             elif isinstance(value, Callback):
                 callbacks[key] = value
+            elif isinstance(value, scope):
+                scopes[key] = value
         #: get super declared attributes
         declared_fields = OrderedDict()
         declared_vfields = OrderedDict()
@@ -44,6 +47,7 @@ class MetaModel(type):
         )
         declared_computations = {}
         declared_callbacks = {}
+        declared_scopes = {}
         for base in reversed(new_class.__mro__[1:]):
             #: collect fields from base class
             if hasattr(base, '_declared_fields_'):
@@ -61,6 +65,8 @@ class MetaModel(type):
             #: collect callbacks from base class
             if hasattr(base, '_declared_callbacks_'):
                 declared_callbacks.update(base._declared_callbacks_)
+            if hasattr(base, '_declared_scopes_'):
+                declared_scopes.update(base._declared_scopes_)
         #: set fields with correct order
         current_fields.sort(key=lambda x: x[1]._inst_count_)
         declared_fields.update(current_fields)
@@ -92,6 +98,9 @@ class MetaModel(type):
         #: set callbacks
         declared_callbacks.update(callbacks)
         new_class._declared_callbacks_ = declared_callbacks
+        #: set scopes
+        declared_scopes.update(scopes)
+        new_class._declared_scopes_ = declared_scopes
         return new_class
 
 
@@ -256,7 +265,8 @@ class Model(with_metaclass(MetaModel)):
         self.__define_updates()
         self.__define_representation()
         self.__define_computations()
-        self.__define_actions()
+        self.__define_callbacks()
+        self.__define_scopes()
         self.__define_form_utils()
         self.setup()
 
@@ -297,7 +307,7 @@ class Model(with_metaclass(MetaModel)):
             self.table[obj.field_name].compute = \
                 lambda row, obj=obj, self=self: obj.f(self, row)
 
-    def __define_actions(self):
+    def __define_callbacks(self):
         for name, obj in iteritems(self._declared_callbacks_):
             for t in obj.t:
                 if t in ["_before_insert", "_before_delete", "_after_delete"]:
@@ -307,6 +317,15 @@ class Model(with_metaclass(MetaModel)):
                 else:
                     getattr(self.table, t).append(
                         lambda a, b, obj=obj, self=self: obj.f(self, a, b))
+
+    def __define_scopes(self):
+        self._scopes_ = {}
+        for name, obj in iteritems(self._declared_scopes_):
+            self._scopes_[obj.name] = obj
+            if not hasattr(self.__class__, obj.name):
+                setattr(
+                    self.__class__, obj.name,
+                    ScopeWrap(self.__class__.db, self, obj.f))
 
     def __define_form_utils(self):
         #: labels

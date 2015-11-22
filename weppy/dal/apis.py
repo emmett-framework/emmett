@@ -84,3 +84,12 @@ def before_delete(f):
 
 def after_delete(f):
     return Callback(f, '_after_delete')
+
+
+class scope(object):
+    def __init__(self, name):
+        self.name = name
+
+    def __call__(self, f):
+        self.f = f
+        return self

@@ -11,7 +11,7 @@
 
 import os
 from pydal import DAL as _pyDAL, Field as _Field
-from pydal.objects import Table as _Table
+from pydal.objects import Table as _Table, Set as _Set, LazySet as _LazySet
 from .._compat import copyreg
 from ..datastructures import sdict
 from ..handlers import Handler
@@ -43,6 +43,38 @@ class Table(_Table):
         self._referenced_by_list = []
         self._references = []
         return
+
+
+class Set(_Set):
+    def __init__(self, db, query, ignore_common_filters=None, model=None):
+        super(Set, self).__init__(db, query, ignore_common_filters)
+        self._scoped_model_ = model
+        self._scopes_ = {}
+        self._load_scopes_()
+
+    def _load_scopes_(self):
+        if self._scoped_model_ is None:
+            tables = self.db._adapter.tables(self.query)
+            if len(tables) == 1:
+                self._scoped_model_ = self.db[tables[0]]._model_
+        if self._scoped_model_:
+            self._scopes_ = self._scoped_model_._scopes_
+
+    def __getattr__(self, name):
+        scope = self._scopes_.get(name)
+        if scope:
+            from .helpers import ScopeWrap
+            return ScopeWrap(self, self._scoped_model_, scope.f)
+        raise AttributeError()
+
+
+class LazySet(_LazySet):
+    def _getset(self):
+        query = self.db[self.tablename][self.fieldname] == self.id
+        return Set(self.db, query, model=self.db[self.tablename]._model_)
+
+    def __getattr__(self, name):
+        return getattr(self._getset(), name)
 
 
 class DAL(_pyDAL):
@@ -130,6 +162,17 @@ class DAL(_pyDAL):
                 obj._define_()
                 # set reference in db for model name
                 self.__setattr__(model.__name__, obj.table)
+
+    def where(self, query=None, ignore_common_filters=None):
+        if isinstance(query, Table):
+            query = self._adapter.id_query(query)
+        elif isinstance(query, Field):
+            query = (query != None)
+        elif isinstance(query, dict):
+            icf = query.get("ignore_common_filters")
+            if icf:
+                ignore_common_filters = icf
+        return Set(self, query, ignore_common_filters=ignore_common_filters)
 
 
 def _DAL_unpickler(db_uid):
