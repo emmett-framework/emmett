@@ -1,6 +1,18 @@
 weppy changelog
 ===============
 
+Version 0.6
+-----------
+
+(release date to be announced, codename to be selected)
+
+- Various bugfixes
+- Added `remove` method to `HasManySet` and `HasManyViaSet`
+- Common handlers and helpers are now accessible via application object
+- Introduced scopes in models
+- Added `where` method to `Model`
+
+
 Version 0.5
 -----------
 
