@@ -24,12 +24,12 @@ The "bloggy" example described in the [Tutorial](http://weppy.org/docs/latest/tu
 ## Status of the project
 
 weppy is currently released in beta stage.
-*What does it means?*
+*What does it mean?*
 
 * That the code may contain *noteworthy* bugs
 * That you can use it on production but cannot blame the developers if something goes wrong
 
-weppy provides support for python 2.7, 3.3 and 3.4 versions.
+weppy provides support for python 2.7, 3.3, 3.4 and 3.5 versions.
 
 ## How can I help?
 
