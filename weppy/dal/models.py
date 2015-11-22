@@ -391,6 +391,12 @@ class Model(with_metaclass(MetaModel)):
         return errors
 
     @classmethod
+    def where(cls, cond):
+        if not callable(cond):
+            raise SyntaxError('Model.where expects a function as parameter.')
+        return cls.db.where(cond(cls))
+
+    @classmethod
     def form(cls, record=None, **kwargs):
         from ..forms import DALForm
         return DALForm(cls.table, record, **kwargs)
