@@ -291,19 +291,23 @@ class FormStyle(object):
 
     @staticmethod
     def _field_options(field):
-        def represent(value):
-            if value and field.represent:
-                return field.represent(value)
-            return value
+        if field.represent:
+            def represent(value):
+                if value and field.represent:
+                    return field.represent(value)
+                return value
+        else:
+            represent = lambda value: value
 
-        options = field.requires[0].options()
-        option_items = [(k, represent(n)) for k, n in options]
-        return option_items
+        validator = FormStyle._validation_woptions(field)
+        option_items = [(k, represent(n)) for k, n in validator.options()]
+        return option_items, validator.multiple
 
     @staticmethod
     def widget_string(attr, field, value, _class='string', _id=None):
         return tag.input(
-            _type='text', _name=field.name, _value=value or '',
+            _type='text', _name=field.name,
+            _value=value if value is not None else '',
             _class=_class, _id=_id or field.name
         )
 
@@ -350,8 +354,8 @@ class FormStyle(object):
         def selected(k):
             return 'selected' if str(value) == str(k) else None
 
-        options = FormStyle._field_options(field)
-        if field.requires[0].multiple:
+        options, multiple = FormStyle._field_options(field)
+        if multiple:
             return FormStyle.widget_multiple(attr, field, value, options,
                                              _class=_class, _id=_id)
         option_items = [tag.option(n, _value=k, _selected=selected(k))
@@ -418,14 +422,22 @@ class FormStyle(object):
     def __init__(self, attributes):
         self.attr = attributes
 
+    @staticmethod
+    def _validation_woptions(field):
+        ftype = field._type.split(":")[0]
+        if ftype != "bool" and field.requires:
+            for v in field.requires:
+                if hasattr(v, 'options'):
+                    return v
+        return None
+
     #: returns the widget for the field and a boolean (True if widget is
     #  defined by user, False if it comes from styler default ones)
     def _get_widget(self, field, value):
         if field.widget:
             return field.widget(field, value), True
         wtype = field._type.split(":")[0]
-        if wtype != 'bool' and len(field.requires) and \
-                hasattr(field.requires[0], 'options'):
+        if self._validation_woptions(field) is not None:
             wtype = 'select'
         elif wtype.startswith('reference'):
             wtype = 'int'

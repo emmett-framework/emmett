@@ -168,7 +168,7 @@ class TAG(object):
     def to_html(self):
         name = self.name
         ca = u' '.join(
-            u'%s="%s"' % (k[1:], k[1:] if v == True else htmlescape(v))
+            u'%s="%s"' % (k[1:], k[1:] if v is True else htmlescape(v))
             for (k, v) in sorted(self.attributes.items())
             if k.startswith('_') and v is not None)
         da = self.attributes.get('data', {})
