@@ -10,12 +10,14 @@
 {{=form}}
 {{pass}}
 <ul class="comments">
-{{for comment in comments:}}
-    <li>
-        {{=comment.text}}
-        <br />
-        <em>by {{=comment.user.first_name}} on {{=comment.date}}</em>
-    </li>
+{{if comments:}}
+    {{for comment in comments:}}
+        <li>
+            {{=comment.text}}
+            <br />
+            <em>by {{=comment.user.first_name}} on {{=comment.date}}</em>
+        </li>
+{{pass}}
 {{else:}}
     <li><em>No comments here so far.</em></li>
 {{pass}}
