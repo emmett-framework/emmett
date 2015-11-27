@@ -295,15 +295,15 @@ Let's do that, starting with *index.html* (which will be, *obviously*, used with
 
 <a href="{{=url('new_post')}}">Create a new post</a>
 <ul class="posts">
-{{for comment in comments:}}
+{{for post in posts:}}
     <li>
-        {{=comment.text}}
-        <br />
-        <em>by {{=comment.user.first_name}} on {{=comment.date}}</em>
+        <h2>{{=post.title}}</h2>
+        <a href="{{=url('one', post.id)}}">Read more</a>
+        <hr />
     </li>
 {{pass}}
-{{if not comments:}}
-    <li><em>No comments here so far.</em></li>
+{{if not posts:}}
+    <li><em>No posts here so far.</em></li>
 {{pass}}
 </ul>
 ```
@@ -329,7 +329,8 @@ Then the *one.html* template which is the most complex:
         <br />
         <em>by {{=comment.user.first_name}} on {{=comment.date}}</em>
     </li>
-{{else:}}
+{{pass}}
+{{if not comments:}}
     <li><em>No comments here so far.</em></li>
 {{pass}}
 </ul>
