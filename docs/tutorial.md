@@ -329,7 +329,8 @@ Then the *one.html* template which is the most complex:
         <br />
         <em>by {{=comment.user.first_name}} on {{=comment.date}}</em>
     </li>
-{{else:}}
+{{pass}}
+{{if not comments:}}
     <li><em>No comments here so far.</em></li>
 {{pass}}
 </ul>
