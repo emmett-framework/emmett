@@ -295,15 +295,15 @@ Let's do that, starting with *index.html* (which will be, *obviously*, used with
 
 <a href="{{=url('new_post')}}">Create a new post</a>
 <ul class="posts">
-{{for post in posts:}}
+{{for comment in comments:}}
     <li>
-        <h2>{{=post.title}}</h2>
-        <a href="{{=url('one', post.id)}}">Read more</a>
-        <hr />
+        {{=comment.text}}
+        <br />
+        <em>by {{=comment.user.first_name}} on {{=comment.date}}</em>
     </li>
 {{pass}}
-{{if not posts:}}
-    <li><em>No posts here so far.</em></li>
+{{if not comments:}}
+    <li><em>No comments here so far.</em></li>
 {{pass}}
 </ul>
 ```
