@@ -550,7 +550,7 @@ class Item(Model):
     total = Field('float')
     
     @computation('total')
-    def total(self, row):
+    def compute_total(self, row):
         return row.price*row.quantity
 ``` 
 The function that does computation has to accept the row as parameter, and the computed value will be evaluated on both insert and updates.
