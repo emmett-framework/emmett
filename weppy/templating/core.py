@@ -56,7 +56,7 @@ class Templater(object):
         self.loaders = application.template_preloaders
         self.renders = application.template_extensions
         self.lexers = application.template_lexers
-        self.cache = TemplaterCache(application)
+        self.cache = TemplaterCache(application, self)
 
     def preload(self, path, name):
         fext = os.path.splitext(name)[1]
@@ -89,7 +89,8 @@ class Templater(object):
             code = compile(str(parser), filename, 'exec')
             parserdata = sdict(content=parser.content,
                                blocks=parser.content.blocks)
-            self.cache.set(filename, source, code, parserdata)
+            self.cache.set(
+                filename, source, code, parserdata, parser.included_templates)
         return code, parserdata
 
     def render(self, source='', path=None, filename=None, context={}):
