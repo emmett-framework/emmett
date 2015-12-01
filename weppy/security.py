@@ -13,23 +13,36 @@
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
-import threading
-import struct
+import base64
 import hashlib
 import hmac
-import uuid as uuidm
-import random
-import time
 import os
-import base64
-import zlib
 import pyaes
+import random
+import struct
+import threading
+import time
+import uuid as uuidm
+import zlib
+from collections import OrderedDict
 
-from ._compat import PY2, pickle, hashlib_sha1, to_bytes, to_native
+from ._compat import PY2, xrange, pickle, hashlib_sha1, to_bytes, to_native
 from .libs.pbkdf2 import pbkdf2_hex
 
-if PY2:
-    range = xrange
+
+class CSRFStorage(OrderedDict):
+    def _clean(self):
+        now = time.time()
+        for key in list(self):
+            if self[key]+3600 > now:
+                break
+            del self[key]
+
+    def gen_token(self):
+        self._clean()
+        token = str(uuid())
+        self[token] = int(time.time())
+        return token
 
 
 def md5_hash(text):
@@ -151,7 +164,7 @@ def _init_urandom():
     node_id = uuidm.getnode()
     microseconds = int(time.time() * 1e6)
     ctokens = [((node_id + microseconds) >> ((i % 6) * 8)) %
-               256 for i in range(16)]
+               256 for i in xrange(16)]
     random.seed(node_id + microseconds)
     try:
         os.urandom(1)
@@ -191,7 +204,7 @@ def fast_urandom16(urandom=[], locker=threading.RLock()):
         try:
             locker.acquire()
             ur = os.urandom(16 * 1024)
-            urandom += [ur[i:i + 16] for i in range(16, 1024 * 16, 16)]
+            urandom += [ur[i:i + 16] for i in xrange(16, 1024 * 16, 16)]
             return ur[0:16]
         finally:
             locker.release()

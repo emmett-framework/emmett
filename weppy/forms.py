@@ -9,12 +9,11 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import uuid
-
 from ._compat import iteritems, iterkeys
 from .dal import Field
 from .datastructures import sdict
 from .globals import current, request, session
+from .security import CSRFStorage
 from .tags import tag, TAG, cat, asis
 from .utils import cachedprop
 
@@ -89,15 +88,12 @@ class Form(TAG):
             return
         if not hasattr(current, "session"):
             raise RuntimeError("You need sessions to use csrf in forms.")
-        session._csrf_tokens = session._csrf_tokens or {}
-        #: some clean up of session
-        if len(session._csrf_tokens) > 10:
-            session._csrf_tokens = {}
+        session._csrf = session._csrf or CSRFStorage()
 
     @property
     def _submitted(self):
         if self.csrf:
-            return self.input_vars._csrf_token in session._csrf_tokens
+            return self.input_vars._csrf_token in session._csrf
         return self.input_vars._csrf_token is 'undef'
 
     def _get_input_val(self, field):
@@ -135,12 +131,10 @@ class Form(TAG):
             if not self.errors:
                 self.accepted = True
                 if self.csrf:
-                    del session._csrf_tokens[self.input_vars._csrf_token]
-        # CRSF protection logic
+                    del session._csrf[self.input_vars._csrf_token]
+        # CSRF protection logic
         if self.csrf and not self.accepted:
-            token = str(uuid.uuid4())
-            session._csrf_tokens[token] = 1
-            self.formkey = token
+            self.formkey = session._csrf.gen_token()
         # reset default values in form
         if not self.processed or (self.accepted and not self.keepvalues):
             for field in self.fields:
