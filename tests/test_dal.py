@@ -451,3 +451,8 @@ def test_scopes(db):
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
     rows = Subscription.of_status('active', 'suspended').select()
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
+
+
+def test_model_where(db):
+    assert Subscription.where(lambda s: s.status == 1).query == \
+        db(db.Subscription.status == 1).query
