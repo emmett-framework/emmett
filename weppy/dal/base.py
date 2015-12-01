@@ -103,7 +103,7 @@ class DAL(_pyDAL):
         uri = config.uri or DAL.uri_from_config(config)
         return super(DAL, cls).__new__(cls, uri, *args, **kwargs)
 
-    def __init__(self, app, config=sdict(), pool_size=0, folder=None,
+    def __init__(self, app, config=sdict(), pool_size=None, folder=None,
                  **kwargs):
         self.logger = app.log
         config = config or app.config.db
@@ -111,22 +111,23 @@ class DAL(_pyDAL):
             config.uri = self.uri_from_config(config)
         self.config = config
         #: load config data
-        kwargs['check_reserved'] = config.check_reserved or \
+        kwargs['check_reserved'] = self.config.check_reserved or \
             kwargs.get('check_reserved', None)
-        kwargs['migrate'] = config.migrate or kwargs.get('migrate', True)
-        kwargs['fake_migrate'] = config.fake_migrate or \
-            kwargs.get('fake_migrate', False)
-        kwargs['fake_migrate_all'] = config.fake_migrate_all or \
-            kwargs.get('fake_migrate_all', False)
-        kwargs['driver_args'] = config.driver_args or \
+        kwargs['migrate'] = self.config.auto_migrate or \
+            kwargs.get('auto_migrate', True)
+        kwargs['driver_args'] = self.config.driver_args or \
             kwargs.get('driver_args', None)
-        kwargs['adapter_args'] = config.adapter_args or \
+        kwargs['adapter_args'] = self.config.adapter_args or \
             kwargs.get('adapter_args', None)
+        if kwargs.get('auto_migrate') is not None:
+            del kwargs['auto_migrate']
         #: set directory
         folder = folder or 'databases'
         folder = os.path.join(app.root_path, folder)
         if not os.path.exists(folder):
             os.mkdir(folder)
+        #: set pool_size
+        pool_size = self.config.pool_size or pool_size or 0
         #: finally setup pyDAL instance
         super(DAL, self).__init__(self.config.uri, pool_size, folder, **kwargs)
 
