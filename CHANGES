@@ -11,6 +11,8 @@ Next
 - Common handlers and helpers are now accessible via application object
 - Introduced scopes in models
 - Added `where` method to `Model`
+- Template reloader now checks also `include` and `extend` blocks
+- Deprecated `expose()` in favor of `route()`
 
 
 Version 0.5

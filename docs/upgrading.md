@@ -19,6 +19,47 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 0.6
+-----------
+
+weppy 0.6 introduces some deprecations you should be aware of, and some new features you might been interested into.
+
+Next paragraphs describe all this relevant changes.
+
+### Deprecation of expose
+
+Since the first version of weppy, the decorator used to expose functions outside was, indeed, `expose`:
+
+```python
+@app.expose()
+def foo():
+    pass
+
+@mymodule.expose()
+def bar():
+    pass
+```
+
+Since the majority of frameworks use, instead, the `route` word for the same purpose, and we wanted to make easier for developers to move from one framework to another, we also adopted this *naming*. With weppy 0.6 you should change all your `expose` calls with `route`:
+
+```python
+@app.route()
+def foo():
+    pass
+
+@mymodule.route():
+def bar():
+    pass
+```
+
+All the usages remain the same of `expose`.   
+Since it's deprecated, you can still use `expose` in weppy 0.6, but you have to remember this will be definitely removed in the next version.
+
+### New features
+
+*section under writing*
+
+
 Version 0.5
 -----------
 
