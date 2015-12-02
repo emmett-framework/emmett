@@ -16,6 +16,7 @@
 import os
 import pkgutil
 import sys
+import warnings
 from ._compat import implements_iterator
 
 
@@ -243,3 +244,33 @@ class LimitedStream(object):
         if not line:
             raise StopIteration()
         return line
+
+
+class RemovedInNextVersionWarning(DeprecationWarning):
+    pass
+
+
+warnings.simplefilter('always', DeprecationWarning)
+
+
+def warn_of_deprecation(old_name, new_name, prefix=None, stack=2):
+    msg = "%(old)s is deprecated, use %(new)s instead."
+    if prefix:
+        msg = "%(prefix)s." + msg
+    warnings.warn(
+        msg % {'old': old_name, 'new': new_name, 'prefix': prefix},
+        RemovedInNextVersionWarning, stack)
+
+
+class deprecated(object):
+    def __init__(self, old_method_name, new_method_name, class_name=None):
+        self.class_name = class_name
+        self.old_method_name = old_method_name
+        self.new_method_name = new_method_name
+
+    def __call__(self, f):
+        def wrapped(*args, **kwargs):
+            warn_of_deprecation(
+                self.old_method_name, self.new_method_name, self.class_name, 3)
+            return f(*args, **kwargs)
+        return wrapped

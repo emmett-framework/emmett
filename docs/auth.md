@@ -22,7 +22,7 @@ app.common_handlers = [
     auth.handler
 ]
 
-@app.expose('/account(/<str:f>)?(/<str:k>)?')
+@app.route('/account(/<str:f>)?(/<str:k>)?')
 def account(f, k):
     form = auth(f, k)
     return dict(form=form)
@@ -52,7 +52,7 @@ and it also creates all the database tables needed, from users to groups and mem
 You can obviously change the routing url for the authorization function:
 
 ```python
-@app.expose('/myurl(/<str:f>)?(/<str:k>)?')
+@app.route('/myurl(/<str:f>)?(/<str:k>)?')
 def accunt(f, k):
     # code
 ```
@@ -62,7 +62,7 @@ and even change the name of the exposed function, but if you do that, you mast t
 ```python
 auth = Auth(app, db, base_url='mycontrol')
 
-@app.expose('/myurl(/<str:f>)?(/<str:k>)?')
+@app.route('/myurl(/<str:f>)?(/<str:k>)?')
 def mycontrol(f, k):
     form = auth(f, k)
     return dict(form=form)
@@ -96,7 +96,7 @@ One of the advantages of the authorization module is the simple way you can intr
 ```python
 from weppy.tools import requires
 
-@app.expose()
+@app.route()
 @requires(auth.is_logged_in, url('unauthorized_page'))
 def myprotected_page():
     #some code
@@ -110,7 +110,7 @@ You can also pass a function to be invoked as second parameter, for example:
 def not_auth():
     abort(403)
 
-@app.expose()
+@app.route()
 @requires(lambda: auth.has_membership('administrator'), not_auth)
 def admin():
     # code
@@ -128,7 +128,7 @@ from weppy.tools import service
 def not_auth():
     return dict(error="Not authorized")
 
-@app.expose()
+@app.route()
 @requires(auth.is_logged_in, not_auth)
 @service.json
 def protected():

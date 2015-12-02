@@ -15,7 +15,7 @@ with *myapp.py* looking like this:
 from weppy import App
 app = App(__name__)
 
-@app.expose("/<str:msg>")
+@app.route("/<str:msg>")
 def echo():
     return dict(message=msg)
 ```
@@ -140,7 +140,7 @@ It asynchronously calls the `url`, passes the values of the field inputs with th
 The third argument can also be the `:eval` string, which lead to the evaluation via javascript of the string returned by the server. Seen with an example, if we have an exposed function:
 
 ```python
-@app.expose()
+@app.route()
 def my_ajaxf():
     return "$('#target').html('something');"
 ```

@@ -196,7 +196,7 @@ app.common_handlers = [
 Then we can start writing the function for our index page, that will list all the posts in reverse chronological order (so the newest ones will be the first):
 
 ```python
-@app.expose("/")
+@app.route("/")
 def index():
     posts = db(Post.id > 0).select(orderby=~Post.date)
     return dict(posts=posts)
@@ -207,7 +207,7 @@ and, since this list will only show up the posts' titles, we also write down a f
 ```python
 from weppy import abort
 
-@app.expose("/post/<int:pid>")
+@app.route("/post/<int:pid>")
 def one(pid):
     def _validate_comment(form):
         # manually set post id in comment form
@@ -232,7 +232,7 @@ We also need to expose a function to write posts, and it will be available only 
 from weppy import redirect, url
 from weppy.tools import requires
 
-@app.expose("/new")
+@app.route("/new")
 @requires(lambda: auth.has_membership('admin'), url('index'))
 def new_post():
     form = Post.form()
@@ -246,7 +246,7 @@ as you can see, if a user try to open up the "/new" address without the membersh
 Finally, we should expose an *account* function to let users signup and sign in on bloggy:
 
 ```python
-@app.expose('/account(/<str:f>)?(/<str:k>)?')
+@app.route('/account(/<str:f>)?(/<str:k>)?')
 def account(f, k):
     form = auth(f, k)
     return dict(form=form)

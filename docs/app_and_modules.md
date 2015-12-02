@@ -104,7 +104,7 @@ The *\_\_init\_\_.py* is now our prior *app.py* with:
 from weppy import App
 app = App(__name__)
 
-@app.expose("/")
+@app.route("/")
 def index():
     # code
 
@@ -119,18 +119,18 @@ from myapp import app
 
 blog = App(app, "blog", __name__)
 
-@blog.expose("/blog")
+@blog.route("/blog")
 def index():
     # code
 ```
 
-And we now have a better organization as we have separated our blog code from the core application. As you have noticed, the `AppModule` object provides its own `expose` method (you should heard of this method in the [Getting Started](./quickstart) chapter). Why is that?   
+And we now have a better organization as we have separated our blog code from the core application. As you have noticed, the `AppModule` object provides its own `route` method (you should heard of this method in the [Getting Started](./quickstart) chapter). Why is that?   
 The main reason is that `AppModule` paramters accepts routing prefixes and hosts configuration, so that we can re-write *blog.py* module like this:
 
 ```python
 blog = App(app, "blog", __name__, url_prefix="blog")
 
-@blog.expose("/")
+@blog.route("/")
 def index():
     # code
 ```

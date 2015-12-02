@@ -1,15 +1,15 @@
 Routing system
 ==============
 
-As introduced in the [Getting Started](./quickstart) chapter, the weppy routing system doesn't use a table or a separated file logic, but it's explicit indeed, using the `expose` decorator on your functions.
+As introduced in the [Getting Started](./quickstart) chapter, the weppy routing system doesn't use a table or a separated file logic, but it's explicit indeed, using the `route` decorator on your functions.
 
 Exposing functions
 ------------------
 
-The `expose` method of the `App` object accepts several parameters, as you can see from the source code:
+The `route` method of the `App` object accepts several parameters, as you can see from the source code:
 
 ```python
-def expose(self, path=None, name=None, template=None, handlers=None,
+def route(self, path=None, name=None, template=None, handlers=None,
            helpers=None, schemes=None, hostname=None, methods=None,
            prefix=None, template_folder=None, template_path=None):
 ```
@@ -18,10 +18,10 @@ Let's see them in detail.
 
 ### Path
 
-The `path` parameter is the first and the most important parameter you can pass to `expose`, in fact it tells weppy on which url should the function been exposed; still, you seen from the code that is `None` by default. What does it mean? Simply, when you don't pass the `path` parameter to expose, it will route your function on the url with the same name of your function. So if you write:
+The `path` parameter is the first and the most important parameter you can pass to `route`, in fact it tells weppy on which url should the function been exposed; still, you seen from the code that is `None` by default. What does it mean? Simply, when you don't pass the `path` parameter to route, it will route your function on the url with the same name of your function. So if you write:
 
 ```python
-@app.expose()
+@app.route()
 def user():
     # code
 ```
@@ -31,11 +31,11 @@ your `user()` function will be routed on */user*.
 To add variable parts to a path you can mark these special sections as `<type:variable_name>` and the variables will be passed as a keyword argument to your functions. Let's see some examples:
 
 ```python
-@app.expose('/user/<str:username>')
+@app.route('/user/<str:username>')
 def user(username):
     return "Hello %s" % username
 
-@app.expose('/double/<int:number>')
+@app.route('/double/<int:number>')
 def double(number):
     return "%d * 2 = %d" % (number, number*2)
 ```
@@ -55,7 +55,7 @@ So basically, if we try to open the url for the `double` function of the last ex
 Sometimes you also need your variable rules to be conditional, and accepts requests on the same function with, for example, */profile/123432* and */profile*. weppy allows you to do that using the conditional regex notation:
 
 ```python
-@app.expose("/profile(/<int:user_id>)?")
+@app.route("/profile(/<int:user_id>)?")
 def profile(user_id):
     if user_id:
         # get requested user
@@ -64,42 +64,42 @@ def profile(user_id):
 ```
 and as you thought, when conditional arguments are not given in the requested url, your function's parameters will be `None`.
 
-Now, it's time to see the `methods` parameter of `expose()`
+Now, it's time to see the `methods` parameter of `route()`
 
 ### Template
 The `template` parameter allows you to set a specific template for the function you're exposing.   
 By default weppy search for a template with the same name of the function, so with an example:
 
 ```python
-@app.expose()
+@app.route()
 def profile():
     # code
 ```
 will search for the *profile.html* template in your application's *template* folder. When you need to use a different template name, just tell weppy to load it:
 
 ```python
-@app.expose(template="mytemplate.html")
+@app.route(template="mytemplate.html")
 ```
 
 ### Methods
 HTTP knows different methods for accessing URLs. By default, a weppy route only answers to GET and POST requests, but that can be changed easily:
 
 ```python
-@app.expose("/onlyget", methods="get")
+@app.route("/onlyget", methods="get")
 def f():
     # code
 
-@app.expose("/post", methods=["post", "delete"])
+@app.route("/post", methods=["post", "delete"])
 def g():
     # code
 ```
 
 ### Other parameters
-If you read the [Getting started](./quickstart) chapter, you should know that weppy provides the *Handler* class to perform operations during requests. The `handlers` and `helpers` parameters of `expose()` allows you to bind them on the exposed function.
+If you read the [Getting started](./quickstart) chapter, you should know that weppy provides the *Handler* class to perform operations during requests. The `handlers` and `helpers` parameters of `route()` allows you to bind them on the exposed function.
 
 Similarly to the `methods` parameter, the `schemes` one allows you to tell weppy on which HTTP schemes the function should answer (by default both *http* and *https* methods are allowed); while if you need to bind the exposed function to a specific host, you can use the `hostname` parameter.
 
-The `prefix`, `template_path` and `template_folder` parameters are specific to [AppModules](./app_and_modules#application-modules) and there's no a specific need to use them directly in the `app.expose()` function.
+The `prefix`, `template_path` and `template_folder` parameters are specific to [AppModules](./app_and_modules#application-modules) and there's no a specific need to use them directly in the `app.route()` function.
 
 The url() function
 ------------------
@@ -109,19 +109,19 @@ weppy provides a useful method to create urls for your exposed functions, let's 
 from weppy import App, url
 app = App(__name__)
 
-@app.expose("/")
+@app.route("/")
 def index():
     # code
 
-@app.expose("/anotherurl")
+@app.route("/anotherurl")
 def g():
     #code
 
-@app.expose("/find/<str:a>/<str:b>")
+@app.route("/find/<str:a>/<str:b>")
 def f(a, b):
     # code
 
-@app.expose("/post/<int:id>/edit")
+@app.route("/post/<int:id>/edit")
 def edit(id):
     # code
 

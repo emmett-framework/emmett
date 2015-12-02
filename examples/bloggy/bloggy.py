@@ -78,20 +78,20 @@ def setup():
     db.commit()
 
 #: handlers
-app.expose.common_handlers = [
+app.common_handlers = [
     SessionCookieManager('Walternate'),
     db.handler, auth.handler
 ]
 
 
 #: exposing functions
-@app.expose("/")
+@app.route("/")
 def index():
     posts = db(Post.id > 0).select(orderby=~Post.date)
     return dict(posts=posts)
 
 
-@app.expose("/post/<int:pid>")
+@app.route("/post/<int:pid>")
 def one(pid):
     def _validate_comment(form):
         # manually set post id in comment form
@@ -108,7 +108,7 @@ def one(pid):
     return locals()
 
 
-@app.expose("/new")
+@app.route("/new")
 @requires(lambda: auth.has_membership('admin'), url('index'))
 def new_post():
     form = Post.form()
@@ -117,7 +117,7 @@ def new_post():
     return dict(form=form)
 
 
-@app.expose('/account(/<str:f>)?(/<str:k>)?')
+@app.route('/account(/<str:f>)?(/<str:k>)?')
 def account(f, k):
     form = auth(f, k)
     return dict(form=form)

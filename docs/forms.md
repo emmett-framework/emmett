@@ -9,7 +9,7 @@ Let's see how to use it with an example:
 from weppy import Field, Form
 
 # create a form
-@app.expose('/form')
+@app.route('/form')
 def a():
     simple_form = Form({
         'name': Field(),
@@ -34,7 +34,7 @@ The usage is the same of the form, except that you call it directly from your mo
 
 ```python
 # create a form for Post model
-@app.expose('/dalform')
+@app.route('/dalform')
 def b():
     form = Post.form()
     if form.accepted:
@@ -100,7 +100,7 @@ You need a streaming function like this:
 ```
 from weppy import stream_file 
 
-@app.expose("/download/<str:filename>")
+@app.route("/download/<str:filename>")
 def download(filename):
     stream_file(db, filename)
 ```
@@ -125,7 +125,7 @@ The `onvalidation` parameter of forms allows you to add custom validation logics
 Let's see what we're talking about with an example:
 
 ```python
-@app.expose("/myform"):
+@app.route("/myform"):
 def myform():
     def process_form(form):
         if form.vars.double != form.vars.number*2:

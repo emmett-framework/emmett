@@ -14,7 +14,7 @@ import os
 import click
 from yaml import load as ymlload
 from ._compat import basestring
-from ._internal import get_root_path, create_missing_app_folders
+from ._internal import get_root_path, create_missing_app_folders, deprecated
 from .utils import dict_to_sdict, cachedprop
 from .expose import Expose
 from .datastructures import sdict, ConfigData
@@ -86,24 +86,29 @@ class App(object):
         return rv
 
     @property
-    def expose(self):
+    def route(self):
         return Expose
 
     @property
+    @deprecated('expose', 'route', 'App')
+    def expose(self):
+        return self.route
+
+    @property
     def common_handlers(self):
-        return self.expose.common_handlers
+        return self.route.common_handlers
 
     @common_handlers.setter
     def common_handlers(self, handlers):
-        self.expose.common_handlers = handlers
+        self.route.common_handlers = handlers
 
     @property
     def common_helpers(self):
-        return self.expose.common_helpers
+        return self.route.common_helpers
 
     @common_helpers.setter
     def common_helpers(self, helpers):
-        self.expose.common_helpers = helpers
+        self.route.common_helpers = helpers
 
     def on_error(self, code):
         def decorator(f):
@@ -236,7 +241,11 @@ class AppModule(object):
         self.common_handlers = []
         self.common_helpers = []
 
-    def expose(self, path=None, name=None, template=None, **kwargs):
+    @deprecated('expose', 'route', 'AppModule')
+    def expose(self, *args, **kwargs):
+        return self.route(*args, **kwargs)
+
+    def route(self, path=None, name=None, template=None, **kwargs):
         if name is not None and "." in name:
             raise RuntimeError(
                 "App modules' exposed names should not contains dots"
@@ -250,7 +259,7 @@ class AppModule(object):
         if self.common_helpers:
             helpers = self.common_helpers + helpers
         kwargs['helpers'] = helpers
-        return self.app.expose(
+        return self.app.route(
             path=path, name=name, template=template, prefix=self.url_prefix,
             template_folder=self.template_folder,
             template_path=self.template_path, hostname=self.hostname, **kwargs)

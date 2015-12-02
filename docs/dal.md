@@ -42,7 +42,7 @@ db.define_models(Post)
 
 app.common_handlers = [db.handler]
 
-@app.expose('/posts/<str:author>')
+@app.route('/posts/<str:author>')
 def post_by(author):
     posts = db(Post.author == author).select()
     return dict(posts=posts)

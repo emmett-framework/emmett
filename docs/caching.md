@@ -15,7 +15,7 @@ Low-level cache
 Low-level caching becomes convenient when you want to cache a specific action, as a select on the database or a computation. Let's say, for example, that you have a blog and a certain function that exposes the last ten posts:
 
 ```python
-@app.expose("/last")
+@app.route("/last")
 def last():
     rows = db(db.Post.id > 0).select(orderby=~db.Post.date, limitby=(0, 10))
     return dict(posts=rows)
@@ -27,7 +27,7 @@ Now, since the performance bottleneck here is the call to the database, you can 
 from weppy import Cache
 cache = Cache()
 
-@app.expose("/last")
+@app.route("/last")
 def last():
     def _get():
         return db(db.Post.id > 0).select(orderby=~db.Post.date, limitby=(0, 10))

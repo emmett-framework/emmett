@@ -55,7 +55,7 @@ and your *views.py* would look like:
 ```python
 from myapp import app
 
-@app.expose("/")
+@app.route("/")
 def index():
     # some code
 ```
@@ -160,7 +160,7 @@ The main controller can look like this:
 ```python
 from myapp import app
 
-@app.expose("/")
+@app.route("/")
 def index():
     # code
 ```
@@ -173,7 +173,7 @@ from myapp import app
 
 api = AppModule(app, 'api', __name__, url_prefix='api')
 
-@api.expose()
+@api.route()
 def a():
     # code
 ```

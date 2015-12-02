@@ -56,7 +56,7 @@ from weppy import App, request
 
 app = App(__name__)
 
-@app.expose("/post/<int:id>")
+@app.route("/post/<int:id>")
 def post(id):
     editor = request.vars.editor
     if editor == "markdown":
@@ -126,11 +126,11 @@ class DBHandler(Handler):
 Now, to register your handler to a function you just need to write:
 
 ```python
-@app.expose("/url", handlers=[MyHandler()])
+@app.route("/url", handlers=[MyHandler()])
 def f():
     #code
 ```
-And if you need to register your handler to all your application functions, you can omit the handler from the `expose()` decorator writing instead:
+And if you need to register your handler to all your application functions, you can omit the handler from the `route()` decorator writing instead:
 
 ```python
 app.common_handlers = [MyHandler()]
@@ -184,7 +184,7 @@ Maybe you want to redirect the client on a default parameter:
 ```python
 from weppy import redirect, url
 
-@app.expose("/post/<int:id>")
+@app.route("/post/<int:id>")
 def post(id):
     editor = request.vars.editor
     if editor == "markdown":
@@ -207,7 +207,7 @@ from weppy import abort
 def not_found():
     app.render_template("404.html")
 
-@app.expose("/post/<int:id>")
+@app.route("/post/<int:id>")
 def post(id):
     editor = request.vars.editor
     if editor == "markdown":

@@ -32,7 +32,7 @@ def dynamic_handler(app, environ, start_response):
         current.initialize(environ)
         #: dispatch request
         response = current.response
-        app.expose.dispatch()
+        app.route.dispatch()
         #: build HTTP response
         http = HTTP(response.status, response.output, response.headers,
                     response.cookies)
