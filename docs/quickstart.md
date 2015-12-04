@@ -442,7 +442,7 @@ app.language_force_on_url = True
 
 weppy uses the url to determine the language instead of the HTTP "Accept-Language" header. This means that weppy will automatically add the support for language on your routing rules.
 
-To see more about languages and dive into translator features, read the complete documentation available in the [Languages chapter](.languages).
+To see more about languages and dive into translator features, read the complete documentation available in the [Languages chapter](./languages).
 
 Go ahead
 --------
