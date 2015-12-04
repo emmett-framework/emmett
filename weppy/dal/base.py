@@ -48,30 +48,70 @@ class Table(_Table):
 class Set(_Set):
     def __init__(self, db, query, ignore_common_filters=None, model=None):
         super(Set, self).__init__(db, query, ignore_common_filters)
-        self._scoped_model_ = model
+        self._model_ = model
         self._scopes_ = {}
         self._load_scopes_()
 
     def _load_scopes_(self):
-        if self._scoped_model_ is None:
+        if self._model_ is None:
             tables = self.db._adapter.tables(self.query)
             if len(tables) == 1:
-                self._scoped_model_ = self.db[tables[0]]._model_
-        if self._scoped_model_:
-            self._scopes_ = self._scoped_model_._scopes_
+                self._model_ = self.db[tables[0]]._model_
+        if self._model_:
+            self._scopes_ = self._model_._scopes_
+
+    def join(self, *args):
+        rv = self
+        if self._model_ is not None:
+            from .helpers import RelationBuilder
+            joins = []
+            for arg in args:
+                rel = self._model_._hasmany_ref_.get(arg)
+                if rel:
+                    if isinstance(rel, dict) and rel.get('via'):
+                        joins.append(
+                            RelationBuilder(
+                                arg, self._model_).via(rel['via'])[0])
+                    else:
+                        joins.append(
+                            RelationBuilder(rel, self._model_).many_query())
+                    continue
+                rel = self._model_._belongs_map_.get(arg)
+                if rel:
+                    joins.append(
+                        RelationBuilder(
+                            (rel, arg), self._model_).belongs_query())
+                    continue
+                rel = self._model_._hasone_ref_.get(arg)
+                if rel:
+                    joins.append(
+                        RelationBuilder(rel, self._model_).many_query())
+            if joins:
+                q = joins[0]
+                for join in joins[1:]:
+                    q = q & join
+                rv = rv.where(q)
+        return rv
 
     def __getattr__(self, name):
         scope = self._scopes_.get(name)
         if scope:
             from .helpers import ScopeWrap
-            return ScopeWrap(self, self._scoped_model_, scope.f)
+            return ScopeWrap(self, self._model_, scope.f)
         raise AttributeError()
 
 
 class LazySet(_LazySet):
+    def __init__(self, field, id):
+        super(LazySet, self).__init__(field, id)
+        self._model_ = self.db[self.tablename]._model_
+
     def _getset(self):
         query = self.db[self.tablename][self.fieldname] == self.id
-        return Set(self.db, query, model=self.db[self.tablename]._model_)
+        return Set(self.db, query, model=self._model_)
+
+    def join(self, *args):
+        return self._getset().join(*args)
 
     def __getattr__(self, name):
         return getattr(self._getset(), name)

@@ -203,7 +203,11 @@ class Model(with_metaclass(MetaModel)):
                 )
                 belongs_references[reference] = refname
         setattr(self.__class__, '_belongs_ref_', belongs_references)
+        setattr(
+            self.__class__, '_belongs_map_',
+            {v: k for k, v in iteritems(self.__class__._belongs_ref_)})
         #: has_one are mapped with virtualfield()
+        hasone_references = {}
         if hasattr(self, '_hasone_ref_'):
             for item in getattr(self, '_hasone_ref_'):
                 if not isinstance(item, (str, dict)):
@@ -211,7 +215,8 @@ class Model(with_metaclass(MetaModel)):
                 reference, refname = self.__parse_relation(item)
                 self._virtual_relations_[refname] = \
                     virtualfield(refname)(HasOneWrap(reference))
-            delattr(self.__class__, '_hasone_ref_')
+                hasone_references[refname] = reference
+        setattr(self.__class__, '_hasone_ref_', hasone_references)
         #: has_many are mapped with virtualfield()
         hasmany_references = {}
         if hasattr(self, '_hasmany_ref_'):
