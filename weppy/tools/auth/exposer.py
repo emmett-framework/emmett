@@ -320,8 +320,11 @@ class Exposer(object):
         )
         if form.accepted:
             user = rows['user']
-            if user.registration_key in ('pending', 'disabled', 'blocked'):
-                flash(self.messages.registration_pending)
+            if user.registration_key == 'pending':
+                flash(self.auth.messages.registration_pending)
+                redirect(self.auth.url('request_reset_password'))
+            elif user.registration_key in ('disabled', 'blocked'):
+                flash(self.auth.messages.login_disabled)
                 redirect(self.auth.url('request_reset_password'))
             if self.auth.email_reset_password(user):
                 flash(self.messages.email_sent)
