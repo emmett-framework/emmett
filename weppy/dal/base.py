@@ -71,7 +71,7 @@ class Set(_Set):
                     if isinstance(rel, dict) and rel.get('via'):
                         joins.append(
                             RelationBuilder(
-                                arg, self._model_).via(rel['via'])[0])
+                                rel, self._model_).via()[0])
                     else:
                         joins.append(
                             RelationBuilder(rel, self._model_).many_query())

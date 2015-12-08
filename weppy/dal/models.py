@@ -165,16 +165,48 @@ class Model(with_metaclass(MetaModel)):
         if not hasattr(self, 'format'):
             self.format = None
 
-    def __parse_relation(self, item, singular=False):
+    def __parse_relation_via(self, via):
+        if via is None:
+            return via
+        rv = {'field': None}
+        splitted = via.split('.')
+        rv['via'] = splitted[0]
+        if len(splitted) > 1:
+            rv['field'] = splitted[1]
+        return rv
+
+    def __parse_belongs_relation(self, item):
+        rv = {}
         if isinstance(item, dict):
-            refname = list(item)[0]
-            reference = item[refname]
+            rv['name'] = list(item)[0]
+            rv['model'] = item[rv['name']]
         else:
-            reference = item.capitalize()
-            refname = item
-            if singular:
-                reference = reference[:-1]
-        return reference, refname
+            rv['name'] = item
+            rv['model'] = item.capitalize()
+        return rv
+
+    def __parse_many_relation(self, item, singularize=True):
+        rv = {}
+        if isinstance(item, dict):
+            rv['name'] = list(item)[0]
+            rv['model'] = item[rv['name']]
+        else:
+            rv['name'] = item
+            rv['model'] = item.capitalize()
+            if singularize:
+                rv['model'] = rv['model'][:-1]
+        if isinstance(rv['model'], dict):
+            if rv['model'].get('via'):
+                rv.update(self.__parse_relation_via(rv['model']['via']))
+                del rv['model']
+        else:
+            splitted = rv['model'].split('.')
+            rv['model'] = splitted[0]
+            if len(splitted) > 1:
+                rv['field'] = splitted[1]
+            else:
+                rv['field'] = self.__class__.__name__.lower()
+        return rv
 
     def _define_props_(self):
         #: create pydal's Field elements
@@ -195,27 +227,27 @@ class Model(with_metaclass(MetaModel)):
             for item in getattr(self, '_belongs_ref_'):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference, refname = self.__parse_relation(item)
-                tablename = self.db[reference]._tablename
-                setattr(self.__class__, refname, Field('reference '+tablename))
+                reference = self.__parse_belongs_relation(item)
+                tablename = self.db[reference['model']]._tablename
+                setattr(
+                    self.__class__, reference['name'],
+                    Field('reference '+tablename))
                 self.fields.append(
-                    getattr(self, refname)._make_field(refname, self)
+                    getattr(self, reference['name'])._make_field(
+                        reference['name'], self)
                 )
-                belongs_references[reference] = refname
+                belongs_references[reference['name']] = reference['model']
         setattr(self.__class__, '_belongs_ref_', belongs_references)
-        setattr(
-            self.__class__, '_belongs_map_',
-            {v: k for k, v in iteritems(self.__class__._belongs_ref_)})
         #: has_one are mapped with virtualfield()
         hasone_references = {}
         if hasattr(self, '_hasone_ref_'):
             for item in getattr(self, '_hasone_ref_'):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference, refname = self.__parse_relation(item)
-                self._virtual_relations_[refname] = \
-                    virtualfield(refname)(HasOneWrap(reference))
-                hasone_references[refname] = reference
+                reference = self.__parse_many_relation(item, False)
+                self._virtual_relations_[reference['name']] = \
+                    virtualfield(reference['name'])(HasOneWrap(reference))
+                hasone_references[reference['name']] = reference
         setattr(self.__class__, '_hasone_ref_', hasone_references)
         #: has_many are mapped with virtualfield()
         hasmany_references = {}
@@ -223,26 +255,27 @@ class Model(with_metaclass(MetaModel)):
             for item in getattr(self, '_hasmany_ref_'):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference, refname = self.__parse_relation(item, True)
-                rclass = via = None
-                if isinstance(reference, dict):
-                    rclass = reference.get('class')
-                    via = reference.get('via')
-                if via is not None:
+                reference = self.__parse_many_relation(item)
+                #rclass = via = None
+                #if isinstance(reference, dict):
+                #    rclass = reference.get('class')
+                #    via = reference.get('via')
+                if reference.get('via') is not None:
                     #: maps has_many({'things': {'via': 'otherthings'}})
-                    self._virtual_relations_[refname] = virtualfield(refname)(
-                        HasManyViaWrap(refname, via)
-                    )
+                    self._virtual_relations_[reference['name']] = \
+                        virtualfield(reference['name'])(
+                            HasManyViaWrap(reference)
+                        )
                 else:
                     #: maps has_many('things'),
                     #  has_many({'things': 'othername'})
-                    #  has_many({'things': {'class': 'Model'}})
-                    if rclass is not None:
-                        reference = rclass
-                    self._virtual_relations_[refname] = virtualfield(refname)(
-                        HasManyWrap(reference)
-                    )
-                hasmany_references[refname] = reference
+                    #if rclass is not None:
+                    #    reference = rclass
+                    self._virtual_relations_[reference['name']] = \
+                        virtualfield(reference['name'])(
+                            HasManyWrap(reference)
+                        )
+                hasmany_references[reference['name']] = reference
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
         return
 

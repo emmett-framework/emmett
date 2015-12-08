@@ -127,7 +127,9 @@ class Stuff(Model):
 
 
 class Person(Model):
-    has_many('things', {'features': {'via': 'things'}}, 'subscriptions')
+    has_many(
+        'things', {'features': {'via': 'things'}}, {'pets': 'Dog.owner'},
+        'subscriptions')
 
     name = Field()
     age = Field('integer')
@@ -190,6 +192,7 @@ class House(Model):
 
 class Mouse(Model):
     tablename = "mice"
+    has_many('elephants')
     name = Field()
 
 
@@ -198,7 +201,7 @@ class NeedSplit(Model):
 
 
 class Zoo(Model):
-    has_many('animals', 'elephants')
+    has_many('animals', 'elephants', {'mice': {'via': 'elephants.mouse'}})
     name = Field()
 
 
@@ -215,11 +218,11 @@ class Animal(Model):
         return row.name
 
     @before_insert
-    def bi(self):
+    def bi(self, *args, **kwargs):
         pass
 
     @before_insert
-    def bi2(self):
+    def bi2(self, *args, **kwargs):
         pass
 
 
@@ -232,8 +235,13 @@ class Elephant(Animal):
         return row.name+" "+row.color
 
     @before_insert
-    def bi2(self):
+    def bi2(self, *args, **kwargs):
         pass
+
+
+class Dog(Model):
+    belongs_to({'owner': 'Person'})
+    name = Field()
 
 
 class Subscription(Model):
@@ -263,7 +271,7 @@ def db():
     db.define_models([
         Stuff, Person, Thing, Feature, Price, Doctor, Patient, Appointment,
         User, Organization, Membership, House, Mouse, NeedSplit, Zoo, Animal,
-        Elephant, Subscription
+        Elephant, Dog, Subscription
     ])
     return db
 
@@ -383,7 +391,7 @@ def test_relations(db):
         m.feature.thing.id == t[0].id and m.feature.thing.person.id == p.id
     #: has_many via as shortcut
     assert len(p.features()) == 1
-    #: has_many via with 3 tables logic
+    #: has_many via with join tables logic
     doctor = db.Doctor.insert(name="cox")
     patient = db.Patient.insert(name="mario")
     db.Appointment.insert(doctor=1, patient=1)
@@ -403,6 +411,14 @@ def test_relations(db):
     assert jim.organizations().first().id == org
     assert joe.memberships().first().role == 'admin'
     assert jim.memberships().first().role == 'manager'
+    #: has_many with specified feld
+    db.Dog.insert(name='pongo', owner=p)
+    assert len(p.pets()) == 1 and p.pets().first().name == 'pongo'
+    #: has_many via with specified field
+    zoo = db.Zoo.insert(name='magic zoo')
+    mouse = db.Mouse.insert(name='jerry')
+    db.Elephant.insert(name='dumbo', color='pink', mouse=mouse, zoo=zoo)
+    assert len(zoo.mice()) == 1
 
 
 def test_tablenames(db):
@@ -445,7 +461,7 @@ def test_scopes(db):
     assert len(rows) == 1 and rows[0].id == s
     rows = Subscription.expired().select()
     assert len(rows) == 1 and rows[0].id == s
-    rows = db(db.Subscription.id > 0).of_status('active', 'suspended').select()
+    rows = db(db.Subscription).of_status('active', 'suspended').select()
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
     rows = p.subscriptions.of_status('active', 'suspended').select()
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
