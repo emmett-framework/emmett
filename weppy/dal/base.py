@@ -231,8 +231,7 @@ class DAL(_pyDAL):
             if icf:
                 ignore_common_filters = icf
         if q is None and query is not None:
-            from .models import Model
-            if issubclass(query, Model):
+            if hasattr(query, '_belongs_ref_'):
                 q = self._adapter.id_query(query.table)
             else:
                 q = query
