@@ -432,7 +432,7 @@ class Model(with_metaclass(MetaModel)):
     def where(cls, cond):
         if not callable(cond):
             raise SyntaxError('Model.where expects a function as parameter.')
-        return cls.db.where(cond(cls), model=cls)
+        return cls.db.where(cond(cls), model=cls.table._model_)
 
     @classmethod
     def form(cls, record=None, **kwargs):
