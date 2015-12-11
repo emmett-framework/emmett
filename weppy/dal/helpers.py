@@ -200,7 +200,8 @@ class ScopeWrap(object):
         self.scope = scope
 
     def __call__(self, *args, **kwargs):
-        return self.set.where(self.scope(self.model, *args, **kwargs))
+        return self.set.where(
+            self.scope(self.model, *args, **kwargs), model=self.model)
 
 
 class Callback(object):

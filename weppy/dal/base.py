@@ -11,7 +11,9 @@
 
 import os
 from pydal import DAL as _pyDAL, Field as _Field
-from pydal.objects import Table as _Table, Set as _Set, LazySet as _LazySet
+from pydal.objects import (
+    Table as _Table, Set as _Set, LazySet as _LazySet, Expression
+)
 from .._compat import copyreg
 from ..datastructures import sdict
 from ..handlers import Handler
@@ -59,6 +61,20 @@ class Set(_Set):
                 self._model_ = self.db[tables[0]]._model_
         if self._model_:
             self._scopes_ = self._model_._scopes_
+
+    def where(self, query, ignore_common_filters=False, model=None):
+        if query is None:
+            return self
+        elif isinstance(query, Table):
+            query = self.db._adapter.id_query(query)
+        elif isinstance(query, str):
+            query = Expression(self.db, query)
+        elif isinstance(query, Field):
+            query = query != None
+        q = self.query & query if self.query else query
+        return Set(
+            self.db, q, ignore_common_filters=ignore_common_filters,
+            model=model)
 
     def join(self, *args):
         rv = self
@@ -205,15 +221,22 @@ class DAL(_pyDAL):
                 self.__setattr__(model.__name__, obj.table)
 
     def where(self, query=None, ignore_common_filters=None):
+        q = None
         if isinstance(query, Table):
-            query = self._adapter.id_query(query)
+            q = self._adapter.id_query(query)
         elif isinstance(query, Field):
-            query = (query != None)
+            q = (query != None)
         elif isinstance(query, dict):
             icf = query.get("ignore_common_filters")
             if icf:
                 ignore_common_filters = icf
-        return Set(self, query, ignore_common_filters=ignore_common_filters)
+        if q is None and query is not None:
+            from .models import Model
+            if issubclass(query, Model):
+                q = self._adapter.id_query(query.table)
+            else:
+                q = query
+        return Set(self, q, ignore_common_filters=ignore_common_filters)
 
 
 def _DAL_unpickler(db_uid):
