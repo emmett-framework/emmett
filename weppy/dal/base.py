@@ -220,7 +220,7 @@ class DAL(_pyDAL):
                 # set reference in db for model name
                 self.__setattr__(model.__name__, obj.table)
 
-    def where(self, query=None, ignore_common_filters=None):
+    def where(self, query=None, ignore_common_filters=None, model=None):
         q = None
         if isinstance(query, Table):
             q = self._adapter.id_query(query)
@@ -235,7 +235,8 @@ class DAL(_pyDAL):
                 q = self._adapter.id_query(query.table)
             else:
                 q = query
-        return Set(self, q, ignore_common_filters=ignore_common_filters)
+        return Set(
+            self, q, ignore_common_filters=ignore_common_filters, model=model)
 
 
 def _DAL_unpickler(db_uid):
