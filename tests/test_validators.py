@@ -387,6 +387,12 @@ def test_validation(db):
     assert 'email' in errors
     errors = Consist.validate({'url': 'notanurl'})
     assert 'url' in errors
+    errors = Consist.validate({'url': 'http://domain.com/'})
+    assert 'url' not in errors
+    errors = Consist.validate({'url': 'http://domain.com'})
+    assert 'url' not in errors
+    errors = Consist.validate({'url': 'domain.com'})
+    assert 'url' not in errors
     errors = Consist.validate({'ip': 'foo'})
     assert 'ip' in errors
     errors = Consist.validate({'emails': 'foo'})
