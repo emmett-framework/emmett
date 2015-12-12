@@ -17,13 +17,17 @@ import decimal
 import json
 import re
 import struct
-import urllib
 from datetime import date, time, datetime, timedelta
 from time import strptime
 from .._compat import PY2, basestring
 from .basic import Validator, ParentValidator, _is, Matches
 from .helpers import translate, _UTC, url_split_regex, official_url_schemes, \
     unofficial_url_schemes, unicode_to_ascii_url, official_top_level_domains
+
+if PY2:
+    from urllib import unquote as url_unquote
+else:
+    from urllib.parse import unquote as url_unquote
 
 _utc = _UTC()
 
@@ -376,7 +380,7 @@ class _isGenericUrl(Validator):
                     scheme = url_split_regex.match(value).group(2)
                     # Clean up the scheme before we check it
                     if scheme is not None:
-                        scheme = urllib.unquote(scheme).lower()
+                        scheme = url_unquote(scheme).lower()
                     # If the scheme really exists
                     if scheme in self.allowed_schemes:
                         # Then the URL is valid
@@ -482,8 +486,7 @@ class _isHTTPUrl(Validator):
                         # scheme and see if it fixes the problem
                         if value.find('://') < 0:
                             schemeToUse = self.prepend_scheme or 'http'
-                            prependTest = self.__call__(schemeToUse
-                                                        + '://' + value)
+                            prependTest = self(schemeToUse + '://' + value)
                             # if the prepend test succeeded
                             if prependTest[1] is None:
                                 # if prepending in the output is enabled
