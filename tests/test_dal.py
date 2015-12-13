@@ -115,10 +115,18 @@ class Stuff(Model):
 
     @virtualfield('totalv')
     def eval_total_v(self, row):
-        return row.stuffs.price*row.stuffs.quantity
+        return row.price*row.quantity
 
     @fieldmethod('totalm')
     def eval_total_m(self, row):
+        return row.price*row.quantity
+
+    @virtualfield('totalv2', current_model_only=False)
+    def eval_total_v2(self, row):
+        return row.stuffs.price*row.stuffs.quantity
+
+    @fieldmethod('totalm2', current_model_only=False)
+    def eval_total_m2(self, row):
         return row.stuffs.price*row.stuffs.quantity
 
     @classmethod
@@ -358,11 +366,13 @@ def test_virtualfields(db):
     db.commit()
     row = db(db.Stuff.id > 0).select().first()
     assert row.totalv == 12.95*3
+    assert row.totalv2 == 12.95*3
 
 
 def test_fieldmethods(db):
     row = db(db.Stuff.id > 0).select().first()
     assert row.totalm() == 12.95*3
+    assert row.totalm2() == 12.95*3
 
 
 def test_modelmethods(db):

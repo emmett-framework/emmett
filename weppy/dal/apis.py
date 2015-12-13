@@ -48,8 +48,9 @@ class computation(object):
 class virtualfield(object):
     _inst_count_ = 0
 
-    def __init__(self, field_name):
+    def __init__(self, field_name, current_model_only=True):
         self.field_name = field_name
+        self.inject_model = current_model_only
         self._inst_count_ = virtualfield._inst_count_
         virtualfield._inst_count_ += 1
 

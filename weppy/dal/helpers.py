@@ -29,9 +29,7 @@ class RelationBuilder(object):
         self.model = model
 
     def _make_refid(self, row):
-        if row is None:
-            return self.model.id
-        return row[self.model.tablename].id
+        return row.id if row is not None else self.model.id
 
     def _many_elements(self, row):
         rid = self._make_refid(row)
@@ -190,6 +188,8 @@ class VirtualWrap(object):
         self.virtual = virtual
 
     def __call__(self, row, *args, **kwargs):
+        if self.virtual.inject_model:
+            row = row[self.model.tablename]
         return self.virtual.f(self.model, row, *args, **kwargs)
 
 
