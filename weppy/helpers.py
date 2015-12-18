@@ -13,6 +13,8 @@ from ._compat import string_types
 
 def abort(code, body=''):
     from .http import HTTP
+    from .globals import current
+    current.response.status = code
     raise HTTP(code, body)
 
 
