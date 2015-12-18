@@ -268,7 +268,7 @@ class Expose(object):
 
 
 def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
-        host=None):
+        host=None, language=None):
     """
     usages:
         url('index') # assumes app or default expose file
@@ -336,9 +336,18 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
             url = url[0:7] + "/_"+str(Expose.static_versioning()) + url[7:]
     # language
     if Expose.application.language_force_on_url:
-        if url.startswith("/") and hasattr(current, 'request'):
-            if current.request.language != Expose.application.language_default:
-                url = '/'+current.request.language+url
+        if url.startswith("/"):
+            lang = None
+            if language:
+                #: use the given language if is enabled in application
+                if language in Expose.application.languages:
+                    lang = language
+            else:
+                #: try to use the request language if context exists
+                if hasattr(current, 'request'):
+                    lang = current.request.language
+            if lang and lang != Expose.application.language_default:
+                url = '/'+lang+url
     # add extension (useless??)
     if extension:
         url = url + '.' + extension
