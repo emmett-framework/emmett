@@ -3,7 +3,7 @@
     weppy.app
     ---------
 
-    Provide the central application object.
+    Provides the central application object.
 
     :copyright: (c) 2015 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
@@ -26,6 +26,7 @@ from .utils import read_file
 
 class App(object):
     debug = None
+    test_client_class = None
 
     def __init__(self, import_name, root_path=None,
                  template_folder='templates', config_folder='config'):
@@ -206,6 +207,13 @@ class App(object):
             run_with_reloader(self, host, port)
         else:
             self._run(host, port)
+
+    def test_client(self, use_cookies=True, **kwargs):
+        tclass = self.test_client_class
+        if tclass is None:
+            from .testing import WeppyTestClient
+            tclass = WeppyTestClient
+        return tclass(self, use_cookies=use_cookies, **kwargs)
 
     def wsgi_handler(self, environ, start_request):
         return error_handler(self, environ, start_request)

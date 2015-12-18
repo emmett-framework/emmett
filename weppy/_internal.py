@@ -17,6 +17,7 @@ import os
 import pkgutil
 import sys
 import warnings
+from functools import partial
 from ._compat import implements_iterator
 
 
@@ -246,11 +247,38 @@ class LimitedStream(object):
         return line
 
 
+@implements_iterator
+class ClosingIterator(object):
+    def __init__(self, iterable, callbacks=None):
+        iterator = iter(iterable)
+        self._next = partial(next, iterator)
+        if callbacks is None:
+            callbacks = []
+        elif callable(callbacks):
+            callbacks = [callbacks]
+        else:
+            callbacks = list(callbacks)
+        iterable_close = getattr(iterator, 'close', None)
+        if iterable_close:
+            callbacks.insert(0, iterable_close)
+        self._callbacks = callbacks
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self._next()
+
+    def close(self):
+        for callback in self._callbacks:
+            callback()
+
+
 class RemovedInNextVersionWarning(DeprecationWarning):
     pass
 
 
-warnings.simplefilter('always', DeprecationWarning)
+warnings.simplefilter('always', RemovedInNextVersionWarning)
 
 
 def warn_of_deprecation(old_name, new_name, prefix=None, stack=2):

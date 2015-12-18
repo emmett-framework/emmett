@@ -62,8 +62,7 @@ db.define_models(Post, Comment)
 
 
 #: setup helping function
-@app.command('setup')
-def setup():
+def setup_admin():
     # create the user
     user = db.User.validate_and_insert(
         email="walter@massivedynamics.com",
@@ -76,6 +75,11 @@ def setup():
     # add user to admins group
     auth.add_membership(admins, user.id)
     db.commit()
+
+
+@app.command('setup')
+def setup():
+    setup_admin()
 
 #: handlers
 app.common_handlers = [
