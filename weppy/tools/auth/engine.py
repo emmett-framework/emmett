@@ -17,10 +17,11 @@ import base64
 import os
 import time
 from pydal.objects import Row
-from ..._compat import iteritems, to_unicode
+from ..._compat import iteritems, itervalues, to_unicode
 from ...datastructures import sdict
 from ...expose import url
 from ...globals import request, session
+from ...language import T
 from ...http import HTTP, redirect
 from ...security import uuid
 from ..mail import Mail
@@ -43,14 +44,24 @@ class Auth(object):
         else:
             filename = os.path.join(app.root_path, filename)
         if os.path.exists(filename):
-            key = open(filename, 'r').read().strip()
+            with open(filename, 'r') as f:
+                key = f.read().strip()
         else:
             key = alg + ':' + uuid()
-            open(filename, 'w').write(key)
+            with open(filename, 'w') as f:
+                f.write(key)
         return key
 
     def url(self, args=[], vars={}, scheme=None):
         return url(self.settings.base_url, args, vars, scheme=scheme)
+
+    def _init_settings(self, source=default_settings):
+        rv = sdict()
+        for key, value in iteritems(source):
+            if isinstance(value, dict):
+                value = self._init_settings(value)
+            rv[key] = value
+        return rv
 
     def __init__(self, app, db, usermodel=None, mailer=True, hmac_key=None,
                  hmac_key_file=None, base_url=None, csrf_prevention=True,
@@ -62,8 +73,7 @@ class Auth(object):
             hmac_key = self.get_or_create_key(app, hmac_key_file)
         #: init settings
         url_index = base_url or "account"
-        settings = self.settings = sdict()
-        settings.update(default_settings)
+        settings = self.settings = self._init_settings()
         settings.update(
             base_url=url_index,
             #cas_domains=[request.env.http_host],
@@ -197,7 +207,17 @@ class Auth(object):
                 rv[m] = self.settings.models[m].__name__.lower()
         return rv
 
+    def __set_models_labels(self):
+        for model in itervalues(default_settings.models):
+            for supmodel in list(reversed(model.__mro__))[1:]:
+                current_labels = {}
+                if hasattr(supmodel, 'form_labels'):
+                    for key, val in iteritems(supmodel.form_labels):
+                        current_labels[key] = T(val)
+                    supmodel.form_labels = current_labels
+
     def define_models(self):
+        self.__set_models_labels()
         names = self.__get_modelnames()
         models = self.settings.models
         #: AuthUser

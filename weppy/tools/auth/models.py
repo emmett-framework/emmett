@@ -83,6 +83,7 @@ class AuthModel(Model):
 
 
 class AuthUserBasic(AuthModel, TimestampedModel):
+    tablename = "auth_users"
     format = '%(email)s (%(id)s)'
     #: injected by Auth
     #  has_many(
