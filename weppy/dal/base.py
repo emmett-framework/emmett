@@ -259,6 +259,9 @@ class Field(_Field):
     _pydal_types = {
         'int': 'integer', 'bool': 'boolean', 'list:int': 'list:integer'
     }
+    _weppy_delete = {
+        'cascade': 'CASCADE', 'nullify': 'SET NULL', 'nothing': 'NO ACTION'
+    }
     _inst_count_ = 0
     _obj_created_ = False
 
@@ -281,6 +284,19 @@ class Field(_Field):
         if _info:
             kwargs['comment'] = _info
             del kwargs['info']
+        #: convert ondelete parameter
+        _ondelete = kwargs.get('ondelete')
+        if _ondelete:
+            if _ondelete not in list(self._weppy_delete):
+                raise SyntaxError(
+                    'Field ondelete should be set on %s, %s or %s' %
+                    list(self._weppy_delete)
+                )
+            kwargs['ondelete'] = self._weppy_delete[_ondelete]
+        #: process 'refers_to' fields
+        self._isrefers = kwargs.get('_isrefers')
+        if self._isrefers:
+            del kwargs['_isrefers']
         #: get auto validation preferences
         if 'auto_validation' in kwargs:
             self._auto_validation = kwargs['auto_validation']
@@ -321,6 +337,8 @@ class Field(_Field):
         if self.notnull or self._type.startswith('reference') or \
                 self._type.startswith('list:reference'):
             rv['presence'] = True
+        if not self.notnull and self._isrefers is True:
+            rv['allow'] = 'empty'
         if self.unique:
             rv['unique'] = True
         return rv

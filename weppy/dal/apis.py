@@ -20,6 +20,14 @@ class belongs_to(Reference):
         return belongs_to._references_
 
 
+class refers_to(Reference):
+    _references_ = {}
+
+    @property
+    def refobj(self):
+        return refers_to._references_
+
+
 class has_one(Reference):
     _references_ = {}
 

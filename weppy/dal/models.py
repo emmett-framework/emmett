@@ -43,7 +43,8 @@ class MetaModel(type):
         declared_fields = OrderedDict()
         declared_vfields = OrderedDict()
         super_relations = sdict(
-            _belongs_ref_=[], _hasone_ref_=[], _hasmany_ref_=[]
+            _belongs_ref_=[], _refers_ref_=[],
+            _hasone_ref_=[], _hasmany_ref_=[]
         )
         declared_computations = {}
         declared_callbacks = {}
@@ -72,12 +73,17 @@ class MetaModel(type):
         declared_fields.update(current_fields)
         new_class._declared_fields_ = declared_fields
         #: set relations references binding
-        from .apis import belongs_to, has_one, has_many
+        from .apis import belongs_to, refers_to, has_one, has_many
         items = []
         for item in belongs_to._references_.values():
             items += item.reference
         new_class._belongs_ref_ = super_relations._belongs_ref_ + items
         belongs_to._references_ = {}
+        items = []
+        for item in refers_to._references_.values():
+            items += item.reference
+        new_class._refers_ref_ = super_relations._refers_ref_ + items
+        refers_to._references_ = {}
         items = []
         for item in has_one._references_.values():
             items += item.reference
@@ -187,6 +193,8 @@ class Model(with_metaclass(MetaModel)):
         if isinstance(item, dict):
             rv['name'] = list(item)[0]
             rv['model'] = item[rv['name']]
+            if rv['model'] == "self":
+                rv['model'] = self.__class__.__name__
         else:
             rv['name'] = item
             rv['model'] = item.capitalize()
@@ -228,23 +236,40 @@ class Model(with_metaclass(MetaModel)):
         self._virtual_relations_ = OrderedDict()
         bad_args_error = "belongs_to, has_one and has_many only accept " + \
             "strings or dicts as arguments"
-        #: belongs_to are mapped with 'reference' type Field
+        #: belongs_to and refers_to are mapped with 'reference' type Field
+        _references = []
+        _reference_keys = ['_belongs_ref_', '_refers_ref_']
         belongs_references = {}
-        if hasattr(self, '_belongs_ref_'):
-            for item in getattr(self, '_belongs_ref_'):
+        for key in _reference_keys:
+            if hasattr(self, key):
+                _references.append(getattr(self, key))
+            else:
+                _references.append([])
+        isbelongs = True
+        for _references_obj in _references:
+            for item in _references_obj:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_belongs_relation(item)
-                tablename = self.db[reference['model']]._tablename
-                setattr(
-                    self.__class__, reference['name'],
-                    Field('reference '+tablename))
+                if reference['model'] != self.__class__.__name__:
+                    tablename = self.db[reference['model']]._tablename
+                else:
+                    tablename = self.tablename
+                if isbelongs:
+                    fieldobj = Field('reference '+tablename)
+                else:
+                    fieldobj = Field(
+                        'reference '+tablename, ondelete='nullify',
+                        _isrefers=True)
+                setattr(self.__class__, reference['name'], fieldobj)
                 self.fields.append(
                     getattr(self, reference['name'])._make_field(
                         reference['name'], self)
                 )
                 belongs_references[reference['name']] = reference['model']
+            isbelongs = False
         setattr(self.__class__, '_belongs_ref_', belongs_references)
+        delattr(self.__class__, '_refers_ref_')
         #: has_one are mapped with virtualfield()
         hasone_references = {}
         if hasattr(self, '_hasone_ref_'):
