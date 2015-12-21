@@ -10,7 +10,7 @@
 """
 
 from datetime import datetime
-from ...dal import Model, Field, before_insert
+from ...dal import Model, Field, before_insert, fieldmethod
 from ...globals import current, request
 from ...security import uuid
 
@@ -109,6 +109,18 @@ class AuthUserBasic(AuthModel, TimestampedModel):
         if self.auth.settings.registration_requires_verification and not \
                 fields.get('registration_key'):
             fields['registration_key'] = uuid()
+
+    @fieldmethod('disable')
+    def _set_disabled(self, row):
+        return row.update_record(registration_key='disabled')
+
+    @fieldmethod('block')
+    def _set_blocked(self, row):
+        return row.update_record(registration_key='blocked')
+
+    @fieldmethod('allow')
+    def _set_allowed(self, row):
+        return row.update_record(registration_key='')
 
 
 class AuthUser(AuthUserBasic):

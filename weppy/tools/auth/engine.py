@@ -714,6 +714,19 @@ class Auth(object):
             (self.table_permission.record_id == long(record_id))
         ).delete()
 
+    def change_user_status(self, user, status):
+        return self.db(self.table_user.id == user).update(
+            registration_key=status)
+
+    def disable_user(self, user):
+        return self.change_user_status(user, 'disabled')
+
+    def block_user(self, user):
+        return self.change_user_status(user, 'blocked')
+
+    def allow_user(self, user):
+        return self.change_user_status(user, '')
+
     """
     def accessible_query(self, name, table, user_id=None):
         if not user_id:

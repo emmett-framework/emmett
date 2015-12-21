@@ -323,9 +323,9 @@ class Exposer(object):
             if user.registration_key == 'pending':
                 flash(self.auth.messages.registration_pending)
                 redirect(self.auth.url('request_reset_password'))
-            elif user.registration_key in ('disabled', 'blocked'):
+            elif user.registration_key == 'blocked':
                 flash(self.auth.messages.login_disabled)
-                redirect(self.auth.url('request_reset_password'))
+                redirect(self.auth.url('login'))
             if self.auth.email_reset_password(user):
                 flash(self.messages.email_sent)
             else:
