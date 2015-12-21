@@ -126,29 +126,36 @@ class Model(with_metaclass(MetaModel)):
 
     @classmethod
     def __getsuperprops(cls):
-        superattr = "_supermodel" + cls.__name__
+        superattr = "_supermodels" + cls.__name__
         if hasattr(cls, superattr):
             return
-        supermodel = cls.__base__
-        try:
-            supermodel.__getsuperprops()
-            setattr(cls, superattr, supermodel)
-        except:
-            setattr(cls, superattr, None)
+        supermodels = cls.__bases__
+        superattr_val = []
+        for supermodel in supermodels:
+            try:
+                supermodel.__getsuperprops()
+                superattr_val.append(supermodel)
+            except:
+                pass
+        setattr(cls, superattr, superattr_val)
         sup = getattr(cls, superattr)
         if not sup:
             return
-        if cls.tablename == getattr(sup, 'tablename', None):
-            cls.tablename = make_tablename(cls.__name__)
+        if hasattr(cls, 'tablename'):
+            for model in sup:
+                if cls.tablename == getattr(model, 'tablename', None):
+                    cls.tablename = make_tablename(cls.__name__)
+                    break
         #: get super model fields' properties
         proplist = ['validation', 'default_values', 'update_values',
                     'repr_values', 'form_labels', 'form_info', 'form_rw',
                     'form_widgets']
         for prop in proplist:
-            superprops = getattr(sup, prop)
             props = {}
-            for k, v in superprops.items():
-                props[k] = v
+            for model in sup:
+                superprops = getattr(model, prop)
+                for k, v in superprops.items():
+                    props[k] = v
             for k, v in getattr(cls, prop).items():
                 props[k] = v
             setattr(cls, prop, props)
