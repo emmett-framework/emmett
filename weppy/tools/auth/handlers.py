@@ -10,6 +10,7 @@
 """
 
 from datetime import timedelta
+from pydal.helpers.classes import RecordUpdater, RecordDeleter
 from ..._compat import itervalues
 from ...dal import Field
 from ...datastructures import sdict
@@ -139,51 +140,73 @@ class AuthManager(Handler):
             if isinstance(field, (Field.Virtual, Field.Method)):
                 self._virtuals.append(field)
 
-    @property
-    def _user_as_row(self):
+    def _load_virtuals(self):
+        self.auth.user.update_record = RecordUpdater(
+            self.auth.user, self.auth.table_user, self.auth.user.id
+        )
+        self.auth.user.delete_record = RecordDeleter(
+            self.auth.table_user, self.auth.user.id
+        )
+        #: inject virtual fields on session data
         r = sdict()
         r[self.auth.settings.table_user_name] = self.auth.user
-        return r
-
-    def _load_virtuals(self):
-        #: inject virtual fields on session data
         for field in self._virtuals:
-            if isinstance(field, Field.Virtual):
-                try:
-                    self.auth.user[field.name] = field.f(self._user_as_row)
-                except:
-                    pass
-            if isinstance(field, Field.Method):
-                try:
+            try:
+                if isinstance(field, Field.Virtual):
+                    self.auth.user[field.name] = field.f(r)
+                elif isinstance(field, Field.Method):
                     self.auth.user[field.name] = \
-                        lambda s=self, field=field: field.f(s._user_as_row)
-                except:
-                    pass
+                        lambda row=r, field=field: field.f(row)
+            except:
+                pass
+
+    def _unload_virtuals(self):
+        for field in self._virtuals:
+            try:
+                del self.auth.user[field.name]
+            except:
+                pass
+        try:
+            del self.auth.user.update_record
+            del self.auth.user.delete_record
+        except:
+            pass
 
     def on_start(self):
         # check auth session is valid
-        if self.auth._auth and self.auth._auth.last_visit and \
-           self.auth._auth.last_visit + \
-           timedelta(days=0, seconds=self.auth._auth.expiration) > request.now:
-            # load virtuals from Auth Model
-            if self.auth.user:
-                self._load_virtuals()
-            # this is a trick to speed up sessions
-            if (request.now - self.auth._auth.last_visit).seconds > \
-               (self.auth._auth.expiration / 10):
-                self.auth._auth.last_visit = request.now
-        else:
-            # if auth session is not valid and existent, delete it
-            if self.auth._auth:
+        authsess = self.auth._auth
+        if authsess:
+            #: check session has needed data
+            if not authsess.last_visit or not authsess.last_dbcheck:
                 del session.auth
+                return
+            #: is session expired?
+            if (authsess.last_visit +
+               timedelta(seconds=authsess.expiration) < request.now):
+                del session.auth
+            #: does session need re-sync with db?
+            elif authsess.last_dbcheck + timedelta(seconds=360) < request.now:
+                if self.auth.user:
+                    #: is user still valid?
+                    dbrow = self.auth.table_user(id=self.auth.user.id)
+                    if dbrow and not dbrow.registration_key:
+                        self.auth.login_user(
+                            self.auth.table_user(id=self.auth.user.id))
+                    else:
+                        del session.auth
+            else:
+                #: load virtuals from Auth Model
+                if self.auth.user:
+                    self._load_virtuals()
+                #: set last_visit if make sense
+                if ((request.now - authsess.last_visit).seconds >
+                   (authsess.expiration / 10)):
+                    authsess.last_visit = request.now
 
     def on_end(self):
         # set correct session expiration if requested by user
         if self.auth._auth and self.auth._auth.remember:
             session._expires_after(self.auth._auth.expiration)
-        # remove virtual fields
+        # remove virtual fields for serialization
         if self.auth.user:
-            ukeys = self.auth.user.keys()
-            for field in self._virtuals:
-                if field.name in ukeys:
-                    del self.auth.user[field.name]
+            self._unload_virtuals()

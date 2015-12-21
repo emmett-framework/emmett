@@ -396,16 +396,15 @@ class Auth(object):
         return (True, True, is_valid_user)
 
     def login_user(self, user):
-        """
-        login the user = db.auth_user(id)
-        """
         user = Row(user)
-        for key, value in list(user.items()):
-            if callable(value) or key == 'password':
-                delattr(user, key)
+        try:
+            del user.password
+        except:
+            pass
         session.auth = sdict(
             user=user,
             last_visit=request.now,
+            last_dbcheck=request.now,
             expiration=self.settings.expiration,
             hmac_key=uuid())
 
@@ -503,7 +502,6 @@ class Auth(object):
             redirect(handler.login_url(unext))
 
         #: process authenticated users
-        user = Row(self.table_user._filter_fields(user, id=True))
         self.login_user(user)
         #: use the right session expiration
         session.auth.expiration = \
