@@ -10,7 +10,15 @@
 - response
 - sessions
 - languages
-- dal
+- dal:
+  - connecting
+  - models
+  - operations
+  - filters
+  - relations
+  - virtuals
+  - callbacks
+  - advanced
 - validations
 - forms
 - auth
