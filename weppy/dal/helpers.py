@@ -88,13 +88,17 @@ class RelationBuilder(object):
         return query, sel_field, sname, rid, lbelongs, lvia
 
 
+class HasOneSet(LazySet):
+    def __call__(self, *args, **kwargs):
+        return self.select(*args, **kwargs).first()
+
+
 class HasOneWrap(object):
     def __init__(self, ref):
         self.ref = ref
 
     def __call__(self, model, row):
-        return model.db(
-            RelationBuilder(self.ref, model).many_query(row)).select().first()
+        return HasOneSet(*RelationBuilder(self.ref, model).many(row))
 
 
 class HasManySet(LazySet):
