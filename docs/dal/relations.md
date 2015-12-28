@@ -108,6 +108,7 @@ We will inspect all the operations you can do with the sets generated via `has_m
 
 has\_one
 ---------
+*Changed in version 0.6*
 
 The `has_one` helper is intended to be used as the reverse operator of a `belongs_to` or a `refers_to` in one-to-one relations. Let's see how it works with an example:
 
@@ -135,6 +136,8 @@ The `has_one` helper is useful for your application code, since you can directly
 ```python
 >>> ww = db.Citizen(name="Heisenberg")
 >>> ww.passport
+<Set (passports.citizen = 1)>
+>>> ww.passport()
 <Row {'number': 'AA1234', 'id': 1L, 'citizen': 1L}>
 ```
 
@@ -187,9 +190,13 @@ Using the `via` option, we finally achieve the desired result, as we can access 
 >>> user = db.User(name="Walter White")
 >>> user.groups
 <Set ((memberships.user = 1) AND (memberships.group = groups.id))>
+>>> user.groups()
+<Rows (1)>
 >>> group = db.Group(name="Los Pollos Hermanos")
 >>> group.users
 <Set ((memberships.group = 1) AND (memberships.user = users.id))>
+>>> group.users()
+<Rows (1)>
 ```
 
 ### Using via option for shortcuts
@@ -241,6 +248,7 @@ has_many({'mice': 'Mouse'})
 ```
 
 ### Specify fields and models in relations
+*New in version 0.6*
 
 When you have relations that should be mapped to custom named fields, you should specify them in both sides of the relations. This happens often when you have multiple relations to the same model, as in this example:
 
@@ -263,6 +271,7 @@ As you can see, we have that a `Todo` always have an owner, which is a `User`, a
 We specified the model in the `belongs_to` and the `refers_to` helpers, and the model and the field with the format `Model.field`  in the `has_many` helpers. With this notations we can access the relation sets as usual.
 
 ### Self references
+*New in version 0.6*
 
 Specifying relation models becomes handy also in situations where you have relations with the same model, for example:
 
@@ -278,51 +287,4 @@ As you can see, we defined a model `Person` which can have a relation with anoth
 Operations with relations
 --------------------
 
-[...]
-
-### has\_many sets methods
-
-Every time you use the `has_many` helper, weppy add an attribute of type `Set` (pydal's class) with the specified name on the `Row` object you've selected. Let's see it with the above example of users and things:
-
-```python
->>> u = db.User(id=1)
->>> u.memberships
-<Set (memberships.user = 1)>
->>> u.things
-<Set ((memberships.user = 1) AND (memberships.thing = things.id))>
-```
-
-Since the object is a specific set of your database responding to a query, you have all the standard methods to run operations on in:
-
-| method | description |
-| --- | --- |
-| count | count the records in the set |
-| select | get the records of the set |
-| update | update all the records in the set |
-| validate\_and\_update | perform a validation and update the records |
-| delete | delete all the records in the set |
-| where | return a subset given additional queries |
-| add | add a row to the set |
-
-As you observed, until now we used a shortcut for the `select` method just calling the set:
-
-```python
->>> u.things.select()
-<Rows (1)>
->>> u.things()
-<Rows (1)>
-```
-
-While all the methods described are quite intuitive, and works in the same way of running operations on tables, the add option can be quite useful when you need to add a relation to an existing object:
-
-```python
->>> cube = db.Thing(name="cube")
->>> user = db.User(id=1)
->>> user.things.add(cube)
-```
-
-which is just another way of doing:
-
-```python
->>> db.Membership.insert(user=user, thing=thing)
-```
+*section in development*
