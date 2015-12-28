@@ -221,6 +221,8 @@ class Model(with_metaclass(MetaModel)):
                 rv['field'] = splitted[1]
             else:
                 rv['field'] = self.__class__.__name__.lower()
+            if rv['model'] == "self":
+                rv['model'] = self.__class__.__name__
         return rv
 
     def _define_props_(self):
