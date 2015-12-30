@@ -76,6 +76,18 @@ class Set(_Set):
             self.db, q, ignore_common_filters=ignore_common_filters,
             model=model)
 
+    def select(self, *fields, **options):
+        pagination = options.get('paginate')
+        if pagination:
+            if isinstance(pagination, tuple):
+                offset = pagination[0]
+                limit = pagination[1]
+            else:
+                offset = pagination
+                limit = 10
+            options['limitby'] = ((offset-1)*limit, offset*limit)
+        return super(Set, self).select(*fields, **options)
+
     def join(self, *args):
         rv = self
         if self._model_ is not None:
