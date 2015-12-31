@@ -6,13 +6,24 @@ Next
 
 (release date to be announced, codename to be selected)
 
-- Various bugfixes
+- Several bugfixes
 - Added `remove` method to `HasManySet` and `HasManyViaSet`
 - Common handlers and helpers are now accessible via application object
 - Introduced scopes in models
 - Added `where` method to `Model`
 - Template reloader now checks also `include` and `extend` blocks
 - Deprecated `expose()` in favor of `route()`
+- Implemented `join` method on `Set`
+- Reviewed `Auth` actions depending on user status
+- Added support facilities to `Auth` in order to manage user status
+- Implemented support for custom naming on `has_many`
+- Introduced testing suite for applications
+- Added `language` option to `url()`
+- Implemented user status resync with database in `Auth` handler
+- Implemented `refers_to` in dal apis
+- Added 'self' keywork for self-relations in dal
+- Changed `has_one` return value to `Set` in order to avoid n+1 queries
+- Added `pagination` option to `Set.select()`
 
 
 Version 0.5
