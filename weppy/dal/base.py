@@ -86,40 +86,70 @@ class Set(_Set):
                 offset = pagination
                 limit = 10
             options['limitby'] = ((offset-1)*limit, offset*limit)
+            del options['paginate']
+        including = options.get('including')
+        if including and self._model_ is not None:
+            options['left'] = self._parse_left_rjoins(including)
+            del options['including']
+            #: add fields to select
+            if not fields:
+                fields = [self._model_.table.ALL]
+            for join in options['left']:
+                fields.append(join.first.ALL)
         return super(Set, self).select(*fields, **options)
 
     def join(self, *args):
         rv = self
         if self._model_ is not None:
-            from .helpers import RelationBuilder
             joins = []
             for arg in args:
-                rel = self._model_._hasmany_ref_.get(arg)
-                if rel:
-                    if isinstance(rel, dict) and rel.get('via'):
-                        joins.append(
-                            RelationBuilder(
-                                rel, self._model_).via()[0])
-                    else:
-                        joins.append(
-                            RelationBuilder(rel, self._model_).many_query())
-                    continue
-                rel = self._model_._belongs_map_.get(arg)
-                if rel:
-                    joins.append(
-                        RelationBuilder(
-                            (rel, arg), self._model_).belongs_query())
-                    continue
-                rel = self._model_._hasone_ref_.get(arg)
-                if rel:
-                    joins.append(
-                        RelationBuilder(rel, self._model_).many_query())
+                joins.append(self._parse_rjoin(arg))
             if joins:
                 q = joins[0]
                 for join in joins[1:]:
                     q = q & join
                 rv = rv.where(q)
         return rv
+
+    def _parse_rjoin(self, arg, with_table=False):
+        from .helpers import RelationBuilder
+        #: match has_many
+        rel = self._model_._hasmany_ref_.get(arg)
+        if rel:
+            if isinstance(rel, dict) and rel.get('via'):
+                r = RelationBuilder(rel, self._model_).via()
+                if with_table:
+                    return r[0], r[1]._table
+                return r[0]
+            else:
+                r = RelationBuilder(rel, self._model_)
+                if with_table:
+                    return r.many_query(), r._many_elements()[0]._table
+                return r.many_query()
+        #: match belongs_to and refers_to
+        rel = self._model_._belongs_ref_.get(arg)
+        if rel:
+            r = RelationBuilder((rel, arg), self._model_).belongs_query()
+            if with_table:
+                return r, self._model_.db[rel]
+            return r
+        #: match has_one
+        rel = self._model_._hasone_ref_.get(arg)
+        if rel:
+            r = RelationBuilder(rel, self._model_)
+            if with_table:
+                return r.many_query(), r._many_elements()[0]._table
+            return r.many_query()
+        return None
+
+    def _parse_left_rjoins(self, args):
+        if not isinstance(args, (list, tuple)):
+            args = [args]
+        joins = []
+        for arg in args:
+            join = self._parse_rjoin(arg, True)
+            joins.append(join[1].on(join[0]))
+        return joins
 
     def __getattr__(self, name):
         scope = self._scopes_.get(name)
