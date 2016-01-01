@@ -4,7 +4,7 @@
 
     Provide the Handler class and wrapper to process handlers.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 

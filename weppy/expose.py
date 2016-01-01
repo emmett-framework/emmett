@@ -6,7 +6,7 @@
     Provide routing for application, as well as internal url creation.
     The expose module is responsible of dispatching the app dynamic requests.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 

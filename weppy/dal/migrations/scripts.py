@@ -5,7 +5,7 @@
 
     Provides scripts interface for migrations.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2016 by Giovanni Barillari
 
     Based on the code of Alembic (https://bitbucket.org/zzzeek/alembic)
     :copyright: (c) 2009-2015 by Michael Bayer

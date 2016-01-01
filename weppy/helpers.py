@@ -5,7 +5,7 @@
 
     Provides helping methods for applications.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 from ._compat import string_types

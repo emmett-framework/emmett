@@ -5,7 +5,7 @@
 
     Provides model layer for weppy's dal.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
