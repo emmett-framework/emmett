@@ -67,6 +67,6 @@ def test_models(db):
     assert group.users()[0].email == "walter@massivedynamics.com"
     assert len(group.authpermissions()) == 1
     user.authgroups.add(group2)
-    assert len(user.authgroups()) == 2
-    assert user.authgroups()[1].role == "moderator"
+    assert len(user.authgroups(db.auth_groups.id)) == 2
+    assert user.authgroups(db.auth_groups.role)[1].role == "moderator"
     assert len(user.things()) == 0
