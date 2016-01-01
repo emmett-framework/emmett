@@ -427,10 +427,6 @@ class Model(with_metaclass(MetaModel)):
     def setup(self):
         pass
 
-    #@classmethod
-    #def new(cls, **kwargs):
-    #   return Row(**kwargs)
-
     @classmethod
     def create(cls, *args, **kwargs):
         #rv = sdict(id=None)
@@ -467,6 +463,24 @@ class Model(with_metaclass(MetaModel)):
         if not callable(cond):
             raise SyntaxError('Model.where expects a function as parameter.')
         return cls.db.where(cond(cls), model=cls.table._model_)
+
+    @classmethod
+    def all(cls):
+        return cls.db(cls.table)
+
+    @classmethod
+    def first(cls):
+        return cls.all().select(orderby=cls.id, limitby=(0, 1)).first()
+
+    @classmethod
+    def last(cls):
+        return cls.all().select(orderby=~cls.id, limitby=(0, 1)).first()
+
+    @classmethod
+    def get(cls, *args, **kwargs):
+        if len(args) == 1:
+            return cls.table[args[0]]
+        return cls.table(**kwargs)
 
     @classmethod
     def form(cls, record=None, **kwargs):
