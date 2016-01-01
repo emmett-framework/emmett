@@ -92,6 +92,7 @@ class Set(_Set):
             options['left'] = self._parse_left_rjoins(including)
             del options['including']
             #: add fields to select
+            fields = list(fields)
             if not fields:
                 fields = [self._model_.table.ALL]
             for join in options['left']:
