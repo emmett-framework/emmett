@@ -10,6 +10,7 @@
 """
 
 import re
+from ..utils import cachedprop
 from .base import Set, LazySet
 
 
@@ -31,7 +32,7 @@ class RelationBuilder(object):
     def _make_refid(self, row):
         return row.id if row is not None else self.model.id
 
-    def _many_elements(self, row):
+    def _many_elements(self, row=None):
         rid = self._make_refid(row)
         field = self.model.db[self.ref['model']][self.ref['field']]
         return field, rid
@@ -89,7 +90,13 @@ class RelationBuilder(object):
 
 
 class HasOneSet(LazySet):
+    @cachedprop
+    def _last_resultset(self):
+        return self.select().first()
+
     def __call__(self, *args, **kwargs):
+        if not args and not kwargs:
+            return self._last_resultset
         return self.select(*args, **kwargs).first()
 
 
@@ -102,7 +109,13 @@ class HasOneWrap(object):
 
 
 class HasManySet(LazySet):
+    @cachedprop
+    def _last_resultset(self):
+        return self.select()
+
     def __call__(self, *args, **kwargs):
+        if not args and not kwargs:
+            return self._last_resultset
         return self.select(*args, **kwargs)
 
     def add(self, **data):
@@ -138,8 +151,14 @@ class HasManyViaSet(Set):
         self._via_error = \
             'Cannot %s elements to an has_many relation without a join table'
 
+    @cachedprop
+    def _last_resultset(self):
+        return self.select(self._rfield)
+
     def __call__(self, *args, **kwargs):
         if not args:
+            if not kwargs:
+                return self._last_resultset
             args = [self._rfield]
         return self.select(*args, **kwargs)
 
