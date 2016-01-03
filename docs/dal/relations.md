@@ -1,5 +1,5 @@
 Relations
-========
+=========
 *New in version 0.4*
 
 One of the big advantages of using a relational database is, indeed, the ability of establishing relations between data.    
@@ -21,7 +21,7 @@ As you can see, we used the `belongs_to` and `has_many` helpers in order to defi
 These helpers will also add attributes and helpers on records in order to access related data more quickly. In the next paragraphs we will inspect all the available helpers and how to use them in order to perform operations between related data.
 
 belongs\_to
--------------
+-----------
 
 The `belongs_to` helper allows you to define relations that depends on other entities. If we recall the example we seen above:
 
@@ -52,7 +52,7 @@ This assertion has some consequences on the validation and on the deletion polic
 Whenever you don't need a strictly dependency for this kind of relation, you can use the `refers_to` helper.
 
 refers\_to
----------
+----------
 *New in version 0.6*
 
 The `refers_to` helper, as of the `belongs_to`, allows you to define relations that depends on other entities, but not in a way where these relations are *necessary*. To explain this concept, let's see another example:
@@ -142,7 +142,7 @@ The `has_one` helper is useful for your application code, since you can directly
 ```
 
 Many to many relations and "via" option
-------
+---------------------------------------
 In order to create a many-to-many relationship, you have to use a *join table*. Some frameworks will hide to you this by generating those tables for you, but weppy won't do hidden operations on you database, and, as a consequence of a *design decision*, requires you to write down the model of the join table too, and to be conscious of what happening.
 
 A quite common many-to-many relations is the one between users and groups, where an user can have many groups and a group have many users. In weppy we can write down these models:
@@ -227,7 +227,7 @@ As you can see, you can use `via` to share `has_many` relations to `belongs_to` 
 ```
 
 Naming and advanced relations
---------
+-----------------------------
 Under the default behavior, `belongs_to`, `refers_to`, `has_one` and `has_many` use the passed argument both for the attribute naming and the model you're referencing to, so:
 
 - `belongs_to('user')` or `refers_to('user')` will add a `user` field to your model referenced to `User` model
@@ -285,6 +285,6 @@ class Person(Model):
 As you can see, we defined a model `Person` which can have a relation with another record of the same table: father is a `Person` too. In order to achieve this result, we simply used the keyword `self`. You can also use the model name for the relation, changing `'self'` with `'Person'`, and weppy will understand that too, but we think this way is more self-explanatory.
 
 Operations with relations
---------------------
+-------------------------
 
 *section in development*

@@ -14,7 +14,7 @@
   - connecting
   - models
   - operations
-  - filters
+  - scopes
   - relations
   - virtuals
   - callbacks

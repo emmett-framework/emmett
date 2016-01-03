@@ -1,4 +1,0 @@
-Filters
-=======
-
-*chapter in development*

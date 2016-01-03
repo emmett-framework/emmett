@@ -305,23 +305,27 @@ Other methods pre-defined in weppy are:
 | validate | process the values passed (field=value) and return None if they pass the validation defined in the model or a dictionary of errors |
 | create | insert a new record with the values passed (field=value) if they pass the validation |
 
-But how you can define your methods?   
-Let's say, for example that you want a shortcut for querying record in your model `Show` with the same basic condition, as in the case you need to call in several parts of your code only shows going to air today. Assuming you have a `air_on` field of type *date* in your model, you can write down something like this:
+But how can you define additional methods?   
+Let's say, for example that you want a shortcut in your `Notification` model to set all the records to be *read* for a specific user, without writing down the query manually every time:
 
 ```python
-@classmethod
-def onair_today(cls, query=None):
-    _query = (cls.air_on == datetime.utcnow().date())
-    if query:
-        _query = _query & query
-    return cls.db(_query).select()
+class Notification(Model):
+    user = Field()
+    message = Field('text')
+    read = Field('bool')
+    
+    @classmethod
+    def read_all(cls, user):
+        return cls.where(
+            lambda n: n.user == user
+        ).update(read=True)
 ```
-now you can do:
+now you can easily set user's notification as read:
 
 ```python
-today_shows = Show.onair_today()
+>>> Notification.read_all(my_user)
+3
 ```
-and you're done.
 
 As you observed, you can just use the standard `classmethod` decorator of the python language.
 
