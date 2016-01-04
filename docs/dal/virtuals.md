@@ -115,8 +115,10 @@ Then, once we have a message, we can access the next quickly:
 
 ```python
 >>> message = db(db.Message.topic == 1).select().first()
+>>> message
+<Row {'id': 2L, 'topic': 1L, 'author': 1L, 'written_at': datetime.datetime(2015, 12, 22, 9, 18, 23, 118701), 'body': 'This is a test message'} >
 >>> message.next_one()
-<Row {'id': 3L, 'topic': 1L, 'written_at': datetime.datetime(2015, 12, 22, 9, 20, 21, 229511),  'name': 'This is a test message'} >
+<Row {'id': 3L, 'topic': 1L, 'author': 1L, 'written_at': datetime.datetime(2015, 12, 22, 9, 20, 21, 229511), 'body': 'This is another test message'} >
 ```
 
-Model methods, as we seen for virtual fields, needs row as the first parameter, and you can obviously add more parameters and pass them during invocation.
+Field methods, as we seen for virtual fields, needs row as the first parameter, and you can obviously add more parameters and pass them during invocation.
