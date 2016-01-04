@@ -21,10 +21,11 @@ Next
 - Added `language` option to `url()`
 - Implemented user status resync with database in `Auth` handler
 - Implemented `refers_to` in dal apis
-- Added 'self' keywork for self-relations in dal
+- Added 'self' keyword for self-relations in dal
 - Changed `has_one` return value to `Set` in order to avoid n+1 queries
-- Added `pagination` option to `Set.select()`
-
+- Added `pagination` and `including` options to `Set.select()`
+- Caching resultsets on `has_one` and `has_many` sets calls
+- Added `all`, `first`, `last` and `get` methods to `Model`
 
 Version 0.5
 -----------
