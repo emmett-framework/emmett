@@ -11,6 +11,7 @@
 
 import re
 from pydal.objects import Rows
+from pydal.helpers.classes import Reference as _IDReference
 from ..utils import cachedprop
 from .base import Set, LazySet
 
@@ -241,6 +242,18 @@ class Callback(object):
         return None
 
 
+class JoinedIDReference(_IDReference):
+    @classmethod
+    def _from_record(cls, record, table=None):
+        rv = cls(record.id)
+        rv._table = table
+        rv._record = record
+        return rv
+
+    def as_dict(self, datetime_to_str=False, custom_types=None):
+        return self._record.as_dict()
+
+
 class JoinSet(Set):
     @classmethod
     def _from_set(cls, obj, table, joins):
@@ -280,7 +293,8 @@ class JoinSet(Set):
             #: add joins in nested Rows objects
             for join in self._joins_:
                 if join[2]:
-                    records[-1][join[0]] = record[join[1]]
+                    records[-1][join[0]] = JoinedIDReference._from_record(
+                        record[join[1]], self.db[join[1]])
                 else:
                     records[-1][join[0]].records.append(record[join[1]])
         return JoinRows(
@@ -332,7 +346,8 @@ class LeftJoinSet(Set):
             for join in jtables:
                 if record[join[1]].id is not None:
                     if join[2]:
-                        records[-1][join[0]] = record[join[1]]
+                        records[-1][join[0]] = JoinedIDReference._from_record(
+                            record[join[1]], self.db[join[1]])
                     else:
                         records[-1][join[0]].records.append(record[join[1]])
         return JoinRows(
