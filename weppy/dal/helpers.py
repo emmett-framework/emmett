@@ -10,6 +10,7 @@
 """
 
 import re
+from pydal.objects import Rows
 from ..utils import cachedprop
 from .base import Set, LazySet
 
@@ -238,6 +239,115 @@ class Callback(object):
 
     def __call__(self):
         return None
+
+
+class JoinSet(Set):
+    @classmethod
+    def _from_set(cls, obj, table, joins):
+        rv = cls(
+            obj.db, obj.query, obj.query.ignore_common_filters)
+        rv._stable_ = table
+        rv._joins_ = joins
+        return rv
+
+    def select(self, *fields, **options):
+        #: use iterselect for performance
+        rows = super(Set, self).iterselect(*fields, **options)
+        #: build new colnames
+        colnames = []
+        jcolnames = {}
+        for colname in rows.colnames:
+            tname, cname = colname.split('.')
+            if tname == self._stable_:
+                colnames.append(cname)
+            else:
+                if jcolnames.get(tname) is None:
+                    jcolnames[tname] = []
+                jcolnames[tname].append(cname)
+        #: rebuild rowset using nested objects
+        records = []
+        _last_rid = None
+        for record in rows:
+            #: since we have multiple rows for the same id, we take them once
+            if record[self._stable_].id != _last_rid:
+                records.append(record[self._stable_])
+                #: prepare nested rows
+                for jname in self._joins_:
+                    records[-1][jname] = Rows(
+                        self.db, [], jcolnames[jname], compact=False)
+            _last_rid = record[self._stable_].id
+            #: add joins in nested Rows objects
+            for jname in self._joins_:
+                records[-1][jname].records.append(record[jname])
+        return JoinRows(
+            self.db, records, colnames, compact=False, jtables=self._joins_)
+
+
+class LeftJoinSet(Set):
+    @classmethod
+    def _from_set(cls, obj):
+        return cls(
+            obj.db, obj.query, obj.query.ignore_common_filters, obj._model_)
+
+    def select(self, *fields, **options):
+        #: collect tablenames
+        table = self._model_.tablename
+        jtables = []
+        for join in options['left']:
+            jtables.append(join.first._tablename)
+        #: use iterselect for performance
+        rows = super(Set, self).iterselect(*fields, **options)
+        #: build new colnames
+        colnames = []
+        jcolnames = {}
+        for colname in rows.colnames:
+            tname, cname = colname.split('.')
+            if tname == table:
+                colnames.append(cname)
+            else:
+                if jcolnames.get(tname) is None:
+                    jcolnames[tname] = []
+                jcolnames[tname].append(cname)
+        #: rebuild rowset using nested objects
+        records = []
+        _last_rid = None
+        for record in rows:
+            #: since we have multiple rows for the same id, we take them once
+            if record[table].id != _last_rid:
+                records.append(record[table])
+                #: prepare nested rows
+                for jname in jtables:
+                    records[-1][jname] = Rows(
+                        self.db, [], jcolnames[jname], compact=False)
+            _last_rid = record[table].id
+            #: add joins in nested Rows objects
+            for jname in jtables:
+                if record[jname].id is not None:
+                    records[-1][jname].records.append(record[jname])
+        return JoinRows(
+            self.db, records, colnames, compact=False, jtables=jtables)
+
+
+class JoinRows(Rows):
+    def __init__(self, *args, **kwargs):
+        self._joins_ = kwargs['jtables']
+        del kwargs['jtables']
+        super(JoinRows, self).__init__(*args, **kwargs)
+
+    def as_list(self, compact=True, storage_to_dict=True,
+                datetime_to_str=False, custom_types=None):
+        (oc, self.compact) = (self.compact, compact)
+        if storage_to_dict:
+            items = []
+            for row in self:
+                item = row.as_dict(datetime_to_str, custom_types)
+                for jname in self._joins_:
+                    item[jname] = row[jname].as_list()
+                items.append(item)
+        else:
+            items = [item for item in self]
+        self.compact = oc
+        return items
 
 
 def make_tablename(classname):

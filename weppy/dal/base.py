@@ -89,6 +89,7 @@ class Set(_Set):
             del options['paginate']
         including = options.get('including')
         if including and self._model_ is not None:
+            from .helpers import LeftJoinSet
             options['left'] = self._parse_left_rjoins(including)
             del options['including']
             #: add fields to select
@@ -97,19 +98,26 @@ class Set(_Set):
                 fields = [self._model_.table.ALL]
             for join in options['left']:
                 fields.append(join.first.ALL)
+            return LeftJoinSet._from_set(self).select(*fields, **options)
         return super(Set, self).select(*fields, **options)
 
     def join(self, *args):
         rv = self
         if self._model_ is not None:
             joins = []
+            jtables = []
             for arg in args:
-                joins.append(self._parse_rjoin(arg))
+                #joins.append(self._parse_rjoin(arg))
+                join_data = self._parse_rjoin(arg, True)
+                joins.append(join_data[0])
+                jtables.append(join_data[1]._tablename)
             if joins:
+                from .helpers import JoinSet
                 q = joins[0]
                 for join in joins[1:]:
                     q = q & join
                 rv = rv.where(q)
+                return JoinSet._from_set(rv, self._model_.tablename, jtables)
         return rv
 
     def _parse_rjoin(self, arg, with_table=False):
@@ -141,7 +149,9 @@ class Set(_Set):
             if with_table:
                 return r.many_query(), r._many_elements()[0]._table
             return r.many_query()
-        return None
+        raise RuntimeError(
+            'Unable to find %s relation of %s model' %
+            (arg, self._model_.__name__))
 
     def _parse_left_rjoins(self, args):
         if not isinstance(args, (list, tuple)):
