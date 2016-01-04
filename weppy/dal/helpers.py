@@ -272,29 +272,36 @@ class JoinSet(Set):
             if record[self._stable_].id != _last_rid:
                 records.append(record[self._stable_])
                 #: prepare nested rows
-                for jname in self._joins_:
-                    records[-1][jname] = Rows(
-                        self.db, [], jcolnames[jname], compact=False)
+                for join in self._joins_:
+                    if not join[2]:
+                        records[-1][join[0]] = Rows(
+                            self.db, [], jcolnames[join[1]], compact=False)
             _last_rid = record[self._stable_].id
             #: add joins in nested Rows objects
-            for jname in self._joins_:
-                records[-1][jname].records.append(record[jname])
+            for join in self._joins_:
+                if join[2]:
+                    records[-1][join[0]] = record[join[1]]
+                else:
+                    records[-1][join[0]].records.append(record[join[1]])
         return JoinRows(
             self.db, records, colnames, compact=False, jtables=self._joins_)
 
 
 class LeftJoinSet(Set):
     @classmethod
-    def _from_set(cls, obj):
-        return cls(
+    def _from_set(cls, obj, jdata):
+        rv = cls(
             obj.db, obj.query, obj.query.ignore_common_filters, obj._model_)
+        rv._jdata_ = jdata
+        return rv
 
     def select(self, *fields, **options):
         #: collect tablenames
         table = self._model_.tablename
         jtables = []
-        for join in options['left']:
-            jtables.append(join.first._tablename)
+        for index, join in enumerate(options['left']):
+            jdata = self._jdata_[index]
+            jtables.append((jdata[0], join.first._tablename, jdata[1]))
         #: use iterselect for performance
         rows = super(Set, self).iterselect(*fields, **options)
         #: build new colnames
@@ -316,14 +323,18 @@ class LeftJoinSet(Set):
             if record[table].id != _last_rid:
                 records.append(record[table])
                 #: prepare nested rows
-                for jname in jtables:
-                    records[-1][jname] = Rows(
-                        self.db, [], jcolnames[jname], compact=False)
+                for join in jtables:
+                    if not join[2]:
+                        records[-1][join[0]] = Rows(
+                            self.db, [], jcolnames[join[1]], compact=False)
             _last_rid = record[table].id
             #: add joins in nested Rows objects
-            for jname in jtables:
-                if record[jname].id is not None:
-                    records[-1][jname].records.append(record[jname])
+            for join in jtables:
+                if record[join[1]].id is not None:
+                    if join[2]:
+                        records[-1][join[0]] = record[join[1]]
+                    else:
+                        records[-1][join[0]].records.append(record[join[1]])
         return JoinRows(
             self.db, records, colnames, compact=False, jtables=jtables)
 
@@ -341,8 +352,9 @@ class JoinRows(Rows):
             items = []
             for row in self:
                 item = row.as_dict(datetime_to_str, custom_types)
-                for jname in self._joins_:
-                    item[jname] = row[jname].as_list()
+                for jdata in self._joins_:
+                    if not jdata[2]:
+                        item[jdata[0]] = row[jdata[0]].as_list()
                 items.append(item)
         else:
             items = [item for item in self]

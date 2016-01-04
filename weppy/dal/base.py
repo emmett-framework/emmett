@@ -90,7 +90,7 @@ class Set(_Set):
         including = options.get('including')
         if including and self._model_ is not None:
             from .helpers import LeftJoinSet
-            options['left'] = self._parse_left_rjoins(including)
+            options['left'], jdata = self._parse_left_rjoins(including)
             del options['including']
             #: add fields to select
             fields = list(fields)
@@ -98,7 +98,8 @@ class Set(_Set):
                 fields = [self._model_.table.ALL]
             for join in options['left']:
                 fields.append(join.first.ALL)
-            return LeftJoinSet._from_set(self).select(*fields, **options)
+            return LeftJoinSet._from_set(
+                self, jdata).select(*fields, **options)
         return super(Set, self).select(*fields, **options)
 
     def join(self, *args):
@@ -107,10 +108,9 @@ class Set(_Set):
             joins = []
             jtables = []
             for arg in args:
-                #joins.append(self._parse_rjoin(arg))
                 join_data = self._parse_rjoin(arg, True)
                 joins.append(join_data[0])
-                jtables.append(join_data[1]._tablename)
+                jtables.append((arg, join_data[1]._tablename, join_data[2]))
             if joins:
                 from .helpers import JoinSet
                 q = joins[0]
@@ -120,34 +120,34 @@ class Set(_Set):
                 return JoinSet._from_set(rv, self._model_.tablename, jtables)
         return rv
 
-    def _parse_rjoin(self, arg, with_table=False):
+    def _parse_rjoin(self, arg, with_extras=False):
         from .helpers import RelationBuilder
         #: match has_many
         rel = self._model_._hasmany_ref_.get(arg)
         if rel:
             if isinstance(rel, dict) and rel.get('via'):
                 r = RelationBuilder(rel, self._model_).via()
-                if with_table:
-                    return r[0], r[1]._table
+                if with_extras:
+                    return r[0], r[1]._table, False
                 return r[0]
             else:
                 r = RelationBuilder(rel, self._model_)
-                if with_table:
-                    return r.many_query(), r._many_elements()[0]._table
+                if with_extras:
+                    return r.many_query(), r._many_elements()[0]._table, False
                 return r.many_query()
         #: match belongs_to and refers_to
         rel = self._model_._belongs_ref_.get(arg)
         if rel:
             r = RelationBuilder((rel, arg), self._model_).belongs_query()
-            if with_table:
-                return r, self._model_.db[rel]
+            if with_extras:
+                return r, self._model_.db[rel], True
             return r
         #: match has_one
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
             r = RelationBuilder(rel, self._model_)
-            if with_table:
-                return r.many_query(), r._many_elements()[0]._table
+            if with_extras:
+                return r.many_query(), r._many_elements()[0]._table, False
             return r.many_query()
         raise RuntimeError(
             'Unable to find %s relation of %s model' %
@@ -157,10 +157,12 @@ class Set(_Set):
         if not isinstance(args, (list, tuple)):
             args = [args]
         joins = []
+        jdata = []
         for arg in args:
             join = self._parse_rjoin(arg, True)
             joins.append(join[1].on(join[0]))
-        return joins
+            jdata.append((arg, join[2]))
+        return joins, jdata
 
     def __getattr__(self, name):
         scope = self._scopes_.get(name)
