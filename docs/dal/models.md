@@ -39,7 +39,7 @@ db.posts
 ```
 
 > **Note:**   
-> Accessing `Model` refers to the model itself, while `db.Model` refers to the table instance you created with your model. While these two classes shares the fields of your models, so accessing `Model.fieldname` and `db.Model.fieldname` or `db.tablename.fieldname` will produce the same records, they have different properties and methods, and you should remember this difference.
+> Accessing `Model` refers to the model itself, while `db.Model` refers to the table instance you created with your model. While these two classes shares the fields of your models, so accessing `Model.fieldname` and `db.Model.fieldname` or `db.tablename.fieldname` will produce the same result, they have different properties and methods, and you should remember this difference.
 
 
 ### Tables naming

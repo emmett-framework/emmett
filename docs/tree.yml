@@ -18,6 +18,7 @@
   - relations
   - virtuals
   - callbacks
+  - migrations
   - advanced
 - validations
 - forms
