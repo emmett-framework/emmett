@@ -10,13 +10,14 @@ Next
 - Added `remove` method to `HasManySet` and `HasManyViaSet`
 - Common handlers and helpers are now accessible via application object
 - Introduced scopes in models
-- Added `where` method to `Model`
 - Template reloader now checks also `include` and `extend` blocks
 - Deprecated `expose()` in favor of `route()`
 - Implemented `join` method on `Set`
 - Reviewed `Auth` actions depending on user status
 - Added support facilities to `Auth` in order to manage user status
 - Implemented support for custom naming on `has_many`
+- Added `current_model_only` option to `virtualfield` and `fieldmethod`
+  decorators, default changed to `True`
 - Introduced testing suite for applications
 - Added `language` option to `url()`
 - Implemented user status resync with database in `Auth` handler
@@ -24,8 +25,8 @@ Next
 - Added 'self' keyword for self-relations in dal
 - Changed `has_one` return value to `Set` in order to avoid n+1 queries
 - Added `pagination` and `including` options to `Set.select()`
-- Caching resultsets on `has_one` and `has_many` sets calls
-- Added `all`, `first`, `last` and `get` methods to `Model`
+- Caching resultsets on `has_one` and `has_many` realtions calls for select
+- Added `where`, `all`, `first`, `last` and `get` methods to `Model`
 
 Version 0.5
 -----------
