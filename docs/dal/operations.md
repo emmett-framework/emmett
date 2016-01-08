@@ -191,6 +191,19 @@ db(db.events.location == "New York")
 
 and all of them will produce the same result. Just use the one you prefer or result more convenient for your code.
 
+### Query all records in the table
+
+When you want to work with all the records of a table, you have two options, one using the `Model` class and one with the `db()` syntax we have seen above:
+
+```python
+# from the model
+Event.all()
+# using DAL instance
+db(db.Event)
+```
+
+Both the methods will return the `Set` corresponding to all the records of the table.
+
 ### Additional query operators
 
 weppy also provides additional query operators that might be useful when you need particular conditions or for specific field types. Let's see them in detail.
@@ -262,10 +275,194 @@ db(Event.happens_at.year() == 1985)
 Selecting records
 -----------------
 
+Once you have made a query to your database and have a `Set`, you can fetch the records with the `select` method:
+
+```python
+>>> db(Event.location == "New York").select()
+<Rows (2)>
+```
+
+The returning object of a `select` operation will always be a `Rows` object, which is an iterable of `Row` objects. A `Row` objects behaves quite like a dictionary, but allows you to access its elements as attributes, and implements some useful methods.
+
+```python
+>>> rows = db(Event.location == "New York").select()
+>>> for row in rows:
+...     print(row.name)
+Awesome party
+Secret party
+>>> rows[0]
+<Row {'happens_at': datetime.datetime(2016, 1, 7, 23, 0, 0), 'name': 'Awesome party', 'participants': 300, 'location': 'New York', 'id': 1}>
+```
+
+The `Rows` and `Row` objects has also some helper methods you might find useful. For example, the `Rows` object has a `first` and a `last` methods:
+
+```python
+>>> rows = db(Event.location == "New York").select()
+>>> rows.first()
+<Row {'happens_at': datetime.datetime(2016, 1, 7, 23, 0, 0), 'name': 'Awesome party', 'participants': 300, 'location': 'New York', 'id': 1}>
+>>> rows.last()
+<Row {'happens_at': datetime.datetime(2016, 1, 8, 23, 0, 0), 'name': 'Secret party', 'participants': 200, 'location': 'New York', 'id': 2}>
+```
+
+They works pretty the same like calling `rows[0]` and `rows[-1]` but while using integer position will raise an exception if the `Rows` object is empty, `first()` and `last()` will return `None`.
+
+The `first` method can be useful also when you're looking for a single record:
+
+```python
+event = db(Event.name == "Secret Party").select().first()
+if event:
+    print(
+        "Event %s starts at %s" % (
+            event.name, event.happens_at
+         )
+    )
+else:
+    print("Event not found")
+```
+
+The `Row` object has an `as_dict` method that you might find useful for serialization, since it will produce a dictionary from the original object without any callable object. For example, if you're working with json apis, you can render the dictionary directly as the json response.
+
+```python
+>>> rows = db(Event.location == "New York").select()
+>>> rows.first().as_dict()
+{'happens_at': datetime.datetime(2016, 1, 7, 23, 0, 0), 'name': 'Awesome party', 'participants': 300, 'location': 'New York', 'id': 1}
+```
+
+Similarly, the `Rows` object has both an `as_dict` and an `as_list` methods. While the `as_list` return a list of rows serialized with `as_dict`, so you can avoid to call the `as_dict` of the rows recursively, the `as_dict` return a dictionary that will have the ids of the rows as keys and the rows serialized with the `as_dict` method as values:
+
+```python
+>>> rows.as_list()
+[{'happens_at': datetime.datetime(2016, 1, ...}, {...}]
+>>> rows.as_dict()
+{1: {'happens_at': datetime.datetime(2016, 1, ...}, 2: {...}}
+```
+
+
+
+Now, let's proceed with the options of the `select` method. It accepts unnamed arguments: these are interpreted as the names of the fields that you want to fetch. For example, you can be explicit on fetching just the *id* and *name* and fields:
+
+```python
+>>> rows = db(Event.location == "New York").select(Event.id, Event.name)
+>>> rows[0]
+<Row {'id': 1, 'name': 'Awesome party'}>
+```
+
+If you don't specify arguments, weppy will select all the fields for all the tables involved in the query. In fact, the explicit argument for the first example is:
+
+```python
+db(Event.location == "New York").select(db.Event.ALL)
+```
+
+The `ALL` attribute of `Table` is, indeed, a special attribute that will select all the columns of the table.
+
+> **Warning:** the `ALL` attribute is available on `Table` objects only, not on `Model` obejcts
+
+### Shortcuts
+
+*Changed in version 0.6*
+
+weppy provides some shortcuts that might be useful when you want to select single records. For example, you can select a single record using the `Model.get` method with the query:
+
+```python
+event = Event.get(name="Secret party")
+```
+
+or calling the table:
+
+```python
+event = db.Event(name="Secret party")
+```
+
+both the methods will produce the same result of writing:
+
+```python
+event = db(Event.name == "Secret party").select().first()
+```
+
+And if you want to select a record using the id, you can pass it as an unnamed parameter in both methods, or accessing it as a table item:
+
+```python
+event = Event.get(1)
+event = db.Event(1)
+event = db.Event[1]
+```
+
+The `Model` class has also a `first` and a `last` methods, that will select the first and the last record of the table, with ascending ordering of the `id` field:
+
+```python
+first_inserted = Event.first()
+last_inserted = Event.last()
+```
+
+### Ordering
+
+When you want to specify a ordering for selecting record, you can use the `orderby` option of the `select` method, that will produce an *ORDER BY* instruction in the sql query.
+
+```python
+db(Event.location == "New York").select(
+    orderby=Event.happens_at
+)
+```
+
+will return all the events in New York in ascending order by their dates (so the oldest one will be the first).
+
+To have the rows in descending order (in this case the oldest one will be the last), just use the `~` operator:
+
+```python
+db(Event.location == "New York").select(
+    orderby=~Event.happens_at
+)
+```
+
+You can also concatenate multiple fields for ordering using the `|` operator:
+
+```python
+db(Event.location == "New York").select(
+    orderby=Event.happens_at|Event.participants
+)
+```
+
+### Pagination
+
+When you select records, you often want to limit the result to a specific number of records, and use pagination to get the consequent results. Weppy provides the `paginate` option in the `select` method, so for example
+
+```python
+Event.all().select(paginate=1)
+```
+
+will return the first page of results, with 10 events per page. You can specify the size of the page using a tuple, so that
+
+```python
+Event.all().select(paginate=(2, 25))
+```
+
+will return the second page, with 25 events per page.
+
+> **Note:** remember that `paginate` will always consider the first page number as 1, not 0
+
+weppy provides also a more sql-like option for limiting the results, the `limitby` one, that has the same syntax of the sql *LIMIT BY* instruction:
+
+```python
+Event.all().select(limitby=(25, 50))
+```
+
+with the starting offset and the ending. This line of code will produce the same result of using `paginate=(2, 25)`.
+
+### Aggregation
+
+*paragraph in development*
+
+### Count and expressions
+
+*paragraph in development*
+
+Updating records
+----------------
+
 *section in development*
 
 
-Updating records
+Deleting records
 ----------------
 
 *section in development*
