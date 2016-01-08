@@ -83,7 +83,7 @@ class Request(object):
         if self.environ.get('CONTENT_TYPE', '')[:16] == 'application/json':
             json_vars = self.__parse_post_json()
             post_vars.update(json_vars)
-            return
+            return post_vars
         if self.input and self.environ.get('REQUEST_METHOD') in \
                 ('POST', 'PUT', 'DELETE', 'BOTH'):
             dpost = cgi.FieldStorage(fp=self.input, environ=self.environ,
