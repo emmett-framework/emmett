@@ -313,7 +313,7 @@ event = db(Event.name == "Secret Party").select().first()
 if event:
     print(
         "Event %s starts at %s" % (
-            event.name, event.happens_at
+            event.name, str(event.happens_at)
          )
     )
 else:
@@ -450,11 +450,84 @@ with the starting offset and the ending. This line of code will produce the same
 
 ### Aggregation
 
-*paragraph in development*
+When you need to aggregate the rows with the same values for specific columns, you can use the `groupby` option of the `select` method. For example, you can select all the locations for events in 2015:
 
-### Count and expressions
+```python
+db(Event.happens_at.year() == 2015).select(
+    Event.location,
+    orderby=Event.location,
+    groupby=Event.location)
+```
 
-*paragraph in development*
+You can also specify a grouping condition, for example aggregate only records that have 300 or more participants:
+
+```python
+db(Event.happens_at.year() == 2015).select(
+    Event.location,
+    orderby=Event.location,
+    groupby=Event.location,
+    having=(Event.participants >= 300))
+```
+
+The argument of `having` should be a query with the same syntax you used for `db.where()`.
+
+The `select` method also provides a `distinct` option, that has the same effect as grouping using all specified fields:
+
+```python
+db(Event.happens_at.year() == 1955).select(
+    Event.location,
+    distinct=True)
+```
+
+### Counting and expressions
+
+Among with the `select` method, sets comes with a `count` method:
+
+```python
+>>> Event.all().count()
+3
+```
+
+But also fields have a `count` method. This is useful when you do aggregation as we seen in the above paragraph; for example you may want to count the number of events happened in 2015 grouped by their locations:
+
+```python
+count = Event.id.count()
+db(Event.happens_at.year() == 2015).select(
+    Event.location,
+    count,
+    orderby=Event.location,
+    groupby=Event.location)
+```
+
+The resulting rows will be something like this:
+
+```python
+<Row {'events': {'location': 'New York'}, '_extra': {'COUNT(events.id)': 2}}>
+```
+
+And you can, for example, print the values using:
+
+```python
+>>> for row in rows:
+...     print(row.events.location, row[count])
+Chicago 1
+New York 2
+```
+
+As you can see, you can access the *count* value using the variable as item of the row. Also notice that weppy moved the *location* field into the *events* dictionary. This is done because you added elements that don't belongs to the events table itself, and weppy wants to make this very explicit, grouping all the elements belonging to the table into a separated key of the rows.
+
+Beside the `count` method, fields also have other methods useful to compute values from the records: the `sum`, `avg`, `min`, and `max` methods. They works all the same, like the `count` one. Let's say for example that you want to have the sum of all the participants to events in 1955 grouped by their locations:
+
+```python
+summed = Event.participants.sum()
+db(Event.happens_at.year() == 1955).select(
+    Event.location,
+    summed,
+    orderby=Event.location,
+    groupby=Event.location)
+```
+
+You will have the same result structure we seen for `count`.
 
 Updating records
 ----------------
