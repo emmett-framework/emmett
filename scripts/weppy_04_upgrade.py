@@ -5,7 +5,7 @@
     A basic script which dumps 0.3 auth tables' contents and insert dumped
     data into 0.4 tables with correct structure.
 
-    :copyright: (c) 2016 by Giovanni Barillari
+    :copyright: (c) 2015-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 

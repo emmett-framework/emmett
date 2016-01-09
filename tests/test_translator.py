@@ -5,7 +5,7 @@
 
     Test weppy translator module
 
-    :copyright: (c) 2016 by Giovanni Barillari
+    :copyright: (c) 2015-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 

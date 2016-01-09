@@ -5,7 +5,7 @@
 
     Provides helpers for testing suite.
 
-    :copyright: (c) 2016 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
 
     Several parts of this code comes from Werkzeug.
     :copyright: (c) 2015 by Armin Ronacher.

@@ -5,7 +5,7 @@
 
     Implements validators for pyDAL.
 
-    :copyright: (c) 2016 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
