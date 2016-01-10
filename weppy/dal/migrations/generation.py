@@ -17,8 +17,8 @@ from collections import OrderedDict
 from ..._compat import itervalues
 from ...datastructures import OrderedSet
 from .base import Column
-from .helpers import Dispatcher
-from .operations import UpgradeOps, CreateTableOp, DropTableOp, AlterTableOp, \
+from .helpers import Dispatcher, DEFAULT_VALUE, _feasible_as_dbms_default
+from .operations import UpgradeOps, CreateTableOp, DropTableOp, \
     AddColumnOp, DropColumnOp, AlterColumnOp
 
 
@@ -40,6 +40,9 @@ class MetaTable(object):
     def __setitem__(self, name, value):
         self.columns[name] = value
 
+    def __delitem__(self, name):
+        del self.columns[name]
+
     def __repr__(self):
         return "Table(%r, %s)" % (
             self.name,
@@ -57,8 +60,14 @@ class MetaData(object):
     def drop_table(self, name):
         del self.tables[name]
 
-    def change_column(self, tablename, column):
-        self.tables[tablename][column.name] = column
+    def add_column(self, table, column):
+        self.tables[table][column.name] = column
+
+    def drop_column(self, table, column):
+        del self.tables[table][column]
+
+    def change_column(self, table_name, column_name, changes):
+        self.tables[table_name][column_name].update(**changes)
 
 
 class Comparator(object):
@@ -103,9 +112,11 @@ class Comparator(object):
         self.foreign_keys(dbtable, metatable)
 
     def indexes_and_uniques(self, dbtable, metatable):
+        # TODO
         pass
 
     def foreign_keys(self, dbtable, metatable):
+        # TODO
         pass
 
     def columns(self, dbtable, metatable):
@@ -128,7 +139,7 @@ class Comparator(object):
                 DropColumnOp.drop_column(dbtable._tablename, column_name))
 
     def column(self, dbcolumn, metacolumn):
-        self.nullable(dbcolumn, metacolumn)
+        self.notnulls(dbcolumn, metacolumn)
         self.types(dbcolumn, metacolumn)
         self.defaults(dbcolumn, metacolumn)
 
@@ -137,15 +148,18 @@ class Comparator(object):
         if dbcolumn.type != metacolumn.type:
             self.ops[-1].modify_type = dbcolumn.type
 
-    def nullable(self, dbcolumn, metacolumn):
-        self.ops[-1].existing_nullable = metacolumn.notnull
+    def notnulls(self, dbcolumn, metacolumn):
+        self.ops[-1].existing_notnull = metacolumn.notnull
         if dbcolumn.notnull != metacolumn.notnull:
-            self.ops[-1].modify_nullable = dbcolumn.notnull
+            self.ops[-1].modify_notnull = dbcolumn.notnull
 
     def defaults(self, dbcolumn, metacolumn):
-        self.ops[-1].existing_default = metacolumn.default
-        if dbcolumn.default != metacolumn.default:
-            self.ops[-1].modify_default = dbcolumn.default
+        oldv, newv = metacolumn.default, dbcolumn.default
+        self.ops[-1].existing_default = oldv
+        if newv != oldv:
+            if not all(callable(v) for v in [oldv, newv]):
+                if _feasible_as_dbms_default(newv):
+                    self.ops[-1].modify_default = newv
 
     @classmethod
     def compare(cls, db, meta):
@@ -214,19 +228,20 @@ def _add_table(op):
     #         if rcons is not None
     #     ]
     # )
-    pad = "\n            "
+    indent = " " * 12
 
     if len(args) > 255:
-        args = '*[' + (','+pad).join(args) + ']'
+        args = '*[' + (',\n'+indent).join(args) + ']'
     else:
-        args = (','+pad).join(args)
+        args = (',\n'+indent).join(args)
 
-    text = ("self.create_table("+pad+"%(tablename)r,"+pad+"%(args)s") % {
+    text = ("self.create_table(\n" + indent + "%(tablename)r,\n" + indent +
+            "%(args)s") % {
         'tablename': op.table_name,
         'args': args
     }
     for k in sorted(op.kw):
-        text += ","+pad+"%s=%r" % (k.replace(" ", "_"), op.kw[k])
+        text += ",\n"+indent+"%s=%r" % (k.replace(" ", "_"), op.kw[k])
     text += ")"
     return text
 
@@ -268,7 +283,41 @@ def _render_column(column):
     }
 
 
+@renderers.dispatch_for(AddColumnOp)
+def _add_column(op):
+    return "self.add_column(%(tname)r, %(column)s)" % {
+        "tname": op.table_name,
+        "column": _render_column(op.column)
+    }
+
+
+@renderers.dispatch_for(DropColumnOp)
+def _drop_column(op):
+    return "self.drop_column(%(tname)r, %(cname)r)" % {
+        "tname": op.table_name,
+        "column": op.column_name
+    }
+
+
 @renderers.dispatch_for(AlterColumnOp)
 def _alter_column(op):
-    # TODO
-    return ""
+    indent = " " * 12
+    text = "self.alter_column(%(tname)r, %(cname)r" % {
+        'tname': op.table_name,
+        'cname': op.column_name}
+
+    if op.existing_type is not None:
+        text += ",\n%sexisting_type=%r" % (indent, op.existing_type)
+    if op.modify_default is not DEFAULT_VALUE:
+        text += ",\n%snew_default=%r" % (indent, op.modify_default)
+    if op.modify_type is not None:
+        text += ",\n%snew_type=%r" % (indent, op.modify_type)
+    if op.modify_notnull is not None:
+        text += ",\n%snotnull=%r" % (indent, op.modify_notnull)
+    if op.modify_notnull is None and op.existing_notnull is not None:
+        text += ",\n%sexisting_notnull=%r" % (indent, op.existing_notnull)
+    if op.modify_default is DEFAULT_VALUE and op.existing_default:
+        text += ",\n%sexisting_default=%s" % (indent, op.existing_default)
+
+    text += ")"
+    return text

@@ -12,9 +12,12 @@
 import os
 from collections import Iterable
 from uuid import uuid4
-from ..._compat import string_types
+from ..._compat import string_types, integer_types
 from ...templating.core import Templater
 from ...datastructures import sdict, _unique_list
+
+
+DEFAULT_VALUE = lambda: None
 
 
 def make_migration_id():
@@ -111,3 +114,17 @@ def format_with_comma(value):
         return ", ".join(value)
     else:
         raise ValueError("Don't know how to comma-format %r" % value)
+
+
+def _feasible_as_dbms_default(val):
+    if callable(val):
+        return False
+    if val is None:
+        return True
+    if isinstance(val, integer_types):
+        return True
+    if isinstance(val, string_types):
+        return True
+    if isinstance(val, (bool, float)):
+        return True
+    return False

@@ -15,6 +15,7 @@
 
 import re
 from .base import Migration, Column
+from .helpers import DEFAULT_VALUE
 
 
 class Operation(object):
@@ -159,8 +160,7 @@ class DropTableOp(Operation):
         return cls(table_name, table_kw=kw)
 
     def run(self):
-        # TODO
-        pass
+        self.engine.drop_table(self.table_name)
 
 
 class AlterTableOp(Operation):
@@ -179,8 +179,9 @@ class RenameTableOp(AlterTableOp):
         return cls(old_table_name, new_table_name)
 
     def run(self):
-        # TODO
-        pass
+        raise NotImplementedError(
+            'Table renaming is currently not supported.'
+        )
 
 
 @Migration.register_operation("add_column")
@@ -212,8 +213,7 @@ class AddColumnOp(AlterTableOp):
         return cls(table_name, column)
 
     def run(self):
-        # TODO
-        pass
+        self.engine.add_column(self.table_name, self.column)
 
 
 @Migration.register_operation("drop_column")
@@ -251,8 +251,7 @@ class DropColumnOp(AlterTableOp):
         return cls(table_name, column_name, **kw)
 
     def run(self):
-        # TODO
-        pass
+        self.engine.drop_column(self.table_name, self.column_name)
 
 
 @Migration.register_operation("alter_column")
@@ -260,10 +259,10 @@ class AlterColumnOp(AlterTableOp):
     def __init__(
             self, table_name, column_name,
             existing_type=None,
-            existing_default=False,
-            existing_nullable=None,
-            modify_nullable=None,
-            modify_default=False,
+            existing_default=None,
+            existing_notnull=None,
+            modify_notnull=None,
+            modify_default=DEFAULT_VALUE,
             modify_name=None,
             modify_type=None,
             **kw
@@ -273,8 +272,8 @@ class AlterColumnOp(AlterTableOp):
         self.column_name = column_name
         self.existing_type = existing_type
         self.existing_default = existing_default
-        self.existing_nullable = existing_nullable
-        self.modify_nullable = modify_nullable
+        self.existing_notnull = existing_notnull
+        self.modify_notnull = modify_notnull
         self.modify_default = modify_default
         self.modify_name = modify_name
         self.modify_type = modify_type
@@ -288,29 +287,29 @@ class AlterColumnOp(AlterTableOp):
             col_diff.append(
                 (
                     "modify_type", tname, cname, {
-                        "existing_nullable": self.existing_nullable,
+                        "existing_notnull": self.existing_notnull,
                         "existing_default": self.existing_default},
                     self.existing_type,
                     self.modify_type
                 )
             )
 
-        if self.modify_nullable is not None:
+        if self.modify_notnull is not None:
             col_diff.append(
                 (
-                    "modify_nullable", tname, cname, {
+                    "modify_notnull", tname, cname, {
                         "existing_type": self.existing_type,
                         "existing_default": self.existing_default},
-                    self.existing_nullable,
-                    self.modify_nullable
+                    self.existing_notnull,
+                    self.modify_notnull
                 )
             )
 
-        if self.modify_default is not False:
+        if self.modify_default is not DEFAULT_VALUE:
             col_diff.append(
                 (
                     "modify_default", tname, cname, {
-                        "existing_nullable": self.existing_nullable,
+                        "existing_notnull": self.existing_notnull,
                         "existing_type": self.existing_type},
                     self.existing_default,
                     self.modify_default
@@ -320,10 +319,10 @@ class AlterColumnOp(AlterTableOp):
         return col_diff
 
     def has_changes(self):
-        hc1 = self.modify_nullable is not None or \
-            self.modify_default is not False or \
+        hc = self.modify_notnull is not None or \
+            self.modify_default is not DEFAULT_VALUE or \
             self.modify_type is not None
-        if hc1:
+        if hc:
             return True
         for kw in self.kw:
             if kw.startswith('modify_'):
@@ -334,13 +333,13 @@ class AlterColumnOp(AlterTableOp):
     def reverse(self):
         kw = self.kw.copy()
         kw['existing_type'] = self.existing_type
-        kw['existing_nullable'] = self.existing_nullable
+        kw['existing_notnull'] = self.existing_notnull
         kw['existing_default'] = self.existing_default
         if self.modify_type is not None:
             kw['modify_type'] = self.modify_type
-        if self.modify_nullable is not None:
-            kw['modify_nullable'] = self.modify_nullable
-        if self.modify_default is not False:
+        if self.modify_notnull is not None:
+            kw['modify_notnull'] = self.modify_notnull
+        if self.modify_default is not DEFAULT_VALUE:
             kw['modify_default'] = self.modify_default
 
         all_keys = set(m.group(1) for m in [
@@ -361,27 +360,36 @@ class AlterColumnOp(AlterTableOp):
     @classmethod
     def alter_column(
         cls, table_name, column_name,
-        nullable=None,
-        new_default=False,
+        notnull=None,
+        new_default=DEFAULT_VALUE,
         new_column_name=None,
-        type_=None,
+        new_type=None,
         existing_type=None,
-        existing_default=False,
-        existing_nullable=None,
+        existing_default=None,
+        existing_notnull=None,
         **kw
     ):
         return cls(
             table_name, column_name,
             existing_type=existing_type,
             existing_default=existing_default,
-            existing_nullable=existing_nullable,
+            existing_notnull=existing_notnull,
             modify_name=new_column_name,
-            modify_type=type_,
+            modify_type=new_type,
             modify_default=new_default,
-            modify_nullable=nullable,
+            modify_notnull=notnull,
             **kw
         )
 
     def run(self):
-        # TODO
-        pass
+        self.engine.alter_column(
+            self.table_name, self.column_name, self.to_diff_tuple())
+
+
+# @Migration.register_operation("execute")
+# class ExecuteSQLOp(Operation):
+#     def __init__(self, sqltext):
+#         self.sqltext = sqltext
+
+#     def run(self):
+#         pass

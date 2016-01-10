@@ -13,7 +13,7 @@ from ..._compat import iteritems
 from ...datastructures import sdict
 from .. import Model, Field
 from .engine import MetaEngine, Engine
-from .helpers import WrappedOperation
+from .helpers import WrappedOperation, _feasible_as_dbms_default
 
 
 class Schema(Model):
@@ -75,7 +75,11 @@ class Column(sdict):
             if getattr(rtable, '_primarykey', None) and rfieldname in \
                     rtable._primarykey or rfield.unique:
                 if not rfield.unique and len(rtable._primarykey) > 1:
-                    self.tfk = True
+                    # self.tfk = [pk for pk in rtable._primarykey]
+                    raise NotImplementedError(
+                        'Column of type reference pointing to multiple ' +
+                        'columns are currently not supported.'
+                    )
                 else:
                     self.fk = True
 
@@ -86,10 +90,11 @@ class Column(sdict):
             field.type,
             field.unique,
             field.notnull,
-            default=field.default,
             length=field.length,
             ondelete=field.ondelete
         )
+        if _feasible_as_dbms_default(field.default):
+            rv.default = field.default
         rv._build_fks(field.db, field.tablename)
         return rv
 
