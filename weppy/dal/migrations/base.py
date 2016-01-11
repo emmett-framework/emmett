@@ -53,7 +53,7 @@ class Column(sdict):
         self.type = type
         self.unique = unique
         self.notnull = notnull
-        for key, val in kwargs.iteritems():
+        for key, val in iteritems(kwargs):
             self[key] = val
         self.length = self.length or 255
 
