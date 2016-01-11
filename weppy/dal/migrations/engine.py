@@ -172,25 +172,38 @@ class Engine(MetaEngine):
         else:
             csql = self.adapter.types[column.type] % \
                 {'length': column.length}
+        if self.adapter.dbengine not in ('firebird', 'informix', 'oracle'):
+            cprops = "%(notnull)s%(default)s%(unique)s%(qualifier)s"
+        else:
+            cprops = "%(default)s%(notnull)s%(unique)s%(qualifier)s"
         if not column.type.startswith(('id', 'reference', 'big-reference')):
-            if column.notnull:
-                csql += ' NOT NULL'
-            else:
-                csql += self.adapter.ALLOW_NULL()
-            if column.unique:
-                csql += ' UNIQUE'
-            if column.custom_qualifier:
-                csql += ' %s' % column.custom_qualifier
-        if column.notnull and column.default is not None:
-            not_null = self.adapter.NOT_NULL(column.default, column.type)
-            csql = csql.replace('NOT NULL', not_null)
+            csql += cprops % {
+                'notnull': ' NOT NULL' if column.notnull
+                           else self.adapter.ALLOW_NULL(),
+                'default': ' DEFAULT %s' %
+                           self.adapter.represent(column.default, column.type)
+                           if column.default is not None else '',
+                'unique': ' UNIQUE' if column.unique else '',
+                'qualifier': ' %s' % column.custom_qualifier
+                             if column.custom_qualifier else ''
+            }
+        #     if column.notnull:
+        #         csql += ' NOT NULL'
+        #     else:
+        #         csql += self.adapter.ALLOW_NULL()
+        #     if column.unique:
+        #         csql += ' UNIQUE'
+        #     if column.custom_qualifier:
+        #         csql += ' %s' % column.custom_qualifier
+        # if column.notnull and column.default is not None:
+        #     not_null = self.adapter.NOT_NULL(column.default, column.type)
+        #     csql = csql.replace('NOT NULL', not_null)
         return csql
 
     def _new_table_sql(self, tablename, columns, primary_keys=[], id_col='id'):
-        ## TODO:
-        ##      postgres geometry
-        ##      SQLCustomType
-        ## DEFAULTS!
+        # TODO:
+        # - postgres geometry
+        # - SQLCustomType
         fields = []
         tfks = {}
         for sortable, column in enumerate(columns, start=1):

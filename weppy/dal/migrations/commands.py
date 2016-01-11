@@ -44,7 +44,6 @@ class Command(object):
             self.schema_db.commit()
 
     def _load_current_revision_(self):
-        print(self.schema_db(self.schema_db.Schema.id > 0).select().as_list())
         revisions = self.schema_db(self.schema_db.Schema.id > 0).select()
         if not revisions:
             self._current_revision_ = []
@@ -54,16 +53,20 @@ class Command(object):
             self._current_revision_ = [rev.version for rev in revisions]
 
     def _store_current_revision_(self, source, dest):
+        logs = {
+            'new': '> Adding revision %s to schema',
+            'del': '> Removing revision %s from schema',
+            'upd': '> Updating schema revision from %s to %s'}
         source = to_tuple(source)
         dest = to_tuple(dest)
         if source is None:
-            print("inserting into schema %s" % dest[0])
+            print(logs['new'] % dest[0])
             self.schema_db.Schema.insert(version=dest[0])
             self.schema_db.commit()
             self._current_revision_ = [dest[0]]
             return
         if dest is None:
-            print("deleting from schema %s" % source[0])
+            print(logs['del'] % source[0])
             self.schema_db(self.schema_db.Schema.version == source[0]).delete()
             self.schema_db.commit()
             self._current_revision_ = []
@@ -73,27 +76,27 @@ class Command(object):
                 self.schema_db(
                     self.schema_db.Schema.version.belongs(
                         source[1:])).delete()
-                print("deleting from schema %s" % source[1:])
+                print(logs['del'] % source[1:])
             else:
                 self.schema_db(
                     self.schema_db.Schema.version == source[1]).delete()
-                print("deleting from schema %s" % source[1])
+                print(logs['del'] % source[1])
             self.schema_db(self.schema_db.Schema.version == source[0]).update(
                 version=dest[0]
             )
-            print("updating schema from %s to %s" % (source[0], dest[0]))
+            print(logs['upd'] % (source[0], dest[0]))
             self._current_revision_ = [dest[0]]
         else:
             if list(source) != self._current_revision_:
                 self.schema_db.Schema.insert(version=dest[0])
-                print("inserting into schema %s" % dest[0])
+                print(logs['new'] % dest[0])
                 self._current_revision_.append(dest[0])
             else:
                 self.schema_db(
                     self.schema_db.Schema.version == source[0]).update(
                         version=dest[0]
                     )
-                print("updating schema from %s to %s" % (source[0], dest[0]))
+                print(logs['upd'] % (source[0], dest[0]))
                 self._current_revision_ = [dest[0]]
         self.schema_db.commit()
 
@@ -154,13 +157,15 @@ class Command(object):
             rev_id, start_point)
         print("> Performing upgrades against %s" % self.db._uri)
         for revision in revisions:
-            print("> Upgrading to %s" % revision)
+            print("> Performing upgrade: %s" % revision)
             migration = revision.migration_class(self.app, self.db)
             try:
                 migration.up()
                 self.db.commit()
                 self._store_current_revision_(
                     migration.revises, migration.revision)
+                print("> Succesfully upgraded to revision %s: %s" %
+                      (revision.revision, revision.doc))
             except:
                 self.db.rollback()
                 print("> [ERROR] failed upgrading to %s" % revision)
@@ -173,13 +178,15 @@ class Command(object):
             rev_id, start_point)
         print("> Performing downgrades against %s" % self.db._uri)
         for revision in revisions:
-            print("> Downgrading to %s" % revision)
+            print("> Performing downgrade: %s" % revision)
             migration = revision.migration_class(self.app, self.db)
             try:
                 migration.down()
                 self.db.commit()
                 self._store_current_revision_(
                     migration.revision, migration.revises)
+                print("> Succesfully downgraded to revision %s: %s" %
+                      (revision.revision, revision.doc))
             except:
                 self.db.rollback()
                 print("> [ERROR] failed downgrading to %s" % revision)
