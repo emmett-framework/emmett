@@ -271,7 +271,7 @@ class Model(with_metaclass(MetaModel)):
                 belongs_references[reference['name']] = reference['model']
             isbelongs = False
         setattr(self.__class__, '_belongs_ref_', belongs_references)
-        delattr(self.__class__, '_refers_ref_')
+        #delattr(self.__class__, '_refers_ref_')
         #: has_one are mapped with virtualfield()
         hasone_references = {}
         if hasattr(self, '_hasone_ref_'):
@@ -311,7 +311,6 @@ class Model(with_metaclass(MetaModel)):
                         )
                 hasmany_references[reference['name']] = reference
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
-        return
 
     def _define_virtuals_(self):
         err = 'virtualfield or fieldmethod cannot have same name as an' + \
