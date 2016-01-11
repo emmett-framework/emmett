@@ -33,9 +33,10 @@ setup(
     author_email='gi0baro@d4net.org',
     description='The web framework for humans',
     long_description=__doc__,
-    packages=['weppy', 'weppy.dal', 'weppy.language', 'weppy.language.plurals',
-              'weppy.templating', 'weppy.testing', 'weppy.tools',
-              'weppy.tools.auth', 'weppy.validators', 'weppy.libs'],
+    packages=[
+        'weppy', 'weppy.dal', 'weppy.dal.migrations', 'weppy.language',
+        'weppy.language.plurals', 'weppy.templating', 'weppy.testing',
+        'weppy.tools', 'weppy.tools.auth', 'weppy.validators', 'weppy.libs'],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
