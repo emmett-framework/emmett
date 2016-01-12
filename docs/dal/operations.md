@@ -527,15 +527,86 @@ db(Event.happens_at.year() == 1955).select(
     groupby=Event.location)
 ```
 
-You will have the same result structure we seen for `count`.
+You will have the same result structure we've seen for `count`.
 
 Updating records
 ----------------
 
-*section in development*
+When you need to update existing data inside your database, you can use two different methods, the first one is the `update` method of the `Set` object:
 
+```python
+>>> db(Event.happens_at.year() == 1955).update(location="Hill Valley")
+2
+```
+
+The `update` method accepts the column names and the values to change as named arguments, and it will update all the records corresponding to the set you have queried. The return value of the update method is, indeed, the number of records updated.
+
+Since the `update` record is atomic, it also accepts expression built with model fields as arguments. As an example, you can increment a value:
+
+```python
+db(Event.location == "Hill Valley").update(
+    participants=Event.participants+2)
+```
+
+As we've just seen, the `update` method is built on top of the `Set` object, so when you want to update a specific record, you should query for its `id` (or a combination of other values that makes the record unique):
+
+```python
+db(Event.id == 1).update(participants=3)
+```
+
+But this is not the only option, in fact the `Row` object has an `update_record` method, which is the second method in weppy to update an existing record. In order to use this method, you should have a selected row with the `id` included in the selected fields.
+
+This will produce the same result of the last example:
+
+```python
+>>> row = Event.get(1)
+>>> row.update_record(participants=3)
+<Row {'id': 1, 'location': 'Hill Valley' ...}>
+```
+
+where the main difference is that you've made a *SELECT* sql operation and then an *UPDATE* one, while in the other example you did just the second one. Also, the `update_record` return the `Row` object updated to reflect the changed database record, instead of an integer.
+
+> **Note:** `Row.update_record` should not be confused with `Row.update`, that will change the `Row` object but not the database record.
+
+Mind that, writing lines like this:
+
+```python
+row = Event.get(1)
+row.update_record(participants=row.participants+1)
+```
+
+won't produce an atomic update on the record, but will just write to the database the last selected value plus one. If you're intended to increment a value, you should use the `update` method of the `Set` with the expression as parameter, as we've seen before.
+
+### Validation on updates
+
+Now, since `update` and `update_record` **won't trigger validations** before effectively update the records in the database, weppy also provides a `validate_and_update` method on the `Set` object, which works pretty the same of the `update` one:
+
+```python
+>>> db(Event.id == 1).validate_and_update(location="New York")
+<Row {'updated': 1, 'errors': {}}>
+```
+
+except that it will trigger the validation on the values and trigger the effective update of the records only on its success.    
+As you can see the return value of the `validate_and_update` method will be a `Row` object containing the number of updated records under the `updated` attribute and the validation errors (if any) under the `errors` one.
 
 Deleting records
 ----------------
 
-*section in development*
+Like for the update of records, weppy provides two different methods to delete records:
+
+- the `delete` method on the `Set` object
+- the `delete_record` method of the `Row` object
+
+Here are two examples:
+
+```python
+>>> db(Event.location == "New York").delete()
+2
+>>> row = Event.get(3)
+>>> row.delete_record()
+1
+```
+
+As you can see both of these methods return the number of record removed.
+
+> **Note:** just like the `update_record`, the `delete_record` method requires you to select the `id` field in the rows.
