@@ -91,7 +91,20 @@ class RelationBuilder(object):
         return query, sel_field, sname, rid, lbelongs, lvia
 
 
-class HasOneSet(LazySet):
+class RelationSet(LazySet):
+    def create(self, **kwargs):
+        kwargs[self.fieldname] = self.id
+        return self._model_.create(
+            **kwargs
+        )
+
+    def select(self, *args, **kwargs):
+        if kwargs.get('reload'):
+            del kwargs['reload']
+        return super(RelationSet, self).select(*args, **kwargs)
+
+
+class HasOneSet(RelationSet):
     @cachedprop
     def _last_resultset(self):
         return self.select().first()
@@ -110,7 +123,7 @@ class HasOneWrap(object):
         return HasOneSet(*RelationBuilder(self.ref, model).many(row))
 
 
-class HasManySet(LazySet):
+class HasManySet(RelationSet):
     @cachedprop
     def _last_resultset(self):
         return self.select()
@@ -120,16 +133,20 @@ class HasManySet(LazySet):
             return self._last_resultset
         return self.select(*args, **kwargs)
 
-    def add(self, **data):
-        rv = None
-        data[self.fieldname] = self.id
-        errors = self._model_.validate(data)
-        if not errors:
-            rv = self.db[self.tablename].insert(**data)
-        return rv, errors
+    def add(self, obj):
+        return self.db(
+            self.db[self.tablename].id == obj.id).validate_and_update(
+            **{self.fieldname: self.id}
+        )
 
     def remove(self, obj):
-        return self.db(self.db[self.tablename].id == obj.id).delete()
+        if self.db[self.tablename][self.fieldname]._isrefers:
+            return self.db(
+                self.db[self.tablename].id == obj.id).validate_and_update(
+                **{self.fieldname: None}
+            )
+        else:
+            return self.db(self.db[self.tablename].id == obj.id).delete()
 
 
 class HasManyWrap(object):
@@ -170,21 +187,20 @@ class HasManyViaSet(Set):
         rel_field = self._viadata['field'] or self._viadata['name'][:-1]
         return self_field, rel_field
 
+    def create(self, **kwargs):
+        raise RuntimeError('Cannot create third objects for many relations')
+
     def add(self, obj, **kwargs):
         # works on join tables only!
         if self._via is None:
             raise RuntimeError(self._via_error % 'add')
         nrow = kwargs
-        rv = None
         #: get belongs references
         self_field, rel_field = self._get_relation_fields()
         nrow[self_field] = self._rid
         nrow[rel_field] = obj.id
         #: validate and insert
-        errors = self.db[self._via]._model_.validate(nrow)
-        if not errors:
-            rv = self.db[self._via].insert(**nrow)
-        return rv, errors
+        return self.db[self._via]._model_.create(nrow)
 
     def remove(self, obj):
         # works on join tables only!
