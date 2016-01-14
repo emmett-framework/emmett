@@ -519,15 +519,21 @@ but this will make weppy to perform a select operation to your database every ti
 
 #### The join method
 
-To avoid the problem we've just exposed, weppy provides a `join` method over the sets. In fact, if you rewrite the select line for the users like this: 
+To avoid the problem we've just exposed, weppy provides a `join` method over the sets. In fact, if you rewrite the example above like this: 
 
 ```python
 users = User.all().join('posts').select()
+for user in users:
+    print("%s posts:" % user.name)
+    for post in user.posts:
+        print("  %s" % post.name)
 ```
 
 weppy will perform a *JOIN* operation on the database and the posts will be directly available on the users without any additional selects.
 
 As you probably understood, the `join` method accepts one or more relations to join in the select operation, and you can just write down these relations with their names as strings.
+
+Notice also that we changed the line of the second loop to access `user.posts` instead of `user.posts()`. This is due to the fact that whereas in the first case `user.posts` was a `Set` object, when we use a `join` method the relations joined will be objects of type `Rows`. This is a design decision of weppy, aimed to remember yourself that you're working with different objects and different flows: watch out this difference when writing your application code.
 
 The `join` method will load any kind of relation, independently if they are `belongs_to`, `refers_to`, `has_one` and `has_many` (also the ones with `via` options), so you can select, for example, the post matching a certain name and load also their authors:
 
@@ -542,6 +548,8 @@ or load the organizations of the users from the example in the previous sections
 ```python
 User.all().join('organizations').select()
 ```
+
+> **Note:** when you join `belongs_to` or `refers_to` relations, the `type` of the related object inside the selected rows is just the same of the normal select operation.
 
 Note that, the `join` method will returns only those rows matching the joins, so, going back to the posts example, when you do:
 
@@ -559,17 +567,6 @@ The `including` option of the `select` method will reflect in a *LEFT OUTER JOIN
 User.all().select(including='posts')
 ```
 
-will return all the users in your database with their posts, if any. The `including` option accepts a string parameter or a list of strings, which have to be, like on the `join` method, the names of the relations you want to load.
+will return all the users in your database with their posts, if any, with the same types of the `join` method. The `including` option accepts a string parameter or a list of strings, which have to be, like on the `join` method, the names of the relations you want to load.
 
-When you join or include a `belongs_to` or a `refers_to` relation, you have to keep in mind that the `type` of the object returned for the relation won't be a `Reference` anymore, but, instead, the effective `Row` referenced:
-
-```
->>> post = Post.all().select().first()
->>> type(post.user)
-<class 'pydal.helpers.classes.Reference'>
->>> post = Post.all().select(including='user').first()
->>> type(post.user)
-<class 'pydal.objects.Row'>
-```
-
-You won't experience usage differences between the two of them, but is correct to keep in mind this difference.
+> **Note:** when you includes `belongs_to` or `refers_to` relations, the `type` of the related object inside the selected rows is just the same of the normal select operation.
