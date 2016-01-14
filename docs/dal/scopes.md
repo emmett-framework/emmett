@@ -7,7 +7,7 @@ Still, sometimes, might be handy have some shortcuts for the queries we write mo
 
 In order to address this need, weppy implements *scopes*, special methods inside models that will be bound to models themselves and sets matching the involved tables.
 
-But how do they works?    
+But how do they work?    
 Let's say, for example, that you're writing some blog application, where every post can be in a different state, like when is just a draft, or is published, or maybe retired. Let's say that you're mapping this *state* with an *integer* column, and you're ending up with a model like this:
 
 ```python

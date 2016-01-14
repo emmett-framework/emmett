@@ -1,7 +1,7 @@
 Database objects and operations
 ===============================
 
-Once you've defined your [models](./models) and the structure of your database entities, you need to make operations with them. In the next paragraphs we will inspect all the ways to create, modify and fetch your data from the database.
+Once you defined your [models](./models) and the structure of your database entities, you need to make operations with them. In the next paragraphs we will inspect all the ways to create, modify and fetch your data from the database.
 
 Creating records
 ----------------
@@ -56,7 +56,7 @@ As you can see, the `insert` method of the table defined by the model will retur
 
 ### Accessing the created record
 
-As you've seen from the above methods, when you create a new record, weppy returns just the integer corresponding to the `id` of the database row. If you look deeply, you will find that actually the return value is not just an integer:
+As we just seen from the above methods, when you create a new record, weppy returns just the integer corresponding to the `id` of the database row. If you look deeply, you will find that actually the return value is not just an integer:
 
 ```python
 >>> rv = Dog.create("Penny")
@@ -64,7 +64,7 @@ As you've seen from the above methods, when you create a new record, weppy retur
 <class 'pydal.helpers.classes.Reference'>
 ```
 
-In fact, you can access the attributes of the record you've just created:
+In fact, you can access the attributes of the record you just created:
 
 ```python
 >>> rv.id.name
@@ -304,7 +304,7 @@ The `Rows` and `Row` objects has also some helper methods you might find useful.
 <Row {'happens_at': datetime.datetime(2016, 1, 8, 23, 0, 0), 'name': 'Secret party', 'participants': 200, 'location': 'New York', 'id': 2}>
 ```
 
-They works pretty the same like calling `rows[0]` and `rows[-1]` but while using integer position will raise an exception if the `Rows` object is empty, `first()` and `last()` will return `None`.
+They work pretty the same like calling `rows[0]` and `rows[-1]` but while using integer position will raise an exception if the `Rows` object is empty, `first()` and `last()` will return `None`.
 
 The `first` method can be useful also when you're looking for a single record:
 
@@ -516,7 +516,7 @@ New York 2
 
 As you can see, you can access the *count* value using the variable as item of the row. Also notice that weppy moved the *location* field into the *events* dictionary. This is done because you added elements that don't belongs to the events table itself, and weppy wants to make this very explicit, grouping all the elements belonging to the table into a separated key of the rows.
 
-Beside the `count` method, fields also have other methods useful to compute values from the records: the `sum`, `avg`, `min`, and `max` methods. They works all the same, like the `count` one. Let's say for example that you want to have the sum of all the participants to events in 1955 grouped by their locations:
+Beside the `count` method, fields also have other methods useful to compute values from the records: the `sum`, `avg`, `min`, and `max` methods. They work all the same, like the `count` one. Let's say for example that you want to have the sum of all the participants to events in 1955 grouped by their locations:
 
 ```python
 summed = Event.participants.sum()
@@ -564,7 +564,7 @@ This will produce the same result of the last example:
 <Row {'id': 1, 'location': 'Hill Valley' ...}>
 ```
 
-where the main difference is that you've made a *SELECT* sql operation and then an *UPDATE* one, while in the other example you did just the second one. Also, the `update_record` return the `Row` object updated to reflect the changed database record, instead of an integer.
+where the main difference is that you made a *SELECT* sql operation and then an *UPDATE* one, while in the other example you did just the second one. Also, the `update_record` return the `Row` object updated to reflect the changed database record, instead of an integer.
 
 > **Note:** `Row.update_record` should not be confused with `Row.update`, that will change the `Row` object but not the database record.
 

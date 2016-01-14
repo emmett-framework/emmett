@@ -3,7 +3,7 @@ Relations
 *New in version 0.4*
 
 One of the big advantages of using a relational database is, indeed, the ability of establishing relations between data.    
-weppy provides some helpers to simplify the definition of those relations and to perform operations with related entities. Let's see a quick example in order to have an idea on how they works:
+weppy provides some helpers to simplify the definition of those relations and to perform operations with related entities. Let's see a quick example in order to have an idea on how they work:
 
 ```python
 class Doctor(Model):
@@ -519,7 +519,7 @@ but this will make weppy to perform a select operation to your database every ti
 
 #### The join method
 
-To avoid the problem we've just exposed, weppy provides a `join` method over the sets. In fact, if you rewrite the example above like this: 
+To avoid the problem we just exposed, weppy provides a `join` method over the sets. In fact, if you rewrite the example above like this: 
 
 ```python
 users = User.all().join('posts').select()
