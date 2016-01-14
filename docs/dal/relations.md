@@ -287,4 +287,289 @@ As you can see, we defined a model `Person` which can have a relation with anoth
 Operations with relations
 -------------------------
 
-*section in development*
+*Changed in version 0.6*
+
+As we've seen from the above paragraphs, `belongs_to` and `refers_to` will create an attribute that let you access the referred record when you perform a select. In fact, given the same model of the example:
+
+```python
+class Patient(Model):
+    belongs_to('doctor')
+```
+
+we can access the doctor of a certain patient directly from this last one:
+
+```python
+>>> patient = Patient.first()
+>>> patient.doctor
+1
+>>> patient.doctor.name
+'Bishop'
+```
+
+but you can see that accessing `patient.doctor` will return you the `id` of the referred record, not the record itself. This is because weppy won't load the relations immediately, and the attribute `doctor` of the selected patient is, indeed, not a `Row` object:
+
+```python
+>>> type(patient.doctor)
+<class 'pydal.helpers.classes.Reference'>
+```
+
+the `Reference` object is in fact responsible of selecting the referred record only when you need to access its attributes.
+
+> **Note:** remember that when you access an attribute of a `Reference` object, a *SELECT* to the database is performed, once per referred record.
+
+On the other hand, the `has_many` and `has_one` helpers will attach `Set` objects to the selected row, so given the same model of the example:
+
+```python
+class Doctor(Model):
+    has_many('patients')
+```
+
+accessing the `patients` attribute of a selected doctor, will give you the same kind of object we inspected in the [operations chapter](./operations):
+
+```python
+>>> doctor = Doctor.first()
+>>> doctor.patients
+<Set (patients.doctor = 1)>
+```
+
+As a consequence, on these objects you have the same methods we already discussed for `Set`:
+
+| method | description |
+| --- | --- |
+| where | return a subset given additional queries |
+| select | get the records |
+| count | count the records |
+| update | update all the records |
+| validate\_and\_update | perform a validation and update the records |
+| delete | delete all the records |
+
+and [scopes](./scopes) will work on these sets as well, so if you defined, for example, a scope named *males* in your `Patient` model, you can use it with the same syntax:
+
+```python
+doctor.patients.males().select(paginate=1)
+```
+
+The `has_one` and `has_many` generated sets will also have a shortcut for `select` and some additional methods that can help you when performing operations on relations. Let's see them.
+
+### has\_one sets methods
+
+Since accessing the relations is generally the most performed operation, you also have a **shortcut** for the `select` method if you just call the attribute of an `has_one` set:
+
+```python
+>>> ww = Citizen.get(name="Heisenberg")
+>>> ww.passport()
+<Row {'number': 'AA1234', 'id': 1L, 'citizen': 1L}>
+```
+
+as you can see, calling the `passport` attribute directly will perform a `select().first()` call on the set. The shortcut will consequentially call the `first` method of the `Rows` object since an `has_one` relationship expects to have only one record related to the original row.
+
+> **Note:** calling the shortcut or the `select` method without parameters will perform caching of the other row object on the set. If you need to avoid this for consequent calls, use the `reload` parameter set to `True`.
+
+The `has_one` sets also have a `create` method:
+
+```python
+citizen = Citizen.first()
+citizen.passport.create(number="AA123")
+```
+
+that will perform a validation and an insert operation with the reference bound to the current record. The operation is the same of writing:
+
+```python
+citizen = Citizen.first()
+Passport.create(number="AA123", citizen=citizen)
+```
+
+### has\_many sets methods
+
+Similarly to the `has_one` sets, the `has_many` ones have a **shortcut** for the `select` method if you just call the attribute:
+
+```python
+>>> doctor.patients()
+<Rows (1)>
+```
+
+This shortcut will return the rows referenced to the record, and accepts the same parameters accepted by the `select` method.
+
+> **Note:** calling the shortcut or the `select` method without parameters will perform caching of the referred rows on the set. If you need to avoid this for consequent calls, use the `reload` parameter set to `True`.
+
+The `has_many` sets also have three more methods that can help you performing operations with relations, in particular the `create`, `add` and `remove` methods. These methods have a slightly different behavior when the `has_many` helper is configured with the `via` options. Let' see them in details.
+
+#### Creating new related records
+
+The `create` method of the `has_many` sets behaves quite like the ones built with the `has_one` helper:
+
+```python
+>>> doctor = Doctor.first()
+>>> doctor.patients.create(name="Walter White", age=50)
+<Row {'errors': {}, 'id': 6}>
+```
+
+It will perform a validation and then insert a new record referred to the `doctor` row.
+
+Note that this method is available only if your `has_many` relation is not a `via` one; in fact, for sets produced with `has_many` relations and `via` option the `create` method will raise a `RuntimeError`.    
+This is a consequence of the fact that weppy doesn't know if you have additional columns in your join table. In fact, if you consider this example:
+
+```python
+class User(Model):
+    name = Field()
+    has_many(
+        'memberships', 
+        {'organizations': {'via': 'memberships'}})
+
+class Organization(Model):
+    name = Field()
+    has_many(
+        'memberships',
+        {'organizations': {'via': 'memberships'}})
+
+class Membership(Model):
+    belongs_to('user', 'organization')
+    role = Field()
+```
+
+the `Membership` model responsible of the `via` relations has a `role` field that should be set when you want to create a user for an organization or an organization for an user. In order to do that, you should create both of the records independently and the associate the records, as we will see in the next paragraph.
+
+#### Add records to many relations
+
+Every time you have existing records, you can use the `add` method of the `has_many` sets to establish new relations.
+
+If we consider back the *doctor-patients* example, where we have an `has_many` relation without the `via` option, the `add` method will change the doctor of a certain patient:
+
+```python
+>>> patient = Patient.first()
+>>> patient.doctor.name
+"Walter Bishop"
+>>> doctor = Doctor.get(name="Jekyll")
+>>> doctor.patients.add(patient)
+<Row {'updated': 1, 'errors': {}}>
+```
+
+that will produce the same result of writing:
+
+```python
+db(Patient.id == patient.id).validate_and_update(
+    doctor=doctor)
+```
+
+On `has_many` relations that have the `via` option configured, things are slightly different. In fact, if we consider the *user-membership-organization* example, the `add` method will create a new record on the join table:
+
+```python
+>>> org = Organization.first()
+>>> user = User.first()
+>>> org.users.add(user, role="admin")
+<Row {'errors': {}, 'id': 1}>
+```
+
+and as you can see, the `add` method accepts the other record as the first parameter, and any additional named parameter for additional fields of the join table, and will perform a validation and an insert on this table.
+
+#### Removing records from many relations
+
+The `remove` method of the `has_many` sets is intended to be the opposite of the `add` one.
+
+In cases of an `has_many` relation without the `via` option, the `remove` method has a different behavior depending on the opposite relation. In fact, if the opposite relation is a `belongs_to` relation, the `remove` method will delete the other record:
+
+```python
+>>> doctor = Doctor.get(name="Jekyll")
+>>> patient = Patient.get(name="John")
+>>> doctor.patients.remove(patient)
+1
+```
+
+and the returning value is the number of deleted records.
+
+On the contrary, if your opposite relation is a `refers_to` relation, the `remove` record will nullify the reference, keeping the other record in the database (the reference of the other record will be `None` in weppy and NULL in the database).
+
+When you have `has_many` relations defined with `via` options, the `remove` method will instead remove the record responsible of the relation in the join table. For instance, writing this:
+
+```python
+org = Organization.first()
+user = User.first()
+org.users.remove(user)
+```
+
+will delete the join record in the *memberships* table and keep the organization and the users intact and independents.
+
+### Joins and N+1 queries
+
+*New in version 0.6*
+
+Quite often in your application you will need to select multiple records and then access to their relations. Let's say for example, that you have a blog application with users and posts:
+
+```python
+class User(Model):
+    name = Field()
+    has_many('posts')
+
+class Post(Model):
+    belongs_to('user')
+    title = Field()
+```
+
+and you want to print out all the post titles for all the users. You might be tempted to write something like this:
+
+```python
+users = User.all().select()
+for user in users:
+    print("%s posts:" % user.name)
+    for post in user.posts():
+        print("  %s" % post.name)
+```
+
+but this will make weppy to perform a select operation to your database every time you call `user.posts()`, causing the problem called "N+1 queries".
+
+#### The join method
+
+To avoid the problem we've just exposed, weppy provides a `join` method over the sets. In fact, if you rewrite the select line for the users like this: 
+
+```python
+users = User.all().join('posts').select()
+```
+
+weppy will perform a *JOIN* operation on the database and the posts will be directly available on the users without any additional selects.
+
+As you probably understood, the `join` method accepts one or more relations to join in the select operation, and you can just write down these relations with their names as strings.
+
+The `join` method will load any kind of relation, independently if they are `belongs_to`, `refers_to`, `has_one` and `has_many` (also the ones with `via` options), so you can select, for example, the post matching a certain name and load also their authors:
+
+```python
+db(
+    Post.name.contains("tutorial")
+).join('user').select()
+```
+
+or load the organizations of the users from the example in the previous sections that are a many-via relations:
+
+```python
+User.all().join('organizations').select()
+```
+
+Note that, the `join` method will returns only those rows matching the joins, so, going back to the posts example, when you do:
+
+```python
+User.all().join('posts').select()
+```
+
+weppy won't return users that don't have posts. When you need this behavior, you should use the `including` option of the `select` method instead.
+
+#### select with including option
+
+The `including` option of the `select` method will reflect in a *LEFT OUTER JOIN* operation on your database, and is useful when you want to select entities and their relations even if these are empty. Writing:
+
+```python
+User.all().select(including='posts')
+```
+
+will return all the users in your database with their posts, if any. The `including` option accepts a string parameter or a list of strings, which have to be, like on the `join` method, the names of the relations you want to load.
+
+When you join or include a `belongs_to` or a `refers_to` relation, you have to keep in mind that the `type` of the object returned for the relation won't be a `Reference` anymore, but, instead, the effective `Row` referenced:
+
+```
+>>> post = Post.all().select().first()
+>>> type(post.user)
+<class 'pydal.helpers.classes.Reference'>
+>>> post = Post.all().select(including='user').first()
+>>> type(post.user)
+<class 'pydal.objects.Row'>
+```
+
+You won't experience usage differences between the two of them, but is correct to keep in mind this difference.
