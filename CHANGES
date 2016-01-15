@@ -27,6 +27,8 @@ Next
 - Added `pagination` and `including` options to `Set.select()`
 - Caching resultsets on `has_one` and `has_many` realtions calls for select
 - Added `where`, `all`, `first`, `last` and `get` methods to `Model`
+- Changed `add` method of `HasManySet` and `HasManyViaSet`
+- Added `create` method to `HasOneSet`, `HasManySet` and `HasManyViaSet`
 
 Version 0.5
 -----------
