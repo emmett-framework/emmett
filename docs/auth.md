@@ -246,11 +246,9 @@ event = db.AuthEvent(id=1)
 event.user
 ```
 
-*section under writing*
-
 ### Customizing auth models
 
-*section under writing*
+*section in development*
 
 Users management
 ---------------
@@ -316,12 +314,40 @@ auth.add_permission(admins, 'write', 'Setting', maintenance.id)
 auth.has_permission('write', 'Setting', maintenance.id)
 ```
 
+### Blocking users
+
+Sometimes you need to lock user operations on your application. The auth module have 2 different *locking* statuses for this:
+
+- **disabled:** the user won't be able to perform the normal auth operation until the reset of the password
+- **blocked:** the user won't be able to perform any auth operation (aka banned)
+
+You can change an user status in two different ways, the first is directly with you `Auth` instance:
+
+```python
+auth.disable_user(user)
+auth.block_user(user)
+auth.allow_user(user)
+```
+
+where the only accepted parameter is an user row (including the id) or just the id of the user involved.
+
+But you can also change the user status directly on a user you've selected from the database:
+
+```python
+user = User.first()
+user.disable()
+user.block()
+user.allow()
+```
+
+The allow methods will simply reset any blocking status on the users.
+
 Auth module configuration
 -------------------------
 
-*section under writing*
+*section in development*
 
 Additional login methods
 ------------------------
 
-*section under writing*
+*section in development*
