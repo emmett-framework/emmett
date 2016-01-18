@@ -13,6 +13,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import copy
 from itertools import chain
 from .._compat import reraise, text_type, to_native
 from .._internal import ClosingIterator
@@ -24,10 +25,10 @@ from .urls import get_host, url_parse, url_unparse
 
 class ClientContext(object):
     def __init__(self):
-        from ..globals import current
-        self.request = current.request
-        self.response = current.response
-        self.session = current.session
+        from ..globals import current, Request
+        self.request = Request(copy.deepcopy(current.request.environ))
+        self.response = copy.deepcopy(current.response)
+        self.session = copy.deepcopy(current.session)
         self.T = current.T
 
     def __enter__(self):
@@ -51,11 +52,9 @@ class ClientResponse(object):
     def __exit__(self, exc_type, exc_value, tb):
         pass
 
-    @property
+    @cachedprop
     def context(self):
-        if self._context is None:
-            self._context = ClientContext()
-        return self._context
+        return ClientContext()
 
     @cachedprop
     def data(self):

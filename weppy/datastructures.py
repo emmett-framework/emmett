@@ -9,6 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import copy
 import hashlib
 from ._compat import pickle
 
@@ -24,6 +25,7 @@ class sdict(dict):
     __repr__ = lambda self: '<sdict %s>' % dict.__repr__(self)
     __getstate__ = lambda self: None
     __copy__ = lambda self: sdict(self)
+    __deepcopy__ = lambda self, memo: sdict(copy.deepcopy(dict(self)))
 
 
 class ConfigData(sdict):
