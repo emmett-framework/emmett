@@ -13,11 +13,10 @@
 import re
 import os
 
-from ._compat import PY2, iteritems, text_type, to_native
+from ._compat import PY2, iteritems, text_type
 from .handlers import Handler, _wrapWithHandlers
 from .templating import render
 from .globals import current
-from .tags import TAG
 from .http import HTTP
 
 if PY2:
@@ -40,7 +39,8 @@ class Expose(object):
     REGEX_ANY = re.compile('<any\:(\w+)>')
     REGEX_ALPHA = re.compile('<str\:(\w+)>')
     REGEX_DATE = re.compile('<date\:(\w+)>')
-    REGEX_DECORATION = re.compile('(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
+    REGEX_DECORATION = re.compile(
+        '(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
 
     def __init__(self, path=None, name=None, template=None, handlers=None,
                  helpers=None, schemes=None, hostname=None, methods=None,
@@ -61,15 +61,15 @@ class Expose(object):
         self.template_path = template_path
         self.prefix = prefix
         self.handlers = self.common_handlers + (handlers or []) + \
-            self.common_helpers + (helpers or [])
+            [_ResponseHandler(self)] + self.common_helpers + (helpers or [])
         # check handlers are indeed valid handlers
         if any(not isinstance(handler, Handler) for handler in self.handlers):
             raise RuntimeError('Invalid Handler')
-        Expose._routing_stack.append(self)
+        self._routing_stack.append(self)
 
     @property
     def folder(self):
-        return Expose.application.template_path
+        return self.application.template_path
 
     def build_name(self):
         short = self.filename[1+len(self.folder):].rsplit('.', 1)[0]
@@ -82,13 +82,13 @@ class Expose(object):
             short = short.split(os.sep)[-1]
         return '.'.join(short.split(os.sep) + [self.func_name])
 
-    @staticmethod
-    def build_regex(schemes, hostname, methods, path):
-        path = Expose.REGEX_INT.sub('(?P<\g<1>>\d+)', path)
-        path = Expose.REGEX_STR.sub('(?P<\g<1>>[^/]+)', path)
-        path = Expose.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
-        path = Expose.REGEX_ALPHA.sub('(?P<\g<1>>\w+)', path)
-        path = Expose.REGEX_DATE.sub('(?P<\g<1>>\d{4}-\d{2}-\d{2})', path)
+    @classmethod
+    def build_regex(cls, schemes, hostname, methods, path):
+        path = cls.REGEX_INT.sub('(?P<\g<1>>\d+)', path)
+        path = cls.REGEX_STR.sub('(?P<\g<1>>[^/]+)', path)
+        path = cls.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
+        path = cls.REGEX_ALPHA.sub('(?P<\g<1>>\w+)', path)
+        path = cls.REGEX_DATE.sub('(?P<\g<1>>\d{4}-\d{2}-\d{2})', path)
         re_schemes = ('|'.join(schemes)).lower()
         re_methods = ('|'.join(methods)).lower()
         re_hostname = re.escape(hostname) if hostname else '[^/]*'
@@ -109,37 +109,37 @@ class Expose(object):
             path = "/{{:arg:}}/".join(args)
         return path
 
-    @staticmethod
-    def remove_decoration(path):
+    @classmethod
+    def remove_decoration(cls, path):
         """
         converts somehing like "/junk/test_args/<str:a>(/<int:b>)?"
         into something like    "/junk/test_args" for reverse routing
         """
         while True:
-            new_path = Expose.REGEX_DECORATION.sub('', path)
-            new_path = Expose.remove_trailslash(new_path)
-            new_path = Expose.override_midargs(new_path)
+            new_path = cls.REGEX_DECORATION.sub('', path)
+            new_path = cls.remove_trailslash(new_path)
+            new_path = cls.override_midargs(new_path)
             if new_path == path:
                 return path
             else:
                 path = new_path
 
-    @staticmethod
-    def add_route(route):
+    @classmethod
+    def add_route(cls, route):
         host = route[1].hostname or '__any__'
-        if host not in Expose.routes_in:
-            Expose.routes_in[host] = []
-        Expose.routes_in[host].append(route)
-        Expose.routes_out[route[1].name] = {
+        if host not in cls.routes_in:
+            cls.routes_in[host] = []
+        cls.routes_in[host].append(route)
+        cls.routes_out[route[1].name] = {
             'host': route[1].hostname,
-            'path': Expose.remove_decoration(route[1].path)}
+            'path': cls.remove_decoration(route[1].path)}
 
     def __call__(self, func):
         self.func_name = func.__name__
         self.filename = os.path.realpath(func.__code__.co_filename)
         #self.mtime = os.path.getmtime(self.filename)
         self.hostname = self.hostname or \
-            Expose.application.config.hostname_default
+            self.application.config.hostname_default
         if not self.path:
             #self.path = '/' + func.__name__ + '(.\w+)?'
             self.path = '/' + func.__name__
@@ -157,7 +157,8 @@ class Expose(object):
             self.path = (self.path != '/' and self.prefix+self.path) \
                 or self.prefix
         if not self.template:
-            self.template = self.func_name + '.<ext>'
+            self.template = self.func_name + \
+                self.application.template_default_extension
         #if self.name.startswith('.'):
         #    self.name = '%s%s' % (self.application, self.name)
         if self.template_folder:
@@ -165,10 +166,10 @@ class Expose(object):
         self.template_path = self.template_path or self.folder
         wrapped_func = _wrapWithHandlers(self.handlers)(func)
         self.func = wrapped_func
-        self.regex = Expose.build_regex(
+        self.regex = self.build_regex(
             self.schemes, self.hostname, self.methods, self.path)
         route = (re.compile(self.regex), self)
-        Expose.add_route(route)
+        self.add_route(route)
         logstr = "%s %s://%s%s" % (
             "|".join(s.upper() for s in self.methods),
             "|".join(s for s in self.schemes),
@@ -176,36 +177,36 @@ class Expose(object):
             self.path
         )
         self.application.log.info("exposing '%s': %s" % (self.name, logstr))
-        Expose._routing_stack.pop()
+        self._routing_stack.pop()
         return func
 
-    @staticmethod
-    def match_lang(path):
-        default = Expose.application.language_default
+    @classmethod
+    def match_lang(cls, path):
+        default = cls.application.language_default
         if len(path) <= 1:
             return path, default
         clean_path = path.lstrip('/')
         lang = clean_path.split('/', 1)[0]
-        if lang in Expose.application.languages and lang != default:
+        if lang in cls.application.languages and lang != default:
             new_path = '/'.join([arg for arg in clean_path.split('/')[1:]])
             if path.startswith('/'):
                 new_path = '/'+new_path
             return new_path, lang
         return path, default
 
-    @staticmethod
-    def match(request):
-        path = Expose.remove_trailslash(request.path_info)
-        if Expose.application.language_force_on_url:
-            path, lang = Expose.match_lang(path)
+    @classmethod
+    def match(cls, request):
+        path = cls.remove_trailslash(request.path_info)
+        if cls.application.language_force_on_url:
+            path, lang = cls.match_lang(path)
             request.language = lang
             current._language = request.language
         else:
             request.language = None
         expression = '%s %s://%s%s' % (
             request.method, request.scheme, request.hostname, path)
-        routes_in = Expose.routes_in.get(request.hostname,
-                                         Expose.routes_in['__any__'])
+        routes_in = cls.routes_in.get(
+            request.hostname, cls.routes_in['__any__'])
         for regex, obj in routes_in:
             match = regex.match(expression)
             if match:
@@ -218,53 +219,58 @@ class Expose(object):
         for handler in reversed(route.handlers):
             handler.on_end()
 
-    @staticmethod
-    def dispatch():
+    @classmethod
+    def dispatch(cls):
         #: get the right exposed function
         request = current.request
-        route, reqargs = Expose.match(request)
+        route, reqargs = cls.match(request)
         if route:
             request.name = route.name
             try:
                 output = route.func(**reqargs)
             except:
-                Expose._after_dispatch(route)
+                cls._after_dispatch(route)
                 raise
             if output is None:
                 output = dict()
         else:
             raise HTTP(404, body="Invalid action\n")
-        #: build the right output
-        response = current.response
-        try:
+        #: end the dispatching
+        cls._after_dispatch(route)
+
+    @classmethod
+    def static_versioning(cls):
+        return (cls.application.config.static_version_urls and
+                cls.application.config.static_version) or ''
+
+    @classmethod
+    def exposing(cls):
+        return cls._routing_stack[-1]
+
+
+class _ResponseHandler(Handler):
+    def __init__(self, route):
+        self.route = route
+
+    def wrap_call(self, func):
+        def wrap(*args, **kwargs):
+            response = current.response
+            output = func(*args, **kwargs)
+            if output is None:
+                output = {}
             if isinstance(output, dict):
                 if 'current' not in output:
                     output['current'] = current
                 if 'url' not in output:
                     output['url'] = url
-                templatename = route.template.replace(
-                    '.<ext>', Expose.application.template_default_extension)
-                output = render(Expose.application, route.template_path,
-                                templatename, output)
+                output = render(Expose.application, self.route.template_path,
+                                self.route.template, output)
                 response.output = output
             elif isinstance(output, text_type) or hasattr(output, '__iter__'):
                 response.output = output
             else:
                 response.output = str(output)
-        except:
-            Expose._after_dispatch(route)
-            raise
-        #: end the dispatching
-        Expose._after_dispatch(route)
-
-    @staticmethod
-    def static_versioning():
-        return (Expose.application.config.static_version_urls and
-                Expose.application.config.static_version) or ''
-
-    @staticmethod
-    def exposing():
-        return Expose._routing_stack[-1]
+        return wrap
 
 
 def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
