@@ -93,7 +93,7 @@ class AuthUserBasic(AuthModel, TimestampedModel):
     #      {'permissions': {'via': 'authgroups'}},
     #  )
 
-    email = Field(length=512, unique=True)
+    email = Field(length=255, unique=True)
     password = Field('password', length=512)
     registration_key = Field(length=512, rw=False, default='')
     reset_password_key = Field(length=512, rw=False, default='')
@@ -144,7 +144,7 @@ class AuthGroup(TimestampedModel):
     #      {'users': {'via': 'memberships'}}
     #  )
 
-    role = Field(length=512, default='', unique=True)
+    role = Field(length=255, default='', unique=True)
     description = Field('text')
 
     form_labels = {
