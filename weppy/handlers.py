@@ -18,19 +18,19 @@ class _wrapWithHandlers(object):
 
     def __call__(self, f):
         def wrap(f, handler):
-            def g(*a, **b):
+            def handled_function(*args, **kwargs):
                 try:
                     handler.on_start()
-                    output = handler.wrap_call(f)(*a, **b)
+                    output = handler.wrap_call(f)(*args, **kwargs)
                     handler.on_success()
                     return output
                 except HTTP:
                     handler.on_success()
                     raise
-                else:
+                except Exception:
                     handler.on_failure()
                     raise
-            return g
+            return handled_function
         for handler in reversed(self.handlers):
             if isinstance(handler, Handler):
                 f = wrap(f, handler)
