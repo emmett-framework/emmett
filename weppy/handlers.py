@@ -27,7 +27,7 @@ class _wrapWithHandlers(object):
                 except HTTP:
                     handler.on_success()
                     raise
-                except Exception:
+                except:
                     handler.on_failure()
                     raise
             return handled_function

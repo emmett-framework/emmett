@@ -155,6 +155,9 @@ class Content(BlockNode):
         self.pre_extend = pre_extend
         self.template = name
 
+    def __repr__(self):
+        return object.__repr__(self)
+
     def __str__(self):
         return u''.join(_gen_output(node, self.blocks) for node in self.nodes)
 
