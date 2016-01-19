@@ -69,7 +69,7 @@ class Expose(object):
 
     @property
     def folder(self):
-        return Expose.application.template_path
+        return self.application.root_path
 
     def build_name(self):
         short = self.filename[1+len(self.folder):].rsplit('.', 1)[0]
@@ -162,7 +162,8 @@ class Expose(object):
         #    self.name = '%s%s' % (self.application, self.name)
         if self.template_folder:
             self.template = os.path.join(self.template_folder, self.template)
-        self.template_path = self.template_path or self.folder
+        self.template_path = self.template_path or \
+            self.application.template_path
         wrapped_func = _wrapWithHandlers(self.handlers)(func)
         self.func = wrapped_func
         self.regex = Expose.build_regex(
