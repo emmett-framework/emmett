@@ -559,7 +559,7 @@ User.all().join('posts').select()
 
 weppy won't return users that don't have posts. When you need this behavior, you should use the `including` option of the `select` method instead.
 
-#### select with including option
+#### Select with including option
 
 The `including` option of the `select` method will reflect in a *LEFT OUTER JOIN* operation on your database, and is useful when you want to select entities and their relations even if these are empty. Writing:
 
@@ -570,3 +570,15 @@ User.all().select(including='posts')
 will return all the users in your database with their posts, if any, with the same types of the `join` method. The `including` option accepts a string parameter or a list of strings, which have to be, like on the `join` method, the names of the relations you want to load.
 
 > **Note:** when you includes `belongs_to` or `refers_to` relations, the `type` of the related object inside the selected rows is just the same of the normal select operation.
+
+#### Manual joins
+
+If you need that, you can use also a lower level method to perform joins with weppy:
+
+```python
+db(Post.user == User.id).select(db.User.ALL, db.Post.ALL)
+```
+
+This code will return the join rows of users and their posts, as we seen with the `join` method. The main difference from the above is that the rows returned with this method won't have related posts as nested rows of users, but instead every row contained in the returned `Rows` object will have a `users` attribute and a `posts` attribute containing the two selected rows from their tables. As a direct consequence, if you have users with more than one post, they will be repeated in rows for every post matching the query.
+
+If this structure better suits your needs for your application development, you might use this method to perform joins instead of the `join` method.

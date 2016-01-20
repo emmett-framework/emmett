@@ -47,7 +47,7 @@ Since the majority of frameworks use, instead, the `route` word for the same pur
 def foo():
     pass
 
-@mymodule.route():
+@mymodule.route()
 def bar():
     pass
 ```
