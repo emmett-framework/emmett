@@ -77,7 +77,7 @@ can be uncomfortable. You can instead write a scope for that:
 
 ```python
 class Post(Model):
-    @scope('between'):
+    @scope('between')
     def filter_between(self, start, end):
         return (self.created_at >= start) & (self.created_at < end)
 ```

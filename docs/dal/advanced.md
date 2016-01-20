@@ -71,11 +71,11 @@ Models in weppy also inherits all the properties decorated with the helper funct
 In fact, if you defined scopes in `TimeStampModel`:
 
 ```python
-@scope('created_between'):
+@scope('created_between')
 def filter_creation_period(self, start, end):
     return (self.created_at >= start) & (self.created_at < end)
 
-@scope('updated_between'):
+@scope('updated_between')
 def filter_update_period(self, start, end):
     return (self.updated_at >= start) & (self.updated_at < end)
 ```
