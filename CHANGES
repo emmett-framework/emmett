@@ -29,6 +29,7 @@ Next
 - Added `where`, `all`, `first`, `last` and `get` methods to `Model`
 - Changed `add` method of `HasManySet` and `HasManyViaSet`
 - Added `create` method to `HasOneSet`, `HasManySet` and `HasManyViaSet`
+- Added `clear` method to session handlers for bulk invalidation
 
 Version 0.5
 -----------
