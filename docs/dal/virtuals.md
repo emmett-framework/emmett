@@ -61,6 +61,8 @@ You can access the values as the common fields:
 > **Warning:**   
 > Virtual fields are computed and injected every time you select records for the model in which you have defined them. If you write down complex operations in virtual fields, remember that the computing time will be *silently* added to the select operation, and you may encounter performance drops.
 
+The `virtualfield` decorator accepts the additional `current_model_only` parameter, which is set to `True` as default behavior. The concept behind this parameter is related to the `Rows` objects returned by weppy when you select some records: if you select rows from multiple tables, your `Row` obejct will have, indeed, named keys from the table names. This parameter prevents the row object to have attributes from other tables, so you can access the fields of the current model directly on the object. On the countrary, if you need to perform operations based on other tables that will be present on the rows, you should change this parameter to `False`, and you will need to access the fields using the `tablename.fieldname` notation in your method.
+
 Field methods
 -------------
 Similar to virtual fields, field methods are helpers injected to the rows when you select them. Differently from virtual fields, they will be methods indeed, and you should invoke them to access the value you're looking for.
@@ -85,6 +87,8 @@ As we said, field methods are evaluated *on demand*, which means you have to inv
 >>> item.total()
 30.0
 ```
+
+Like the `virtualfield` decorator, the `fieldmethod` one accepts the `current_model_only` parameter, which is set to `True` as default.
 
 ### More on field methods
 

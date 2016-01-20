@@ -22,7 +22,7 @@ $ pip install -U weppy
 Version 0.6
 -----------
 
-weppy 0.6 introduces some deprecations you should be aware of, and some new features you might been interested into.
+weppy 0.6 introduces some deprecations and changes you should be aware of, and some new features you might been interested into.
 
 Next paragraphs describe all this relevant changes.
 
@@ -55,9 +55,71 @@ def bar():
 All the usages remain the same of `expose`.   
 Since it's deprecated, you can still use `expose` in weppy 0.6, but you have to remember this will be definitely removed in the next version.
 
+### Breaking changes
+
+weppy 0.6 introduces some minor breaking changes: here we list the upgrades you should perform on your application in order to have the same behavior with the new version of the framework.
+
+#### Relations with has\_one
+
+In weppy 0.5 the `has_one` helper produced nested rows on the results of select operations for these kind of relations: this behavior is changed in weppy 0.6 in order to prevent performance issues. In fact, in the new version of the framework, the attribute responsible of the relation on the selected rows is now a `Set`.
+
+The immediate consequence is that you have to change the code of your application when you want to effectively access the referred row with a call of the attribute:
+
+```python
+# weppy 0.5
+referred_row = row.hasonerelation
+# weppy 0.6
+referred_row = row.hasonerelation()
+```
+
+You can find more about this in the [appropriate chapter](./dal/relations#operations-with-relations) of the documentation.
+
+#### Model virtual decorators
+
+The `virtualfield` and `fieldmethods` decorators were changed in order to bind the current model when accessing the row. This change was performed in order to simplify the code in these methods, since in weppy 0.5 you had to write code like this:
+
+```python
+class Post(Model):
+    title = Field()
+
+    @fieldmethod('short_title')
+    def build_short_title(self, row):
+        # notice we have to access the field using the tablename
+        return row.posts.title[:100]
+```
+
+In weppy 0.6 you can rewrite the decorated method just like this:
+
+```python
+@fieldmethod('short_title')
+def build_short_title(self, row):
+    return row.title[:100]
+```
+
+You can restore the old behavior using the `current_model_only` parameter:
+
+```python
+@fieldmethod('short_title', current_model_only=False)
+```
+
+More details are available under the [appropriate chapter](./dal/virtuals) of the documentation.
+
+#### Methods of has\_many sets
+
+In weppy 0.5 the sets produced by `has_many` relations had an `add` with different behaviors depending on the `via` options:
+
+- without the `via` option, the `add` method was performing an insert of an object referred to the current row
+- with the `via` option, the `add` method was performing an insert of a record on the join table, reffered to the other two tables
+
+Since weppy 0.6 introduces the `create` method on these sets, now the behavior of the `add` method is always the same, since it always accepts a record of the related table and will just create the relation with it.
+
+If you used the `add` method of the `has_many` sets without `via` option in your application, you should change these calls with the `create` one.
+
+You can find more about this in the [appropriate chapter](./dal/relations#operations-with-relations) of the documentation.
+
 ### New features
 
-*section under writing*
+*section in development*
 
 
 Version 0.5
