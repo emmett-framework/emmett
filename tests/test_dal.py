@@ -3,7 +3,7 @@
     tests.dal
     ---------
 
-    pyDAL implementation over weppy.
+    Test pyDAL implementation over weppy.
 
     :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.

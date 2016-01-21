@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+    tests.migrations
+    ----------------
+
+    Test weppy migrations engine
+
+    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
+
 import pytest
 from weppy import App
 from weppy.dal import DAL, Model, Field
@@ -111,30 +122,75 @@ def test_step_two_create_table(app):
     assert sql == _step_two_sql
 
 
-class StepThreeThing(Model):
+class StepThreeThingOne(Model):
+    a = Field()
+
+
+class StepThreeThingTwo(Model):
+    tablename = "step_three_thing_ones"
+    a = Field()
+    b = Field()
+
+
+class StepThreeThingThree(Model):
+    tablename = "step_three_thing_ones"
+    b = Field()
+
+_step_three_sql = "ALTER TABLE step_three_thing_ones ADD b CHAR(512);"
+_step_three_sql_drop = "ALTER TABLE step_three_thing_ones DROP COLUMN a;"
+
+
+def test_step_three_create_column(app):
+    db = DAL(app, auto_migrate=False)
+    db.define_models(StepThreeThingOne)
+    ops = _make_ops(db)
+    db2 = DAL(app, auto_migrate=False)
+    db2.define_models(StepThreeThingTwo)
+    ops2 = _make_ops(db2, ops)
+    op = ops2.ops[0]
+    sql = _make_sql(db, op)
+    assert sql == _step_three_sql
+
+
+def test_step_three_drop_column(app):
+    db = DAL(app, auto_migrate=False)
+    db.define_models(StepThreeThingTwo)
+    ops = _make_ops(db)
+    db2 = DAL(app, auto_migrate=False)
+    db2.define_models(StepThreeThingThree)
+    ops2 = _make_ops(db2, ops)
+    op = ops2.ops[0]
+    sql = _make_sql(db, op)
+    assert sql == _step_three_sql_drop
+
+
+class StepFourThing(Model):
     name = Field(notnull=True)
     value = Field('float', default=8.8)
     available = Field('bool', default=True)
+    asd = Field()
 
 
-class StepThreeThingEdit(Model):
-    tablename = "step_three_things"
+class StepFourThingEdit(Model):
+    tablename = "step_four_things"
     name = Field()
     value = Field('float')
     available = Field('bool', default=True)
+    asd = Field('int')
 
-_step_three_sql = """ALTER_TABLE step_three_things ALTER COLUMN name DROP NOT NULL;
-ALTER_TABLE step_three_things ALTER COLUMN value DROP DEFAULT;"""
+_step_four_sql = """ALTER_TABLE step_four_things ALTER COLUMN name DROP NOT NULL;
+ALTER_TABLE step_four_things ALTER COLUMN value DROP DEFAULT;
+ALTER_TABLE step_four_things ALTER COLUMN asd TYPE INTEGER;"""
 
 
 def test_step_three_alter_table(app):
     db = DAL(app, auto_migrate=False)
-    db.define_models(StepThreeThing)
+    db.define_models(StepFourThing)
     ops = _make_ops(db)
     db2 = DAL(app, auto_migrate=False)
-    db2.define_models(StepThreeThingEdit)
+    db2.define_models(StepFourThingEdit)
     ops2 = _make_ops(db2, ops)
     sql = []
     for op in ops2.ops:
         sql.append(_make_sql(db2, op))
-    assert "\n".join(sql) == _step_three_sql
+    assert "\n".join(sql) == _step_four_sql
