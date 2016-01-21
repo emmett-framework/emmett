@@ -201,10 +201,6 @@ class AddColumnOp(AlterTableOp):
         return self.column
 
     @classmethod
-    def from_column(cls, col):
-        return cls(col.table.name, col)
-
-    @classmethod
     def from_column_and_tablename(cls, tname, col):
         return cls(tname, col)
 

@@ -124,8 +124,8 @@ class Comparator(object):
         meta_column_names = OrderedSet(metatable.fields)
         #: new columns
         for column_name in db_column_names.difference(meta_column_names):
-            self.ops.append(AddColumnOp.from_column(
-                Column.from_field(dbtable[column_name])))
+            self.ops.append(AddColumnOp.from_column_and_tablename(
+                dbtable._tablename, Column.from_field(dbtable[column_name])))
         #: existing columns
         for column_name in meta_column_names.intersection(db_column_names):
             self.ops.append(AlterColumnOp(dbtable._tablename, column_name))
