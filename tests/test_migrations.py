@@ -38,7 +38,7 @@ def _make_ops(db, base=None):
 
 def _make_sql(db, op):
     engine = FakeEngine(db)
-    op.engine = FakeEngine(db)
+    op.engine = engine
     op.run()
     return engine.sql_history[-1] if engine.sql_history else None
 
@@ -93,3 +93,32 @@ def test_step_two_create_table(app):
     op = ops.ops[0]
     sql = _make_sql(db, op)
     assert sql == _step_two_sql
+
+
+class StepThreeThing(Model):
+    name = Field(notnull=True)
+    value = Field('float', default=8.8)
+    available = Field('bool', default=True)
+
+
+class StepThreeThingEdit(Model):
+    tablename = "step_three_things"
+    name = Field()
+    value = Field('float')
+    available = Field('bool', default=True)
+
+_step_three_sql = """ALTER_TABLE step_three_things ALTER COLUMN name DROP NOT NULL;
+ALTER_TABLE step_three_things ALTER COLUMN value DROP DEFAULT;"""
+
+
+def test_setp_three_alter_table(app):
+    db = DAL(app, auto_migrate=False)
+    db.define_models(StepThreeThing)
+    ops = _make_ops(db)
+    db2 = DAL(app, auto_migrate=False)
+    db2.define_models(StepThreeThingEdit)
+    ops2 = _make_ops(db2, ops)
+    sql = []
+    for op in ops2.ops:
+        sql.append(_make_sql(db2, op))
+    assert "\n".join(sql) == _step_three_sql

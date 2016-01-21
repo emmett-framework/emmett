@@ -105,7 +105,7 @@ class CreateTableOp(Operation):
     def from_table(cls, table):
         return cls(
             table.name,
-            table.columns,
+            [table[colname] for colname in table.fields],
             _orig_table=table
         )
 

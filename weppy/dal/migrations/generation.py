@@ -32,7 +32,7 @@ class MetaTable(object):
 
     @property
     def fields(self):
-        return self.columns
+        return list(self.columns)
 
     def __getitem__(self, name):
         return self.columns[name]
@@ -121,7 +121,7 @@ class Comparator(object):
 
     def columns(self, dbtable, metatable):
         db_column_names = OrderedSet([fname for fname in dbtable.fields])
-        meta_column_names = OrderedSet(list(metatable.columns))
+        meta_column_names = OrderedSet(metatable.fields)
         #: new columns
         for column_name in db_column_names.difference(meta_column_names):
             self.ops.append(AddColumnOp.from_column(

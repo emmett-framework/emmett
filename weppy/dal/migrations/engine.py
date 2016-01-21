@@ -39,12 +39,12 @@ class MetaEngine(object):
         rv = {}
         for change in changes:
             if change[0] == "modify_type":
-                rv['type'] = (change[4], change[5])
+                rv['type'] = [change[4], change[5]]
             elif change[0] == "modify_notnull":
-                rv['notnull'] = (change[4], change[5])
+                rv['notnull'] = [change[4], change[5]]
             elif change[0] == "modify_default":
-                rv['default'] = (
-                    change[4], change[5], change[3]['existing_type'])
+                rv['default'] = [
+                    change[4], change[5], change[3]['existing_type']]
         return rv
 
 
