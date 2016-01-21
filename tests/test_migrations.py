@@ -53,6 +53,8 @@ _step_one_sql = """CREATE TABLE step_one_things(
     value DOUBLE
 );"""
 
+_step_one_sql_drop = "DROP TABLE step_one_things;"
+
 
 def test_step_one_create_table(app):
     db = DAL(app, auto_migrate=False)
@@ -71,6 +73,20 @@ def test_step_one_no_diff_in_migration(app):
     ops = _make_ops(db)
     ops2 = _make_ops(db, ops)
     assert len(ops2.as_diffs()) == 0
+
+
+def test_step_one_drop_table(app):
+    db = DAL(app, auto_migrate=False)
+    db.define_models(StepOneThing)
+    ops = _make_ops(db)
+    db2 = DAL(app, auto_migrate=False)
+    db2.define_models()
+    ops2 = _make_ops(db2, ops)
+    diffs = ops2.as_diffs()
+    assert len(diffs) == 1 and diffs[0][0] == "remove_table"
+    op = ops2.ops[0]
+    sql = _make_sql(db2, op)
+    assert sql == _step_one_sql_drop
 
 
 class StepTwoThing(Model):
@@ -111,7 +127,7 @@ _step_three_sql = """ALTER_TABLE step_three_things ALTER COLUMN name DROP NOT NU
 ALTER_TABLE step_three_things ALTER COLUMN value DROP DEFAULT;"""
 
 
-def test_setp_three_alter_table(app):
+def test_step_three_alter_table(app):
     db = DAL(app, auto_migrate=False)
     db.define_models(StepThreeThing)
     ops = _make_ops(db)

@@ -67,8 +67,9 @@ class Engine(MetaEngine):
 
     def drop_table(self, name):
         adapt_v = sdict(sqlsafe=name)
-        sql = self.adapter._drop(adapt_v)
-        self._log_and_exec(sql)
+        sql_list = self.adapter._drop(adapt_v, '')
+        for sql in sql_list:
+            self._log_and_exec(sql)
 
     def add_column(self, tablename, column):
         sql = self._add_column_sql(tablename, column)
