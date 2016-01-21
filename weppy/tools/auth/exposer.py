@@ -131,7 +131,7 @@ class Exposer(object):
 
     def register(self):
         def process_form(form):
-            if form.vars.password.password != form.vars.password2:
+            if form.params.password.password != form.params.password2:
                 form.errors.password = "password mismatch"
                 form.errors.password2 = "password mismatch"
                 return
@@ -153,27 +153,28 @@ class Exposer(object):
             keepvalues=True
         )
         if form.accepted:
-            del form.vars['password2']
+            del form.params['password2']
             # insert user
-            form.vars.id = self.auth.table_user.insert(**form.vars)
-            row = self.auth.table_user(id=form.vars.id)
-            description = self.messages.group_description % form.vars
+            form.params.id = self.auth.table_user.insert(**form.params)
+            row = self.auth.table_user(id=form.params.id)
+            description = self.messages.group_description % form.params
             if self.settings.create_user_groups:
                 group_id = self.auth.add_group(
-                    self.settings.create_user_groups % form.vars, description)
-                self.add_membership(group_id, form.vars.id)
+                    self.settings.create_user_groups % form.params,
+                    description)
+                self.add_membership(group_id, form.params.id)
             if self.settings.everybody_group_id:
                 self.auth.add_membership(
-                    self.settings.everybody_group_id, form.vars.id)
+                    self.settings.everybody_group_id, form.params.id)
             if self.settings.registration_requires_verification:
                 link = self.auth.url(
                     ['verify_email', row['registration_key']], scheme=True
                 )
-                d = dict(request.vars)
+                d = dict(request.params)
                 d.update(dict(key=row['registration_key'], link=link,
-                         username=form.vars[username]))
+                         username=form.params[username]))
                 if not (self.settings.mailer and self.settings.mailer.send(
-                        to=form.vars.email,
+                        to=form.params.email,
                         subject=self.messages.verify_email_subject,
                         message=self.messages.verify_email % d)):
                     self.auth.db.rollback()
@@ -189,7 +190,7 @@ class Exposer(object):
                 flash(self.messages.registration_successful)
                 self.auth.login_user(row)
                 flash(self.messages.logged_in)
-            self.auth.log_event(log, form.vars)
+            self.auth.log_event(log, form.params)
             callback(onaccept, form)
             if not nextv:
                 nextv = self.auth.url('login')
@@ -236,13 +237,13 @@ class Exposer(object):
         )
         if form.accepted:
             users = self.auth.db(
-                self.auth.table_user.email == form.vars.email).select()
+                self.auth.table_user.email == form.params.email).select()
             if not users:
                 flash(self.messages.invalid_email)
                 redirect(self.auth.url('retrieve_username'))
             username = ', '.join(u.username for u in users)
             self.settings.mailer.send(
-                to=form.vars.email,
+                to=form.params.email,
                 subject=self.messages.retrieve_username_subject,
                 message=self.messages.retrieve_username % dict(
                     username=username))
@@ -259,13 +260,13 @@ class Exposer(object):
 
     def reset_password(self):
         def process_form(form):
-            if form.vars.password.password != form.vars.password2:
+            if form.params.password.password != form.params.password2:
                 form.errors.password = self.messages.mismatched_password
                 form.errors.password2 = self.messages.mismatched_password
 
         nextv = get_vars_next() or self.settings.reset_password_next
         try:
-            key = request.vars.key
+            key = request.params.key
             t0 = int(key.split('-')[0])
             if time.time() - t0 > 60 * 60 * 24:
                 raise Exception
@@ -283,7 +284,7 @@ class Exposer(object):
         )
         if form.accepted:
             user.update_record(
-                password=str(form.vars.new_password),
+                password=str(form.params.new_password),
                 registration_key='',
                 reset_password_key=''
             )
@@ -296,7 +297,7 @@ class Exposer(object):
     def request_reset_password(self):
         def process_form(form, rows):
             field = self.settings.login_userfield
-            user = self.auth.table_user(**{field: form.vars.email})
+            user = self.auth.table_user(**{field: form.params.email})
             rows['user'] = user
             if not user:
                 form.errors[field] = self.messages['invalid_%s' % field]
@@ -347,10 +348,10 @@ class Exposer(object):
 
     def change_password(self):
         def process_form(form):
-            if form.vars.old_password != row.password:
+            if form.params.old_password != row.password:
                 form.errors.old_password = self.messages.invalid_password
                 return
-            if form.vars.new_password.password != form.vars.new_password2:
+            if form.params.new_password.password != form.params.new_password2:
                 form.errors.new_password = self.messages.mismatched_password
                 form.errors.new_password2 = self.messages.mismatched_password
                 return
@@ -371,7 +372,7 @@ class Exposer(object):
             hidden=dict(_next=nextv)
         )
         if form.accepted:
-            row.update(password=str(form.vars.new_password))
+            row.update(password=str(form.params.new_password))
             flash(self.messages.password_changed)
             self.auth.log_event(log, self.auth.user)
             callback(onaccept, form)
@@ -407,7 +408,7 @@ class Exposer(object):
         )
         if form.accepted:
             self.auth.user.update(
-                self.auth.table_user._filter_fields(form.vars))
+                self.auth.table_user._filter_fields(form.params))
             flash(self.messages.profile_updated)
             self.auth.log_event(log, self.auth.user)
             callback(onaccept, form)

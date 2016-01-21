@@ -291,14 +291,16 @@ def warn_of_deprecation(old_name, new_name, prefix=None, stack=2):
 
 
 class deprecated(object):
-    def __init__(self, old_method_name, new_method_name, class_name=None):
+    def __init__(self, old_method_name, new_method_name, class_name=None, s=0):
         self.class_name = class_name
         self.old_method_name = old_method_name
         self.new_method_name = new_method_name
+        self.additional_stack = s
 
     def __call__(self, f):
         def wrapped(*args, **kwargs):
             warn_of_deprecation(
-                self.old_method_name, self.new_method_name, self.class_name, 3)
+                self.old_method_name, self.new_method_name, self.class_name,
+                3 + self.additional_stack)
             return f(*args, **kwargs)
         return wrapped

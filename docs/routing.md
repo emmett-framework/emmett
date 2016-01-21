@@ -126,7 +126,7 @@ def edit(id):
     # code
 
 a = url('index')
-b = url('g', vars={'u': 2})
+b = url('g', params={'u': 2})
 c = url('f', ['foo', 'bar'])
 d = url('edit', 123)
 ```

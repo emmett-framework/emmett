@@ -4,7 +4,7 @@ Tutorial
 So, you want to develop an application with Python and weppy, huh?   
 Here you have the chance to learn that by example. In this tutorial we will create a simple microblog application, using weppy and SQLite as database which comes out of the box with Python, so you won't need anything else.
 
-If you want the full sourcecode in advance or for comparison, check out the [example source](https://github.com/gi0baro/weppy/tree/master/examples/bloggy).
+If you want the full sourcecode in advance or for comparison, check out the [example source](https://github.com/gi0baro/weppy/tree/release/examples/bloggy).
 
 Bloggy: a micro blog
 --------------------
@@ -211,7 +211,7 @@ from weppy import abort
 def one(pid):
     def _validate_comment(form):
         # manually set post id in comment form
-        form.vars.post = pid
+        form.params.post = pid
     # get post and return 404 if doesn't exist
     post = db.Post(id=pid)
     if not post:
@@ -237,7 +237,7 @@ from weppy.tools import requires
 def new_post():
     form = Post.form()
     if form.accepted:
-        redirect(url('one', form.vars.id))
+        redirect(url('one', form.params.id))
     return dict(form=form)
 ```
 

@@ -14,6 +14,7 @@ import re
 import os
 
 from ._compat import PY2, iteritems, text_type
+from ._internal import warn_of_deprecation
 from .handlers import Handler, _wrapWithHandlers
 from .templating import render
 from .globals import current
@@ -274,8 +275,8 @@ class _ResponseHandler(Handler):
         return wrap
 
 
-def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
-        host=None, language=None):
+def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
+        host=None, language=None, vars=None):
     """
     usages:
         url('index') # assumes app or default expose file
@@ -284,6 +285,10 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
         url('static', 'file') # for static files
         url('/myurl') # a normal url
     """
+
+    if vars is not None:
+        warn_of_deprecation('url(vars=..)', 'url(params=..)', stack=3)
+        params = vars
 
     if not isinstance(args, (list, tuple)):
         args = [args]
@@ -365,11 +370,11 @@ def url(path, args=[], vars={}, extension=None, sign=None, scheme=None,
         url = url + '/' + '/'.join(uquote(str(a)) for a in args)
     # add signature
     if sign:
-        vars['_signature'] = sign(url)
-    # add vars
-    if vars:
+        params['_signature'] = sign(url)
+    # add params
+    if params:
         url = url + '?' + '&'.join(
-            '%s=%s' % (uquote(k), uquote(v)) for k, v in iteritems(vars)
+            '%s=%s' % (uquote(k), uquote(v)) for k, v in iteritems(params)
         )
     # scheme=True means to use current scheme
     if scheme is True:

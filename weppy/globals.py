@@ -17,7 +17,7 @@ import re
 import threading
 
 from ._compat import SimpleCookie, iteritems
-from ._internal import ObjectProxy, LimitedStream
+from ._internal import ObjectProxy, LimitedStream, deprecated
 from .datastructures import sdict
 from .helpers import get_flashed_messages
 from .tags import htmlescape
@@ -54,16 +54,16 @@ class Request(object):
         return self.nowloc
 
     @cachedprop
-    def get_vars(self):
+    def query_params(self):
         query_string = self.environ.get('QUERY_STRING', '')
         dget = cgi.parse_qs(query_string, keep_blank_values=1)
-        get_vars = sdict(dget)
-        for key, value in iteritems(get_vars):
+        params = sdict(dget)
+        for key, value in iteritems(params):
             if isinstance(value, list) and len(value) == 1:
-                get_vars[key] = value[0]
-        return get_vars
+                params[key] = value[0]
+        return params
 
-    def __parse_post_json(self):
+    def __parse_json_params(self):
         content_length = self.environ.get('CONTENT_LENGTH')
         try:
             content_length = max(0, int(content_length))
@@ -72,18 +72,18 @@ class Request(object):
         if content_length is None:
             return {}
         try:
-            json_vars = json.load(LimitedStream(self.input, content_length))
+            params = json.load(LimitedStream(self.input, content_length))
         except:
-            json_vars = {}
-        return json_vars
+            params = {}
+        return params
 
     @cachedprop
-    def post_vars(self):
-        post_vars = sdict()
+    def body_params(self):
+        params = sdict()
         if self.environ.get('CONTENT_TYPE', '')[:16] == 'application/json':
-            json_vars = self.__parse_post_json()
-            post_vars.update(json_vars)
-            return post_vars
+            json_params = self.__parse_json_params()
+            params.update(json_params)
+            return params
         if self.input and self.environ.get('REQUEST_METHOD') in \
                 ('POST', 'PUT', 'DELETE', 'BOTH'):
             dpost = cgi.FieldStorage(fp=self.input, environ=self.environ,
@@ -98,16 +98,16 @@ class Request(object):
                     dpk = [dpk]
                 dpk = [item.value if not item.filename else item
                        for item in dpk]
-                post_vars[key] = dpk
-            for key, value in list(post_vars.items()):
+                params[key] = dpk
+            for key, value in list(params.items()):
                 if isinstance(value, list) and len(value) == 1:
-                    post_vars[key] = value[0]
-        return post_vars
+                    params[key] = value[0]
+        return params
 
     @cachedprop
-    def vars(self):
-        rv = copy.copy(self.get_vars)
-        for key, val in iteritems(self.post_vars):
+    def params(self):
+        rv = copy.copy(self.query_params)
+        for key, val in iteritems(self.body_params):
             if key not in rv:
                 rv[key] = val
             else:
@@ -115,6 +115,21 @@ class Request(object):
                     rv[key] = [rv[key]]
                 rv[key] += val if isinstance(val, list) else [val]
         return rv
+
+    @property
+    @deprecated('get_vars', 'query_params', 'Request', 1)
+    def get_vars(self):
+        return self.query_params
+
+    @property
+    @deprecated('post_vars', 'body_params', 'Request', 1)
+    def post_vars(self):
+        return self.body_params
+
+    @property
+    @deprecated('vars', 'params', 'Request', 1)
+    def vars(self):
+        return self.params
 
     @cachedprop
     def cookies(self):

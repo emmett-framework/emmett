@@ -68,7 +68,7 @@ class DefaultLoginHandler(AuthLoginHandler):
     def onaccept(self, form):
         userfield = self.userfield
         #passfield = self.passfield
-        entered_username = form.vars[userfield]
+        entered_username = form.params[userfield]
         #if multi_login and '@' in entered_username:
         #   # if '@' in username check for email, not username
         #   user = self.table_user(email = entered_username)
@@ -88,7 +88,7 @@ class DefaultLoginHandler(AuthLoginHandler):
                 flash(self.auth.messages.registration_verifying)
                 return
             #: verify password
-            if form.vars.get('password', '') == temp_user.password:
+            if form.params.get('password', '') == temp_user.password:
                 # success
                 self.user = temp_user
         if not self.user:
@@ -99,9 +99,9 @@ class DefaultLoginHandler(AuthLoginHandler):
 
     def onfail(self):
         self.auth.log_event(self.auth.messages['login_failed_log'],
-                            request.post_vars)
+                            request.body_params)
         flash(self.auth.messages.invalid_login)
-        redirect(self.auth.url(args=['login'], vars=request.get_vars))
+        redirect(self.auth.url('login', request.query_params))
 
     def login_form(self):
         userfield = self.userfield

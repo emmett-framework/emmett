@@ -99,7 +99,7 @@ def index():
 def one(pid):
     def _validate_comment(form):
         # manually set post id in comment form
-        form.vars.post = pid
+        form.params.post = pid
     # get post and return 404 if doesn't exist
     post = db.Post(id=pid)
     if not post:
@@ -117,7 +117,7 @@ def one(pid):
 def new_post():
     form = Post.form()
     if form.accepted:
-        redirect(url('one', form.vars.id))
+        redirect(url('one', form.params.id))
     return dict(form=form)
 
 

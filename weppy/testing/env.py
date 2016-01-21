@@ -95,11 +95,11 @@ class EnvironBuilder(object):
     @staticmethod
     def _parse_querystring(query_string):
         dget = cgi.parse_qs(query_string, keep_blank_values=1)
-        get_vars = sdict(dget)
-        for key, value in iteritems(get_vars):
+        params = sdict(dget)
+        for key, value in iteritems(params):
             if isinstance(value, list) and len(value) == 1:
-                get_vars[key] = value[0]
-        return get_vars
+                params[key] = value[0]
+        return params
 
     def _add_file_from_data(self, key, value):
         """Called in the EnvironBuilder to add files from the data dict."""

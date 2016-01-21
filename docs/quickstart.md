@@ -131,7 +131,7 @@ def edit(id):
     # code
 
 a = url('index')
-b = url('g', vars={'u': 2})
+b = url('g', params={'u': 2})
 c = url('f', ['foo', 'bar'])
 d = url('edit', 123)
 ```
@@ -250,9 +250,9 @@ It contains useful information about the current processing request, let's see s
 | scheme | could be *http* or *https*|
 | method | the request HTTP method |
 | now | a python datetime object created with request|
-| vars | an object containing url params |
+| params | an object containing url params |
 
-Let's focus on `request.vars` object, and understand it with an example:
+Let's focus on `request.params` object, and understand it with an example:
 
 ```python
 from weppy import App, request
@@ -261,16 +261,16 @@ app = App(__name__)
 
 @app.route("/post/<int:id>")
 def post(id):
-    editor = request.vars.editor
+    editor = request.params.editor
     if editor == "markdown":
         # code
     elif editor == "html":
         # code
     #..
 ```
-Now, when a client call the url */post/123?editor=markdown*, the `editor` parameter will be mapped into `request.vars` and we can access its value simply calling the parameter name as an attribute.
+Now, when a client call the url */post/123?editor=markdown*, the `editor` parameter will be mapped into `request.params` and we can access its value simply calling the parameter name as an attribute.
 
-> – wait, what happens if client call */post/123* and my app try to access *request.vars.editor* which is not in the url?
+> – wait, what happens if client call */post/123* and my app try to access *request.params.editor* which is not in the url?
 
 Simple, the attribute will be `None`, so it's completely safe to call it, it wont raise an exception.
 
@@ -316,20 +316,20 @@ app.common_handlers = [MyHandler()]
 weppy also provides a Helper handler, which is designed to add helping methods to the templates. Explore the [Handlers chapter](./request#handlers-and-helpers) of documentation for more informations.
 
 ### Redirects and errors
-Taking again the example given for the `request.vars`, we can add a redirect on the missing url param:
+Taking again the example given for the `request.params`, we can add a redirect on the missing url param:
 
 ```python
 from weppy import redirect, url
 
 @app.route("/post/<int:id>")
 def post(id):
-    editor = request.vars.editor
+    editor = request.params.editor
     if editor == "markdown":
         # code
     elif editor == "html":
         # code
     else:
-        redirect(url('post', id, vars={'editor': 'markdown'}))
+        redirect(url('post', id, params={'editor': 'markdown'}))
 ```
 which means that when the `editor` var is missing we force the user to the markdown one.
 
@@ -344,7 +344,7 @@ def not_found():
 
 @app.route("/post/<int:id>")
 def post(id):
-    editor = request.vars.editor
+    editor = request.params.editor
     if editor == "markdown":
         # code
     elif editor == "html":
@@ -377,7 +377,7 @@ The above code is quite simple: the app increments the counter every time the us
 So basically, you can store a value to the user session and retrieve it whenever the session is kept.
 
 > – and if I try to access an attribute not existent in session?   
-> – *same as `request.vars`: the attribute will be `None` and you don't have to catch any exception*
+> – *same as `request.params`: the attribute will be `None` and you don't have to catch any exception*
 
 More information and storing systems are available in the [Session chapter](./sessions) of the documentation.
 

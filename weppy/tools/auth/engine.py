@@ -52,8 +52,8 @@ class Auth(object):
                 f.write(key)
         return key
 
-    def url(self, args=[], vars={}, scheme=None):
-        return url(self.settings.base_url, args, vars, scheme=scheme)
+    def url(self, args=[], params={}, scheme=None):
+        return url(self.settings.base_url, args, params, scheme=scheme)
 
     def _init_settings(self, source=default_settings):
         rv = sdict()
@@ -174,7 +174,7 @@ class Auth(object):
         """
 
         if not f:
-            redirect(self.url('login', request.vars))
+            redirect(self.url('login', request.query_params))
         if f in self.registered_actions:
             if a is not None:
                 return self.registered_actions[f](a)
@@ -505,7 +505,7 @@ class Auth(object):
             redirect(handler.login_url(unext))
 
         #: process authenticated users
-        self.login_user(user, request.vars.get('remember', False))
+        self.login_user(user, request.params.get('remember', False))
         #: log login
         self.log_event(log, user)
         #: handler callback
@@ -522,7 +522,7 @@ class Auth(object):
 
     def email_reset_password(self, user):
         reset_password_key = str(int(time.time())) + '-' + uuid()
-        link = self.url('reset_password', vars={"key": reset_password_key},
+        link = self.url('reset_password', params={"key": reset_password_key},
                         scheme=True)
         d = dict(user)
         d.update(dict(key=reset_password_key, link=link))

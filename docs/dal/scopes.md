@@ -132,8 +132,8 @@ from weppy import request
 @app.route()
 def todos():
     dbset = Todo.all()
-    if request.vars.filter in Todo.permitted_filters:
-        dbset = dbset.by_state(request.vars.filter)
+    if request.params.filter in Todo.permitted_filters:
+        dbset = dbset.by_state(request.params.filter)
     return {'todos': dbset.select(paginate=1)}
 ```
 

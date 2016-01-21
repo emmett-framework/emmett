@@ -55,6 +55,23 @@ def bar():
 All the usages remain the same of `expose`.   
 Since it's deprecated, you can still use `expose` in weppy 0.6, but you have to remember this will be definitely removed in the next version.
 
+### Drepecation of vars in request, forms and urls
+
+In the previous versions, the parameters of the url's query string and the ones contained in the request body were stored in the `request.get_vars`, `request.post_vars` and `request.vars` attributes. Since this naming could be quite misleading for developers, in weppy 0.6 these attributes were renamed as follows:
+
+| old name | new name |
+| --- | --- |
+| vars | params |
+| get\_vars | query\_params |
+| post\_vars | body\_params |
+
+We think the new nomenclature is more self-explainatory and will make the code of weppy applications more readable.
+
+Following the same rationale, we also changed the `Form.vars` and `Form.input_vars` in `Form.parameters` and `Form.input_parameters`.    
+Also the named `vars` parameter of the `url()` method is changed to `params` to avoid confusion.
+
+All these variables are deprecated in weppy 0.6, so you can still use them, but we really suggest to update your application code to the new naming since the old ones will be definitely removed in the next version.
+
 ### Breaking changes
 
 weppy 0.6 introduces some minor breaking changes: here we list the upgrades you should perform on your application in order to have the same behavior with the new version of the framework.
