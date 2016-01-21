@@ -395,17 +395,20 @@ class Auth(object):
             raise http_401
         return (True, True, is_valid_user)
 
-    def login_user(self, user):
+    def login_user(self, user, remember=False):
         user = Row(user)
         try:
             del user.password
         except:
             pass
+        expiration = remember and self.settings.long_expiration or \
+            self.settings.expiration
         session.auth = sdict(
             user=user,
             last_visit=request.now,
             last_dbcheck=request.now,
-            expiration=self.settings.expiration,
+            expiration=expiration,
+            remember=remember,
             hmac_key=uuid())
 
     def login_bare(self, username, password):
@@ -502,13 +505,7 @@ class Auth(object):
             redirect(handler.login_url(unext))
 
         #: process authenticated users
-        self.login_user(user)
-        #: use the right session expiration
-        session.auth.expiration = \
-            request.vars.get('remember', False) and \
-            settings.long_expiration or \
-            settings.expiration
-        session.auth.remember = 'remember' in request.vars
+        self.login_user(user, request.vars.get('remember', False))
         #: log login
         self.log_event(log, user)
         #: handler callback

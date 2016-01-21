@@ -191,17 +191,18 @@ class AuthManager(Handler):
                     dbrow = self.auth.table_user(id=self.auth.user.id)
                     if dbrow and not dbrow.registration_key:
                         self.auth.login_user(
-                            self.auth.table_user(id=self.auth.user.id))
+                            self.auth.table_user(id=self.auth.user.id),
+                            authsess.remember)
                     else:
                         del session.auth
             else:
-                #: load virtuals from Auth Model
-                if self.auth.user:
-                    self._load_virtuals()
                 #: set last_visit if make sense
                 if ((request.now - authsess.last_visit).seconds >
                    (authsess.expiration / 10)):
                     authsess.last_visit = request.now
+        #: load virtuals from Auth Model
+        if self.auth.user:
+            self._load_virtuals()
 
     def on_end(self):
         # set correct session expiration if requested by user
