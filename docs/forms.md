@@ -125,7 +125,7 @@ The `onvalidation` parameter of forms allows you to add custom validation logics
 Let's see what we're talking about with an example:
 
 ```python
-@app.route("/myform"):
+@app.route("/myform")
 def myform():
     def process_form(form):
         if form.params.double != form.params.number*2:

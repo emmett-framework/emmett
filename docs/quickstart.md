@@ -136,10 +136,11 @@ c = url('f', ['foo', 'bar'])
 d = url('edit', 123)
 ```
 The above urls `a`, `b`, `c` and `d` will be respectively converted to:
-* /
-* /anotherurl?u=2
-* /find/foo/bar
-* /post/123/edit
+
+- /
+- /anotherurl?u=2
+- /find/foo/bar
+- /post/123/edit
 
 which is quite handy instead of remember all the rules and manually write the links.
 
