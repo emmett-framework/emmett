@@ -451,7 +451,10 @@ class Model(with_metaclass(MetaModel)):
         row = sdict(row)
         errors = sdict()
         for field in cls.table.fields:
-            value = row.get(field)
+            default = getattr(cls.table[field], 'default')
+            if callable(default):
+                default = default()
+            value = row.get(field, default)
             rv, error = cls.table[field].validate(value)
             if error:
                 errors[field] = error
