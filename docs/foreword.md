@@ -47,4 +47,4 @@ I would like to thank:
 * **Guido Van Rossum**, for the Python language
 * **Massimo Di Pierro** and **web2py's developers**, for what I learned from them and for their framework on which I based weppy
 * **Armin Ronacher**, who really inspired me with the Flask framework
-* **Marco Stagni** and **Michael Genesini**, for their advices and continuous support
+* **Marco Stagni**, **Michael Genesini** and **Filippo Zanella** for their advices and continuous support

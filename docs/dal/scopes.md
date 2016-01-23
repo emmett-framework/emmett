@@ -3,9 +3,9 @@ Filter data with scopes
 
 As we saw in the [previous chapter](./operations), weppy allows you to write queries easily using python objects.
 
-Still, sometimes, might be handy have some shortcuts for the queries we write more often in our application, or to have some helpers that allow us to write less code.
+Still, sometimes, it might be handy to have some shortcuts for the queries we write more often in our application, or to have some helpers that allow us to write less code.
 
-In order to address this need, weppy implements *scopes*, special methods inside models that will be bound to models themselves and sets matching the involved tables.
+In order to address this need, weppy implements *scopes*, special methods inside models that will be bound to models themselves and to sets matching the involved tables.
 
 But how do they work?    
 Let's say, for example, that you're writing some blog application, where every post can be in a different state, like when is just a draft, or is published, or maybe retired. Let's say that you're mapping this *state* with an *integer* column, and you're ending up with a model like this:
@@ -133,7 +133,7 @@ from weppy import request
 def todos():
     dbset = Todo.all()
     if request.params.filter in Todo.permitted_filters:
-        dbset = dbset.by_state(request.params.filter)
+        dbset = dbset.with_state(request.params.filter)
     return {'todos': dbset.select(paginate=1)}
 ```
 

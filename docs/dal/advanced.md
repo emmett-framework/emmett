@@ -1,12 +1,12 @@
 Advanced usage
 ==============
 
-This final part of the databases documentation will explain some advanced features and behaviors you might need to know when designing more complex application or using advanced and particular flows for your data.
+This final part of the databases documentation will explain some advanced features and behaviors you might need to understand when you're designing more complex applications or you need advanced and particular flows for your data.
 
 Model inheritance and subclassing
 ---------------------------------
 
-The `Model` class can be subclassed and extended by design in many different ways. You can also define models without creating a table for them in the database and use them as basic classes for common fields, validations and other needs.
+The `Model` class can be subclassed and extended by design in many different ways. You can also define models without creating a table for them in the database and use them as meta classes for common fields, validations and other needs.
 
 In fact, even if some properties regarding your model are bound dictionaries of the class itself, weppy will *hack* these attributes in order to make them inherit and extend the ones from the upper models.
 
@@ -49,7 +49,7 @@ Then if you pass just these models to your `DAL` instance:
 db.define_models(Post, Comment)
 ```
 
-you will find the `created_at` and `updated_at` fields and their default and update values on them.
+you will find the `created_at` and `updated_at` fields on these tables and the default and update values set for them.
 
 As you can see, the `Post` model has its own `default_values` dictionary that defines the default value for the `status` field, but the resulting dictionary will contains also the values of the `TimeStampModel` dictionary. This behavior is injected by weppy and is intended to avoid you the pain of rewriting the whole dictionaries when extending models.
 

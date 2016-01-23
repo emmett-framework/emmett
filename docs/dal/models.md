@@ -85,6 +85,8 @@ Available types for Field definition are:
 | list:int | `list` of `int` |
 | json | `json` |
 
+If you don't specify a type for the `Field` class, it will be set as *string* as default value.
+
 Using the right field type ensure the right columns types inside your tables, and allows you to benefit from the default validation implemented by weppy.
 
 Validation
@@ -192,7 +194,7 @@ Once defined this, you can render the value using:
 MyModel.started.represent(record, record.started)
 ```
 
-And if you may prefer to explicit passing representation rules to the signle fields instead of writing down in the model, you can use the `representation` parameter:
+And if you may prefer to explicit passing representation rules to the single fields instead of writing down in the model, you can use the `representation` parameter:
 
 ```python
 started = Field('datetime', representation=lambda row, value: prettydate(value))
@@ -211,7 +213,7 @@ form_rw = {
     'open': (True, False)
 }
 ```
-Any item of the dictionary can be a `tuple`, where the first value define if the field should be readable by the user and the second value define if the field should be writable, or `bool` that will set both values to the one given. By default, all fields are defined with *rw* at `True`.
+Any item of the dictionary can be a `tuple`, where the first value defines if the field should be readable by the user and the second value defines if the field should be writable, or `bool` that will set both values to the one given. By default, all fields are defined with *rw* at `True`.
 
 You may prefer to explicit passing read-writes values to the fields, using `rw` parameter:
 
@@ -220,7 +222,7 @@ started = Field('datetime', rw=False)
 ```
 
 > **Note:**    
-> weppy forms currently shows up only writable fields, even if you declare fields as readable. An update to this behavior in order to display also readable fields is planned for the next versions.
+> weppy forms currently show up only writable fields, even if you declare fields as readable. An update to this behavior in order to display also readable fields is planned for the next versions.
 
 ###Form labels
 Labels are useful to produce good titles for your fields in forms:
@@ -302,7 +304,7 @@ Other methods pre-defined in weppy are:
 
 | method | description |
 | --- | --- |
-| validate | process the values passed (field=value) and return None if they pass the validation defined in the model or a dictionary of errors |
+| validate | validates the values passed as parameters (field=value) and return an `sdict` of errors (that would be empty if the validation passed) |
 | create | insert a new record with the values passed (field=value) if they pass the validation |
 
 But how can you define additional methods?   

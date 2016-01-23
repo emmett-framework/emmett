@@ -54,8 +54,8 @@ def post_by(author):
     return dict(posts=posts)
 ```
 
-The above code is quite simple: the `post_by()` function list posts from a specific author.
-Let's reconstruct what we done in those simple lines:
+The above code is quite simple: the `post_by()` function lists posts from a specific author.
+Let's retrace what we done in those simple lines:
 
 * we added an *sqlite* database to our application, stored on file *storage.sqlite*
 * we defined the *Post* model and its properties, which will create a *posts* table
@@ -64,4 +64,4 @@ Let's reconstruct what we done in those simple lines:
 
 As you noticed, the fields defined for the table are available for queries as attributes, and calling *db* with a query as argument provides you a set on which you can do operations like the `select()`.
 
-In the next chapters, we will inspect how to define models, which are all the available options, and how to use weppy ORM in order to make operations on the database. 
+In the next chapters, we will inspect how to define models, what are all the available options, and how to use weppy ORM in order to make operations on the database. 

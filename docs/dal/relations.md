@@ -44,7 +44,7 @@ In weppy `belongs_to` has a real *belonging* meaning, and when we use it we're i
 This assertion has some consequences on the validation and on the deletion policies, in fact weppy will:
 
 - set the `notnull`  option of `doctor` field of `Patient` and add a `{'presence': True}` validation policy on it, ensuring that this attribute is present and points to an existing record in doctors table
-- use a `cascade` rule on the relations, so when a doctor is deleted, also its patient follow the same destiny
+- use a `cascade` rule on the relations, so when a doctor is deleted, also its patient follows the same destiny
 
 > **Note:**    
 > When using the `belongs_to` helper, ensure the model you're referencing to is defined **before** the one where you using the helper.
@@ -74,7 +74,7 @@ In fact, `refers_to` in weppy has a *reference without need* meaning, meaning th
 Due to this concept, in this case weppy will:
 
 - add a `{'presence': True, 'allow': 'empty'}` validation policy on the `note` attribute of `Todo`, allowing the value to be empty, and when it's not, ensuring that the attribute points to an existing record in notes table
-- use a `nullify` rule on the relations, so when a note is deleted, all the todos which had a relation with it will still exists with removed relation
+- use a `nullify` rule on the relations, so when a note is deleted, all the todos which had a relation with it will still exist with removed relation
 
 > **Note:**    
 > When using the `refers_to` helper, ensure the model you're referencing to is defined **before** the one where you using the helper.
@@ -129,7 +129,7 @@ class Passport(Model):
 In this case we have a one-to-one relationship between citizens and passports: in fact, a passport belongs to a citizen and a citizen can only have a passport (or no passport at all).    
 Note that we also added the `unique` validation of `citizen` in `Passport` to avoid creation of multiple records referred to the same citizen.
 
-As for the `has_many` helper, `has_one` won't produce anything on the database side, as it will map the single records referring to current record itself, using the opposite relation.
+As for the `has_many` helper, `has_one` won't produce anything on the database side, as it will map the single records referring to the current record itself, using the opposite relation.
 
 The `has_one` helper is useful for your application code, since you can directly access the passport record referred to a citizen:
 
@@ -162,7 +162,7 @@ class Membership(Model):
 
 This will reflect our tables: we have a users table, a groups table, and a memberships table which maps the belonging of a user into a group from the other two tables.
 
-This is quite correct, but we missing the advantage here, since we don't have any direct access to users from a specific group or to the groups of a specific users, since we should pass trough the memberships and then use these to gain the result-set we want.    
+This is quite correct, but we missing the advantage here, since we don't have any direct access to users from a specific group or to the groups of a specific users, since we should pass through the memberships and then use these to gain the result-set we want.    
 This is why weppy has a `via` option with the `has_many` helper so that we can rewrite the upper example like this:
 
 ```python
@@ -266,7 +266,7 @@ class Todo(Model):
     refers_to({'assigned_user': 'User'})
 ```
 
-As you can see, we have that a `Todo` always have an owner, which is a `User`, and it also might have an assigned user, which is a `User` to.
+As you can see, we have that a `Todo` always has an owner, which is a `User`, and it also might have an assigned user, which is a `User` too.
 
 We specified the model in the `belongs_to` and the `refers_to` helpers, and the model and the field with the format `Model.field`  in the `has_many` helpers. With this notations we can access the relation sets as usual.
 
@@ -420,14 +420,14 @@ class Organization(Model):
     name = Field()
     has_many(
         'memberships',
-        {'organizations': {'via': 'memberships'}})
+        {'users': {'via': 'memberships'}})
 
 class Membership(Model):
     belongs_to('user', 'organization')
     role = Field()
 ```
 
-the `Membership` model responsible of the `via` relations has a `role` field that should be set when you want to create a user for an organization or an organization for an user. In order to do that, you should create both of the records independently and the associate the records, as we will see in the next paragraph.
+the `Membership` model responsible of the `via` relations has a `role` field that should be set when you want to create a user for an organization or an organization for an user. In order to do that, you should create both of the records independently and then associate the records, as we will see in the next paragraph.
 
 #### Add records to many relations
 
@@ -579,6 +579,6 @@ If you need that, you can use also a lower level method to perform joins with we
 db(Post.user == User.id).select(db.User.ALL, db.Post.ALL)
 ```
 
-This code will return the join rows of users and their posts, as we seen with the `join` method. The main difference from the above is that the rows returned with this method won't have related posts as nested rows of users, but instead every row contained in the returned `Rows` object will have a `users` attribute and a `posts` attribute containing the two selected rows from their tables. As a direct consequence, if you have users with more than one post, they will be repeated in rows for every post matching the query.
+This code will return the join rows of users and their posts, as we saw with the `join` method. The main difference from the above is that the rows returned with this method won't have related posts as nested rows of users, but instead every row contained in the returned `Rows` object will have a `users` attribute and a `posts` attribute containing the two selected rows from their tables. As a direct consequence, if you have users with more than one post, they will be repeated in rows for every post matching the query.
 
 If this structure better suits your needs for your application development, you might use this method to perform joins instead of the `join` method.

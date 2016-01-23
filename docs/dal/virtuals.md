@@ -1,7 +1,7 @@
 Computed and virtual fields
 ===========================
 
-Quite often during the development of your application you will need to compute values or perform operations dependent on the values contained in the rows you're selecting, inserting or updating in your database.
+Quite often during the development of your application you will need to compute values or perform operations that dependend on the values contained in the rows you're selecting, inserting or updating in your database.
 
 weppy provides different apis that can help you in these cases: let's see them in details.
 
@@ -26,13 +26,13 @@ class Item(Model):
 
 As you can see, the `computation` decorator needs and accepts just one parameter: the name of the field where to store the result of the computation.
 
-The function that does computation has to accept the row as the first parameter, and it will be called both on inserts and updates.
+The function that performs the computation has to accept the row as its first parameter, and it will be called both on inserts and updates.
 
 Virtual fields
 --------------
 Virtual fields are values returned by functions that will be injected to the involved rows every time you select them.
 
-To clarify this concept, we will consider the same example we given for the *computed* fields and we use the `virtualfield` decorator instead:
+To clarify this concept, we will consider the same example we gave for the *computed* fields and we will replace them with the `virtualfield` decorator instead:
 
 ```python
 from weppy.dal import Model, Field, virtualfield
@@ -45,7 +45,7 @@ class Item(Model):
     def total(self, row):
         return row.price*row.quantity
 ``` 
-As you can see, we don't have a real column in the table that will store the `total` value of the item, but instead we defined a method that evaluate it and add it to the selected rows.
+As you can see, we don't have a real column in the table that will store the `total` value of the item, but we defined instead a method that evaluate it and add it to the selected rows.
 
 > **Note:**    
 > Since virtual fields are, by definition, *virtuals*, you can't use them in order to make queries.
@@ -61,13 +61,13 @@ You can access the values as the common fields:
 > **Warning:**   
 > Virtual fields are computed and injected every time you select records for the model in which you have defined them. If you write down complex operations in virtual fields, remember that the computing time will be *silently* added to the select operation, and you may encounter performance drops.
 
-The `virtualfield` decorator accepts the additional `current_model_only` parameter, which is set to `True` as default behavior. The concept behind this parameter is related to the `Rows` objects returned by weppy when you select some records: if you select rows from multiple tables, your `Row` obejct will have, indeed, named keys from the table names. This parameter prevents the row object to have attributes from other tables, so you can access the fields of the current model directly on the object. On the countrary, if you need to perform operations based on other tables that will be present on the rows, you should change this parameter to `False`, and you will need to access the fields using the `tablename.fieldname` notation in your method.
+The `virtualfield` decorator accepts the additional `current_model_only` parameter, which is set to `True` as default value. The concept behind this parameter is related to the `Rows` objects returned by weppy when you select some records: if you select rows from multiple tables, your `Row` obejct will have, indeed, named keys from the table names. This parameter prevents the row object to have attributes from other tables, so you can access the fields of the current model directly on the object. On the countrary, if you need to perform operations based on other tables that will be present on the rows, you should change this parameter to `False`, and you will need to access the fields using the `tablename.fieldname` notation in your method.
 
 Field methods
 -------------
-Similar to virtual fields, field methods are helpers injected to the rows when you select them. Differently from virtual fields, they will be methods indeed, and you should invoke them to access the value you're looking for.
+Similarly to virtual fields, field methods are helpers injected to the rows when you select them. Differently from virtual fields, however, they will be methods indeed, and you should invoke them to access the value you're looking for.
 
-Let's consider again the same example we given above, and let's use the `fieldmethod` decorator:
+Let's consider again the same example we saw above, and let's use the `fieldmethod` decorator:
 
 ```python
 from weppy.dal import Model, Field, fieldmethod
@@ -80,6 +80,7 @@ class Item(Model):
     def total(self, row):
         return row.price*row.quantity
 ```
+
 As we said, field methods are evaluated *on demand*, which means you have to invoke them when you want to access the values you need:
 
 ```python
@@ -92,7 +93,7 @@ Like the `virtualfield` decorator, the `fieldmethod` one accepts the `current_mo
 
 ### More on field methods
 
-Field methods are a great instrument also to run database operation from the current selected object. In fact, since you're inside the model instance, you can access the model itself, the table and the database from within the method you're writing.
+Field methods are a great instrument also to run database operations from the current selected object. In fact, since you're inside the model instance, you can access the model itself, the table and the database from within the method you're writing.
 
 For example, let's say you have a table of messages referring to some topics and you want to easily get the next message from the current one. You can write down a field method for that:
 
@@ -125,4 +126,4 @@ Then, once we have a message, we can access the next quickly:
 <Row {'id': 3L, 'topic': 1L, 'author': 1L, 'written_at': datetime.datetime(2015, 12, 22, 9, 20, 21, 229511), 'body': 'This is another test message'} >
 ```
 
-Field methods, as we seen for virtual fields, needs row as the first parameter, and you can obviously add more parameters and pass them during invocation.
+Field methods, as we seen for virtual fields, needs the row as the first parameter, that will be injected by weppy, but you can obviously add more parameters and pass values for them during invocation.

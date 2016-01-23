@@ -80,7 +80,7 @@ Making queries
 
 As soon as you have rows in your tables, you need to query them to fetch the data you want. weppy provides a very efficient way to write queries using python language, since you will use your model fields and their methods.
 
-But, before we proceed learning the syntax to make queries, we have to understand the main principle behind weppy querying: the sets. Every time you work with the database to filter data, you're actually using a `Set` of rows corresponding to your query. The `Set` class is fundamental in weppy and allows you to make all the operations we will see in the next paragraphs on the records corresponding to your query.
+But, before we proceed learning the syntax to make queries, we have to understand the main principle behind weppy querying: the sets. Every time you work with the database to filter data, you're actually using a `Set` of rows corresponding to your query. The `Set` class is fundamental in weppy and allows you to make all the operations on the records corresponding to your query, as we will see in the next paragraphs .
 
 So, how you make queries on your database? Let's say, for example, that you have a table containing events, defined by the model:
 
@@ -180,7 +180,7 @@ The resulting `Set` will obviously be the same.
 
 As we seen in the [models](./models) section, adding a model to your `DAL` instance will add a `Table` object accessible both with the model name and the table name.
 
-Since the tables shares the fields with models, you can use them for querying too. In fact you can write the same query in all these ways:
+Since the tables share the fields with models, you can use them for querying too. In fact you can write the same query in all these ways:
 
 ```python
 Event.where(lambda e: e.location == "New York")
@@ -189,7 +189,7 @@ db(db.Event.location == "New York")
 db(db.events.location == "New York")
 ```
 
-and all of them will produce the same result. Just use the one you prefer or result more convenient for your code.
+and all of them will produce the same result. Just use the one you prefer or that results more convenient for your code.
 
 ### Query all records in the table
 
@@ -221,7 +221,7 @@ In this example we're asking all the events not happening in New York or Chicago
 
 #### String and text operators
 
-An operator you may be familiar with is the `like` one, that produce a *LIKE* operation on the database. It works pretty similar to writing a raw sql query with a *LIKE* condition:
+An operator you may be familiar with is the `like` one, that produces a *LIKE* operation on the database. It works pretty similar to writing a raw sql query with a *LIKE* condition:
 
 ```python
 db(Event.name.like("party%"))
@@ -245,7 +245,7 @@ db(Event.name.like("%party"))
 db(Event.name.like("%party%"))
 ```
 
-Note that, usually the `like` operator will be case-sensitive on most of the DBMS, so if you want to make case-insensitive queries, you should specify the option on `like` and the other helpers:
+Note that the `like` operator will usually be case-sensitive on most of the DBMS, so if you want to make case-insensitive queries, you should specify the option on `like` and the other helpers:
 
 ```python
 db(Event.name.like("party%", case_sensitive=False))
@@ -294,7 +294,7 @@ Secret party
 <Row {'happens_at': datetime.datetime(2016, 1, 7, 23, 0, 0), 'name': 'Awesome party', 'participants': 300, 'location': 'New York', 'id': 1}>
 ```
 
-The `Rows` and `Row` objects has also some helper methods you might find useful. For example, the `Rows` object has a `first` and a `last` methods:
+The `Rows` and `Row` objects have also some helper methods you might find useful. For example, the `Rows` object has a `first` and a `last` methods:
 
 ```python
 >>> rows = db(Event.location == "New York").select()
@@ -328,7 +328,7 @@ The `Row` object has an `as_dict` method that you might find useful for serializ
 {'happens_at': datetime.datetime(2016, 1, 7, 23, 0, 0), 'name': 'Awesome party', 'participants': 300, 'location': 'New York', 'id': 1}
 ```
 
-Similarly, the `Rows` object has both an `as_dict` and an `as_list` methods. While the `as_list` return a list of rows serialized with `as_dict`, so you can avoid to call the `as_dict` of the rows recursively, the `as_dict` return a dictionary that will have the ids of the rows as keys and the rows serialized with the `as_dict` method as values:
+Similarly, the `Rows` object has both an `as_dict` and an `as_list` methods. While the `as_list` returns a list of rows serialized with `as_dict`, so you can avoid to call the `as_dict` of the rows recursively, the `as_dict` returns a dictionary that will have the ids of the rows as keys and the rows serialized with the `as_dict` method as values:
 
 ```python
 >>> rows.as_list()
@@ -446,7 +446,7 @@ weppy provides also a more sql-like option for limiting the results, the `limitb
 Event.all().select(limitby=(25, 50))
 ```
 
-with the starting offset and the ending. This line of code will produce the same result of using `paginate=(2, 25)`.
+with the starting offset and the ending one. This line of code will produce the same result of using `paginate=(2, 25)`.
 
 ### Aggregation
 
@@ -481,7 +481,7 @@ db(Event.happens_at.year() == 1955).select(
 
 ### Counting and expressions
 
-Among with the `select` method, sets comes with a `count` method:
+Among with the `select` method, sets come with a `count` method:
 
 ```python
 >>> Event.all().count()
@@ -586,7 +586,7 @@ Now, since `update` and `update_record` **won't trigger validations** before eff
 <Row {'updated': 1, 'errors': {}}>
 ```
 
-except that it will trigger the validation on the values and trigger the effective update of the records only on its success.    
+except that it will trigger the validation on the values and the effective update of the records only on its success.    
 As you can see the return value of the `validate_and_update` method will be a `Row` object containing the number of updated records under the `updated` attribute and the validation errors (if any) under the `errors` one.
 
 Deleting records

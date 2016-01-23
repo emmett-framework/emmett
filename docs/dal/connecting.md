@@ -20,7 +20,7 @@ As we seen in the [first example](./), the `DAL` instance gives you a handler to
 app.common_handlers = [db.handler]
 ```
 
-This handler will ensure the connection to the database during the request flow and the disconnection at when the response is ready. As a consequence, you don't need to bother about connecting/disconnecting in your application flow, unless you're explicit working without a request context.    
+This handler will ensure the connection to the database during the request flow and the disconnection when the response is ready. As a consequence, you don't need to bother about connecting/disconnecting in your application flow, unless you're explicit working without a request context.    
 Even in that case, you won't have troubles in connecting to the database, since the `DAL` instance will automatically open up a connection after initialization. This means that, even if you import your `DAL` instance from the console, you will have the connection opened with your database.
 
 If somehow you need to manually open and close the connection with your database, you can use the adapter methods:
@@ -57,7 +57,7 @@ app.config.db.password = 'yourpassword'
 app.config.db.database = 'database'
 ```
 
-This become useful when you're using yaml config files and/or environment dependencies, as you can write down your *db.yml* file in a *config* folder:
+This becomes useful when you're using yaml config files and/or environment dependencies, as you can write down your *db.yml* file in a *config* folder:
 
 ```yaml
 adapter: postgres
@@ -73,7 +73,7 @@ and then do:
 app.config_from_yaml('db.yml', 'db')
 ```
 
-where the first parameter is the filename and the second is the attribute to set in the application config.
+where the first parameter is the filename and the second is the attribute to be set in the application config.
 
 ### Passing explicit config to DAL
 
@@ -84,7 +84,7 @@ app.config.db.uri = "postgres://localhost/mydb"
 app.config.db2.uri = "mongodb://localhost/mydb"
 
 db = DAL(app)
-db2 = DAL(app, db.config.db2)
+db2 = DAL(app, app.config.db2)
 ```
 
 ### Additional configuration parameters
@@ -107,7 +107,7 @@ Transactions
 ------------
 
 As we seen above, the handler of your `DAL` instance will ensure the connection to the database during the request flow; but it's also responsible of the transactions during this flow.    
-In fact, the handler treat the request as a single database transaction, ensuring the commit of whatever happened with the database data if the request had success and the rollback in case of any un-catched exception in the code (that will result in a 500 HTTP error).
+In fact, the handler treats the request as a single database transaction, ensuring the commit of the changes if the request had success. Otherwise, in the case of un-catched exceptions (resulting in a 500 HTTP error response), the handler will perform a rollback on the database data.
 
 Since the handler is used only in a request context, every time you work without it you should commit or rollback your changes (also when you're working in the console), using the available methods of the `DAL` instance:
 
@@ -118,4 +118,4 @@ db.commit()
 db.rollback()
 ```
 
-You can obviously use them also in the application code during the request in order to have a better control of what happens with your data. Just remember that when you call `commit()` or `rollback()` you're in fact ending the last transaction an starting a new one.
+You can obviously use them also in the application code during the request in order to have a better control of what happens with your data. Just remember that when you call `commit()` or `rollback()` you're in fact ending the last transaction and starting a new one.
