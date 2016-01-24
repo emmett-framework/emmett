@@ -10,7 +10,7 @@ On the other hand, if you have an application that evolves a lot and requires a 
 
 This is why weppy comes with a migration engine based on *revisions*: this will use migration files containing the instructions to be performed on the database side and will store the current migration status on the database itself, fact that prevents inconsistencies on the migration status of your application if you are running the code from several machines.
 
-> **Note:** we **highly suggest** to turn off automatic migrations for every application that will be run on production side. The automatic migrations and the ones performed by the migration engine have some slight differences; while we will document operations supported by the second system, the detection performed by the automatic one are dependent on the *pydal* library. If you need more informations about this you should check the [web2py docs](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Migrations).
+> **Note:** we **strongly reccomend** you to turn off automatic migrations for every application that will be run on production side. The automatic migrations and the ones performed by the migration engine have some slight differences; while we will document operations supported by the second system, the detection performed by the automatic one depends on the *pydal* library. If you need more informations about this you should check the [web2py docs](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Migrations).
 
 The first step that has to be performed in order to use the migration engine is to turn off the automatic migrations with the `auto_migrate` parameter of the `DAL` class:
 
@@ -28,7 +28,7 @@ Generating your first migration
 
 Once you have written your models, you will need to create the relevant tables on the database to start performing operations.
 
-In the bloggy example we defined three modelsSince we turned off automatic migrations, we need This can be quite immediate if you use the weppy generation command:
+In the bloggy example we defined three models, and since we turned off automatic migrations, we need to create a migration that will add the relevant tables to the database. This can be quite immediate if you use the weppy generation command:
 
 ```
 $ weppy -a bloggy.py migrations generate -m "First migration"
@@ -255,14 +255,149 @@ we can see that no revision is loaded on it.
 Generation and changes detection
 --------------------------------
 
-*section in development*
+Unfortunately, the migration generator shipped with weppy is not able to detect all the changes you might make on the models. Here we list what the generator can detect and what it cannot, but, please, consider that this list may change on new releases.
+
+The generator detects:
+
+- tables additions, removals
+- columns additions, removals
+- type, nullable and default changes on columns
+
+While it won't detect:
+
+- tables renaming
+- columns renaming
+- unique constraints changes on columns
+
+The changes unsupported by the generation should be performed using the appropriate operations when available or writing down the SQL code manually and using the `db._adapter.execute()` command.
 
 Empty migrations and operations
 -------------------------------
 
-*section in development*
+Aside with the generated migrations, you can obviously generate new empty migration files and write down the operations on your own. In fact, if you run the *new* command:
+
+```
+$ weppy -a bloggy.py migrations new -m "Custom migration"
+> Created new migration with revision 57f23e051fa3
+```
+
+you will find out a *57f23e051fa3\_custom\_migration.py* file inside your *migrations* folder:
+
+```python
+"""Custom migration
+
+Migration ID: 57f23e051fa3
+Revises: 4dee31071bf8
+Creation Date: 2016-01-24 19:17:24.773448
+
+"""
+
+from weppy.dal import migrations
+
+
+class Migration(migrations.Migration):
+    revision = '57f23e051fa3'
+    revises = '4dee31071bf8'
+
+    def up(self):
+        pass
+
+    def down(self):
+        pass
+```
+
+As you can see is just like the generated migrations, excepting the fact that the `up` and `down` methods are empty. You can now write down your migration code, using the first method to declare the changes you need to perform, and the second one to define the operations needed to rollback to the current state. The next paragrahs describe the instance methods available on the `Migration` class in order to migrate your database structure.
+
+### create\_table
+
+The `create_table` method will, indeed, create a new table in your database. It accepts the name of the table as the first parameter and a list of columns:
+
+```python
+self.create_table(
+    'tags',
+    migrations.Column('id', 'id'),
+    migrations.Column('name', 'string', length=512))
+```
+
+The `Column` class behaves quite like the `Field` one, except that it has the column name as first parameter. Also the types are quite different, since you will have *boolean* instead of *bool* and *integer* in place of *int*. The first column of a table should always be the one with name *id* and type *id*, since it's used by weppy in order to perform operations on the tables.
+
+### drop\_table
+
+The `drop_table` method is the opposite of the `create_table` one, since it will permanently remove a table and all its data from your database. It accepts just one parameter: the name of table to drop.
+
+```python
+self.drop_table('tags')
+```
+
+### add\_column
+
+The `add_column` method will add an additional column to the involved table. Requires the name of the table as first parameter and a `Column` object as second argument.
+
+```python
+self.add_column('tags', migrations.Column('count', 'integer', default=0))
+```
+
+### drop\_column
+
+The `drop_column` method will remove a column from the specified table. Needs two parameters: the name of the involved table and the name of the column to remove.
+
+```python
+self.drop_column('tags', 'count')
+```
+
+### alter\_column
+
+The `alter_column` method allows you to make changes on a specific column. It needs the name of the table as first parameter, the name of the column as second parameter and then named parameters for the changes. 
+
+The supported changes are on type, default and nullable option. You can combine any of all these three options in a single `alter_column` command, but you should add to the command the existing values for the other options:
+
+```python
+#: change notnull from True to False
+self.alter_column('things', 'name',
+    existing_type='string',
+    notnull=False)
+#: remove default value
+self.alter_column('things', 'value',
+    existing_type='float',
+    default=None,
+    existing_notnull=False)
+#: change type from 'string' to 'integer'
+self.alter_column('things', 'count',
+    existing_type='string',
+    type='integer',
+    existing_notnull=False)
+```
+
+Just as a recap, here is the list of named arguments supported by the `alter_column` operation (all of them are set to `None` by default):
+
+- `notnull`
+- `default`
+- `type`
+- `existing_notnull`
+- `existing_default`
+- `existing_type`
 
 Custom operations
 -----------------
 
-*section in development*
+Sometimes you will need to access the database during the migration and run custom operation on it. This is a supported behavior, since the `Migration` class have a `db` attribute which is actually your database, and all the normal operations are supported:
+
+```python
+def up(self):
+    self.alter_column('things', 'value',
+        default=5,
+        existing_type='integer',
+        existing_notnull=True)
+    db(db.things.value == 5).update(value=3)
+```
+
+As you can se we added a custom update command inside the upgrade function; and obviously you can add operations to the weppy generated migrations too.
+
+DBMS support
+------------
+
+The weppy migration engine is designed to support all the DBMS supported by pyDAL. Still, due to limitations in some engines, some operations are partially or totally not supported. In this section we will list these limitations for every DBMS.
+
+### SQLite
+
+The SQLite engine doesn't support *ALTER TABLE* operations that change the columns. As a direct consequence, any `alter_column` operation you will try to run from a migration will fail.
