@@ -119,16 +119,20 @@ class Command(object):
             raise RuntimeError('need just one db instance')
         from .generation import Generator
         upgrade_ops = Generator.generate_from(self.db, self.scriptdir, head)
+        revid = make_migration_id()
         migration = MigrationOp(
-            make_migration_id(), upgrade_ops, upgrade_ops.reverse(), message)
+            revid, upgrade_ops, upgrade_ops.reverse(), message)
         self._generate_migration_script(migration, head)
+        print("> Generated migration for revision %s" % revid)
 
     def new(self, message, head):
         source_rev = self.scriptdir.get_revision(head)
+        revid = make_migration_id()
         migration = MigrationOp(
-            make_migration_id(), UpgradeOps(), DowngradeOps(), message
+            revid, UpgradeOps(), DowngradeOps(), message
         )
         self._generate_migration_script(migration, source_rev.revision)
+        print("> Created new migration with revision %s" % revid)
 
     def history(self, base, head, verbose):
         print("> Migrations history")
@@ -147,8 +151,13 @@ class Command(object):
     def status(self, verbose):
         self.load_schema(self.db)
         print("> Current revision(s) for %s" % self.db._uri)
+        lines = []
         for rev in self.scriptdir.get_revisions(self._current_revision_):
-            print(rev.cmd_format(verbose))
+            lines.append(rev.cmd_format(verbose))
+        for line in lines:
+            print(line)
+        if not lines:
+            print("No revision state found on the schema.")
 
     def up(self, rev_id):
         self.load_schema(self.db)
@@ -185,11 +194,11 @@ class Command(object):
                 self.db.commit()
                 self._store_current_revision_(
                     migration.revision, migration.revises)
-                print("> Succesfully downgraded to revision %s: %s" %
+                print("> Succesfully downgraded from revision %s: %s" %
                       (revision.revision, revision.doc))
             except:
                 self.db.rollback()
-                print("> [ERROR] failed downgrading to %s" % revision)
+                print("> [ERROR] failed downgrading from %s" % revision)
                 raise
 
 
