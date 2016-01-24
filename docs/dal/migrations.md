@@ -5,12 +5,12 @@ Migrations
 
 Migrations are the basic instrument needed to propagate changes you make to your models into your database schema.
 
-Under default behavior the weppy `DAL` class will be initialized with the automatic migrations feature of the *[pydal](url)* library enabled: this is quite handy for small applications that won't frequently change the structure of their models, since it will propagate the changes of the models to the database tables as soon as you load your application.    
+Under default behavior the weppy `DAL` class will be initialized with the automatic migrations feature of the *[pydal](https://github.com/web2py/pydal)* library enabled: this is quite handy for small applications that won't frequently change the structure of their models, since it will propagate the changes of the models to the database tables as soon as you load your application.    
 On the other hand, if you have an application that evolves a lot and requires a lot of changes on the models, or when you need some control on the migration process for the production side, this feature may produce unwanted side effects, since it stores the mgiration status in some files under the *databases* directory of your application and migrations are performed on the database every time you push new code in your models.
 
 This is why weppy comes with a migration engine based on *revisions*: this will use migration files containing the instructions to be performed on the database side and will store the current migration status on the database itself, fact that prevents inconsistencies on the migration status of your application if you are running the code from several machines.
 
-> **Note:** we **highly suggest** to turn off automatic migrations for every application that will be run on production side. The automatic migrations and the ones performed by the migration engine have some slight differences; while we will document operations supported by the second system, the detection performed by the automatic one are dependent on the *pydal* library. If you need more informations about this you should check the [web2py docs](.).
+> **Note:** we **highly suggest** to turn off automatic migrations for every application that will be run on production side. The automatic migrations and the ones performed by the migration engine have some slight differences; while we will document operations supported by the second system, the detection performed by the automatic one are dependent on the *pydal* library. If you need more informations about this you should check the [web2py docs](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Migrations).
 
 The first step that has to be performed in order to use the migration engine is to turn off the automatic migrations with the `auto_migrate` parameter of the `DAL` class:
 
