@@ -357,9 +357,9 @@ class AlterColumnOp(AlterTableOp):
     def alter_column(
         cls, table_name, column_name,
         notnull=None,
-        new_default=DEFAULT_VALUE,
+        default=DEFAULT_VALUE,
         new_column_name=None,
-        new_type=None,
+        type=None,
         existing_type=None,
         existing_default=None,
         existing_notnull=None,
@@ -371,8 +371,8 @@ class AlterColumnOp(AlterTableOp):
             existing_default=existing_default,
             existing_notnull=existing_notnull,
             modify_name=new_column_name,
-            modify_type=new_type,
-            modify_default=new_default,
+            modify_type=type,
+            modify_default=default,
             modify_notnull=notnull,
             **kw
         )

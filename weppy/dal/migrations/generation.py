@@ -309,9 +309,9 @@ def _alter_column(op):
     if op.existing_type is not None:
         text += ",\n%sexisting_type=%r" % (indent, op.existing_type)
     if op.modify_default is not DEFAULT_VALUE:
-        text += ",\n%snew_default=%r" % (indent, op.modify_default)
+        text += ",\n%sdefault=%r" % (indent, op.modify_default)
     if op.modify_type is not None:
-        text += ",\n%snew_type=%r" % (indent, op.modify_type)
+        text += ",\n%stype=%r" % (indent, op.modify_type)
     if op.modify_notnull is not None:
         text += ",\n%snotnull=%r" % (indent, op.modify_notnull)
     if op.modify_notnull is None and op.existing_notnull is not None:
