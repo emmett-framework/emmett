@@ -388,7 +388,7 @@ def up(self):
         default=5,
         existing_type='integer',
         existing_notnull=True)
-    db(db.things.value == 5).update(value=3)
+    db(db.things.value == 3).update(value=5)
 ```
 
 As you can se we added a custom update command inside the upgrade function; and obviously you can add operations to the weppy generated migrations too.
