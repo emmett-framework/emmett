@@ -230,7 +230,7 @@ class Model(with_metaclass(MetaModel)):
         self.fields = []
         for name, obj in iteritems(self._declared_fields_):
             if obj.modelname is not None:
-                obj = Field(*obj._args, **obj._kwargs)
+                obj = Field(obj._type, *obj._args, **obj._kwargs)
                 setattr(self.__class__, name, obj)
             self.fields.append(obj._make_field(name, self))
 
