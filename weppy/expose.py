@@ -229,12 +229,10 @@ class Expose(object):
         if route:
             request.name = route.name
             try:
-                output = route.func(**reqargs)
+                route.func(**reqargs)
             except:
                 cls._after_dispatch(route)
                 raise
-            if output is None:
-                output = dict()
         else:
             raise HTTP(404, body="Invalid action\n")
         #: end the dispatching
