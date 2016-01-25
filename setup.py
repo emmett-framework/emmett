@@ -43,7 +43,7 @@ setup(
     install_requires=[
         'click>=0.6',
         'pyaes',
-        'pyDAL>=15.12',
+        'pyDAL==15.12',
         'pyyaml'
     ],
     classifiers=[
