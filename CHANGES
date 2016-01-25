@@ -4,7 +4,7 @@ weppy changelog
 Version 0.6
 -----------
 
-Released on January 25th 2015, codename Fornacis
+Released on January 25th 2016, codename Fornacis
 
 - Several bugfixes
 - Added `remove` method to `HasManySet` and `HasManyViaSet`
