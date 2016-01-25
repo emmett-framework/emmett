@@ -136,7 +136,23 @@ You can find more about this in the [appropriate chapter](./dal/relations#operat
 
 ### New features
 
-*section in development*
+weppy 0.6 introduces some big new features you may take advantage of:
+
+- a [testing client](./testing) to better support application tests
+- a brand new [migration engine](./dal/migrations) for the included ORM
+
+Also, with weppy 0.6 we introduced a lot of small new features on the ORM:
+
+- [scopes](./dal/scopes) on models to simplify filtering
+- the [join method and including option of select](./dal/relations#operations-with-relations) to simplify join and left join operations with relations
+- the support for [custom naming](./dal/relations#naming-and-advanced-relations) on `has_many` relations
+- the [refers_to](./dal/relations#refers_to) relation helper
+- the [self keyword support](./dal/relations#naming-and-advanced-relations) for self-references in models
+- the [pagination option](./dal/operations#selecting-records) on the selects
+- the `where`, `all`, `first`, `last` and `get` methods to the models
+- the `create`, `add` and `remove` methods on the sets produced by many relations
+
+Since we introduced a lot of changes on the ORM, we also completely rewritten the involved chapters of the documentation. You may check them out in order to have a deepen view of all the features of the weppy ORM.
 
 
 Version 0.5

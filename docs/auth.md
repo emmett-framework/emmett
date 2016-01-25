@@ -316,6 +316,8 @@ auth.has_permission('write', 'Setting', maintenance.id)
 
 ### Blocking users
 
+*New in version 0.6*
+
 Sometimes you need to lock user operations on your application. The auth module have 2 different *locking* statuses for this:
 
 - **disabled:** the user won't be able to perform the normal auth operation until the reset of the password
