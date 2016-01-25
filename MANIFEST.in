@@ -8,6 +8,3 @@ recursive-exclude tests *.pyc
 recursive-exclude tests *.pyo
 recursive-exclude examples *.pyc
 recursive-exclude examples *.pyo
-recursive-exclude examples/*/databases
-recursive-exclude examples/*/logs
-recursive-exclude examples/*/private
