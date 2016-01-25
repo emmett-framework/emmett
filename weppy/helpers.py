@@ -5,7 +5,7 @@
 
     Provides helping methods for applications.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 from ._compat import string_types
@@ -13,6 +13,8 @@ from ._compat import string_types
 
 def abort(code, body=''):
     from .http import HTTP
+    from .globals import current
+    current.response.status = code
     raise HTTP(code, body)
 
 

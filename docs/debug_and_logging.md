@@ -73,6 +73,6 @@ With this example, you will end with a *myfile.log* which will grow till 100MB a
 | file_no | number of old files to keep with rotation (default `4`) |
 | level | logging level (default `'warning'`) |
 | format | format for messages (default `'[%(asctime)s] %(levelname)s in %(module)s: %(message)s'`) |
-| on_app_debug | tells weppy to log the messages also when application is in debug mode (default `False`) |
+| on\_app\_debug | tells weppy to log the messages also when application is in debug mode (default `False`) |
 
 That's it.

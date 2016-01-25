@@ -5,7 +5,7 @@
 
     Provides structures for templating system.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
 
     Based on the web2py's templating system (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
@@ -154,6 +154,9 @@ class Content(BlockNode):
         self.blocks = {}
         self.pre_extend = pre_extend
         self.template = name
+
+    def __repr__(self):
+        return object.__repr__(self)
 
     def __str__(self):
         return u''.join(_gen_output(node, self.blocks) for node in self.nodes)

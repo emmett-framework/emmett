@@ -30,7 +30,7 @@ I'd like to reply this doubt starting with a definition of *tool* I really love:
 So a framework, which is a tool, has by definition to let you write your application **easier** than without it. Now, I've found many frameworks – and I'm sure you can easily find them too – where you have to deal *a lot* with learning "how to do that" with the framework itself instead of focusing on the application.
 
 This is the first principle I've based *weppy* on: it's easy to use and learn, so that you can focus on **your** product.   
-Another key principle of *weppy* is the *preservation of the control* over the flow. What does it means?   
+Another key principle of *weppy* is the *preservation of the control* over the flow. What does it mean?   
 There are several frameworks that do too much *magic* behind the scenes. I know that may sound weird because I've just talked about simplicity, but, if you think about it, you will find that a simple to use framework is not necessarily the one which hides a lot of his flow.   
 As developers, we have to admit that when we use frameworks or libraries for our project, many times is hard to do something out of the ready-made scheme. I can think about several frameworks – even the famous *Ruby on Rails* – that, from time to time, force you to use a lot of formalism even when it's not really necessary, and you end up finding yourself writing code following useless rules you don't like.   
 In other words: I like magic too, but isn't cool when you actually *control* the magic?
@@ -47,4 +47,4 @@ I would like to thank:
 * **Guido Van Rossum**, for the Python language
 * **Massimo Di Pierro** and **web2py's developers**, for what I learned from them and for their framework on which I based weppy
 * **Armin Ronacher**, who really inspired me with the Flask framework
-* **Marco Stagni** and **Michael Genesini**, for their advices and continuous support
+* **Marco Stagni**, **Michael Genesini** and **Filippo Zanella** for their advices and continuous support

@@ -4,17 +4,21 @@
 
     Provides the languages translator system.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
+from ..utils import cachedprop
+
 
 class Instance(object):
+    @cachedprop
+    def _t(self):
+        from ..expose import Expose
+        from .translator import Translator
+        return Translator(Expose.application)
+
     def T(self, *args, **kwargs):
-        if not hasattr(self, "_t"):
-            from ..expose import Expose
-            from .translator import Translator
-            self._t = Translator(Expose.application)
         return self._t(*args, **kwargs)
 
 # We use a 'proxied' object to the translator to avoid errors

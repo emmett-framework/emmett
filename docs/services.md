@@ -11,7 +11,7 @@ from weppy.tools import service
 
 app = App(__name__)
 
-@app.expose("/json")
+@app.route("/json")
 @service.json
 def f():
     # your code
@@ -31,11 +31,11 @@ from myapp import app
 api = AppModule(app, 'api', __name__)
 api.common_handlers = [ServiceHandler('json')]
 
-@api.expose()
+@api.route()
 def a():
     # code
 
-@api.expose()
+@api.route()
 def b():
     # code
 ```
@@ -48,7 +48,7 @@ JSON and XML
 Providing a JSON service with weppy is quite easy:
 
 ```python
-@app.expose("/json")
+@app.route("/json")
 @service.json
 def f():
     l = [1, 2, {'foo': 'bar'}]

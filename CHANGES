@@ -1,6 +1,43 @@
 weppy changelog
 ===============
 
+Version 0.6
+-----------
+
+Released on January 25th 2015, codename Fornacis
+
+- Several bugfixes
+- Added `remove` method to `HasManySet` and `HasManyViaSet`
+- Common handlers and helpers are now accessible via application object
+- Introduced scopes in models
+- Template reloader now checks also `include` and `extend` blocks
+- Deprecated `expose()` in favor of `route()`
+- Implemented `join` method on `Set`
+- Reviewed `Auth` actions depending on user status
+- Added support facilities to `Auth` in order to manage user status
+- Implemented support for custom naming on `has_many`
+- Added `current_model_only` option to `virtualfield` and `fieldmethod`
+  decorators, default changed to `True`
+- Introduced testing suite for applications
+- Added `language` option to `url()`
+- Implemented user status resync with database in `Auth` handler
+- Implemented `refers_to` in dal apis
+- Added 'self' keyword for self-relations in dal
+- Changed `has_one` return value to `Set` in order to avoid n+1 queries
+- Added `pagination` and `including` options to `Set.select()`
+- Caching resultsets on `has_one` and `has_many` realtions calls for select
+- Added `where`, `all`, `first`, `last` and `get` methods to `Model`
+- Changed `add` method of `HasManySet` and `HasManyViaSet`
+- Added `create` method to `HasOneSet`, `HasManySet` and `HasManyViaSet`
+- Added `clear` method to session handlers for bulk invalidation
+- Implemented a revision based migration engine on the database layer
+- Deprecated `Request.vars`, `Request.get_vars` and `Request.post_vars` in
+  favor of `Request.params`, `Request.query_params` and `Request.body_params`
+- Deprecated `Form.vars` and `Form.input_vars` in favor of `Form.params` and
+  `Form.input_params`
+- Deprecated `url(vars={})` in favor of `url(params={})`
+
+
 Version 0.5
 -----------
 

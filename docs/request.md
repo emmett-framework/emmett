@@ -45,9 +45,9 @@ weppy's `request` object also provides three important attributes about the acti
 
 | attribute | description |
 | --- | --- |
-| get_vars | contains the url query variables |
-| post_vars | contains parameters passed into the request body |
-| vars | contains both the query variables and the body parameters |
+| query_params | contains the url query parameters |
+| body_params | contains parameters passed into the request body |
+| params | contains both the query parameters and the body parameters |
 
 All these three attributes work in the same way, and the better way to understand it is with an example:
 
@@ -56,16 +56,16 @@ from weppy import App, request
 
 app = App(__name__)
 
-@app.expose("/post/<int:id>")
+@app.route("/post/<int:id>")
 def post(id):
-    editor = request.vars.editor
+    editor = request.params.editor
     if editor == "markdown":
         # code
     elif editor == "html":
         # code
     #..
 ```
-Now, when a client call the url */post/123?editor=markdown*, the `editor` parameter will be mapped into `request.vars` and we can access its value simply calling the parameter name as an attribute.
+Now, when a client call the url */post/123?editor=markdown*, the `editor` parameter will be mapped into `request.params` and we can access its value simply calling the parameter name as an attribute.
 
 When the url doesn't contain the query parameter you're trying to look at, this will be `None`, so it's completely safe to call it, it wont raise an exception.
 
@@ -81,11 +81,11 @@ Now, what happens when the client does a *POST* request with this body
 on the url */post/123?editor=markdown* ? Simple: the three `request` attributes we have seen will look like this:
 
 ```
->>> request.vars
+>>> request.params
 <sdict {'date': '2014-10-15', 'text': 'this is a sample post', 'editor': 'markdown'}>
->>> request.get_vars
+>>> request.query_params
 <sdict {'editor': 'markdown'}>
->>> request.post_vars
+>>> request.body_params
 <sdict {'date': '2014-10-15', 'text': 'this is a sample post'}>
 ```
 so you can always access the variables you need.
@@ -126,11 +126,11 @@ class DBHandler(Handler):
 Now, to register your handler to a function you just need to write:
 
 ```python
-@app.expose("/url", handlers=[MyHandler()])
+@app.route("/url", handlers=[MyHandler()])
 def f():
     #code
 ```
-And if you need to register your handler to all your application functions, you can omit the handler from the `expose()` decorator writing instead:
+And if you need to register your handler to all your application functions, you can omit the handler from the `route()` decorator writing instead:
 
 ```python
 app.common_handlers = [MyHandler()]
@@ -178,21 +178,21 @@ Errors and redirects
 --------------------
 Now, talking about handling requests, you would like to perform actions on errors.
 
-If we look again at the given example for the `request.vars`, what happens when the user call the url without passing the `editor` query parameter?
+If we look again at the given example for the `request.params`, what happens when the user call the url without passing the `editor` query parameter?
 Maybe you want to redirect the client on a default parameter:
 
 ```python
 from weppy import redirect, url
 
-@app.expose("/post/<int:id>")
+@app.route("/post/<int:id>")
 def post(id):
-    editor = request.vars.editor
+    editor = request.params.editor
     if editor == "markdown":
         # code
     elif editor == "html":
         # code
     else:
-        redirect(url('post', id, vars={'editor': 'markdown'}))
+        redirect(url('post', id, params={'editor': 'markdown'}))
 ```
 which means that when the `editor` var is missing we force the user to the markdown one.
 
@@ -207,9 +207,9 @@ from weppy import abort
 def not_found():
     app.render_template("404.html")
 
-@app.expose("/post/<int:id>")
+@app.route("/post/<int:id>")
 def post(id):
-    editor = request.vars.editor
+    editor = request.params.editor
     if editor == "markdown":
         # code
     elif editor == "html":

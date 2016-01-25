@@ -5,16 +5,16 @@
 
     Provides model layer for weppy's dal.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 from collections import OrderedDict
 from .._compat import iteritems, with_metaclass
-from .apis import computation, virtualfield, fieldmethod
+from .apis import computation, virtualfield, fieldmethod, scope
 from .base import Field, _Field, sdict
 from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
-    VirtualWrap, Callback, make_tablename
+    VirtualWrap, ScopeWrap, Callback, make_tablename
 
 
 class MetaModel(type):
@@ -27,6 +27,7 @@ class MetaModel(type):
         current_vfields = []
         computations = {}
         callbacks = {}
+        scopes = {}
         for key, value in list(attrs.items()):
             if isinstance(value, Field):
                 current_fields.append((key, value))
@@ -36,14 +37,18 @@ class MetaModel(type):
                 computations[key] = value
             elif isinstance(value, Callback):
                 callbacks[key] = value
+            elif isinstance(value, scope):
+                scopes[key] = value
         #: get super declared attributes
         declared_fields = OrderedDict()
         declared_vfields = OrderedDict()
         super_relations = sdict(
-            _belongs_ref_=[], _hasone_ref_=[], _hasmany_ref_=[]
+            _belongs_ref_=[], _refers_ref_=[],
+            _hasone_ref_=[], _hasmany_ref_=[]
         )
         declared_computations = {}
         declared_callbacks = {}
+        declared_scopes = {}
         for base in reversed(new_class.__mro__[1:]):
             #: collect fields from base class
             if hasattr(base, '_declared_fields_'):
@@ -61,17 +66,24 @@ class MetaModel(type):
             #: collect callbacks from base class
             if hasattr(base, '_declared_callbacks_'):
                 declared_callbacks.update(base._declared_callbacks_)
+            if hasattr(base, '_declared_scopes_'):
+                declared_scopes.update(base._declared_scopes_)
         #: set fields with correct order
         current_fields.sort(key=lambda x: x[1]._inst_count_)
         declared_fields.update(current_fields)
         new_class._declared_fields_ = declared_fields
         #: set relations references binding
-        from .apis import belongs_to, has_one, has_many
+        from .apis import belongs_to, refers_to, has_one, has_many
         items = []
         for item in belongs_to._references_.values():
             items += item.reference
         new_class._belongs_ref_ = super_relations._belongs_ref_ + items
         belongs_to._references_ = {}
+        items = []
+        for item in refers_to._references_.values():
+            items += item.reference
+        new_class._refers_ref_ = super_relations._refers_ref_ + items
+        refers_to._references_ = {}
         items = []
         for item in has_one._references_.values():
             items += item.reference
@@ -92,6 +104,9 @@ class MetaModel(type):
         #: set callbacks
         declared_callbacks.update(callbacks)
         new_class._declared_callbacks_ = declared_callbacks
+        #: set scopes
+        declared_scopes.update(scopes)
+        new_class._declared_scopes_ = declared_scopes
         return new_class
 
 
@@ -117,29 +132,36 @@ class Model(with_metaclass(MetaModel)):
 
     @classmethod
     def __getsuperprops(cls):
-        superattr = "_supermodel" + cls.__name__
+        superattr = "_supermodels" + cls.__name__
         if hasattr(cls, superattr):
             return
-        supermodel = cls.__base__
-        try:
-            supermodel.__getsuperprops()
-            setattr(cls, superattr, supermodel)
-        except:
-            setattr(cls, superattr, None)
+        supermodels = cls.__bases__
+        superattr_val = []
+        for supermodel in supermodels:
+            try:
+                supermodel.__getsuperprops()
+                superattr_val.append(supermodel)
+            except:
+                pass
+        setattr(cls, superattr, superattr_val)
         sup = getattr(cls, superattr)
         if not sup:
             return
-        if cls.tablename == getattr(sup, 'tablename', None):
-            cls.tablename = make_tablename(cls.__name__)
+        if hasattr(cls, 'tablename'):
+            for model in sup:
+                if cls.tablename == getattr(model, 'tablename', None):
+                    cls.tablename = make_tablename(cls.__name__)
+                    break
         #: get super model fields' properties
         proplist = ['validation', 'default_values', 'update_values',
                     'repr_values', 'form_labels', 'form_info', 'form_rw',
                     'form_widgets']
         for prop in proplist:
-            superprops = getattr(sup, prop)
             props = {}
-            for k, v in superprops.items():
-                props[k] = v
+            for model in sup:
+                superprops = getattr(model, prop)
+                for k, v in superprops.items():
+                    props[k] = v
             for k, v in getattr(cls, prop).items():
                 props[k] = v
             setattr(cls, prop, props)
@@ -156,23 +178,59 @@ class Model(with_metaclass(MetaModel)):
         if not hasattr(self, 'format'):
             self.format = None
 
-    def __parse_relation(self, item, singular=False):
+    def __parse_relation_via(self, via):
+        if via is None:
+            return via
+        rv = {'field': None}
+        splitted = via.split('.')
+        rv['via'] = splitted[0]
+        if len(splitted) > 1:
+            rv['field'] = splitted[1]
+        return rv
+
+    def __parse_belongs_relation(self, item):
+        rv = {}
         if isinstance(item, dict):
-            refname = list(item)[0]
-            reference = item[refname]
+            rv['name'] = list(item)[0]
+            rv['model'] = item[rv['name']]
+            if rv['model'] == "self":
+                rv['model'] = self.__class__.__name__
         else:
-            reference = item.capitalize()
-            refname = item
-            if singular:
-                reference = reference[:-1]
-        return reference, refname
+            rv['name'] = item
+            rv['model'] = item.capitalize()
+        return rv
+
+    def __parse_many_relation(self, item, singularize=True):
+        rv = {}
+        if isinstance(item, dict):
+            rv['name'] = list(item)[0]
+            rv['model'] = item[rv['name']]
+        else:
+            rv['name'] = item
+            rv['model'] = item.capitalize()
+            if singularize:
+                rv['model'] = rv['model'][:-1]
+        if isinstance(rv['model'], dict):
+            if rv['model'].get('via'):
+                rv.update(self.__parse_relation_via(rv['model']['via']))
+                del rv['model']
+        else:
+            splitted = rv['model'].split('.')
+            rv['model'] = splitted[0]
+            if len(splitted) > 1:
+                rv['field'] = splitted[1]
+            else:
+                rv['field'] = self.__class__.__name__.lower()
+            if rv['model'] == "self":
+                rv['model'] = self.__class__.__name__
+        return rv
 
     def _define_props_(self):
         #: create pydal's Field elements
         self.fields = []
         for name, obj in iteritems(self._declared_fields_):
             if obj.modelname is not None:
-                obj = Field(*obj._args, **obj._kwargs)
+                obj = Field(obj._type, *obj._args, **obj._kwargs)
                 setattr(self.__class__, name, obj)
             self.fields.append(obj._make_field(name, self))
 
@@ -180,57 +238,79 @@ class Model(with_metaclass(MetaModel)):
         self._virtual_relations_ = OrderedDict()
         bad_args_error = "belongs_to, has_one and has_many only accept " + \
             "strings or dicts as arguments"
-        #: belongs_to are mapped with 'reference' type Field
+        #: belongs_to and refers_to are mapped with 'reference' type Field
+        _references = []
+        _reference_keys = ['_belongs_ref_', '_refers_ref_']
         belongs_references = {}
-        if hasattr(self, '_belongs_ref_'):
-            for item in getattr(self, '_belongs_ref_'):
+        for key in _reference_keys:
+            if hasattr(self, key):
+                _references.append(getattr(self, key))
+            else:
+                _references.append([])
+        isbelongs = True
+        for _references_obj in _references:
+            for item in _references_obj:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference, refname = self.__parse_relation(item)
-                tablename = self.db[reference]._tablename
-                setattr(self.__class__, refname, Field('reference '+tablename))
+                reference = self.__parse_belongs_relation(item)
+                if reference['model'] != self.__class__.__name__:
+                    tablename = self.db[reference['model']]._tablename
+                else:
+                    tablename = self.tablename
+                if isbelongs:
+                    fieldobj = Field('reference '+tablename)
+                else:
+                    fieldobj = Field(
+                        'reference '+tablename, ondelete='nullify',
+                        _isrefers=True)
+                setattr(self.__class__, reference['name'], fieldobj)
                 self.fields.append(
-                    getattr(self, refname)._make_field(refname, self)
+                    getattr(self, reference['name'])._make_field(
+                        reference['name'], self)
                 )
-                belongs_references[reference] = refname
+                belongs_references[reference['name']] = reference['model']
+            isbelongs = False
         setattr(self.__class__, '_belongs_ref_', belongs_references)
+        #delattr(self.__class__, '_refers_ref_')
         #: has_one are mapped with virtualfield()
+        hasone_references = {}
         if hasattr(self, '_hasone_ref_'):
             for item in getattr(self, '_hasone_ref_'):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference, refname = self.__parse_relation(item)
-                self._virtual_relations_[refname] = \
-                    virtualfield(refname)(HasOneWrap(reference))
-            delattr(self.__class__, '_hasone_ref_')
+                reference = self.__parse_many_relation(item, False)
+                self._virtual_relations_[reference['name']] = \
+                    virtualfield(reference['name'])(HasOneWrap(reference))
+                hasone_references[reference['name']] = reference
+        setattr(self.__class__, '_hasone_ref_', hasone_references)
         #: has_many are mapped with virtualfield()
         hasmany_references = {}
         if hasattr(self, '_hasmany_ref_'):
             for item in getattr(self, '_hasmany_ref_'):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference, refname = self.__parse_relation(item, True)
-                rclass = via = None
-                if isinstance(reference, dict):
-                    rclass = reference.get('class')
-                    via = reference.get('via')
-                if via is not None:
+                reference = self.__parse_many_relation(item)
+                #rclass = via = None
+                #if isinstance(reference, dict):
+                #    rclass = reference.get('class')
+                #    via = reference.get('via')
+                if reference.get('via') is not None:
                     #: maps has_many({'things': {'via': 'otherthings'}})
-                    self._virtual_relations_[refname] = virtualfield(refname)(
-                        HasManyViaWrap(refname, via)
-                    )
+                    self._virtual_relations_[reference['name']] = \
+                        virtualfield(reference['name'])(
+                            HasManyViaWrap(reference)
+                        )
                 else:
                     #: maps has_many('things'),
                     #  has_many({'things': 'othername'})
-                    #  has_many({'things': {'class': 'Model'}})
-                    if rclass is not None:
-                        reference = rclass
-                    self._virtual_relations_[refname] = virtualfield(refname)(
-                        HasManyWrap(reference)
-                    )
-                hasmany_references[refname] = reference
+                    #if rclass is not None:
+                    #    reference = rclass
+                    self._virtual_relations_[reference['name']] = \
+                        virtualfield(reference['name'])(
+                            HasManyWrap(reference)
+                        )
+                hasmany_references[reference['name']] = reference
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
-        return
 
     def _define_virtuals_(self):
         err = 'virtualfield or fieldmethod cannot have same name as an' + \
@@ -256,7 +336,8 @@ class Model(with_metaclass(MetaModel)):
         self.__define_updates()
         self.__define_representation()
         self.__define_computations()
-        self.__define_actions()
+        self.__define_callbacks()
+        self.__define_scopes()
         self.__define_form_utils()
         self.setup()
 
@@ -297,7 +378,7 @@ class Model(with_metaclass(MetaModel)):
             self.table[obj.field_name].compute = \
                 lambda row, obj=obj, self=self: obj.f(self, row)
 
-    def __define_actions(self):
+    def __define_callbacks(self):
         for name, obj in iteritems(self._declared_callbacks_):
             for t in obj.t:
                 if t in ["_before_insert", "_before_delete", "_after_delete"]:
@@ -307,6 +388,15 @@ class Model(with_metaclass(MetaModel)):
                 else:
                     getattr(self.table, t).append(
                         lambda a, b, obj=obj, self=self: obj.f(self, a, b))
+
+    def __define_scopes(self):
+        self._scopes_ = {}
+        for name, obj in iteritems(self._declared_scopes_):
+            self._scopes_[obj.name] = obj
+            if not hasattr(self.__class__, obj.name):
+                setattr(
+                    self.__class__, obj.name,
+                    ScopeWrap(self.__class__.db, self, obj.f))
 
     def __define_form_utils(self):
         #: labels
@@ -336,10 +426,6 @@ class Model(with_metaclass(MetaModel)):
     def setup(self):
         pass
 
-    #@classmethod
-    #def new(cls, **kwargs):
-    #   return Row(**kwargs)
-
     @classmethod
     def create(cls, *args, **kwargs):
         #rv = sdict(id=None)
@@ -365,11 +451,38 @@ class Model(with_metaclass(MetaModel)):
         row = sdict(row)
         errors = sdict()
         for field in cls.table.fields:
-            value = row.get(field)
+            default = getattr(cls.table[field], 'default')
+            if callable(default):
+                default = default()
+            value = row.get(field, default)
             rv, error = cls.table[field].validate(value)
             if error:
                 errors[field] = error
         return errors
+
+    @classmethod
+    def where(cls, cond):
+        if not callable(cond):
+            raise SyntaxError('Model.where expects a function as parameter.')
+        return cls.db.where(cond(cls), model=cls.table._model_)
+
+    @classmethod
+    def all(cls):
+        return cls.db(cls.table)
+
+    @classmethod
+    def first(cls):
+        return cls.all().select(orderby=cls.id, limitby=(0, 1)).first()
+
+    @classmethod
+    def last(cls):
+        return cls.all().select(orderby=~cls.id, limitby=(0, 1)).first()
+
+    @classmethod
+    def get(cls, *args, **kwargs):
+        if len(args) == 1:
+            return cls.table[args[0]]
+        return cls.table(**kwargs)
 
     @classmethod
     def form(cls, record=None, **kwargs):

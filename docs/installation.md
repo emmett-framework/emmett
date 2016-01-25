@@ -4,7 +4,7 @@ Installation
 
 So, how do you get weppy on your computer quickly? There are many ways you could do that, but the most kick-ass method is virtualenv, so let’s have a look at that first.
 
-You will need Python 2.6 or higher to get started, so be sure to have an up-to-date Python 2.x installation. At the moment weppy is not supporting Python 3, but stay tuned and follow up the project on github for the Python 3 Support.
+If you're using python 2, you will need Python 2.7 or higher to get started, so be sure to have an up-to-date Python 2.x installation. On the other side, if you're on python 3, you will need 3.3 version or higher in order to get weppy working.
 
 virtualenv
 ----------
@@ -15,6 +15,8 @@ What problem does virtualenv solve? If you use Python a bit, you probably want t
 
 Virtualenv to the rescue! Virtualenv enables multiple side-by-side installations of Python, one for each project. It doesn’t actually install separate copies of Python, but it does provide a clever way to keep different project environments isolated.   
 Let’s see how virtualenv works.
+
+### virtualenv on python 2
 
 If you are on Linux or Mac OS X, one of the following two commands should work for you:
 
@@ -34,15 +36,27 @@ An easy way is to create a project folder and a venv folder within:
 ```bash
 $ mkdir myproject
 $ cd myproject
-$ virtualenv venv
+$ virtualenv venv --no-site-packages
 New python executable in venv/bin/python
 Installing distribute............done.
 ```
 
+### virtualenv on python 3
+
+With python 3.3, virtualenv became part of the standard library. This means you won't need to install it anymore, and you can just initialize your environment:
+
+```bash
+$ mkdir myproject
+$ cd myproject
+$ pyvenv venv
+```
+
+### Installing weppy on virtualenv
+
 Now, whenever you want to work on a project, you only have to activate the corresponding environment. On OS X and Linux, you can do the following:
 
 ```bash
-$ . venv/bin/activate
+$ source venv/bin/activate
 ```
 
 You should now be using your virtualenv (notice how the prompt of your shell has changed to show the active environment).
@@ -54,3 +68,5 @@ $ pip install weppy
 ```
 
 and now you are good to go.
+
+You can read more about virtualenv on [its documentation website](https://virtualenv.readthedocs.org/en/latest/) (python 2) or on the [python3 documentation](https://docs.python.org/3/library/venv.html) (python 3).

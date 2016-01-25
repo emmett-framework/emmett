@@ -19,6 +19,142 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 0.6
+-----------
+
+weppy 0.6 introduces some deprecations and changes you should be aware of, and some new features you might been interested into.
+
+Next paragraphs describe all this relevant changes.
+
+### Deprecation of expose
+
+Since the first version of weppy, the decorator used to expose functions outside was, indeed, `expose`:
+
+```python
+@app.expose()
+def foo():
+    pass
+
+@mymodule.expose()
+def bar():
+    pass
+```
+
+Since the majority of frameworks use, instead, the `route` word for the same purpose, and we wanted to make easier for developers to move from one framework to another, we also adopted this *naming*. With weppy 0.6 you should change all your `expose` calls with `route`:
+
+```python
+@app.route()
+def foo():
+    pass
+
+@mymodule.route()
+def bar():
+    pass
+```
+
+All the usages remain the same of `expose`.   
+Since it's deprecated, you can still use `expose` in weppy 0.6, but you have to remember this will be definitely removed in the next version.
+
+### Drepecation of vars in request, forms and urls
+
+In the previous versions, the parameters of the url's query string and the ones contained in the request body were stored in the `request.get_vars`, `request.post_vars` and `request.vars` attributes. Since this naming could be quite misleading for developers, in weppy 0.6 these attributes were renamed as follows:
+
+| old name | new name |
+| --- | --- |
+| vars | params |
+| get\_vars | query\_params |
+| post\_vars | body\_params |
+
+We think the new nomenclature is more self-explainatory and will make the code of weppy applications more readable.
+
+Following the same rationale, we also changed the `Form.vars` and `Form.input_vars` in `Form.parameters` and `Form.input_parameters`.    
+Also the named `vars` parameter of the `url()` method is changed to `params` to avoid confusion.
+
+All these variables are deprecated in weppy 0.6, so you can still use them, but we really suggest to update your application code to the new naming since the old ones will be definitely removed in the next version.
+
+### Breaking changes
+
+weppy 0.6 introduces some minor breaking changes: here we list the upgrades you should perform on your application in order to have the same behavior with the new version of the framework.
+
+#### Relations with has\_one
+
+In weppy 0.5 the `has_one` helper produced nested rows on the results of select operations for these kind of relations: this behavior is changed in weppy 0.6 in order to prevent performance issues. In fact, in the new version of the framework, the attribute responsible of the relation on the selected rows is now a `Set`.
+
+The immediate consequence is that you have to change the code of your application when you want to effectively access the referred row with a call of the attribute:
+
+```python
+# weppy 0.5
+referred_row = row.hasonerelation
+# weppy 0.6
+referred_row = row.hasonerelation()
+```
+
+You can find more about this in the [appropriate chapter](./dal/relations#operations-with-relations) of the documentation.
+
+#### Model virtual decorators
+
+The `virtualfield` and `fieldmethods` decorators were changed in order to bind the current model when accessing the row. This change was performed in order to simplify the code in these methods, since in weppy 0.5 you had to write code like this:
+
+```python
+class Post(Model):
+    title = Field()
+
+    @fieldmethod('short_title')
+    def build_short_title(self, row):
+        # notice we have to access the field using the tablename
+        return row.posts.title[:100]
+```
+
+In weppy 0.6 you can rewrite the decorated method just like this:
+
+```python
+@fieldmethod('short_title')
+def build_short_title(self, row):
+    return row.title[:100]
+```
+
+You can restore the old behavior using the `current_model_only` parameter:
+
+```python
+@fieldmethod('short_title', current_model_only=False)
+```
+
+More details are available under the [appropriate chapter](./dal/virtuals) of the documentation.
+
+#### Methods of has\_many sets
+
+In weppy 0.5 the sets produced by `has_many` relations had an `add` with different behaviors depending on the `via` options:
+
+- without the `via` option, the `add` method was performing an insert of an object referred to the current row
+- with the `via` option, the `add` method was performing an insert of a record on the join table, reffered to the other two tables
+
+Since weppy 0.6 introduces the `create` method on these sets, now the behavior of the `add` method is always the same, since it always accepts a record of the related table and will just create the relation with it.
+
+If you used the `add` method of the `has_many` sets without `via` option in your application, you should change these calls with the `create` one.
+
+You can find more about this in the [appropriate chapter](./dal/relations#operations-with-relations) of the documentation.
+
+### New features
+
+weppy 0.6 introduces some big new features you may take advantage of:
+
+- a [testing client](./testing) to better support application tests
+- a brand new [migration engine](./dal/migrations) for the included ORM
+
+Also, with weppy 0.6 we introduced a lot of small new features on the ORM:
+
+- [scopes](./dal/scopes) on models to simplify filtering
+- the [join method and including option of select](./dal/relations#operations-with-relations) to simplify join and left join operations with relations
+- the support for [custom naming](./dal/relations#naming-and-advanced-relations) on `has_many` relations
+- the [refers_to](./dal/relations#refers_to) relation helper
+- the [self keyword support](./dal/relations#naming-and-advanced-relations) for self-references in models
+- the [pagination option](./dal/operations#selecting-records) on the selects
+- the `where`, `all`, `first`, `last` and `get` methods to the models
+- the `create`, `add` and `remove` methods on the sets produced by many relations
+
+Since we introduced a lot of changes on the ORM, we also completely rewritten the involved chapters of the documentation. You may check them out in order to have a deepen view of all the features of the weppy ORM.
+
+
 Version 0.5
 -----------
 

@@ -5,12 +5,12 @@
 
     Provides models for the authorization system.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 from datetime import datetime
-from ...dal import Model, Field, before_insert
+from ...dal import Model, Field, before_insert, fieldmethod
 from ...globals import current, request
 from ...security import uuid
 
@@ -41,7 +41,8 @@ class AuthModel(Model):
         self.__super_method('define_updates')()
         self.__super_method('define_representation')()
         self.__super_method('define_computations')()
-        self.__super_method('define_actions')()
+        self.__super_method('define_callbacks')()
+        self.__super_method('define_scopes')()
         self.__hide_all()
         self.__super_method('define_form_utils')
         self.__define_authform_utils()
@@ -82,6 +83,7 @@ class AuthModel(Model):
 
 
 class AuthUserBasic(AuthModel, TimestampedModel):
+    tablename = "auth_users"
     format = '%(email)s (%(id)s)'
     #: injected by Auth
     #  has_many(
@@ -91,7 +93,7 @@ class AuthUserBasic(AuthModel, TimestampedModel):
     #      {'permissions': {'via': 'authgroups'}},
     #  )
 
-    email = Field(length=512, unique=True)
+    email = Field(length=255, unique=True)
     password = Field('password', length=512)
     registration_key = Field(length=512, rw=False, default='')
     reset_password_key = Field(length=512, rw=False, default='')
@@ -107,6 +109,18 @@ class AuthUserBasic(AuthModel, TimestampedModel):
         if self.auth.settings.registration_requires_verification and not \
                 fields.get('registration_key'):
             fields['registration_key'] = uuid()
+
+    @fieldmethod('disable')
+    def _set_disabled(self, row):
+        return row.update_record(registration_key='disabled')
+
+    @fieldmethod('block')
+    def _set_blocked(self, row):
+        return row.update_record(registration_key='blocked')
+
+    @fieldmethod('allow')
+    def _set_allowed(self, row):
+        return row.update_record(registration_key='')
 
 
 class AuthUser(AuthUserBasic):
@@ -130,7 +144,7 @@ class AuthGroup(TimestampedModel):
     #      {'users': {'via': 'memberships'}}
     #  )
 
-    role = Field(length=512, default='', unique=True)
+    role = Field(length=255, default='', unique=True)
     description = Field('text')
 
     form_labels = {

@@ -5,7 +5,7 @@
 
     Provides the weppy authorization system.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
 
     Based on the web2py's auth module (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
@@ -17,10 +17,11 @@ import base64
 import os
 import time
 from pydal.objects import Row
-from ..._compat import iteritems, to_unicode
+from ..._compat import iteritems, itervalues, to_unicode
 from ...datastructures import sdict
 from ...expose import url
 from ...globals import request, session
+from ...language import T
 from ...http import HTTP, redirect
 from ...security import uuid
 from ..mail import Mail
@@ -43,14 +44,24 @@ class Auth(object):
         else:
             filename = os.path.join(app.root_path, filename)
         if os.path.exists(filename):
-            key = open(filename, 'r').read().strip()
+            with open(filename, 'r') as f:
+                key = f.read().strip()
         else:
             key = alg + ':' + uuid()
-            open(filename, 'w').write(key)
+            with open(filename, 'w') as f:
+                f.write(key)
         return key
 
-    def url(self, args=[], vars={}, scheme=None):
-        return url(self.settings.base_url, args, vars, scheme=scheme)
+    def url(self, args=[], params={}, scheme=None):
+        return url(self.settings.base_url, args, params, scheme=scheme)
+
+    def _init_settings(self, source=default_settings):
+        rv = sdict()
+        for key, value in iteritems(source):
+            if isinstance(value, dict):
+                value = self._init_settings(value)
+            rv[key] = value
+        return rv
 
     def __init__(self, app, db, usermodel=None, mailer=True, hmac_key=None,
                  hmac_key_file=None, base_url=None, csrf_prevention=True,
@@ -62,8 +73,7 @@ class Auth(object):
             hmac_key = self.get_or_create_key(app, hmac_key_file)
         #: init settings
         url_index = base_url or "account"
-        settings = self.settings = sdict()
-        settings.update(default_settings)
+        settings = self.settings = self._init_settings()
         settings.update(
             base_url=url_index,
             #cas_domains=[request.env.http_host],
@@ -164,7 +174,7 @@ class Auth(object):
         """
 
         if not f:
-            redirect(self.url('login', request.vars))
+            redirect(self.url('login', request.query_params))
         if f in self.registered_actions:
             if a is not None:
                 return self.registered_actions[f](a)
@@ -197,7 +207,17 @@ class Auth(object):
                 rv[m] = self.settings.models[m].__name__.lower()
         return rv
 
+    def __set_models_labels(self):
+        for model in itervalues(default_settings.models):
+            for supmodel in list(reversed(model.__mro__))[1:]:
+                current_labels = {}
+                if hasattr(supmodel, 'form_labels'):
+                    for key, val in iteritems(supmodel.form_labels):
+                        current_labels[key] = T(val)
+                    supmodel.form_labels = current_labels
+
     def define_models(self):
+        self.__set_models_labels()
         names = self.__get_modelnames()
         models = self.settings.models
         #: AuthUser
@@ -375,18 +395,20 @@ class Auth(object):
             raise http_401
         return (True, True, is_valid_user)
 
-    def login_user(self, user):
-        """
-        login the user = db.auth_user(id)
-        """
+    def login_user(self, user, remember=False):
         user = Row(user)
-        for key, value in list(user.items()):
-            if callable(value) or key == 'password':
-                delattr(user, key)
+        try:
+            del user.password
+        except:
+            pass
+        expiration = remember and self.settings.long_expiration or \
+            self.settings.expiration
         session.auth = sdict(
             user=user,
             last_visit=request.now,
-            expiration=self.settings.expiration,
+            last_dbcheck=request.now,
+            expiration=expiration,
+            remember=remember,
             hmac_key=uuid())
 
     def login_bare(self, username, password):
@@ -483,14 +505,7 @@ class Auth(object):
             redirect(handler.login_url(unext))
 
         #: process authenticated users
-        user = Row(self.table_user._filter_fields(user, id=True))
-        self.login_user(user)
-        #: use the right session expiration
-        session.auth.expiration = \
-            request.vars.get('remember', False) and \
-            settings.long_expiration or \
-            settings.expiration
-        session.auth.remember = 'remember' in request.vars
+        self.login_user(user, request.params.get('remember', False))
         #: log login
         self.log_event(log, user)
         #: handler callback
@@ -507,7 +522,7 @@ class Auth(object):
 
     def email_reset_password(self, user):
         reset_password_key = str(int(time.time())) + '-' + uuid()
-        link = self.url('reset_password', vars={"key": reset_password_key},
+        link = self.url('reset_password', params={"key": reset_password_key},
                         scheme=True)
         d = dict(user)
         d.update(dict(key=reset_password_key, link=link))
@@ -693,6 +708,19 @@ class Auth(object):
             (self.table_permission.table_name == str(table_name)) &
             (self.table_permission.record_id == long(record_id))
         ).delete()
+
+    def change_user_status(self, user, status):
+        return self.db(self.table_user.id == user).update(
+            registration_key=status)
+
+    def disable_user(self, user):
+        return self.change_user_status(user, 'disabled')
+
+    def block_user(self, user):
+        return self.change_user_status(user, 'blocked')
+
+    def allow_user(self, user):
+        return self.change_user_status(user, '')
 
     """
     def accessible_query(self, name, table, user_id=None):

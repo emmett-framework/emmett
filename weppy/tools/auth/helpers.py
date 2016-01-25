@@ -5,7 +5,7 @@
 
     Provides helpers for the authorization system.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
 
     Based on the web2py's auth module (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
@@ -35,14 +35,14 @@ def call_or_redirect(f, *args):
 
 def replace_id(u, form):
     if u:
-        u = u.replace('[id]', str(form.vars.id))
+        u = u.replace('[id]', str(form.params.id))
         if u[0] == '/' or u[:4] == 'http':
             return u
     return '/account'+u
 
 
 def get_vars_next():
-    nextv = request.vars._next
+    nextv = request.params._next
     if isinstance(nextv, (list, tuple)):
         nextv = nextv[0]
     return nextv

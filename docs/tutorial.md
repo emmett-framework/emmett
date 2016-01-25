@@ -4,7 +4,7 @@ Tutorial
 So, you want to develop an application with Python and weppy, huh?   
 Here you have the chance to learn that by example. In this tutorial we will create a simple microblog application, using weppy and SQLite as database which comes out of the box with Python, so you won't need anything else.
 
-If you want the full sourcecode in advance or for comparison, check out the [example source](https://github.com/gi0baro/weppy/tree/master/examples/bloggy).
+If you want the full sourcecode in advance or for comparison, check out the [example source](https://github.com/gi0baro/weppy/tree/release/examples/bloggy).
 
 Bloggy: a micro blog
 --------------------
@@ -196,7 +196,7 @@ app.common_handlers = [
 Then we can start writing the function for our index page, that will list all the posts in reverse chronological order (so the newest ones will be the first):
 
 ```python
-@app.expose("/")
+@app.route("/")
 def index():
     posts = db(Post.id > 0).select(orderby=~Post.date)
     return dict(posts=posts)
@@ -207,11 +207,11 @@ and, since this list will only show up the posts' titles, we also write down a f
 ```python
 from weppy import abort
 
-@app.expose("/post/<int:pid>")
+@app.route("/post/<int:pid>")
 def one(pid):
     def _validate_comment(form):
         # manually set post id in comment form
-        form.vars.post = pid
+        form.params.post = pid
     # get post and return 404 if doesn't exist
     post = db.Post(id=pid)
     if not post:
@@ -232,12 +232,12 @@ We also need to expose a function to write posts, and it will be available only 
 from weppy import redirect, url
 from weppy.tools import requires
 
-@app.expose("/new")
+@app.route("/new")
 @requires(lambda: auth.has_membership('admin'), url('index'))
 def new_post():
     form = Post.form()
     if form.accepted:
-        redirect(url('one', form.vars.id))
+        redirect(url('one', form.params.id))
     return dict(form=form)
 ```
 
@@ -246,7 +246,7 @@ as you can see, if a user try to open up the "/new" address without the membersh
 Finally, we should expose an *account* function to let users signup and sign in on bloggy:
 
 ```python
-@app.expose('/account(/<str:f>)?(/<str:k>)?')
+@app.route('/account(/<str:f>)?(/<str:k>)?')
 def account(f, k):
     form = auth(f, k)
     return dict(form=form)
@@ -329,7 +329,8 @@ Then the *one.html* template which is the most complex:
         <br />
         <em>by {{=comment.user.first_name}} on {{=comment.date}}</em>
     </li>
-{{else:}}
+{{pass}}
+{{if not comments:}}
     <li><em>No comments here so far.</em></li>
 {{pass}}
 </ul>

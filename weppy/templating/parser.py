@@ -5,7 +5,7 @@
 
     Provides the templating parser.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
 
     Based on the web2py's templating system (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
@@ -110,6 +110,7 @@ class TemplateParser(object):
         # that we come across in this template
         self.blocks = {}
 
+        self.included_templates = []
         self.current_lines = (1, 1)
 
         # Begin parsing.
@@ -257,6 +258,8 @@ class TemplateParser(object):
                                 self.name, 1)
         tsource = self.templater.prerender(tsource, filepath)
 
+        self.included_templates.append((tname, tsource))
+
         return tsource, tname
 
     def include(self, content, filename):
@@ -351,6 +354,7 @@ class TemplateParser(object):
         self._in_tag = False
         self._needs_extend = None
         self._is_pre_extend = True
+        last_was_code_block = False
 
         # Use a list to store everything in
         # This is because later the code will "look ahead"
@@ -429,6 +433,7 @@ class TemplateParser(object):
                     lexer = self.lexers.get(name)
                     if lexer and not value.startswith('='):
                         lexer(parser=self, value=value)
+                        last_was_code_block = False
                     else:
                         # If we don't know where it belongs
                         # we just add it anyways without formatting.
@@ -465,11 +470,15 @@ class TemplateParser(object):
                             node = self.create_node(buf, self._is_pre_extend,
                                                     use_writer=False)
                             top.append(node)
+                            last_was_code_block = True
 
                 else:
-                    # It is HTML so just include it.
-                    node = self.create_htmlnode(i, self._is_pre_extend)
-                    top.append(node)
+                    if not last_was_code_block or (
+                            last_was_code_block and i.strip()):
+                        # It is HTML so just include it.
+                        node = self.create_htmlnode(i, self._is_pre_extend)
+                        top.append(node)
+                    last_was_code_block = False
 
             # Remember: tag, not tag, tag, not tag
             self._in_tag = not self._in_tag

@@ -10,15 +10,25 @@
 - response
 - sessions
 - languages
-- dal
+- dal:
+  - connecting
+  - models
+  - operations
+  - scopes
+  - relations
+  - virtuals
+  - callbacks
+  - migrations
+  - advanced
 - validations
 - forms
 - auth
 - caching
 - services
-- extensions
-- patterns
+- testing
 - debug_and_logging
+- extensions
 - cli
+- patterns
 - deployment
 - upgrading

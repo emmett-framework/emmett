@@ -5,7 +5,7 @@
 
     Provides session handlers for weppy applications.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -44,6 +44,12 @@ class SessionCookieManager(Handler):
             response.cookies[self.cookie_data_name]['secure'] = True
         if self.domain is not None:
             response.cookies[self.cookie_data_name]['domain'] = self.domain
+
+    def clear(self):
+        raise NotImplementedError(
+            "%s doesn't support clear of sessions. " +
+            "You should change the '%s' parameter to invalidate existing ones."
+            % (self.__class__.__name__, 'secure'))
 
 
 class SessionFSManager(Handler):
@@ -140,6 +146,10 @@ class SessionFSManager(Handler):
         if self.domain is not None:
             response.cookies[self.cookie_data_name]['domain'] = self.domain
 
+    def clear(self):
+        for element in os.listdir(self._path):
+            os.unlink(os.path.join(self._path, element))
+
 
 class SessionRedisManager(Handler):
     def __init__(self, redis, prefix="wppsess:", expire=3600, secure=False,
@@ -184,3 +194,6 @@ class SessionRedisManager(Handler):
             response.cookies[self.cookie_data_name]['secure'] = True
         if self.domain is not None:
             response.cookies[self.cookie_data_name]['domain'] = self.domain
+
+    def clear(self):
+        self.redis.delete(self.prefix+"*")

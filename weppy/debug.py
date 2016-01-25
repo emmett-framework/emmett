@@ -5,7 +5,7 @@
 
     Provides debugging utilities.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
 
     Quite a lot of magic comes from Flask (http://flask.pocoo.org)
     :copyright: (c) 2014 by Armin Ronacher.
@@ -20,6 +20,7 @@ import sys
 from types import TracebackType, CodeType
 from ._compat import PY2, reraise, iteritems
 from .templating.helpers import TemplateError
+from .utils import cachedprop
 
 
 # on pypy we can take advantage of transparent proxies
@@ -206,16 +207,14 @@ class Frame(object):
                 .replace("/", ".").split(".py")[0]
         return self.filename
 
-    @property
+    @cachedprop
     def sourcelines(self):
-        if not hasattr(self, '_sourcelines'):
-            try:
-                with open(self.filename, 'rb') as file:
-                    source = file.read().decode('utf8')
-            except IOError:
-                source = '<unavailable>'
-            self._sourcelines = source.splitlines()
-        return self._sourcelines
+        try:
+            with open(self.filename, 'rb') as file:
+                source = file.read().decode('utf8')
+        except IOError:
+            source = '<unavailable>'
+        return source.splitlines()
 
     @property
     def sourceblock(self):
@@ -240,16 +239,15 @@ class Frame(object):
         except IndexError:
             return u''
 
-    @property
+    @cachedprop
     def render_locals(self):
-        if not hasattr(self, '_rendered_locals'):
-            self._rendered_locals = dict()
-            for k, v in iteritems(self.locals):
-                try:
-                    self._rendered_locals[k] = str(v)
-                except:
-                    self._rendered_locals[k] = '<unavailable>'
-        return self._rendered_locals
+        rv = dict()
+        for k, v in iteritems(self.locals):
+            try:
+                rv[k] = str(v)
+            except:
+                rv[k] = '<unavailable>'
+        return rv
 
 
 def make_traceback(exc_info, template_ref=None):

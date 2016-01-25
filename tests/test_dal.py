@@ -3,20 +3,21 @@
     tests.dal
     ---------
 
-    pyDAL implementation over weppy.
+    Test pyDAL implementation over weppy.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 import pytest
+from datetime import datetime, timedelta
 from pydal.objects import Table
 from pydal import Field as _Field
 
 from weppy import App, sdict
 from weppy.dal import DAL, Field, Model, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
-    virtualfield, fieldmethod, has_one, has_many, belongs_to
+    virtualfield, fieldmethod, has_one, has_many, belongs_to, scope
 from weppy.validators import isntEmpty, hasLength
 from weppy.validators._old import notInDb
 
@@ -114,10 +115,18 @@ class Stuff(Model):
 
     @virtualfield('totalv')
     def eval_total_v(self, row):
-        return row.stuffs.price*row.stuffs.quantity
+        return row.price*row.quantity
 
     @fieldmethod('totalm')
     def eval_total_m(self, row):
+        return row.price*row.quantity
+
+    @virtualfield('totalv2', current_model_only=False)
+    def eval_total_v2(self, row):
+        return row.stuffs.price*row.stuffs.quantity
+
+    @fieldmethod('totalm2', current_model_only=False)
+    def eval_total_m2(self, row):
         return row.stuffs.price*row.stuffs.quantity
 
     @classmethod
@@ -126,7 +135,9 @@ class Stuff(Model):
 
 
 class Person(Model):
-    has_many('things', {'features': {'via': 'things'}})
+    has_many(
+        'things', {'features': {'via': 'things'}}, {'pets': 'Dog.owner'},
+        'subscriptions')
 
     name = Field()
     age = Field('integer')
@@ -189,6 +200,7 @@ class House(Model):
 
 class Mouse(Model):
     tablename = "mice"
+    has_many('elephants')
     name = Field()
 
 
@@ -197,7 +209,7 @@ class NeedSplit(Model):
 
 
 class Zoo(Model):
-    has_many('animals', 'elephants')
+    has_many('animals', 'elephants', {'mice': {'via': 'elephants.mouse'}})
     name = Field()
 
 
@@ -214,11 +226,11 @@ class Animal(Model):
         return row.name
 
     @before_insert
-    def bi(self):
+    def bi(self, *args, **kwargs):
         pass
 
     @before_insert
-    def bi2(self):
+    def bi2(self, *args, **kwargs):
         pass
 
 
@@ -231,8 +243,33 @@ class Elephant(Animal):
         return row.name+" "+row.color
 
     @before_insert
-    def bi2(self):
+    def bi2(self, *args, **kwargs):
         pass
+
+
+class Dog(Model):
+    belongs_to({'owner': 'Person'})
+    name = Field()
+
+
+class Subscription(Model):
+    belongs_to('person')
+
+    name = Field()
+    status = Field('int')
+    expires_at = Field('datetime')
+
+    STATUS = {'active': 1, 'suspended': 2, 'other': 3}
+
+    @scope('expired')
+    def get_expired(self):
+        return self.expires_at < datetime.now()
+
+    @scope('of_status')
+    def filter_status(self, *statuses):
+        if len(statuses) == 1:
+            return self.status == self.STATUS[statuses[0]]
+        return self.status.belongs(*[self.STATUS[v] for v in statuses])
 
 
 @pytest.fixture(scope='module')
@@ -242,7 +279,7 @@ def db():
     db.define_models([
         Stuff, Person, Thing, Feature, Price, Doctor, Patient, Appointment,
         User, Organization, Membership, House, Mouse, NeedSplit, Zoo, Animal,
-        Elephant
+        Elephant, Dog, Subscription
     ])
     return db
 
@@ -329,11 +366,13 @@ def test_virtualfields(db):
     db.commit()
     row = db(db.Stuff.id > 0).select().first()
     assert row.totalv == 12.95*3
+    assert row.totalv2 == 12.95*3
 
 
 def test_fieldmethods(db):
     row = db(db.Stuff.id > 0).select().first()
     assert row.totalm() == 12.95*3
+    assert row.totalm2() == 12.95*3
 
 
 def test_modelmethods(db):
@@ -357,12 +396,12 @@ def test_relations(db):
     assert len(f) == 1
     assert f[0].name == "tasty" and f[0].thing.id == t[0].id and \
         f[0].thing.person.id == p.id
-    m = p.things()[0].features()[0].price
+    m = p.things()[0].features()[0].price()
     assert m.value == 5 and m.feature.id == f[0].id and \
         m.feature.thing.id == t[0].id and m.feature.thing.person.id == p.id
     #: has_many via as shortcut
     assert len(p.features()) == 1
-    #: has_many via with 3 tables logic
+    #: has_many via with join tables logic
     doctor = db.Doctor.insert(name="cox")
     patient = db.Patient.insert(name="mario")
     db.Appointment.insert(doctor=1, patient=1)
@@ -382,6 +421,14 @@ def test_relations(db):
     assert jim.organizations().first().id == org
     assert joe.memberships().first().role == 'admin'
     assert jim.memberships().first().role == 'manager'
+    #: has_many with specified feld
+    db.Dog.insert(name='pongo', owner=p)
+    assert len(p.pets()) == 1 and p.pets().first().name == 'pongo'
+    #: has_many via with specified field
+    zoo = db.Zoo.insert(name='magic zoo')
+    mouse = db.Mouse.insert(name='jerry')
+    db.Elephant.insert(name='dumbo', color='pink', mouse=mouse, zoo=zoo)
+    assert len(zoo.mice()) == 1
 
 
 def test_tablenames(db):
@@ -405,3 +452,33 @@ def test_inheritance(db):
         Animal._declared_callbacks_['bi']
     assert Elephant._declared_callbacks_['bi2'] is not \
         Animal._declared_callbacks_['bi2']
+
+
+def test_scopes(db):
+    p = db.Person.insert(name="Walter", age=50)
+    s = db.Subscription.insert(
+        name="a", expires_at=datetime.now()-timedelta(hours=20), person=p,
+        status=1)
+    s2 = db.Subscription.insert(
+        name="b", expires_at=datetime.now()+timedelta(hours=20), person=p,
+        status=2)
+    db.Subscription.insert(
+        name="c", expires_at=datetime.now()+timedelta(hours=20), person=p,
+        status=3)
+    rows = db(db.Subscription.id > 0).expired().select()
+    assert len(rows) == 1 and rows[0].id == s
+    rows = p.subscriptions.expired().select()
+    assert len(rows) == 1 and rows[0].id == s
+    rows = Subscription.expired().select()
+    assert len(rows) == 1 and rows[0].id == s
+    rows = db(db.Subscription).of_status('active', 'suspended').select()
+    assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
+    rows = p.subscriptions.of_status('active', 'suspended').select()
+    assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
+    rows = Subscription.of_status('active', 'suspended').select()
+    assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
+
+
+def test_model_where(db):
+    assert Subscription.where(lambda s: s.status == 1).query == \
+        db(db.Subscription.status == 1).query

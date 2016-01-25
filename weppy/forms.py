@@ -5,17 +5,18 @@
 
     Provides classes to create and style forms in weppy.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
-import uuid
-
 from ._compat import iteritems, iterkeys
+from ._internal import deprecated
 from .dal import Field
 from .datastructures import sdict
 from .globals import current, request, session
+from .security import CSRFStorage
 from .tags import tag, TAG, cat, asis
+from .utils import cachedprop
 
 __all__ = ['Form', 'DALForm']
 
@@ -60,8 +61,8 @@ class Form(TAG):
             'formstyle', self._get_default_style())
         #: init the form
         self.errors = sdict()
-        self.vars = sdict()
-        self.input_vars = None
+        self.params = sdict()
+        self.input_params = None
         self.processed = False
         self.accepted = False
         self.formkey = "undef"
@@ -78,6 +79,16 @@ class Form(TAG):
         self._process()
 
     @property
+    @deprecated('vars', 'params', 'Form')
+    def vars(self):
+        return self.params
+
+    @property
+    @deprecated('input_vars', 'input_params', 'Form')
+    def input_vars(self):
+        return self.input_params
+
+    @property
     def csrf(self):
         _csrf = self.attributes["csrf"]
         return _csrf is True or (_csrf == 'auto' and
@@ -88,24 +99,21 @@ class Form(TAG):
             return
         if not hasattr(current, "session"):
             raise RuntimeError("You need sessions to use csrf in forms.")
-        session._csrf_tokens = session._csrf_tokens or {}
-        #: some clean up of session
-        if len(session._csrf_tokens) > 10:
-            session._csrf_tokens = {}
+        session._csrf = session._csrf or CSRFStorage()
 
     @property
     def _submitted(self):
         if self.csrf:
-            return self.input_vars._csrf_token in session._csrf_tokens
-        return self.input_vars._csrf_token is 'undef'
+            return self.input_params._csrf_token in session._csrf
+        return self.input_params._csrf_token is 'undef'
 
     def _get_input_val(self, field):
         if field.type == 'boolean':
-            v = self.input_vars.get(field.name, False)
+            v = self.input_params.get(field.name, False)
             if v is not False:
                 v = True
         else:
-            v = self.input_vars.get(field.name)
+            v = self.input_params.get(field.name)
         return v
 
     def _process(self):
@@ -113,9 +121,9 @@ class Form(TAG):
         method = self.attributes['_method']
         # get appropriate input variables
         if method is "POST":
-            self.input_vars = sdict(request.post_vars)
+            self.input_params = sdict(request.body_params)
         else:
-            self.input_vars = sdict(request.get_vars)
+            self.input_params = sdict(request.query_params)
         # run processing if needed
         if self._submitted:
             self.processed = True
@@ -126,7 +134,7 @@ class Form(TAG):
                 if error:
                     self.errors[field.name] = error
                 else:
-                    self.vars[field.name] = value
+                    self.params[field.name] = value
             # custom validation
             if not self.errors and callable(self.onvalidation):
                 self.onvalidation(self)
@@ -134,24 +142,22 @@ class Form(TAG):
             if not self.errors:
                 self.accepted = True
                 if self.csrf:
-                    del session._csrf_tokens[self.input_vars._csrf_token]
-        # CRSF protection logic
+                    del session._csrf[self.input_params._csrf_token]
+        # CSRF protection logic
         if self.csrf and not self.accepted:
-            token = str(uuid.uuid4())
-            session._csrf_tokens[token] = 1
-            self.formkey = token
+            self.formkey = session._csrf.gen_token()
         # reset default values in form
         if not self.processed or (self.accepted and not self.keepvalues):
             for field in self.fields:
                 default_value = field.default() if callable(field.default) \
                     else field.default
-                self.input_vars[field.name] = default_value
+                self.input_params[field.name] = default_value
 
     def _render(self):
         styler = self.attributes['formstyle'](self.attributes)
         styler.on_start()
         for field in self.fields:
-            value = self.input_vars.get(field.name)
+            value = self.input_params.get(field.name)
             error = self.errors.get(field.name)
             styler._proc_element(field, value, error)
         styler.add_buttons()
@@ -160,50 +166,49 @@ class Form(TAG):
             styler._add_hidden(key, value)
         return styler.render()
 
-    @property
+    @cachedprop
     def custom(self):
-        if not hasattr(self, '_custom'):
-            # init
-            self._custom = custom = sdict()
-            custom.dspval = sdict()
-            custom.inpval = sdict()
-            custom.label = sdict()
-            custom.comment = sdict()
-            custom.widget = sdict()
-            # load selected styler
-            styler = self.attributes['formstyle'](self.attributes)
-            styler.on_start()
-            # load data
-            for field in self.fields:
-                value = self.input_vars.get(field.name)
-                custom.dspval[field.name] = self.input_vars[field.name]
-                custom.inpval[field.name] = self.input_vars[field.name]
-                custom.label[field.name] = field.label
-                custom.comment[field.name] = field.comment
-                widget, wfield = styler._get_widget(field, value)
-                if not wfield:
-                    styler.style_widget(widget)
-                custom.widget[field.name] = widget
-            # add submit
-            custom.submit = tag.input(_type="submit",
-                                      value=self.attributes['submit'])
-            # provides begin attribute
-            begin = '<form action="%s" method="%s" enctype="%s">' % \
-                (self.attributes['_action'],
-                 self.attributes['_method'],
-                 self.attributes['_enctype'])
-            custom.begin = asis(begin)
-            # add hidden stuffs to get weppy process working
-            hidden = cat()
-            hidden.append(tag.input(_name='_csrf_token', _type='hidden',
-                                    _value=self.formkey))
-            for key, value in iteritems(self.attributes.get('hidden', {})):
-                hidden.append(tag.input(_name=key, _type='hidden',
-                              _value=value))
-            # provides end attribute
-            end = '%s</form>' % hidden.to_html()
-            custom.end = asis(end)
-        return self._custom
+        # init
+        custom = sdict()
+        custom.dspval = sdict()
+        custom.inpval = sdict()
+        custom.label = sdict()
+        custom.comment = sdict()
+        custom.widget = sdict()
+        # load selected styler
+        styler = self.attributes['formstyle'](self.attributes)
+        styler.on_start()
+        # load data
+        for field in self.fields:
+            value = self.input_params.get(field.name)
+            custom.dspval[field.name] = self.input_params[field.name]
+            custom.inpval[field.name] = self.input_params[field.name]
+            custom.label[field.name] = field.label
+            custom.comment[field.name] = field.comment
+            widget, wfield = styler._get_widget(field, value)
+            if not wfield:
+                styler.style_widget(widget)
+            custom.widget[field.name] = widget
+        # add submit
+        custom.submit = tag.input(_type="submit",
+                                  value=self.attributes['submit'])
+        # provides begin attribute
+        begin = '<form action="%s" method="%s" enctype="%s">' % \
+            (self.attributes['_action'],
+             self.attributes['_method'],
+             self.attributes['_enctype'])
+        custom.begin = asis(begin)
+        # add hidden stuffs to get weppy process working
+        hidden = cat()
+        hidden.append(tag.input(_name='_csrf_token', _type='hidden',
+                                _value=self.formkey))
+        for key, value in iteritems(self.attributes.get('hidden', {})):
+            hidden.append(tag.input(_name=key, _type='hidden',
+                          _value=value))
+        # provides end attribute
+        end = '%s</form>' % hidden.to_html()
+        custom.end = asis(end)
+        return custom
 
     def to_html(self):
         return self._render().to_html()
@@ -244,16 +249,17 @@ class DALForm(Form):
             for field in self.fields:
                 #: handle uploads
                 if field.type == 'upload':
-                    f = self.vars[field.name]
+                    f = self.params[field.name]
                     fd = field.name+"__del"
                     if f == '' or f is None:
-                        if self.input_vars.get(fd, False):
-                            self.vars[field.name] = \
+                        if self.input_params.get(fd, False):
+                            self.params[field.name] = \
                                 self.table[field.name].default or ''
                             ## TODO?: we want to physically delete file?
                         else:
                             if self.record and self.record[field.name]:
-                                self.vars[field.name] = self.record[field.name]
+                                self.params[field.name] = \
+                                    self.record[field.name]
                         continue
                     elif hasattr(f, 'file'):
                         source_file, original_filename = f.file, f.filename
@@ -262,8 +268,8 @@ class DALForm(Form):
                     newfilename = field.store(source_file, original_filename,
                                               field.uploadfolder)
                     if isinstance(field.uploadfield, str):
-                        self.vars[field.uploadfield] = source_file.read()
-                    self.vars[field.name] = newfilename
+                        self.params[field.uploadfield] = source_file.read()
+                    self.params[field.name] = newfilename
             #: add default values to hidden fields if needed
             ffields = [field.name for field in self.fields]
             for field in self.table:
@@ -272,17 +278,17 @@ class DALForm(Form):
                     if not self.record and field.default is not None:
                         def_val = field.default() if callable(field.default) \
                             else field.default
-                        self.vars[field.name] = def_val
+                        self.params[field.name] = def_val
             if self.record:
-                self.record.update_record(**self.vars)
+                self.record.update_record(**self.params)
             else:
-                self.vars.id = self.table.insert(**self.vars)
+                self.params.id = self.table.insert(**self.params)
         if not self.processed or (self.accepted and not self.keepvalues):
             for field in self.fields:
                 if self.record:
-                    self.input_vars[field.name] = self.record[field.name]
-                self.input_vars[field.name] = field.formatter(
-                    self.input_vars[field.name])
+                    self.input_params[field.name] = self.record[field.name]
+                self.input_params[field.name] = field.formatter(
+                    self.input_params[field.name])
 
 
 class FormStyle(object):

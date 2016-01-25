@@ -50,7 +50,7 @@ they can be very helpful for correctly use SEO on your application.
 Instead of manually write them in your templates, you can add these tags to your response in an easier way. Lets say, for example, that we have a blog and we want to automatically add our meta tags on a single post:
 
 ```python
-@app.expose("/p/<int:post_id>")
+@app.route("/p/<int:post_id>")
 def single(post_id):
     post = somedb.findmypost(post_id)
     response.meta.title = "MyBlog - "+post.title
@@ -79,7 +79,7 @@ Let's say you have function which exposes a form, you can use message flashing t
 ```python
 from weppy.helpers import flash
 
-@app.expose("/someurl")
+@app.route("/someurl")
 def myform():
     form = Form()
     if form.accepted:

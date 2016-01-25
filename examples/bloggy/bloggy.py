@@ -62,8 +62,7 @@ db.define_models(Post, Comment)
 
 
 #: setup helping function
-@app.command('setup')
-def setup():
+def setup_admin():
     # create the user
     user = db.User.validate_and_insert(
         email="walter@massivedynamics.com",
@@ -77,25 +76,30 @@ def setup():
     auth.add_membership(admins, user.id)
     db.commit()
 
+
+@app.command('setup')
+def setup():
+    setup_admin()
+
 #: handlers
-app.expose.common_handlers = [
+app.common_handlers = [
     SessionCookieManager('Walternate'),
     db.handler, auth.handler
 ]
 
 
 #: exposing functions
-@app.expose("/")
+@app.route("/")
 def index():
     posts = db(Post.id > 0).select(orderby=~Post.date)
     return dict(posts=posts)
 
 
-@app.expose("/post/<int:pid>")
+@app.route("/post/<int:pid>")
 def one(pid):
     def _validate_comment(form):
         # manually set post id in comment form
-        form.vars.post = pid
+        form.params.post = pid
     # get post and return 404 if doesn't exist
     post = db.Post(id=pid)
     if not post:
@@ -108,16 +112,16 @@ def one(pid):
     return locals()
 
 
-@app.expose("/new")
+@app.route("/new")
 @requires(lambda: auth.has_membership('admin'), url('index'))
 def new_post():
     form = Post.form()
     if form.accepted:
-        redirect(url('one', form.vars.id))
+        redirect(url('one', form.params.id))
     return dict(form=form)
 
 
-@app.expose('/account(/<str:f>)?(/<str:k>)?')
+@app.route('/account(/<str:f>)?(/<str:k>)?')
 def account(f, k):
     form = auth(f, k)
     return dict(form=form)

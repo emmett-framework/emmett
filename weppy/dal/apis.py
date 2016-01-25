@@ -5,7 +5,7 @@
 
     Provides apis for dal.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -18,6 +18,14 @@ class belongs_to(Reference):
     @property
     def refobj(self):
         return belongs_to._references_
+
+
+class refers_to(Reference):
+    _references_ = {}
+
+    @property
+    def refobj(self):
+        return refers_to._references_
 
 
 class has_one(Reference):
@@ -48,8 +56,9 @@ class computation(object):
 class virtualfield(object):
     _inst_count_ = 0
 
-    def __init__(self, field_name):
+    def __init__(self, field_name, current_model_only=True):
         self.field_name = field_name
+        self.inject_model = current_model_only
         self._inst_count_ = virtualfield._inst_count_
         virtualfield._inst_count_ += 1
 
@@ -84,3 +93,12 @@ def before_delete(f):
 
 def after_delete(f):
     return Callback(f, '_after_delete')
+
+
+class scope(object):
+    def __init__(self, name):
+        self.name = name
+
+    def __call__(self, f):
+        self.f = f
+        return self

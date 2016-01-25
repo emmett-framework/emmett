@@ -1,8 +1,8 @@
 """
-weppy is a full-stack python framework that includes everything needed
-to easily create fast, scalable and secure web applications.
+weppy is a full-stack python framework that includes everything needed to
+easily create fast, scalable and secure web applications.
 
-It's based on web2py and inspired by Flask.
+It takes some components from *web2py* and has a syntax inspired to *Flask*.
 
 
 Links
@@ -33,16 +33,17 @@ setup(
     author_email='gi0baro@d4net.org',
     description='The web framework for humans',
     long_description=__doc__,
-    packages=['weppy', 'weppy.dal', 'weppy.language', 'weppy.language.plurals',
-              'weppy.templating', 'weppy.tools', 'weppy.tools.auth',
-              'weppy.validators', 'weppy.libs'],
+    packages=[
+        'weppy', 'weppy.dal', 'weppy.dal.migrations', 'weppy.language',
+        'weppy.language.plurals', 'weppy.templating', 'weppy.testing',
+        'weppy.tools', 'weppy.tools.auth', 'weppy.validators', 'weppy.libs'],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
     install_requires=[
         'click>=0.6',
         'pyaes',
-        'pyDAL>=15.9',
+        'pyDAL==15.12',
         'pyyaml'
     ],
     classifiers=[
@@ -57,8 +58,7 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
-    entry_points='''
-        [console_scripts]
-        weppy=weppy.cli:main
-    ''',
+    entry_points={
+        'console_scripts': ['weppy = weppy.cli:main']
+    },
 )

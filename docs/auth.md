@@ -22,7 +22,7 @@ app.common_handlers = [
     auth.handler
 ]
 
-@app.expose('/account(/<str:f>)?(/<str:k>)?')
+@app.route('/account(/<str:f>)?(/<str:k>)?')
 def account(f, k):
     form = auth(f, k)
     return dict(form=form)
@@ -52,7 +52,7 @@ and it also creates all the database tables needed, from users to groups and mem
 You can obviously change the routing url for the authorization function:
 
 ```python
-@app.expose('/myurl(/<str:f>)?(/<str:k>)?')
+@app.route('/myurl(/<str:f>)?(/<str:k>)?')
 def accunt(f, k):
     # code
 ```
@@ -62,7 +62,7 @@ and even change the name of the exposed function, but if you do that, you mast t
 ```python
 auth = Auth(app, db, base_url='mycontrol')
 
-@app.expose('/myurl(/<str:f>)?(/<str:k>)?')
+@app.route('/myurl(/<str:f>)?(/<str:k>)?')
 def mycontrol(f, k):
     form = auth(f, k)
     return dict(form=form)
@@ -96,7 +96,7 @@ One of the advantages of the authorization module is the simple way you can intr
 ```python
 from weppy.tools import requires
 
-@app.expose()
+@app.route()
 @requires(auth.is_logged_in, url('unauthorized_page'))
 def myprotected_page():
     #some code
@@ -110,7 +110,7 @@ You can also pass a function to be invoked as second parameter, for example:
 def not_auth():
     abort(403)
 
-@app.expose()
+@app.route()
 @requires(lambda: auth.has_membership('administrator'), not_auth)
 def admin():
     # code
@@ -128,7 +128,7 @@ from weppy.tools import service
 def not_auth():
     return dict(error="Not authorized")
 
-@app.expose()
+@app.route()
 @requires(auth.is_logged_in, not_auth)
 @service.json
 def protected():
@@ -246,11 +246,9 @@ event = db.AuthEvent(id=1)
 event.user
 ```
 
-*section under writing*
-
 ### Customizing auth models
 
-*section under writing*
+*section in development*
 
 Users management
 ---------------
@@ -316,12 +314,42 @@ auth.add_permission(admins, 'write', 'Setting', maintenance.id)
 auth.has_permission('write', 'Setting', maintenance.id)
 ```
 
+### Blocking users
+
+*New in version 0.6*
+
+Sometimes you need to lock user operations on your application. The auth module have 2 different *locking* statuses for this:
+
+- **disabled:** the user won't be able to perform the normal auth operation until the reset of the password
+- **blocked:** the user won't be able to perform any auth operation (aka banned)
+
+You can change an user status in two different ways, the first is directly with you `Auth` instance:
+
+```python
+auth.disable_user(user)
+auth.block_user(user)
+auth.allow_user(user)
+```
+
+where the only accepted parameter is an user row (including the id) or just the id of the user involved.
+
+But you can also change the user status directly on a user you've selected from the database:
+
+```python
+user = User.first()
+user.disable()
+user.block()
+user.allow()
+```
+
+The allow methods will simply reset any blocking status on the users.
+
 Auth module configuration
 -------------------------
 
-*section under writing*
+*section in development*
 
 Additional login methods
 ------------------------
 
-*section under writing*
+*section in development*

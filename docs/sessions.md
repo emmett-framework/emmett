@@ -6,7 +6,7 @@ An essential feature for a web application is the ability to store specific info
 ```python
 from weppy import session
 
-@app.expose("/counter")
+@app.route("/counter")
 def count():
     session.counter = (session.counter or 0) + 1
     return "This is your %d visit" % session.counter
@@ -26,7 +26,7 @@ from weppy.sessions import SessionCookieManager
 app = App(__name__)
 app.common_handlers = [SessionCookieManager('myverysecretkey')]
 
-@app.expose("/counter")
+@app.route("/counter")
 # previous code
 ```
 
@@ -50,7 +50,7 @@ from weppy.sessions import SessionFSManager
 app = App(__name__)
 app.common_handlers = [SessionFSManager()]
 
-@app.expose("/counter")
+@app.route("/counter")
 # previous code
 ```
 
@@ -76,7 +76,7 @@ app = App(__name__)
 red = Redis(host='127.0.0.1', port=6379)
 app.common_handlers = [SessionRedisManager(red)]
 
-@app.expose("/counter")
+@app.route("/counter")
 # previous code
 ```
 

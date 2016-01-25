@@ -5,6 +5,9 @@
 .pydevproject
 build/*
 dist/*
+examples/*/databases
+examples/*/logs
+examples/*/private
 tests/databases/*
 tests/logs/*
 tests/private/*

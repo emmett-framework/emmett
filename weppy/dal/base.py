@@ -5,13 +5,15 @@
 
     Provides base pyDAL implementation for weppy.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 import os
 from pydal import DAL as _pyDAL, Field as _Field
-from pydal.objects import Table as _Table
+from pydal.objects import (
+    Table as _Table, Set as _Set, LazySet as _LazySet, Expression
+)
 from .._compat import copyreg
 from ..datastructures import sdict
 from ..handlers import Handler
@@ -45,6 +47,147 @@ class Table(_Table):
         return
 
 
+class Set(_Set):
+    def __init__(self, db, query, ignore_common_filters=None, model=None):
+        super(Set, self).__init__(db, query, ignore_common_filters)
+        self._model_ = model
+        self._scopes_ = {}
+        self._load_scopes_()
+
+    def _load_scopes_(self):
+        if self._model_ is None:
+            tables = self.db._adapter.tables(self.query)
+            if len(tables) == 1:
+                self._model_ = self.db[tables[0]]._model_
+        if self._model_:
+            self._scopes_ = self._model_._scopes_
+
+    def where(self, query, ignore_common_filters=False, model=None):
+        if query is None:
+            return self
+        elif isinstance(query, Table):
+            query = self.db._adapter.id_query(query)
+        elif isinstance(query, str):
+            query = Expression(self.db, query)
+        elif isinstance(query, Field):
+            query = query != None
+        q = self.query & query if self.query else query
+        return Set(
+            self.db, q, ignore_common_filters=ignore_common_filters,
+            model=model)
+
+    def select(self, *fields, **options):
+        pagination = options.get('paginate')
+        if pagination:
+            if isinstance(pagination, tuple):
+                offset = pagination[0]
+                limit = pagination[1]
+            else:
+                offset = pagination
+                limit = 10
+            options['limitby'] = ((offset-1)*limit, offset*limit)
+            del options['paginate']
+        including = options.get('including')
+        if including and self._model_ is not None:
+            from .helpers import LeftJoinSet
+            options['left'], jdata = self._parse_left_rjoins(including)
+            del options['including']
+            #: add fields to select
+            fields = list(fields)
+            if not fields:
+                fields = [self._model_.table.ALL]
+            for join in options['left']:
+                fields.append(join.first.ALL)
+            return LeftJoinSet._from_set(
+                self, jdata).select(*fields, **options)
+        return super(Set, self).select(*fields, **options)
+
+    def join(self, *args):
+        rv = self
+        if self._model_ is not None:
+            joins = []
+            jtables = []
+            for arg in args:
+                join_data = self._parse_rjoin(arg, True)
+                joins.append(join_data[0])
+                jtables.append((arg, join_data[1]._tablename, join_data[2]))
+            if joins:
+                from .helpers import JoinSet
+                q = joins[0]
+                for join in joins[1:]:
+                    q = q & join
+                rv = rv.where(q)
+                return JoinSet._from_set(rv, self._model_.tablename, jtables)
+        return rv
+
+    def _parse_rjoin(self, arg, with_extras=False):
+        from .helpers import RelationBuilder
+        #: match has_many
+        rel = self._model_._hasmany_ref_.get(arg)
+        if rel:
+            if isinstance(rel, dict) and rel.get('via'):
+                r = RelationBuilder(rel, self._model_).via()
+                if with_extras:
+                    return r[0], r[1]._table, False
+                return r[0]
+            else:
+                r = RelationBuilder(rel, self._model_)
+                if with_extras:
+                    return r.many_query(), r._many_elements()[0]._table, False
+                return r.many_query()
+        #: match belongs_to and refers_to
+        rel = self._model_._belongs_ref_.get(arg)
+        if rel:
+            r = RelationBuilder((rel, arg), self._model_).belongs_query()
+            if with_extras:
+                return r, self._model_.db[rel], True
+            return r
+        #: match has_one
+        rel = self._model_._hasone_ref_.get(arg)
+        if rel:
+            r = RelationBuilder(rel, self._model_)
+            if with_extras:
+                return r.many_query(), r._many_elements()[0]._table, False
+            return r.many_query()
+        raise RuntimeError(
+            'Unable to find %s relation of %s model' %
+            (arg, self._model_.__name__))
+
+    def _parse_left_rjoins(self, args):
+        if not isinstance(args, (list, tuple)):
+            args = [args]
+        joins = []
+        jdata = []
+        for arg in args:
+            join = self._parse_rjoin(arg, True)
+            joins.append(join[1].on(join[0]))
+            jdata.append((arg, join[2]))
+        return joins, jdata
+
+    def __getattr__(self, name):
+        scope = self._scopes_.get(name)
+        if scope:
+            from .helpers import ScopeWrap
+            return ScopeWrap(self, self._model_, scope.f)
+        raise AttributeError()
+
+
+class LazySet(_LazySet):
+    def __init__(self, field, id):
+        super(LazySet, self).__init__(field, id)
+        self._model_ = self.db[self.tablename]._model_
+
+    def _getset(self):
+        query = self.db[self.tablename][self.fieldname] == self.id
+        return Set(self.db, query, model=self._model_)
+
+    def join(self, *args):
+        return self._getset().join(*args)
+
+    def __getattr__(self, name):
+        return getattr(self._getset(), name)
+
+
 class DAL(_pyDAL):
     serializers = {'json': _custom_json, 'xml': xml}
     logger = None
@@ -71,7 +214,7 @@ class DAL(_pyDAL):
         uri = config.uri or DAL.uri_from_config(config)
         return super(DAL, cls).__new__(cls, uri, *args, **kwargs)
 
-    def __init__(self, app, config=sdict(), pool_size=0, folder=None,
+    def __init__(self, app, config=sdict(), pool_size=None, folder=None,
                  **kwargs):
         self.logger = app.log
         config = config or app.config.db
@@ -79,22 +222,23 @@ class DAL(_pyDAL):
             config.uri = self.uri_from_config(config)
         self.config = config
         #: load config data
-        kwargs['check_reserved'] = config.check_reserved or \
+        kwargs['check_reserved'] = self.config.check_reserved or \
             kwargs.get('check_reserved', None)
-        kwargs['migrate'] = config.migrate or kwargs.get('migrate', True)
-        kwargs['fake_migrate'] = config.fake_migrate or \
-            kwargs.get('fake_migrate', False)
-        kwargs['fake_migrate_all'] = config.fake_migrate_all or \
-            kwargs.get('fake_migrate_all', False)
-        kwargs['driver_args'] = config.driver_args or \
+        kwargs['migrate'] = self.config.auto_migrate or \
+            kwargs.get('auto_migrate', True)
+        kwargs['driver_args'] = self.config.driver_args or \
             kwargs.get('driver_args', None)
-        kwargs['adapter_args'] = config.adapter_args or \
+        kwargs['adapter_args'] = self.config.adapter_args or \
             kwargs.get('adapter_args', None)
+        if kwargs.get('auto_migrate') is not None:
+            del kwargs['auto_migrate']
         #: set directory
         folder = folder or 'databases'
         folder = os.path.join(app.root_path, folder)
         if not os.path.exists(folder):
             os.mkdir(folder)
+        #: set pool_size
+        pool_size = self.config.pool_size or pool_size or 0
         #: finally setup pyDAL instance
         super(DAL, self).__init__(self.config.uri, pool_size, folder, **kwargs)
 
@@ -131,6 +275,24 @@ class DAL(_pyDAL):
                 # set reference in db for model name
                 self.__setattr__(model.__name__, obj.table)
 
+    def where(self, query=None, ignore_common_filters=None, model=None):
+        q = None
+        if isinstance(query, Table):
+            q = self._adapter.id_query(query)
+        elif isinstance(query, Field):
+            q = (query != None)
+        elif isinstance(query, dict):
+            icf = query.get("ignore_common_filters")
+            if icf:
+                ignore_common_filters = icf
+        if q is None and query is not None:
+            if hasattr(query, '_belongs_ref_'):
+                q = self._adapter.id_query(query.table)
+            else:
+                q = query
+        return Set(
+            self, q, ignore_common_filters=ignore_common_filters, model=model)
+
 
 def _DAL_unpickler(db_uid):
     fake_app_obj = sdict(config=sdict(db=sdict()))
@@ -151,6 +313,9 @@ class Field(_Field):
     }
     _pydal_types = {
         'int': 'integer', 'bool': 'boolean', 'list:int': 'list:integer'
+    }
+    _weppy_delete = {
+        'cascade': 'CASCADE', 'nullify': 'SET NULL', 'nothing': 'NO ACTION'
     }
     _inst_count_ = 0
     _obj_created_ = False
@@ -174,6 +339,19 @@ class Field(_Field):
         if _info:
             kwargs['comment'] = _info
             del kwargs['info']
+        #: convert ondelete parameter
+        _ondelete = kwargs.get('ondelete')
+        if _ondelete:
+            if _ondelete not in list(self._weppy_delete):
+                raise SyntaxError(
+                    'Field ondelete should be set on %s, %s or %s' %
+                    list(self._weppy_delete)
+                )
+            kwargs['ondelete'] = self._weppy_delete[_ondelete]
+        #: process 'refers_to' fields
+        self._isrefers = kwargs.get('_isrefers')
+        if self._isrefers:
+            del kwargs['_isrefers']
         #: get auto validation preferences
         if 'auto_validation' in kwargs:
             self._auto_validation = kwargs['auto_validation']
@@ -214,6 +392,8 @@ class Field(_Field):
         if self.notnull or self._type.startswith('reference') or \
                 self._type.startswith('list:reference'):
             rv['presence'] = True
+        if not self.notnull and self._isrefers is True:
+            rv['allow'] = 'empty'
         if self.unique:
             rv['unique'] = True
         return rv

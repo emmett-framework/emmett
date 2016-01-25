@@ -3,9 +3,9 @@
     weppy.app
     ---------
 
-    Provide the central application object.
+    Provides the central application object.
 
-    :copyright: (c) 2015 by Giovanni Barillari
+    :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -14,8 +14,8 @@ import os
 import click
 from yaml import load as ymlload
 from ._compat import basestring
-from ._internal import get_root_path, create_missing_app_folders
-from .utils import dict_to_sdict
+from ._internal import get_root_path, create_missing_app_folders, deprecated
+from .utils import dict_to_sdict, cachedprop
 from .expose import Expose
 from .datastructures import sdict, ConfigData
 from .wsgi import error_handler
@@ -26,6 +26,7 @@ from .utils import read_file
 
 class App(object):
     debug = None
+    test_client_class = None
 
     def __init__(self, import_name, root_path=None,
                  template_folder='templates', config_folder='config'):
@@ -69,42 +70,46 @@ class App(object):
         self.template_preloaders = {}
         self.template_lexers = {}
 
-    @property
+    @cachedprop
     def name(self):
         """The name of the application. This is usually the import name
         with the difference that it's guessed from the run file if the
         import name is main.
         """
-        if not hasattr(self, "_name"):
-            if self.import_name == '__main__':
-                fn = getattr(sys.modules['__main__'], '__file__', None)
-                if fn is None:
-                    self._name = '__main__'
-                else:
-                    self._name = os.path.splitext(os.path.basename(fn))[0]
+        if self.import_name == '__main__':
+            fn = getattr(sys.modules['__main__'], '__file__', None)
+            if fn is None:
+                rv = '__main__'
             else:
-                self._name = self.import_name
-        return self._name
+                rv = os.path.splitext(os.path.basename(fn))[0]
+        else:
+            rv = self.import_name
+        return rv
 
     @property
-    def expose(self):
+    def route(self):
         return Expose
 
     @property
+    @deprecated('expose', 'route', 'App')
+    def expose(self):
+        return self.route
+
+    @property
     def common_handlers(self):
-        return self.expose.common_handlers
+        return self.route.common_handlers
 
     @common_handlers.setter
     def common_handlers(self, handlers):
-        self.expose.common_handlers = handlers
+        self.route.common_handlers = handlers
 
     @property
     def common_helpers(self):
-        return self.expose.common_helpers
+        return self.route.common_helpers
 
     @common_helpers.setter
     def common_helpers(self, helpers):
-        self.expose.common_helpers = helpers
+        self.route.common_helpers = helpers
 
     def on_error(self, code):
         def decorator(f):
@@ -187,12 +192,12 @@ class App(object):
         r = Rocket((host, port), 'wsgi', {'wsgi_app': self})
         r.start()
 
-    def run(self, host=None, port=None, reloader=True):
+    def run(self, host=None, port=None, reloader=True, debug=True):
         if host is None:
             host = "127.0.0.1"
         if port is None:
             port = 8000
-        self.debug = True
+        self.debug = debug
         if os.environ.get('WEPPY_RUN_MAIN') != 'true':
             quit_msg = "(press CTRL+C to quit)"
             self.log.info("> weppy application %s running on http://%s:%i %s" %
@@ -202,6 +207,13 @@ class App(object):
             run_with_reloader(self, host, port)
         else:
             self._run(host, port)
+
+    def test_client(self, use_cookies=True, **kwargs):
+        tclass = self.test_client_class
+        if tclass is None:
+            from .testing import WeppyTestClient
+            tclass = WeppyTestClient
+        return tclass(self, use_cookies=use_cookies, **kwargs)
 
     def wsgi_handler(self, environ, start_request):
         return error_handler(self, environ, start_request)
@@ -237,7 +249,11 @@ class AppModule(object):
         self.common_handlers = []
         self.common_helpers = []
 
-    def expose(self, path=None, name=None, template=None, **kwargs):
+    @deprecated('expose', 'route', 'AppModule')
+    def expose(self, *args, **kwargs):
+        return self.route(*args, **kwargs)
+
+    def route(self, path=None, name=None, template=None, **kwargs):
         if name is not None and "." in name:
             raise RuntimeError(
                 "App modules' exposed names should not contains dots"
@@ -251,7 +267,7 @@ class AppModule(object):
         if self.common_helpers:
             helpers = self.common_helpers + helpers
         kwargs['helpers'] = helpers
-        return self.app.expose(
+        return self.app.route(
             path=path, name=name, template=template, prefix=self.url_prefix,
             template_folder=self.template_folder,
             template_path=self.template_path, hostname=self.hostname, **kwargs)

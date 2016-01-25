@@ -11,7 +11,7 @@ How a minimal application would look like in weppy?
 from weppy import App
 app = App(__name__)
 
-@app.expose("/")
+@app.route("/")
 def hello():
     return "Hello world!"
 
@@ -32,24 +32,24 @@ Expose and routing
 ------------------
 As you seen from the 'Hello world' example, we have *exposed* the `hello()` function. What does it mean?
 
-Actually it's quite simple: the expose decorator of the application object is used to define the routing of your app.
+Actually it's quite simple: the route decorator of the application object is used to define the routing of your app.
 
 > – Wait, you mean there's no need of a routing table?   
 > – *Nope.*   
 > – And how should I define url variables, HTTP methods, ecc.?   
-> – *Just use the expose decorator and his parameters.*   
+> – *Just use the route decorator and his parameters.*   
 
-In fact, `expose()` accepts different parameters. But let we proceed in order, starting with variables rules for routing your functions.
+In fact, `route()` accepts different parameters. But let we proceed in order, starting with variables rules for routing your functions.
 
 ### Variable rules
 To add variable parts to an URL you can mark these special sections as `<type:variable_name>` and the variables will be passed as a keyword argument to your functions. Let's see some examples:
 
 ```python
-@app.expose('/user/<str:username>')
+@app.route('/user/<str:username>')
 def user(username):
     return "Hello %s" % username
 
-@app.expose('/double/<int:number>')
+@app.route('/double/<int:number>')
 def double(number):
     number = int(number)
     return "%d * 2 = %d" % (number, number*2)
@@ -75,7 +75,7 @@ So basically, if we try to open the url for the `double` function of the last ex
 Just write the url using the regex notation:
 
 ```python
-@app.expose("/profile(/<int:user_id>)?")
+@app.route("/profile(/<int:user_id>)?")
 def profile(user_id):
     if user_id:
         # get requested user
@@ -84,26 +84,26 @@ def profile(user_id):
 ```
 as you thought, when conditional arguments are not given in the requested url, your function's parameters will be `None`.
 
-Now, it's time to see the `methods` parameter of `expose()`
+Now, it's time to see the `methods` parameter of `route()`
 
 ### HTTP methods
-HTTP knows different methods for accessing URLs. By default, a route only answers to GET and POST requests, but that can be changed by providing the methods argument to the `expose()` decorator. For example:
+HTTP knows different methods for accessing URLs. By default, a route only answers to GET and POST requests, but that can be changed by providing the methods argument to the `route()` decorator. For example:
 
 ```python
-@app.expose("/onlyget", methods="get")
+@app.route("/onlyget", methods="get")
 def f():
     # code
 
-@app.expose("/post", methods=["post", "delete"])
+@app.route("/post", methods=["post", "delete"])
 def g():
     # code
 ```
 
 If you have no idea of what an HTTP method is, don't worry, [Wikipedia has good informations](http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol#Request_methods) about them.
 
-> – Ok, I got it. What else can I do with expose?
+> – Ok, I got it. What else can I do with route?
 
-Since this is a *quick overview* over weppy, you would check out the [appropriate chapter](./routing) of the documentation for the complete list of parameters accepted by the `expose()` decorator.
+Since this is a *quick overview* over weppy, you would check out the [appropriate chapter](./routing) of the documentation for the complete list of parameters accepted by the `route()` decorator.
 
 Let's we see how to build urls on our routing rules.
 
@@ -114,32 +114,33 @@ Weppy provide a useful method to create urls, let's see how it works:
 from weppy import App, url
 app = App(__name__)
 
-@app.expose("/")
+@app.route("/")
 def index():
     # code
 
-@app.expose("/anotherurl")
+@app.route("/anotherurl")
 def g():
     #code
 
-@app.expose("/find/<str:a>/<str:b>")
+@app.route("/find/<str:a>/<str:b>")
 def f(a, b):
     # code
 
-@app.expose("/post/<int:id>/edit")
+@app.route("/post/<int:id>/edit")
 def edit(id):
     # code
 
 a = url('index')
-b = url('g', vars={'u': 2})
+b = url('g', params={'u': 2})
 c = url('f', ['foo', 'bar'])
 d = url('edit', 123)
 ```
 The above urls `a`, `b`, `c` and `d` will be respectively converted to:
-* /
-* /anotherurl?u=2
-* /find/foo/bar
-* /post/123/edit
+
+- /
+- /anotherurl?u=2
+- /find/foo/bar
+- /post/123/edit
 
 which is quite handy instead of remember all the rules and manually write the links.
 
@@ -176,7 +177,7 @@ with *myapp.py* looking like this:
 from weppy import App
 app = App(__name__)
 
-@app.expose("/<str:msg>")
+@app.route("/<str:msg>")
 def echo():
     return dict(message=msg)
 ```
@@ -220,7 +221,7 @@ from weppy.tools import service
 
 app = App(__name__)
 
-@app.expose("/json")
+@app.route("/json")
 @service.json
 def f():
     l = [1, 2, {'foo': 'bar'}]
@@ -250,27 +251,27 @@ It contains useful information about the current processing request, let's see s
 | scheme | could be *http* or *https*|
 | method | the request HTTP method |
 | now | a python datetime object created with request|
-| vars | an object containing url params |
+| params | an object containing url params |
 
-Let's focus on `request.vars` object, and understand it with an example:
+Let's focus on `request.params` object, and understand it with an example:
 
 ```python
 from weppy import App, request
 
 app = App(__name__)
 
-@app.expose("/post/<int:id>")
+@app.route("/post/<int:id>")
 def post(id):
-    editor = request.vars.editor
+    editor = request.params.editor
     if editor == "markdown":
         # code
     elif editor == "html":
         # code
     #..
 ```
-Now, when a client call the url */post/123?editor=markdown*, the `editor` parameter will be mapped into `request.vars` and we can access its value simply calling the parameter name as an attribute.
+Now, when a client call the url */post/123?editor=markdown*, the `editor` parameter will be mapped into `request.params` and we can access its value simply calling the parameter name as an attribute.
 
-> – wait, what happens if client call */post/123* and my app try to access *request.vars.editor* which is not in the url?
+> – wait, what happens if client call */post/123* and my app try to access *request.params.editor* which is not in the url?
 
 Simple, the attribute will be `None`, so it's completely safe to call it, it wont raise an exception.
 
@@ -302,34 +303,34 @@ As you can see `Handler` provide methods to run your code before the request is 
 To register your handler to a function you just need to write:
 
 ```python
-@app.expose("/url", handlers=[MyHandler()])
+@app.route("/url", handlers=[MyHandler()])
 def f():
     #code
 ```
 
-And if you need to register your handler to all your application functions, you can omit the handler from the `expose()` decorator writing instead:
+And if you need to register your handler to all your application functions, you can omit the handler from the `route()` decorator writing instead:
 
 ```python
-app.expose.common_handlers = [MyHandler()]
+app.common_handlers = [MyHandler()]
 ```
 
 weppy also provides a Helper handler, which is designed to add helping methods to the templates. Explore the [Handlers chapter](./request#handlers-and-helpers) of documentation for more informations.
 
 ### Redirects and errors
-Taking again the example given for the `request.vars`, we can add a redirect on the missing url param:
+Taking again the example given for the `request.params`, we can add a redirect on the missing url param:
 
 ```python
 from weppy import redirect, url
 
-@app.expose("/post/<int:id>")
+@app.route("/post/<int:id>")
 def post(id):
-    editor = request.vars.editor
+    editor = request.params.editor
     if editor == "markdown":
         # code
     elif editor == "html":
         # code
     else:
-        redirect(url('post', id, vars={'editor': 'markdown'}))
+        redirect(url('post', id, params={'editor': 'markdown'}))
 ```
 which means that when the `editor` var is missing we force the user to the markdown one.
 
@@ -342,9 +343,9 @@ from weppy import abort
 def not_found():
     #code
 
-@app.expose("/post/<int:id>")
+@app.route("/post/<int:id>")
 def post(id):
-    editor = request.vars.editor
+    editor = request.params.editor
     if editor == "markdown":
         # code
     elif editor == "html":
@@ -368,7 +369,7 @@ from weppy.sessions import SessionCookieManager
 app = App(__name__)
 app.common_handlers = [SessionCookieManager('myverysecretkey')]
 
-@app.expose("/")
+@app.route("/")
 def count():
     session.counter = (session.counter or 0) + 1
     return "This is your %d visit" % session.counter
@@ -377,7 +378,7 @@ The above code is quite simple: the app increments the counter every time the us
 So basically, you can store a value to the user session and retrieve it whenever the session is kept.
 
 > – and if I try to access an attribute not existent in session?   
-> – *same as `request.vars`: the attribute will be `None` and you don't have to catch any exception*
+> – *same as `request.params`: the attribute will be `None` and you don't have to catch any exception*
 
 More information and storing systems are available in the [Session chapter](./sessions) of the documentation.
 
@@ -388,11 +389,10 @@ You will need quite often to build forms for your web application. weppy provide
 Let's see how to use it with an example:
 
 ```python
-form weppy import Field, Form
-from weppy.validators import inSet
+from weppy import Field, Form
 
 # create a form
-@app.expose('/form')
+@app.route('/form')
 def a():
     simple_form = Form({
         'name': Field(),
@@ -443,7 +443,7 @@ app.language_force_on_url = True
 
 weppy uses the url to determine the language instead of the HTTP "Accept-Language" header. This means that weppy will automatically add the support for language on your routing rules.
 
-To see more about languages and dive into translator features, read the complete documentation available in the [Languages chapter](.languages).
+To see more about languages and dive into translator features, read the complete documentation available in the [Languages chapter](./languages).
 
 Go ahead
 --------
