@@ -1,10 +1,10 @@
 weppy changelog
 ===============
 
-Next
-----
+Version 0.6
+-----------
 
-(release date to be announced, codename to be selected)
+Released on January 25th 2015, codename Fornacis
 
 - Several bugfixes
 - Added `remove` method to `HasManySet` and `HasManyViaSet`
@@ -36,6 +36,7 @@ Next
 - Deprecated `Form.vars` and `Form.input_vars` in favor of `Form.params` and
   `Form.input_params`
 - Deprecated `url(vars={})` in favor of `url(params={})`
+
 
 Version 0.5
 -----------
