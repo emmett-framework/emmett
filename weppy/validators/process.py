@@ -61,7 +61,7 @@ class Urlify(Validator):
         # replace special characters
         s = unicodedata.normalize('NFKD', s)
         # encode as ASCII
-        s = s.encode('ascii', 'ignore')
+        s = s.encode('ascii', 'ignore').decode('ascii')
         # strip html entities
         s = re.sub('&\w+?;', '', s)
         if self.keep_underscores:
