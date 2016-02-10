@@ -542,7 +542,15 @@ def test_validation(db):
     errors = Allowed.validate(d)
     assert 'c' in errors and len(errors) == 1
     #: processing validators
-    # TODO
+    assert Proc.a.validate('Asd')[0] == 'asd'
+    assert Proc.b.validate('Asd')[0] == 'ASD'
+    assert Proc.d.validate('Two Words')[0] == 'two-words'
+    psw = str(Proc.e.validate('somepassword')[0])
+    assert psw[:23] == 'pbkdf2(1000,20,sha512)$'
+    assert psw[23:] != 'somepassword'
+    psw = str(Proc.f.validate('somepassword')[0])
+    assert psw[:4] == 'md5$'
+    assert psw[4:] != 'somepassword'
     #: 'presence'
     mario = {'name': 'mario'}
     errors = Person.validate(mario)
