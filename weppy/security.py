@@ -68,7 +68,7 @@ def simple_hash(text, key='', salt='', digest_alg='md5'):
         h = hmac.new(to_bytes(key + salt), to_bytes(text), digest_alg)
     else:  # compatible with third party systems
         h = hashlib.new(digest_alg)
-        h.update(text + salt)
+        h.update(to_bytes(text + salt))
     return h.hexdigest()
 
 

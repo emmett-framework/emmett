@@ -13,7 +13,7 @@
 
 import re
 import unicodedata
-from .._compat import to_unicode
+from .._compat import to_unicode, to_native
 from .basic import Validator
 from .helpers import translate, LazyCrypt
 
@@ -35,14 +35,18 @@ class Lower(Validator):
     """Converts to lower case"""
 
     def __call__(self, value):
-        return (value.decode('utf8').lower().encode('utf8'), None)
+        if value is None:
+            return (value, None)
+        return (to_native(to_unicode(value).lower()), None)
 
 
 class Upper(Validator):
     """Converts to upper case"""
 
     def __call__(self, value):
-        return (value.decode('utf8').upper().encode('utf8'), None)
+        if value is None:
+            return (value, None)
+        return (to_native(to_unicode(value).upper()), None)
 
 
 class Urlify(Validator):
