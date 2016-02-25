@@ -61,8 +61,8 @@ class Expose(object):
         self.template_folder = template_folder
         self.template_path = template_path
         self.prefix = prefix
-        self.handlers = self.common_handlers + (handlers or []) + \
-            [_ResponseHandler(self)] + self.common_helpers + (helpers or [])
+        self.handlers = [_ResponseHandler(self)] + self.common_handlers + \
+            (handlers or []) + self.common_helpers + (helpers or [])
         # check handlers are indeed valid handlers
         if any(not isinstance(handler, Handler) for handler in self.handlers):
             raise RuntimeError('Invalid Handler')
