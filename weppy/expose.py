@@ -35,6 +35,7 @@ class Expose(object):
     routes_out = {}
     common_handlers = []
     common_helpers = []
+    processors = []
     REGEX_INT = re.compile('<int\:(\w+)>')
     REGEX_STR = re.compile('<str\:(\w+)>')
     REGEX_ANY = re.compile('<any\:(\w+)>')
@@ -179,6 +180,8 @@ class Expose(object):
             self.path
         )
         self.application.log.info("exposing '%s': %s" % (self.name, logstr))
+        for proc_handler in self.processors:
+            proc_handler(self)
         self._routing_stack.pop()
         return func
 
