@@ -111,6 +111,10 @@ class App(object):
     def common_helpers(self, helpers):
         self.route.common_helpers = helpers
 
+    @property
+    def routing_processors(self):
+        return self.route.processors
+
     def on_error(self, code):
         def decorator(f):
             self.error_handlers[code] = f
