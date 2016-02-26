@@ -4,30 +4,30 @@ Installation
 
 So, how do you get weppy on your computer quickly? There are many ways you could do that, but the most kick-ass method is virtualenv, so let’s have a look at that first.
 
-If you're using python 2, you will need Python 2.7 or higher to get started, so be sure to have an up-to-date Python 2.x installation. On the other side, if you're on python 3, you will need 3.3 version or higher in order to get weppy working.
+If you're using Python 2, you will need Python 2.7 or higher to get started, so be sure to have an up-to-date Python 2.x installation. On the other hand, if you're on Python 3, you will need version 3.3 or higher in order to get weppy working.
 
 virtualenv
 ----------
 
 Virtualenv is probably what you want to use during development, and if you have shell access to your production machines, you’ll probably want to use it there, too.
 
-What problem does virtualenv solve? If you use Python a bit, you probably want to use it for other projects besides weppy-based web applications. But the more projects you have, the more likely it is that you will be working with different versions of Python itself, or at least different versions of Python libraries. Let’s face it: quite often libraries break backwards compatibility, and it’s unlikely that any serious application will have zero dependencies. So what do you do if two or more of your projects have conflicting dependencies?
+What problem does virtualenv solve? If you use Python a bit, you'll probably want to use it for other projects besides weppy-based web applications. However, the more projects you have, the more likely it is that you will be working with different versions of Python itself, or at least different versions of Python libraries. Let’s face it: quite often, libraries break backwards compatibility, and it’s unlikely that any serious application will have zero dependencies. So what do you do if two or more of your projects have conflicting dependencies?
 
 Virtualenv to the rescue! Virtualenv enables multiple side-by-side installations of Python, one for each project. It doesn’t actually install separate copies of Python, but it does provide a clever way to keep different project environments isolated.   
 Let’s see how virtualenv works.
 
-### virtualenv on python 2
+### virtualenv on Python 2
 
 If you are on Linux or Mac OS X, one of the following two commands should work for you:
 
 ```bash
-$ sudo easy_install virtualenv
+$ sudo pip install virtualenv
 ```
 
-or even better:
+or, if pip doesn't work:
 
 ```bash
-$ sudo pip install virtualenv
+$ sudo easy_install virtualenv
 ```
 
 Once you have virtualenv installed, just fire up a shell and create your own environment.   
@@ -37,13 +37,13 @@ An easy way is to create a project folder and a venv folder within:
 $ mkdir myproject
 $ cd myproject
 $ virtualenv venv --no-site-packages
-New python executable in venv/bin/python
+New Python executable in venv/bin/python
 Installing distribute............done.
 ```
 
-### virtualenv on python 3
+### virtualenv on Python 3
 
-With python 3.3, virtualenv became part of the standard library. This means you won't need to install it anymore, and you can just initialize your environment:
+With Python 3.3, virtualenv became part of the standard library. This means you won't need to install it anymore, and you can just initialize your environment:
 
 ```bash
 $ mkdir myproject
@@ -67,6 +67,6 @@ Now you can just enter the following command to get weppy activated in your virt
 $ pip install weppy
 ```
 
-and now you are good to go.
+And now you are good to go.
 
-You can read more about virtualenv on [its documentation website](https://virtualenv.readthedocs.org/en/latest/) (python 2) or on the [python3 documentation](https://docs.python.org/3/library/venv.html) (python 3).
+You can read more about virtualenv on [its documentation website](https://virtualenv.readthedocs.org/en/latest/) (Python 2) or on the [Python 3 documentation](https://docs.python.org/3/library/venv.html) (python 3).
