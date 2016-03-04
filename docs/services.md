@@ -1,9 +1,9 @@
 Services
 ========
 
-Quite often you would need to render the output of your application using a different protocol, for example JSON or XML.
+Quite often, you will need to render the output of your application using a protocol other than HTML; for example, JSON or XML.
 
-weppy can help you exposing those services with the `service` decorator:
+weppy can help you expose those services with the `service` decorator:
 
 ```python
 from weppy import App
@@ -16,7 +16,7 @@ app = App(__name__)
 def f():
     # your code
 ```
-The output will be automatically converted using the required service (in this example JSON).
+The output will be automatically converted using the required service (JSON in this example).
 
 > – awesome. But, what if I need to expose several function with a service? Should I decorate every function?   
 > – *you can use the provided handler, dude*
@@ -70,18 +70,19 @@ The output will be a JSON object with the converted content of your python dicti
 }
 ```
 
-To provide an XML service, just decorate your function using the next line:
+To provide an XML service, just decorate your function using the next line
+instead:
 
 ```python
 @service.xml
 ```
 
-Obviously the syntax for the `ServiceHandler` usage is the same of the first example:
+Obviously, the syntax for using `ServiceHandler` is the same as in the first example:
 
 ```python
-# providing a json service handler
+# providing a JSON service handler
 ServiceHandler('json')
 
-# providing an xml service handler
+# providing an XML service handler
 ServiceHandler('xml')
 ```
