@@ -1,7 +1,9 @@
 The templating system
 =====================
 
-weppy provides the same templating system of *web2py*, which means that you can use python code directly into your HTML files.   
+weppy provides the same templating system of *web2py*, which means that you can
+use python code directly into your HTML files.   
+
 Let's see it with an example. We can make a new application with this structure:
 
 ```
@@ -9,6 +11,7 @@ Let's see it with an example. We can make a new application with this structure:
 /templates
     echo.html
 ```
+
 with *myapp.py* looking like this:
 
 ```python
@@ -19,6 +22,7 @@ app = App(__name__)
 def echo():
     return dict(message=msg)
 ```
+
 and *echo.html*:
 
 ```html
@@ -29,8 +33,10 @@ and *echo.html*:
 </html>
 ```
 
-The dictionary returned by your functions is the *context* of the template, in which you can insert the values defined in python code.   
-In addition, since everything you write inside `{{ }}` brackets is evaluated as normal python code you can easily generate html with conditions and cycles:
+The dictionary returned by your functions is the *context* of the template,
+in which you can insert the values defined in python code.   
+
+In addition, since everything you write inside `{{ }}` brackets is evaluated as normal python code, you can easily generate HTML with conditions and cycles:
 
 ```html
 <div class="container">
@@ -43,14 +49,20 @@ In addition, since everything you write inside `{{ }}` brackets is evaluated as 
 {{pass}}
 ```
 
-As you can see the only difference between the weppy template and a pure python code is that you have to write `pass` after the statements to tell weppy where the python block ends – normally we have indentation under python, but we can't have it under HTML.
+As you can see the only difference between the weppy template and a pure python
+code is that you have to write `pass` after the statements to tell weppy where 
+the python block ends – normally we have indentation under python, but we can't
+have it under HTML.
 
 Templates structure
 -------------------
 
-Templates can extend and include other ones in a tree-like structure. For example, we can think of a template *index.html* that extends *layout.html*. At the same time, *layout.html* may include a *footer.html*.
+Templates can extend and include other ones in a tree-like structure.
+For example, we can think of a template *index.html* that extends *layout.html*.
+At the same time, *layout.html* may include a *footer.html*.
 
-Writing down the code of what we just said would produce something like this for the *index.html*:
+Writing down the code of what we just said would produce something like this for
+the *index.html*:
 
 ```html
 {{extend 'layout.html'}}
@@ -72,9 +84,13 @@ and for the *layout.html*:
 </html>
 ```
 
-When the template is parsed, the extended template is loaded, and the calling template replaces the `{{include}}` directive inside it. Moreover, the contents of *footer.html* will be loaded inside the parent template.
+When the template is parsed, the extended template is loaded, and the calling 
+template replaces the `{{include}}` directive inside it. Moreover, the contents
+of *footer.html* will be loaded inside the parent template.
 
-Using weppy templates you have another important feature: the `block` directive. Let's see how it works updating a bit the last example, with *index.html* looking like this:
+Using weppy templates you have another important feature: the `block` directive.
+Let's see how it works updating a bit the last example, with *index.html* 
+looking like this:
 
 ```html
 {{extend 'layout.html'}}
@@ -105,13 +121,17 @@ and *layout.html* like this:
 </html>
 ```
 
-as you have guessed, the contents of the extended template's block are overwritten by the called template. Moreover, if you want to include the parent's content you can add a `{{super}}` directive.
+as you have guessed, the contents of the extended template's block are
+overwritten by the called template. Moreover, if you want to include the
+parent's content you can add a `{{super}}` directive.
 
 Included helpers
 ----------------
-There are other statements you can use in weppy templates: `include_static`, `include_meta` and `include_helpers`.
+There are other statements you can use in weppy templates: `include_static`, 
+`include_meta` and `include_helpers`.
 
-`include_static` allows you to add a static link for javascripts or stylesheet from your static folder:
+`include_static` allows you to add a static link for JavaScript or stylesheet
+from your static folder:
 
 ```html
 <html>
@@ -122,22 +142,30 @@ There are other statements you can use in weppy templates: `include_static`, `in
 </html>
 ```
 
-`include_meta` adds to the *head* the meta you define in the `response` object, for more details about it check out the [appropriate chapter](#) of the documentation.
+`include_meta` adds to the *head* the meta you define in the `response` object,
+for more details about it check out the [appropriate chapter](#) of the
+documentation.
 
-`include_helpers` adds to your template *jQuery* and an helping javascript from weppy. This javascript does 2 things:
+`include_helpers` adds to your template *jQuery* and an helping JavaScript from 
+weppy. This JavaScript does 2 things:
 
 * allow you to use the `load_component()` function described next
-* adds a useful `ajax` javascript function to your template
+* adds a useful `ajax` JavaScript function to your template
 
-The `ajax()` function from weppy is a convenient shortcut to the *jQuery* ajax function and it can be used as follows:
+The `ajax()` function from weppy is a convenient shortcut to the *jQuery* AJAX 
+function and it can be used as follows:
 
 ```javascript
 ajax(url, ['name1', 'name2'], 'target')
 ```
 
-It asynchronously calls the `url`, passes the values of the field inputs with the name equal to one of the names in the list, then stores the response in the innerHTML of the tag which id equals to `target`.
+It asynchronously calls the `url`, passes the values of the field inputs with
+the name equal to one of the names in the list, then stores the response in the
+innerHTML of the tag which id equals to `target`.
 
-The third argument can also be the `:eval` string, which lead to the evaluation via javascript of the string returned by the server. Seen with an example, if we have an exposed function:
+The third argument can also be the `:eval` string, which lead to the evaluation
+via JavaScript of the string returned by the server. Seen with an example,
+if we have an exposed function:
 
 ```python
 @app.route()
@@ -154,12 +182,14 @@ and in a template:
 </script>
 ```
 
-You will se the 'something' content inside the div.
+You will see the 'something' content inside the div.
 
 Basic context
 -------------
 
-weppy adds some useful python elements to your templates' base context, first of all the `current` object. This allows you to access the global objects of weppy and the language translator from your templates:
+weppy adds some useful python elements to your templates' base context,
+first of all the `current` object. This allows you to access the global objects
+of weppy and the language translator from your templates:
 
 ```python
 current.request
@@ -168,9 +198,13 @@ current.session
 current.T
 ```
 
-Moreover, the templating system adds the `url()`, `asis()` and `load_component()` methods, where the `url()` is the same weppy method you've encountered to create urls for routed functions.
+Moreover, the templating system adds the `url()`, `asis()` and `load_component()`
+methods, where the `url()` is the same weppy method you've encountered to create
+URLs for routed functions.
 
-The `asis()` method allows you to put something in the template without escaping it to html. It's useful, for example, when you need to write javascript objects from python, like an array:
+The `asis()` method allows you to put something in the template without escaping
+it to HTML. It's useful, for example, when you need to write JavaScript objects 
+from python, like an array:
 
 ```html
 <script type="text/javascript">
@@ -180,7 +214,9 @@ The `asis()` method allows you to put something in the template without escaping
 
 where `myvar`, `my2ndvar` and `my3rdvar` comes from your python exposed function.
 
-The `load_component()` method is useful to load some components via ajax in your template. For instance, if you have an exposed function in your application you want to load with ajax inside another one, you can just put in the template:
+The `load_component()` method is useful to load some components via AJAX in
+your template. For instance, if you have an exposed function in your application
+you want to load with AJAX inside another one, you can just put in the template:
 
 ```html
 <div id="ajaxcontainer">
@@ -188,6 +224,6 @@ The `load_component()` method is useful to load some components via ajax in your
 </div>
 ```
 
-Basically, `load_component()` calls an url and appends it's contents inside the element with the id you have specified as the second parameter.
-
+Basically, `load_component()` calls an URL and appends it's contents inside the
+element with the id you have specified as the second parameter.
 
