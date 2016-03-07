@@ -15,7 +15,7 @@ def todos():
     page = request.params.page or 1
     return {'todos': auth.user.todos.select(paginate=page)}
 
-def not_authorized:
+def not_authorized():
     response.status = 401
     return {'error': 'not authorized'}
 ```
