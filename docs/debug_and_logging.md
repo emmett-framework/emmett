@@ -1,16 +1,29 @@
 Debug and logging
 =================
 
-*Errare humanum est* stated Seneca a long time ago. As humans, sometimes we fail, and sooner or later we will see an exception on our applications.   
-Even if the code is 100% correct, we can still get exceptions from time to time. And why? Well, *shit happens*, not only as a consequence of the Murphy's law – even if he was damn right, wasn't he? – but also because when we deploy web applications we have to deal with a long list of involved stuffs, and everyone of these can fail as well.   
-Just think about it: the client may fail during the request, your database can be overloaded, an hard-drive on your machine can crash, a library you're using can contain errors, and so on.
+*Errare humanum est*, said Seneca, a long time ago. As humans, sometimes we fail,
+and, sooner or later, we will see an exception on our applications. Even if the
+code is 100% correct, we can still get exceptions from time to time. And why? 
+Well, *shit happens*, not only as a consequence of the Finagle's Law&mdash;
+even if he was damn right, wasn't he?&mdash; but also because the process
+of deploying web applications forces us to deal with a long list of involved
+technologies, everyone of which could fail. Just think about it: 
+the client may fail during the request, your database can be overloaded, 
+a hard-drive on your machine can crash, a library you're using can contain errors, 
+and this goes on and on.
 
-So, what can we do to face all this?   
-weppy provides two facilities to track and debug errors on your application: a *debugger* for your development process, and a simple logging configuration for the production.
+So, what can we do to face all this necessary complexity?   
+
+weppy provides two facilities to track and debug errors on your application:
+a *debugger* for your development process, and a simple logging configuration
+for your production environment.
 
 Debugger
 --------
-When you run your application with the builtin server, using the `run()` method, or the *weppy* command, or when you set to `True` your `App.debug` attribute, weppy will use its internal debugger when an exception occurs to show you some useful informations. Asking yourself what you will see?
+When you run your application with the built-in server, using the `run()` method,
+with the *weppy* command shell, or by setting your `App.debug` attribute to `True`,
+weppy will use its internal debugger when an exception occurs to show you
+some useful information. What does that look like?
 
 ![debugger](http://weppy.org/static/debug.png)
 
@@ -20,28 +33,44 @@ The debug page contains three sections:
 - the **full traceback**   
 - the **frames** view
 
-The difference between the two tracebacks is quite obvious: the first is filtered only on your application code, while the second contains the complete trace of what happened – including the framework components, libraries and so on.
+The difference between the two tracebacks is straightforward: the first is
+filtered only on your application code, while the second contains 
+the complete trace of what happened&mdash;including the framework components,
+libraries, and so on.
 
-The third section of the debugger page is called *frames* and can be quite useful to inspect what happened during an exception:
+The third section of the debugger page is called *frames* and inspecting it can
+tell you a lot about what happened during an exception.
 
 ![debugger](http://weppy.org/static/debug_frames.png)
 
-As you can see, for every step of the full traceback, weppy collects – when is possible – all the variables contents and reports them like in the above screen.
+As you can see, for every step of the full traceback, weppy collects&mdash;
+when is possible&mdash;all the variables' contents and reports them as shown
+in the above screen.
 
-> – Ok dude. What happens when I have an error in a template?   
-> – *the debugger catch them too.*
+> – OK, dude. What happens when I have an error in a template?   
+> – *the debugger catches them too.*
 
 ![debugger](http://weppy.org/static/debug_template.png)
 
-The debugger will also try to display the correct line that generated the exception also in templates, compatibly with the error type – when you forget a `pass` in a template file, can be impossible to show you the statement which is not *passed*.
+The debugger will also try to display the line that generated the exception
+in templates, complete with the error type. Still, when you forget a `pass`
+in a template file, it can be impossible to show you the statement
+that was not *passed*.
 
 Logging application errors
 --------------------------
-When your application runs on production, weppy – obviously – won't display the debug page, but will collect the full traceback and store it into logs.   
-In fact, with the default configuration a file called *production.log* will be created into *logs* folder inside your application folder, and it will log every message with a *warning* level or higher.
+When your application runs on production, weppy&mdash;obviously&mdash;
+won't display the debug page, but will collect the full traceback 
+and store it in logs. In fact, with the default configuration, 
+a file called *production.log* will be created in the *logs* folder 
+inside your application folder. It will log every message labeled as 
+*warning* level or more severe.
 
 But how does weppy logging works?   
-It uses the standard python logging module, and provides a shortcut to use it with the `log` attribute of your `App`. This becomes handy when you want to add some messages inside your code, 'cause you can just call:
+
+It uses the standard Python logging module, and provides a shortcut
+that you can use with the `log` attribute of your `App`. This becomes handy when
+you want to add some messages inside your code, because you can just call:
 
 ```python
 app.log.debug('This is a debug message')
@@ -49,10 +78,12 @@ app.log.info('This is an info message')
 app.log.warning('This is a warning message')
 ```
 
-Basically the `log` attribute of your app is a python `Logger` with some handlers configured. As we stated above, weppy automatically logs exceptions calling your `app.log.exception()`.
+Basically, the `log` attribute of your app is a Python `Logger` with some handlers
+configured. As we said above, weppy automatically logs exceptions calling your `app.log.exception()`.
 
 ### Configuring application logs
-Probably you want to configure logging for your application under your needs. To do that, just use your `app.config` object:
+You probably want to configure logging for your application to fit your needs.
+To do that, just use your `app.config` object:
 
 ```python
 from weppy import App, sdict
@@ -65,7 +96,9 @@ app.config.logging.myfile = sdict(
 )
 ```
 
-With this example, you will end with a *myfile.log* which will grow till 100MB and log all messages with an *info* level or higher. This is the complete list of parameters you can set for a logging file:
+With this example, you will generate a *myfile.log* which will grow to 100MB
+in size and log all messages with an *info* level or higher. This is the complete
+list of parameters you can set for a logging file:
 
 | name | description |
 | --- | --- |
