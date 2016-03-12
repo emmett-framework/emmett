@@ -4,8 +4,8 @@ Debug and logging
 *Errare humanum est*, said Seneca, a long time ago. As humans, sometimes we fail,
 and, sooner or later, we will see an exception on our applications. Even if the
 code is 100% correct, we can still get exceptions from time to time. And why? 
-Well, *shit happens*, not only as a consequence of the Finagle's Law&mdash;
-even if he was damn right, wasn't he?&mdash; but also because the process
+Well, *shit happens*, not only as a consequence of the Finagle's Law&mdash;even
+if he was damn right, wasn't he?&mdash;but also because the process
 of deploying web applications forces us to deal with a long list of involved
 technologies, everyone of which could fail. Just think about it: 
 the client may fail during the request, your database can be overloaded, 
