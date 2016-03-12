@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from weppy.http import HTTP
+from weppy.http import HTTP, redirect
 
 
 def test_http():
@@ -30,3 +30,21 @@ def test_http():
 
     assert http.to({'REQUEST_METHOD': 'HEAD'}, start_response) == [b'']
     assert http.to({'REQUEST_METHOD': 'GET'}, start_response) == [b'Hello World']
+
+
+def test_redirect():
+    from weppy.globals import current
+    current.initialize({
+        'PATH_INFO': '/',
+        'wpp.appnow': 'test',
+        'wpp.now.utc': 'test',
+        'wpp.now.local': 'test',
+        'wpp.application': 'test',
+    })
+
+    try:
+        redirect('/redirect', 302)
+    except HTTP as http_redirect:
+        assert current.response.status == 302
+        assert http_redirect.status_code == 302
+        assert http_redirect.headers == [('Location', '/redirect')]
