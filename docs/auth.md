@@ -53,7 +53,7 @@ You can obviously change the routing url for the authorization function:
 
 ```python
 @app.route('/myurl(/<str:f>)?(/<str:k>)?')
-def accunt(f, k):
+def account(f, k):
     # code
 ```
 
