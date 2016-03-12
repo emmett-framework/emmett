@@ -20,5 +20,9 @@ install:
 script:
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION | tr -d . | sed -e 's/pypypy/pypy/')
 
+after_success:
+  - pip install coveralls
+  - coveralls
+
 notifications:
   email: false
