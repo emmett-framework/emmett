@@ -26,15 +26,10 @@ Let's see the full parameters list in detail:
 
 | parameter | explanation |
 | --- | --- |
-| import_name | gives weppy an idea of what belongs to your application,
-usually using `__name__` will work out of the box, but you can hardcode 
-the name of your application package if you wish |
-| root_path | allows you to set a custom root path for your application,
-which is usually unnecessary |
-| template_folder | allows you to set a different folder for your application's
-templates (by default weppy uses the *templates* folder |
-| config_folder | allows you to set a different configuration folder for your 
-application, if you wish to load your configuration from files |
+| import_name | gives weppy an idea of what belongs to your application, usually using `__name__` will work out of the box, but you can hardcode the name of your application package if you wish |
+| root_path | allows you to set a custom root path for your application, which is usually unnecessary |
+| template_folder | allows you to set a different folder for your application's templates (by default weppy uses the *templates* folder |
+| config_folder | allows you to set a different configuration folder for your application, if you wish to load your configuration from files |
 
 Since we introduced the `config_folder` parameter, let's see some details
 about application configuration.
@@ -164,13 +159,10 @@ This is the complete list of parameters accepted by `AppModule`:
 | parameter | explaination |
 | --- | --- |
 | app | the weppy application to load module on |
-| name | name for the module, it will used by weppy as the namespace 
-for building URLs on internal routing |
+| name | name for the module, it will used by weppy as the namespace for building URLs on internal routing |
 | import_name | same as we seen for the `App` object |
-| template_folder | allows you to set a specific sub-folder of your 
-application template path for module templates |
-| template_path | allows you to set a specific folder inside your module root 
-path for module templates |
+| template_folder | allows you to set a specific sub-folder of your application template path for module templates |
+| template_path | allows you to set a specific folder inside your module root path for module templates |
 | url_prefix | allows you to set a prefix path for module URLs |
 | hostname | allows you to set a specific hostname for module |
 | root_path | same as we seen for the `App` object |
