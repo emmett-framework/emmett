@@ -3,9 +3,12 @@
 [![pip version](https://img.shields.io/pypi/v/weppy.svg?style=flat)](https://pypi.python.org/pypi/weppy) 
 [![build status](https://img.shields.io/travis/gi0baro/weppy.svg?style=flat)](https://travis-ci.org/gi0baro/weppy)
 
-weppy is a full-stack python framework that includes everything needed to easily create fast, scalable and secure web applications. It takes some components from *web2py* and has a syntax inspired to *Flask*.
+weppy is a full-stack Python framework that includes everything needed to easily
+create fast, scalable, and secure web applications. It takes some components from
+*web2py* and has a syntax inspired by *Flask*.
 
-The aim of weppy is to be clearly understandable, easy to be learnt and to be used, in order to let you completely focus on your product's features:
+The aim of weppy is to be clearly understandable, easy to be learned and to be used,
+so you can focus completely on your product's features:
 
 ```python
 @app.route()
@@ -28,15 +31,20 @@ You can install weppy using pip:
 
 ## Documentation
 
-The documentation is available at [http://weppy.org/docs](http://weppy.org/docs). The sources are available under the *docs* folder.
+The documentation is available at [http://weppy.org/docs](http://weppy.org/docs).
+The sources are available under the *docs* folder.
 
 ## Examples
 
-The "bloggy" example described in the [Tutorial](http://weppy.org/docs/latest/tutorial) is available under the *examples* folder. While we're still populating this folder with more examples, you can take a look also at [H-Funding](https://github.com/gi0baro/h-funding), which can give you a deepen view on weppy's features.
+The "bloggy" example described in the [Tutorial](http://weppy.org/docs/latest/tutorial)
+is available under the *examples* folder. While we're still populating this folder
+with more examples, you can also take a look at [H-Funding](https://github.com/gi0baro/h-funding),
+which uses many of weppy's features.
 
 ## Benchmarks
 
-Some benchmarks including weppy were [published by Kirill Klenov](http://klen.github.io/py-frameworks-bench) who tested several frameworks with Python 3.
+weppy was one of several Python 3 frameworks included in some benchmarks
+[published by Kirill Klenov](http://klen.github.io/py-frameworks-bench).
 
 This is an extract from the results for a simple JSON serialization:
 
@@ -49,21 +57,22 @@ This is an extract from the results for a simple JSON serialization:
 ## Status of the project
 
 weppy is currently released in beta stage.
-*What does it mean?*
+*What does that mean?*
 
 * That the code may contain *noteworthy* bugs
-* That you can use it on production but cannot blame the developers if something goes wrong
+* That you can use it on production, but cannot blame the developers if 
+something goes wrong
 
-weppy provides support for python 2.7, 3.3, 3.4 and 3.5 versions.
+weppy provides support for Python 2.7, 3.3, 3.4 and 3.5.
 
 ## How can I help?
 
-We are very glad if you contribute to the project in one or all of these ways:
+We would be very glad if you contributed to the project in one or all of these ways:
 
 * Talking about weppy with firends and on the web
-* Paticipating on [weppy users group](https://groups.google.com/forum/#!forum/weppy-talk)
-* Adding issues and features requests here on github
-* Participating in discussions about new features and issues here on github
+* Participating in [weppy users group](https://groups.google.com/forum/#!forum/weppy-talk)
+* Adding issues and features requests here on GitHub
+* Participating in discussions about new features and issues here on GitHub
 * Improving the documentation
 * Forking the project and writing beautiful code
 
@@ -71,4 +80,6 @@ We are very glad if you contribute to the project in one or all of these ways:
 
 weppy is released under the BSD License.
 
-However, due to original licenses limitations, some components are included in weppy under their original licenses, please check the LICENSE file for more details.
+However, due to original license limitations, some components are included 
+in weppy under their original licenses. Please check the LICENSE file for 
+more details.
