@@ -61,8 +61,7 @@ Template structure
 Templates can extend other templates in a tree-like structure. For example, 
 we can think of a template *index.html* that extends *layout.html*.
 
-include
-~~~~~~~
+###include
 
 A structure like that would produce something like this for *index.html*:
 
@@ -91,8 +90,8 @@ recursive. When the template is parsed, the extended template is loaded,
 and the calling template replaces the `{{include}}` directive inside it.
 The contents of *footer.html* will be loaded inside the parent template.
 
-block
-~~~~~
+###block
+
 weppy templates have another important feature that accomplishes the same task
 as include, but in a different way: the `block` directive. Let's see how it
 works by updating the last example, with *index.html* looking like this:
