@@ -40,7 +40,8 @@ def test_session_cookie(current):
     cookie = str(current.response.cookies)
     assert 'wpp_session_data_' in cookie
     assert 'Domain=localhost;' in cookie
-    assert 'Secure' in cookie
+    # Python 3.5 make Secure attribute in cookie capitalized
+    assert 'secure' in cookie.lower()
 
     current.request.cookies = current.response.cookies
     session_cookie.on_start()
