@@ -13,6 +13,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import datetime
 import cgi
 import sys
 from io import BytesIO
@@ -315,7 +316,11 @@ class EnvironBuilder(object):
             'wsgi.version': self.wsgi_version,
             'wsgi.url_scheme': self.url_scheme,
             'wsgi.input': input_stream,
-            'wsgi.errors': self.errors_stream
+            'wsgi.errors': self.errors_stream,
+            'wpp.application': 'test_application_name',
+            'wpp.appnow': 'utc',
+            'wpp.now.utc': datetime.datetime.utcnow(),
+            'wpp.now.local': datetime.datetime.now(),
         })
         for key, value in self.headers.to_wsgi_list():
             result['HTTP_%s' % key.upper().replace('-', '_')] = value
