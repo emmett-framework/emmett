@@ -648,7 +648,7 @@ class isIPv4(Validator):
                     ok = False
             if not (self.is_private is None or self.is_private ==
                     (sum([number[0] <= number <= number[1]
-                     for number in self.private]) > 0)):
+                     for number in self.private]) > 0)):  # NOQA
                     ok = False
             if not (self.is_automatic is None or self.is_automatic ==
                     (self.automatic[0] <= number <= self.automatic[1])):
