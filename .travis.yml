@@ -13,7 +13,9 @@ python:
   - "3.4"
   - "3.5"
   - "pypy3"
-  - "flake8"
+
+before_script:
+  - flake8 weppy
 
 install:
   - pip install tox>=1.8 flake8
