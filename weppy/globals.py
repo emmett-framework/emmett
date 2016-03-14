@@ -161,7 +161,7 @@ class Request(object):
 
     @cachedprop
     def env(self):
-        #: parse the environment variables into a sdict
+        # : parse the environment variables into a sdict
         _env = sdict(
             (k.lower().replace('.', '_'), v)
             for k, v in iteritems(self.environ)

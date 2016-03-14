@@ -57,7 +57,7 @@ def read_possible_plural_rules():
                 module = __import__(package.__name__ + '.' + modname,
                                     fromlist=[modname])
                 lang = modname
-                #pname = modname + '.py'
+                # pname = modname + '.py'
                 nplurals = getattr(module, 'nplurals', DEFAULT_NPLURALS)
                 get_plural_id = getattr(
                     module, 'get_plural_id',
@@ -79,9 +79,9 @@ def read_plural_dict_aux(filename):
     try:
         return eval(lang_text) or {}
     except Exception:
-        #e = sys.exc_info()[1]
-        #status = 'Syntax error in %s (%s)' % (filename, e)
-        #logging.error(status)
+        # e = sys.exc_info()[1]
+        # status = 'Syntax error in %s (%s)' % (filename, e)
+        # logging.error(status)
         status = 'Syntax error in %s' % filename
         return {'__corrupted__': status}
 
@@ -96,15 +96,15 @@ def write_plural_dict(filename, contents):
         return
     try:
         fp = LockedFile(filename, 'wb')
-        fp.write(to_bytes(u'#!/usr/bin/env python\n{\n# "singular form (0)": ["first plural form (1)", "second plural form (2)", ...],\n'))
+        fp.write(to_bytes(u'# !/usr/bin/env python\n{\n# "singular form (0)": ["first plural form (1)", "second plural form (2)", ...],\n'))
         # coding: utf8\n{\n')
         for key in sorted(contents):
-            forms = u'[' + u','.join('"'+form+'"' for form in contents[key]) + u']'
+            forms = u'[' + u','.join('"' + form + '"' for form in contents[key]) + u']'
             val = u'"%s": %s,\n' % (key, forms)
             fp.write(to_bytes(val))
         fp.write(to_bytes(u'}\n'))
     except (IOError, OSError):
-        #if not is_gae:
+        # if not is_gae:
         #    logging.warning('Unable to write to file %s' % filename)
         return
     finally:
@@ -129,9 +129,9 @@ def read_dict_aux(filename):
             for key, val in rv.items():
                 rv[to_unicode(key)] = to_unicode(val)
     except Exception:
-        #e = sys.exc_info()[1]
-        #status = 'Syntax error in %s (%s)' % (filename, e)
-        #logging.error(status)
+        # e = sys.exc_info()[1]
+        # status = 'Syntax error in %s (%s)' % (filename, e)
+        # logging.error(status)
         status = 'Syntax error in %s' % filename
         rv = {'__corrupted__': status}
     return rv
@@ -255,7 +255,7 @@ def _make_ttabout():
     return dict((ord(char), rtrans) for char in ltrans)
 
 
-#ttab_in = maketrans(u"\\%{}", u'\x1c\x1d\x1e\x1f')
-#ttab_out = maketrans(u'\x1c\x1d\x1e\x1f', u"\\%{}")
+# ttab_in = maketrans(u"\\%{}", u'\x1c\x1d\x1e\x1f')
+# ttab_out = maketrans(u'\x1c\x1d\x1e\x1f', u"\\%{}")
 ttab_in = _make_ttabin()
 ttab_out = _make_ttabout()

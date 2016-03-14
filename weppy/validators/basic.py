@@ -44,7 +44,7 @@ class ParentValidator(Validator):
 
     def formatter(self, value):
         for child in self.children:
-            if hasattr(child, 'formatter') and child(value)[1] != None:
+            if hasattr(child, 'formatter') and child(value)[1] is not None:
                 return child.formatter(value)
         return value
 
@@ -187,19 +187,19 @@ class Matches(Validator):
         if strict:
             if not expression.endswith('$'):
                 expression = '(%s)$' % expression
-        #if is_unicode:
+        # if is_unicode:
         #    if not isinstance(expression, unicode):
         #        expression = expression.decode('utf8')
         #    self.regex = re.compile(expression, re.UNICODE)
-        #else:
+        # else:
         self.regex = re.compile(expression)
         self.extract = extract
-        #self.is_unicode = is_unicode
+        # self.is_unicode = is_unicode
 
     def __call__(self, value):
-        #if self.is_unicode and not isinstance(value, unicode):
+        # if self.is_unicode and not isinstance(value, unicode):
         #    match = self.regex.search(str(value).decode('utf8'))
-        #else:
+        # else:
         match = self.regex.search(str(value))
         if match is not None:
             return self.extract and match.group() or value, None

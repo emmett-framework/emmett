@@ -33,7 +33,7 @@ else:
     NUMBERS = (int, float)
 
 
-#: The single 'translator string element', is created when user calls
+# : The single 'translator string element', is created when user calls
 #  T('string'), and will be translated when loaded in templates or converted to
 #  a string (via str())
 @implements_bool
@@ -64,7 +64,7 @@ class TElement(object):
     def __str__(self):
         lang = self.language
         if lang is None:
-            #: use language provided by http_accept_language or
+            # : use language provided by http_accept_language or
             #  url (if forced by application), fallback on default language
             from ..globals import current
             lang = current._language or self.T.current_languages[0]
@@ -130,7 +130,7 @@ class TElement(object):
         return TElement(self.T, self.m, symbols, self.M)
 
 
-#: A language for the translator.
+# : A language for the translator.
 class TLanguage(object):
     def __init__(self, translator, l_info, filename=None, writable=True):
         self.translator = translator
@@ -235,16 +235,16 @@ class TLanguage(object):
 
     def get_t(self, message, prefix=u''):
         """
-        use ## to add a comment into a translation string
+        use # # to add a comment into a translation string
         the comment can be useful do discriminate different possible
         translations for the same string (for example different locations)
 
         T(' hello world ') -> ' hello world '
-        T(' hello world ## token') -> ' hello world '
-        T('hello ## world## token') -> 'hello ## world'
+        T(' hello world # # token') -> ' hello world '
+        T('hello # # world# # token') -> 'hello # # world'
 
-        the ## notation is ignored in multiline strings and strings that
-        start with ##. this is to allow markmin syntax to be translated
+        the # # notation is ignored in multiline strings and strings that
+        start with # #. this is to allow markmin syntax to be translated
         """
         message = to_unicode(message)
         key = prefix + message
@@ -252,11 +252,11 @@ class TLanguage(object):
         if mt is not None:
             return mt
         # we did not find a translation
-        if message.find('##') > 0 and '\n' not in message:
+        if message.find('# #') > 0 and '\n' not in message:
             # remove comments
-            message = message.rsplit('##', 1)[0]
+            message = message.rsplit('# #', 1)[0]
         # guess translation same as original
-        #self.t[key] = mt = self.default_t.get(key, message)
+        # self.t[key] = mt = self.default_t.get(key, message)
         mt = self.get_default(key, message)
         self.set(key, mt)
         return regex_backslash.sub(
@@ -270,21 +270,21 @@ class TLanguage(object):
         return to_unicode(self.get_t(message))
 
 
-#: The main translator object, responsible of creating elements and loading
+# : The main translator object, responsible of creating elements and loading
 #  application languages
 class Translator(object):
     def __init__(self, app):
         self.app = app
         self.langpath = os.path.join(app.root_path, "languages")
-        #self.is_writable = not is_gae
+        # self.is_writable = not is_gae
         self.is_writable = app.language_write
         def_langs = app.language_default if \
             isinstance(app.language_default, (tuple, list)) \
             else [app.language_default]
         self.TLanguages = {}
         self.set_current_languages(def_langs)
-        #self.filter = markmin
-        #self.ftag = 'markmin'
+        # self.filter = markmin
+        # self.ftag = 'markmin'
 
     @property
     def cached(self):
@@ -296,7 +296,7 @@ class Translator(object):
         return info for selected language or dictionary with all
             possible languages info from languages/*.py
         """
-        #: if translator is cached, it doesn't check for filesystem updates
+        # : if translator is cached, it doesn't check for filesystem updates
         if not self.cached:
             return read_possible_languages(self.langpath)
         if not hasattr(self, '_pl_info'):
@@ -312,16 +312,16 @@ class Translator(object):
         setting one of this languages makes force() function
         turn translation off to use default language
         """
-        #: get default language info from default.py/DEFAULT_LANGUAGE
+        # : get default language info from default.py/DEFAULT_LANGUAGE
         pl_info = self.get_language_info('default')
-        #: pl_info[2] is the langfile_mtime, if it equals 0 it means
+        # : pl_info[2] is the langfile_mtime, if it equals 0 it means
         #  app doesn't have a languages/default.py
         if pl_info[2] == 0:
             self.default_language_file = self.langpath
         else:
             self.default_language_file = os.path.join(self.langpath,
                                                       'default.py')
-        #: set default languages
+        # : set default languages
         self.current_languages = [pl_info[0]]
         self.add_translator(pl_info[0], self.default_language_file, True)
         self.default_translator = self.TLanguages[pl_info[0]]
@@ -360,12 +360,12 @@ class Translator(object):
                     if l[:2] == lang2:
                         found = l
         if found and found not in self.current_languages:
-            #: if we can't find a translator instance for the found lang,
+            # : if we can't find a translator instance for the found lang,
             #  we build it
             if self.TLanguages.get(found) is None:
                 filename = os.path.join(self.langpath, found + '.py')
                 self.add_translator(found, filename)
-            #: we map language with found (example: `en-us` and `en` with only
+            # : we map language with found (example: `en-us` and `en` with only
             #  en.py file)
             if language != found:
                 self.TLanguages[language] = self.TLanguages[found]
@@ -402,7 +402,7 @@ class Translator(object):
             message = self.params_substitution(message, symbols)
         return asis(message.translate(ttab_out))
 
-    #def M(self, message, symbols={}, language=None,
+    # def M(self, message, symbols={}, language=None,
     #      lazy=None, filter=None, ftag=None):
     #    """
     #    get cached translated markmin-message with inserted parametes

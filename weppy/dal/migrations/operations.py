@@ -27,7 +27,7 @@ class Operation(object):
 
 
 class OpContainer(Operation):
-    #: represent a sequence of operations
+    # : represent a sequence of operations
     def __init__(self, ops=()):
         self.ops = ops
 
@@ -48,7 +48,7 @@ class OpContainer(Operation):
 
 
 class UpgradeOps(OpContainer):
-    #: contains a sequence of operations that would apply during upgrade
+    # : contains a sequence of operations that would apply during upgrade
     def __init__(self, ops=(), upgrade_token="upgrades"):
         super(UpgradeOps, self).__init__(ops=ops)
         self.upgrade_token = upgrade_token
@@ -62,7 +62,7 @@ class UpgradeOps(OpContainer):
 
 
 class DowngradeOps(OpContainer):
-    #: contains a sequence of operations that would apply during downgrade
+    # : contains a sequence of operations that would apply during downgrade
     def __init__(self, ops=(), downgrade_token="downgrades"):
         super(DowngradeOps, self).__init__(ops=ops)
         self.downgrade_token = downgrade_token

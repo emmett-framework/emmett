@@ -70,7 +70,7 @@ class Set(_Set):
         elif isinstance(query, str):
             query = Expression(self.db, query)
         elif isinstance(query, Field):
-            query = query != None
+            query = query is not None
         q = self.query & query if self.query else query
         return Set(
             self.db, q, ignore_common_filters=ignore_common_filters,
@@ -85,14 +85,14 @@ class Set(_Set):
             else:
                 offset = pagination
                 limit = 10
-            options['limitby'] = ((offset-1)*limit, offset*limit)
+            options['limitby'] = ((offset - 1) * limit, offset * limit)
             del options['paginate']
         including = options.get('including')
         if including and self._model_ is not None:
             from .helpers import LeftJoinSet
             options['left'], jdata = self._parse_left_rjoins(including)
             del options['including']
-            #: add fields to select
+            # : add fields to select
             fields = list(fields)
             if not fields:
                 fields = [self._model_.table.ALL]
@@ -122,7 +122,7 @@ class Set(_Set):
 
     def _parse_rjoin(self, arg, with_extras=False):
         from .helpers import RelationBuilder
-        #: match has_many
+        # : match has_many
         rel = self._model_._hasmany_ref_.get(arg)
         if rel:
             if isinstance(rel, dict) and rel.get('via'):
@@ -135,14 +135,14 @@ class Set(_Set):
                 if with_extras:
                     return r.many_query(), r._many_elements()[0]._table, False
                 return r.many_query()
-        #: match belongs_to and refers_to
+        # : match belongs_to and refers_to
         rel = self._model_._belongs_ref_.get(arg)
         if rel:
             r = RelationBuilder((rel, arg), self._model_).belongs_query()
             if with_extras:
                 return r, self._model_.db[rel], True
             return r
-        #: match has_one
+        # : match has_one
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
             r = RelationBuilder(rel, self._model_)
@@ -200,13 +200,13 @@ class DAL(_pyDAL):
         if config.adapter == "<zombie>":
             return config.adapter
         if config.adapter == "sqlite" and config.host == "memory":
-            return config.adapter+":"+config.host
-        uri = config.adapter+"://"
+            return config.adapter + ":" + config.host
+        uri = config.adapter + "://"
         if config.user:
-            uri = uri+config.user+":"+config.password+"@"
-        uri = uri+config.host
+            uri = uri + config.user + ":" + config.password + "@"
+        uri = uri + config.host
         if config.database:
-            uri += "/"+config.database
+            uri += "/" + config.database
         return uri
 
     def __new__(cls, app, *args, **kwargs):
@@ -221,7 +221,7 @@ class DAL(_pyDAL):
         if not config.uri:
             config.uri = self.uri_from_config(config)
         self.config = config
-        #: load config data
+        # : load config data
         kwargs['check_reserved'] = self.config.check_reserved or \
             kwargs.get('check_reserved', None)
         kwargs['migrate'] = self.config.auto_migrate or \
@@ -232,14 +232,14 @@ class DAL(_pyDAL):
             kwargs.get('adapter_args', None)
         if kwargs.get('auto_migrate') is not None:
             del kwargs['auto_migrate']
-        #: set directory
+        # : set directory
         folder = folder or 'databases'
         folder = os.path.join(app.root_path, folder)
         if not os.path.exists(folder):
             os.mkdir(folder)
-        #: set pool_size
+        # : set pool_size
         pool_size = self.config.pool_size or pool_size or 0
-        #: finally setup pyDAL instance
+        # : finally setup pyDAL instance
         super(DAL, self).__init__(self.config.uri, pool_size, folder, **kwargs)
 
     @property
@@ -259,7 +259,7 @@ class DAL(_pyDAL):
                 obj._define_relations_()
                 obj._define_virtuals_()
                 # define table and store in model
-                #model.fields = obj.fields
+                # model.fields = obj.fields
                 args = dict(
                     migrate=obj.migrate,
                     format=obj.format,
@@ -280,7 +280,7 @@ class DAL(_pyDAL):
         if isinstance(query, Table):
             q = self._adapter.id_query(query)
         elif isinstance(query, Field):
-            q = (query != None)
+            q = (query is not None)
         elif isinstance(query, dict):
             icf = query.get("ignore_common_filters")
             if icf:
@@ -323,9 +323,9 @@ class Field(_Field):
     def __init__(self, type='string', *args, **kwargs):
         self.modelname = None
         self._auto_validation = True
-        #: convert type
+        # : convert type
         self._type = self._weppy_types.get(type, type)
-        #: convert 'rw' -> 'readable', 'writeable'
+        # : convert 'rw' -> 'readable', 'writeable'
         if 'rw' in kwargs:
             if isinstance(kwargs['rw'], (tuple, list)):
                 read, write = kwargs['rw']
@@ -334,12 +334,12 @@ class Field(_Field):
             kwargs['readable'] = read
             kwargs['writable'] = write
             del kwargs['rw']
-        #: convert 'info' -> 'comment'
+        # : convert 'info' -> 'comment'
         _info = kwargs.get('info')
         if _info:
             kwargs['comment'] = _info
             del kwargs['info']
-        #: convert ondelete parameter
+        # : convert ondelete parameter
         _ondelete = kwargs.get('ondelete')
         if _ondelete:
             if _ondelete not in list(self._weppy_delete):
@@ -348,15 +348,15 @@ class Field(_Field):
                     list(self._weppy_delete)
                 )
             kwargs['ondelete'] = self._weppy_delete[_ondelete]
-        #: process 'refers_to' fields
+        # : process 'refers_to' fields
         self._isrefers = kwargs.get('_isrefers')
         if self._isrefers:
             del kwargs['_isrefers']
-        #: get auto validation preferences
+        # : get auto validation preferences
         if 'auto_validation' in kwargs:
             self._auto_validation = kwargs['auto_validation']
             del kwargs['auto_validation']
-        #: intercept validation (will be processed by `_make_field`)
+        # : intercept validation (will be processed by `_make_field`)
         self._requires = {}
         self._custom_requires = []
         if 'validation' in kwargs:
@@ -369,10 +369,10 @@ class Field(_Field):
             del kwargs['validation']
         self._validation = {}
         self._vparser = ValidateFromDict()
-        #: store args and kwargs for `_make_field`
+        # : store args and kwargs for `_make_field`
         self._args = args
         self._kwargs = kwargs
-        #: increase creation counter (used to keep order of fields)
+        # : increase creation counter (used to keep order of fields)
         self._inst_count_ = Field._inst_count_
         Field._inst_count_ += 1
 
@@ -404,25 +404,25 @@ class Field(_Field):
         self.requires = self._vparser(self, self._validation) + \
             self._custom_requires
 
-    #: `_make_field` will be called by `Model` class or `Form` class
+    # : `_make_field` will be called by `Model` class or `Form` class
     #  it will make weppy's Field class compatible with the pyDAL's one
     def _make_field(self, name, model=None):
         if self._obj_created_:
             return self
         if model is not None:
             self.modelname = model.__class__.__name__
-        #: convert field type to pyDAL ones if needed
+        # : convert field type to pyDAL ones if needed
         ftype = self._pydal_types.get(self._type, self._type)
-        #: create pyDAL's Field instance
+        # : create pyDAL's Field instance
         super(Field, self).__init__(name, ftype, *self._args, **self._kwargs)
-        #: add automatic validation (if requested)
+        # : add automatic validation (if requested)
         if self._auto_validation:
             auto = True
             if self.modelname:
                 auto = model.auto_validation
             if auto:
                 self._validation = self._default_validation()
-        #: validators
+        # : validators
         if not self.modelname:
             self._parse_validation()
         self._obj_created_ = True

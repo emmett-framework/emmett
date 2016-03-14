@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 # portalocker.py
 # Cross-platform (posix/nt) API for flock-style file locking.
@@ -89,9 +89,9 @@ elif os_locking == 'posix':
 
 
 else:
-    #if platform.system() == 'Windows':
+    # if platform.system() == 'Windows':
     #    logger.error('no file locking, you must install the win32 extensions from: http://sourceforge.net/projects/pywin32/files/')
-    #elif os_locking != 'gae':
+    # elif os_locking != 'gae':
     #    logger.debug('no file locking, this will cause problems')
 
     LOCK_EX = None
@@ -116,7 +116,7 @@ class LockedFile(object):
         elif 'w' in mode or 'a' in mode:
             self.file = open(filename, mode.replace('w', 'a'))
             lock(self.file, LOCK_EX)
-            if not 'a' in mode:
+            if 'a' not in mode:
                 self.file.seek(0)
                 self.file.truncate()
         else:
@@ -136,13 +136,13 @@ class LockedFile(object):
         self.file.flush()
 
     def close(self):
-        if not self.file is None:
+        if self.file is not None:
             unlock(self.file)
             self.file.close()
             self.file = None
 
     def __del__(self):
-        if not self.file is None:
+        if self.file is not None:
             self.close()
 
 

@@ -74,7 +74,7 @@ def create_missing_app_folders(app):
 
 
 class ObjectProxy(object):
-    #: Proxy to another object.
+    # : Proxy to another object.
     __slots__ = ('__obj', '__dict__', '__name__')
 
     def __init__(self, obj, name=None):

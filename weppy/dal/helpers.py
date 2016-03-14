@@ -72,14 +72,14 @@ class RelationBuilder(object):
             rname = via['field'] or via['name'][:-1]
             belongs = self._get_belongs(step_model, rname)
             if belongs:
-                #: join table way
+                # : join table way
                 lbelongs = step_model
                 lvia = via
                 _query = (db[belongs].id == db[step_model][rname])
                 sel_field = db[belongs].ALL
                 step_model = belongs
             else:
-                #: shortcut mode
+                # : shortcut mode
                 lbelongs = None
                 rname = via['field'] or via['name']
                 many = db[step_model]._model_._hasmany_ref_[rname]
@@ -195,20 +195,20 @@ class HasManyViaSet(Set):
         if self._via is None:
             raise RuntimeError(self._via_error % 'add')
         nrow = kwargs
-        #: get belongs references
+        # : get belongs references
         self_field, rel_field = self._get_relation_fields()
         nrow[self_field] = self._rid
         nrow[rel_field] = obj.id
-        #: validate and insert
+        # : validate and insert
         return self.db[self._via]._model_.create(nrow)
 
     def remove(self, obj):
         # works on join tables only!
         if self._via is None:
             raise RuntimeError(self._via_error % 'remove')
-        #: get belongs references
+        # : get belongs references
         self_field, rel_field = self._get_relation_fields()
-        #: delete
+        # : delete
         return self.db(
             (self.db[self._via][self_field] == self._rid) &
             (self.db[self._via][rel_field] == obj.id)).delete()
@@ -280,9 +280,9 @@ class JoinSet(Set):
         return rv
 
     def select(self, *fields, **options):
-        #: use iterselect for performance
+        # : use iterselect for performance
         rows = super(Set, self).iterselect(*fields, **options)
-        #: build new colnames
+        # : build new colnames
         colnames = []
         jcolnames = {}
         for colname in rows.colnames:
@@ -293,20 +293,20 @@ class JoinSet(Set):
                 if jcolnames.get(tname) is None:
                     jcolnames[tname] = []
                 jcolnames[tname].append(cname)
-        #: rebuild rowset using nested objects
+        # : rebuild rowset using nested objects
         records = []
         _last_rid = None
         for record in rows:
-            #: since we have multiple rows for the same id, we take them once
+            # : since we have multiple rows for the same id, we take them once
             if record[self._stable_].id != _last_rid:
                 records.append(record[self._stable_])
-                #: prepare nested rows
+                # : prepare nested rows
                 for join in self._joins_:
                     if not join[2]:
                         records[-1][join[0]] = Rows(
                             self.db, [], jcolnames[join[1]], compact=False)
             _last_rid = record[self._stable_].id
-            #: add joins in nested Rows objects
+            # : add joins in nested Rows objects
             for join in self._joins_:
                 if join[2]:
                     records[-1][join[0]] = JoinedIDReference._from_record(
@@ -326,15 +326,15 @@ class LeftJoinSet(Set):
         return rv
 
     def select(self, *fields, **options):
-        #: collect tablenames
+        # : collect tablenames
         table = self._model_.tablename
         jtables = []
         for index, join in enumerate(options['left']):
             jdata = self._jdata_[index]
             jtables.append((jdata[0], join.first._tablename, jdata[1]))
-        #: use iterselect for performance
+        # : use iterselect for performance
         rows = super(Set, self).iterselect(*fields, **options)
-        #: build new colnames
+        # : build new colnames
         colnames = []
         jcolnames = {}
         for colname in rows.colnames:
@@ -345,20 +345,20 @@ class LeftJoinSet(Set):
                 if jcolnames.get(tname) is None:
                     jcolnames[tname] = []
                 jcolnames[tname].append(cname)
-        #: rebuild rowset using nested objects
+        # : rebuild rowset using nested objects
         records = []
         _last_rid = None
         for record in rows:
-            #: since we have multiple rows for the same id, we take them once
+            # : since we have multiple rows for the same id, we take them once
             if record[table].id != _last_rid:
                 records.append(record[table])
-                #: prepare nested rows
+                # : prepare nested rows
                 for join in jtables:
                     if not join[2]:
                         records[-1][join[0]] = Rows(
                             self.db, [], jcolnames[join[1]], compact=False)
             _last_rid = record[table].id
-            #: add joins in nested Rows objects
+            # : add joins in nested Rows objects
             for join in jtables:
                 if record[join[1]].id is not None:
                     if join[2]:
@@ -396,4 +396,4 @@ class JoinRows(Rows):
 def make_tablename(classname):
     words = re.findall('[A-Z][^A-Z]*', classname)
     tablename = '_'.join(words)
-    return tablename.lower()+"s"
+    return tablename.lower() + "s"

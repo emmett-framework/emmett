@@ -36,7 +36,7 @@ def htmlescape(s, quote=True):
     s = s.replace("<", "&lt;")
     s = s.replace(">", "&gt;")
     if quote:
-        s = s.replace("'", "&#x27;")
+        s = s.replace("'", "&# x27;")
         s = s.replace('"', "&quot;")
     return s
 
@@ -133,7 +133,7 @@ class TAG(object):
         return self
 
     regex_tag = re.compile('^([\w\-\:]+)')
-    regex_id = re.compile('#([\w\-]+)')
+    regex_id = re.compile('# ([\w\-]+)')
     regex_class = re.compile('\.([\w\-]+)')
     regex_attr = re.compile('\[([\w\-\:]+)=(.*?)\]')
 
@@ -161,7 +161,7 @@ class TAG(object):
                (id is None or self['_id'] == id.group(1)) and \
                (_class is None or _class.group(1) in
                     (self['_class'] or '').split()) and \
-               (attr is None or self['_'+attr.group(1)] == attr.group(2)):
+               (attr is None or self['_' + attr.group(1)] == attr.group(2)):
                 tags.add(self)
         return tags
 
@@ -210,7 +210,7 @@ class safe(TAG):
         'code': [], 'pre': [], 'img': ['src', 'alt'], 'strong': [],
         'h1': [], 'h2': [], 'h3': [], 'h4': [], 'h5': [], 'h6': [],
         'table': [], 'tr': [], 'td': ['colspan'], 'div': [],
-        }
+    }
 
     def __init__(self, text, sanitize=False, allowed_tags=None):
         self.text = text

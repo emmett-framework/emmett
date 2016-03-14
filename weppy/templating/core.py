@@ -47,7 +47,7 @@ class DummyResponse():
                     pass
         if body is None:
             data = self._to_native(data)
-            body = cgi.escape(data, True).replace("'", "&#x27;")
+            body = cgi.escape(data, True).replace("'", "&# x27;")
         self.body.write(body)
 
 

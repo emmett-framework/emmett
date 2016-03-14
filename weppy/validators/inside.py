@@ -69,7 +69,7 @@ class inSet(Validator):
                  sort=False, message=None):
         Validator.__init__(self, message)
         self.multiple = multiple
-        #if isinstance(theset, dict):
+        # if isinstance(theset, dict):
         #    self.theset = [str(item) for item in theset]
         #    self.labels = theset.values()
         if theset and isinstance(theset, (tuple, list)) \
@@ -117,7 +117,7 @@ class inSet(Validator):
         return value, None
 
 
-#class inSubSet(inSet):
+# class inSubSet(inSet):
 #    REGEX_W = re.compile('\w+')
 #
 #    def __init__(self, *a, **b):
@@ -156,9 +156,9 @@ class inDB(Validator):
         else:
             items = [(r['id'], self.db[self.set]._format % r)
                      for (i, r) in enumerate(records)]
-        #if self.sort:
+        # if self.sort:
         #    items.sort(options_sorter)
-        #if zero and self.zero is not None and not self.multiple:
+        # if zero and self.zero is not None and not self.multiple:
         #    items.insert(0, ('', self.zero))
         return items
 

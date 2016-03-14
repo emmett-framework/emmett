@@ -36,7 +36,7 @@ class ScriptDir(object):
         self.path = os.path.join(app.root_path, "migrations")
         if not os.path.exists(self.path):
             os.mkdir(self.path)
-        #self.cwd = os.path.join(os.path.dirname(__file__), 'migration.tmpl')
+        # self.cwd = os.path.join(os.path.dirname(__file__), 'migration.tmpl')
         self.cwd = os.path.dirname(__file__)
         self.file_template = self.app.config.migrations.file_template or \
             self._default_file_template
@@ -282,7 +282,7 @@ class Script(Revision):
                 " (head)" if self._is_real_head else "",
                 " (effective head)" if self.is_head and
                     not self._is_real_head else ""
-                )
+            )
         if tree_indicators:
             text += "%s%s" % (
                 " (branchpoint)" if self.is_branch_point else "",

@@ -23,12 +23,12 @@ from .urls import iri_to_uri, url_fix, url_parse, url_unparse, url_encode
 
 
 class EnvironBuilder(object):
-    #: This class creates a WSGI environment for testing purposes.
+    # : This class creates a WSGI environment for testing purposes.
 
-    #: the server protocol to use.  defaults to HTTP/1.1
+    # : the server protocol to use.  defaults to HTTP/1.1
     server_protocol = 'HTTP/1.1'
 
-    #: the wsgi version to use.  defaults to (1, 0)
+    # : the wsgi version to use.  defaults to (1, 0)
     wsgi_version = (1, 0)
 
     def __init__(self, path='/', base_url=None, query_string=None,
@@ -36,7 +36,7 @@ class EnvironBuilder(object):
                  content_length=None, errors_stream=None, headers=None,
                  data=None, environ_base=None, environ_overrides=None,
                  charset='utf-8'):
-        #path_s = make_literal_wrapper(path)
+        # path_s = make_literal_wrapper(path)
         # if query_string is None and path_s('?') in path:
         #     path, query_string = path.split(path_s('?'), 1)
         if query_string is None and '?' in path:
@@ -300,9 +300,9 @@ class EnvironBuilder(object):
 
         result.update({
             'REQUEST_METHOD': self.method,
-            #'SCRIPT_NAME': _path_encode(self.script_root),
-            #'PATH_INFO': _path_encode(self.path),
-            #'QUERY_STRING': qs,
+            # 'SCRIPT_NAME': _path_encode(self.script_root),
+            # 'PATH_INFO': _path_encode(self.path),
+            # 'QUERY_STRING': qs,
             'SCRIPT_NAME': self.script_root,
             'PATH_INFO': self.path,
             'QUERY_STRING': self.query_string,

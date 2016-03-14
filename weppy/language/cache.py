@@ -46,13 +46,13 @@ def clear_cache(filename):
         lock.release()
 
 
-#: returns content from filename, making sure to close the file on exit.
+# : returns content from filename, making sure to close the file on exit.
 def _read_file(filename, mode='r'):
     with open(filename, mode) as f:
         return f.read()
 
 
-#: Caches the *filtered* file `filename` with `key` until the file is modified.
+# : Caches the *filtered* file `filename` with `key` until the file is modified.
 def getcfs(key, filename, filter=None):
     try:
         t = stat(filename).st_mtime

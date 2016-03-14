@@ -27,17 +27,17 @@ class Revision(object):
     _all_nextrev = frozenset()
     revision = None
     down_revision = None
-    #dependencies = None
-    #branch_labels = None
+    # dependencies = None
+    # branch_labels = None
 
     def __init__(self, revision, down_revision,
                  dependencies=None, branch_labels=None):
         self.revision = revision
         self.down_revision = tuple_or_value(down_revision)
-        #self.dependencies = tuple_or_value(dependencies)
-        #self._resolved_dependencies = ()
-        #self._orig_branch_labels = to_tuple(branch_labels, default=())
-        #self.branch_labels = set(self._orig_branch_labels)
+        # self.dependencies = tuple_or_value(dependencies)
+        # self._resolved_dependencies = ()
+        # self._orig_branch_labels = to_tuple(branch_labels, default=())
+        # self.branch_labels = set(self._orig_branch_labels)
 
     def __repr__(self):
         args = [
@@ -61,7 +61,7 @@ class Revision(object):
     @property
     def _all_down_revisions(self):
         return to_tuple(self.down_revision, default=())
-        #+ self._resolved_dependencies
+        # + self._resolved_dependencies
 
     @property
     def _versioned_down_revisions(self):
@@ -110,8 +110,8 @@ class RevisionsMap(object):
         self.bases = ()
         self._real_bases = ()
 
-        #has_branch_labels = set()
-        #has_depends_on = set()
+        # has_branch_labels = set()
+        # has_depends_on = set()
         for revision in self._generator():
 
             if revision.revision in rmap:
@@ -128,7 +128,7 @@ class RevisionsMap(object):
             if revision.is_base:
                 self.bases += (revision.revision, )
                 self._real_bases += (revision.revision, )
-            #if revision._is_real_base:
+            # if revision._is_real_base:
             #    self._real_bases += (revision.revision, )
 
         # for revision in has_branch_labels:
@@ -231,7 +231,7 @@ class RevisionsMap(object):
         return self._revision_for_ident(resolved_id)
 
     def get_revisions(self, rid):
-        #: return revision instances with the given rev id or identifiers
+        # : return revision instances with the given rev id or identifiers
         if isinstance(rid, (list, tuple, set, frozenset)):
             return sum([self.get_revisions(id_elem) for id_elem in rid], ())
         else:
@@ -277,7 +277,7 @@ class RevisionsMap(object):
 
     def iterate_revisions(self, upper, lower, implicit_base=False,
                           inclusive=False):
-        #: iterate through script revisions, starting at the given upper
+        # : iterate through script revisions, starting at the given upper
         #  revision identifier and ending at the lower.
         return self._iterate_revisions(
             upper, lower, inclusive=inclusive, implicit_base=implicit_base)
@@ -326,7 +326,7 @@ class RevisionsMap(object):
 
     def _iterate_revisions(self, upper, lower, inclusive=True,
                            implicit_base=False):
-        #: iterate revisions from upper to lower.
+        # : iterate revisions from upper to lower.
         requested_lowers = self.get_revisions(lower)
         uppers = dedupe_tuple(self.get_revisions(upper))
 
@@ -382,7 +382,7 @@ class RevisionsMap(object):
 
         # it's not possible for any "uppers" to be in branch_todo,
         # because the ._all_nextrev of those nodes is not in total_space
-        #assert not branch_todo.intersection(uppers)
+        # assert not branch_todo.intersection(uppers)
 
         todo = deque(
             r for r in uppers if r.revision in total_space)

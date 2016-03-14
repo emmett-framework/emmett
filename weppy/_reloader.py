@@ -135,7 +135,7 @@ class ReloaderLoop(object):
         but running the reloader thread.
         """
         while 1:
-            #self.log('> Restarting (%s mode)' % self.name)
+            # self.log('> Restarting (%s mode)' % self.name)
             print('> Restarting (%s mode)' % self.name)
             args = [sys.executable] + sys.argv
             new_environ = os.environ.copy()
@@ -155,7 +155,7 @@ class ReloaderLoop(object):
 
     def trigger_reload(self, filename):
         filename = os.path.abspath(filename)
-        #self.log('> Detected change in %r, reloading' % filename)
+        # self.log('> Detected change in %r, reloading' % filename)
         print('> Detected change in %r, reloading' % filename)
         sys.exit(3)
 

@@ -66,7 +66,7 @@ class Mail(object):
 
         Examples:
 
-            #Create attachment from text file:
+            # Create attachment from text file:
             attachment = Mail.Attachment('/path/to/file.txt')
 
             Content-Type: text/plain
@@ -76,7 +76,7 @@ class Mail(object):
 
             SOMEBASE64CONTENT=
 
-            #Create attachment from image file with custom filename and cid:
+            # Create attachment from image file with custom filename and cid:
             attachment = Mail.Attachment('/path/to/file.png',
                                              filename='photo.png',
                                              content_id='photo')
@@ -113,7 +113,7 @@ class Mail(object):
             MIMEBase.__init__(self, *content_type.split('/', 1))
             self.set_payload(payload)
             self['Content-Disposition'] = 'attachment; filename="%s"' % filename
-            if not content_id is None:
+            if content_id is not None:
                 self['Content-Id'] = '<%s>' % content_id.encode(encoding)
             Encoders.encode_base64(self)
 
@@ -173,13 +173,13 @@ class Mail(object):
 
         Examples:
 
-            #Create Mail object with authentication data for remote server:
+            # Create Mail object with authentication data for remote server:
             mail = Mail('example.com:25', 'me@example.com', 'me:password')
         """
 
         self.app = app
-        ## read config from app
-        ##
+        # # read config from app
+        # #
         settings = self.settings = sdict()
         settings.server = server
         settings.sender = sender
@@ -204,8 +204,8 @@ class Mail(object):
     def send(
         self,
         to,
-        subject = '[no subject]',
-        message = '[no message]',
+        subject='[no subject]',
+        message='[no message]',
         attachments=None,
         cc=None,
         bcc=None,
@@ -247,23 +247,23 @@ class Mail(object):
 
         Examples:
 
-            #Send plain text message to single address:
+            # Send plain text message to single address:
             mail.send('you@example.com',
                       'Message subject',
                       'Plain text body of the message')
 
-            #Send html message to single address:
+            # Send html message to single address:
             mail.send('you@example.com',
                       'Message subject',
                       '<html>Plain text body of the message</html>')
 
-            #Send text and html message to three addresses (two in cc):
+            # Send text and html message to three addresses (two in cc):
             mail.send('you@example.com',
                       'Message subject',
                       ('Plain text body', '<html>html body</html>'),
                       cc=['other1@example.com', 'other2@example.com'])
 
-            #Send html only message with image attachment available from
+            # Send html only message with image attachment available from
             the message by 'photo' content id:
             mail.send('you@example.com',
                       'Message subject',
@@ -271,7 +271,7 @@ class Mail(object):
                       Mail.Attachment('/path/to/photo.jpg'
                                       content_id='photo'))
 
-            #Send email with two attachments and no body text
+            # Send email with two attachments and no body text
             mail.send('you@example.com,
                       'Message subject',
                       None,
@@ -348,16 +348,16 @@ class Mail(object):
             text = message
             html = None
 
-        if (not text is None or not html is None) and (not raw):
+        if (text is not None or html is not None) and (not raw):
 
-            if not text is None:
+            if text is not None:
                 if not isinstance(text, basestring):
                     text = text.read()
                 if isinstance(text, unicode):
                     text = text.encode('utf-8')
                 elif not encoding == 'utf-8':
                     text = text.decode(encoding).encode('utf-8')
-            if not html is None:
+            if html is not None:
                 if not isinstance(html, basestring):
                     html = html.read()
                 if isinstance(html, unicode):
@@ -394,16 +394,16 @@ class Mail(object):
         else:
             payload_in.attach(attachments)
 
-        #######################################################
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
         #                      CIPHER                         #
-        #######################################################
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
         cipher_type = self.settings.cipher_type
         sign = self.settings.sign
         sign_passphrase = self.settings.sign_passphrase
         encrypt = self.settings.encrypt
-        #######################################################
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
         #                       GPGME                         #
-        #######################################################
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
         if cipher_type == 'gpg':
             if self.settings.gpg_home:
                 # Set GNUPGHOME environment variable to set home of gnupg
@@ -416,9 +416,9 @@ class Mail(object):
             # need a python-pyme package and gpgme lib
             from pyme import core, errors
             from pyme.constants.sig import mode
-            ############################################
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
             #                   sign                   #
-            ############################################
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
             if sign:
                 import string
                 core.check_version(None)
@@ -445,8 +445,10 @@ class Mail(object):
                                                           boundary=None,
                                                           _subparts=None,
                                                           **dict(
-                                                          micalg="pgp-sha1",
-                                                          protocol="application/pgp-signature"))
+                                                            micalg="pgp-sha1",                     # NOQA
+                                                            protocol="application/pgp-signature",  # NOQA
+                                                            )
+                                                          )
                     # insert the origin payload
                     payload.attach(payload_in)
                     # insert the detached signature
@@ -458,9 +460,9 @@ class Mail(object):
                 except errors.GPGMEError as ex:
                     self.error = "GPG error: %s" % ex.getstring()
                     return False
-            ############################################
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
             #                  encrypt                 #
-            ############################################
+            # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
             if encrypt:
                 core.check_version(None)
                 plain = core.Data(payload_in.as_string())
@@ -499,9 +501,9 @@ class Mail(object):
                 except errors.GPGMEError as ex:
                     self.error = "GPG error: %s" % ex.getstring()
                     return False
-        #######################################################
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
         #                       X.509                         #
-        #######################################################
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
         elif cipher_type == 'x509':
             if not sign and not encrypt:
                 self.error = "No sign and no encrypt is set but cipher type to x509"
@@ -528,7 +530,7 @@ class Mail(object):
 
             #                   SIGN
             if sign:
-                #key for signing
+                # key for signing
                 try:
                     s.load_key(x509_sign_keyfile, x509_sign_certfile,
                                callback=lambda x: sign_passphrase)
@@ -609,10 +611,10 @@ class Mail(object):
         result = {}
         try:
             if self.settings.server == 'logging':
-                self.app.log.warn('email not sent\n%s\nFrom: %s\nTo: %s\nSubject: %s\n\n%s\n%s\n' %
-                            ('-' * 40, sender,
-                             ', '.join(to), subject,
-                             text or html, '-' * 40))
+                self.app.log.warn('email not sent\n%s\nFrom: %s\nTo: %s\nSubject: %s\n\n%s\n%s\n' % (
+                            '-' * 40, sender,           # NOQA
+                            ', '.join(to), subject,     # NOQA
+                            text or html, '-' * 40))
             elif self.settings.server == 'gae':
                 xcc = dict()
                 if cc:

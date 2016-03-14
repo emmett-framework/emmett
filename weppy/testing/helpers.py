@@ -149,7 +149,7 @@ class _FileHandler(object):
         # special filenames with angular brackets.
         if filename is None:
             filename = getattr(stream, 'name', None)
-            #s = make_literal_wrapper(filename)
+            # s = make_literal_wrapper(filename)
             if filename and filename[0] == '<' and filename[-1] == '>':
                 filename = None
 
@@ -307,7 +307,7 @@ def unquote_header_value(value, is_filename=False):
         # a UNC path, then just return the value without quotes.  Using the
         # replace sequence below on a UNC path has the effect of turning
         # the leading double slash into a single slash and then
-        # _fix_ie_filename() doesn't work correctly.  See #458.
+        # _fix_ie_filename() doesn't work correctly.  See # 458.
         if not is_filename or value[:2] != '\\\\':
             return value.replace('\\\\', '\\').replace('\\"', '"')
     return value

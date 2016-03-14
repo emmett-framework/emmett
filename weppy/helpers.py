@@ -48,11 +48,11 @@ def stream_dbfile(db, name):
         abort(404)
     from .globals import request, response
     if isinstance(fullfilename, string_types):
-        #: handle file uploads
+        # : handle file uploads
         from .stream import streamer
         raise streamer(request.environ, fullfilename, headers=response.headers)
     else:
-        #: handle blob fields
+        # : handle blob fields
         from .libs.contenttype import contenttype
         from .http import HTTP
         response.headers['Content-Type'] = contenttype(filename)
@@ -64,7 +64,7 @@ def stream_dbfile(db, name):
 
 
 def flash(message, category='message'):
-    #: Flashes a message to the next request.
+    # : Flashes a message to the next request.
     from .globals import session
     if session._flashes is None:
         session._flashes = []
@@ -72,7 +72,7 @@ def flash(message, category='message'):
 
 
 def get_flashed_messages(with_categories=False, category_filter=[]):
-    #: Pulls flashed messages from the session and returns them.
+    # : Pulls flashed messages from the session and returns them.
     #  By default just the messages are returned, but when `with_categories`
     #  is set to `True`, the return value will be a list of tuples in the
     #  form `(category, message)` instead.

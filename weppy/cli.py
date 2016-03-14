@@ -43,7 +43,7 @@ def find_best_app(module):
 
 
 def find_dal(module, var_name=None):
-    #: Given a module instance this tries to find the dal instances
+    # : Given a module instance this tries to find the dal instances
     #  in the module.
     if var_name:
         return [getattr(module, var_name)]
@@ -113,13 +113,13 @@ class ScriptInfo(object):
     """
 
     def __init__(self, app_import_path=None, debug=None):
-        #: The application import path
+        # : The application import path
         self.app_import_path = app_import_path
-        #: The debug flag.  If this is not None, the application will
-        #: automatically have it's debug flag overridden with this value.
+        # : The debug flag.  If this is not None, the application will
+        # : automatically have it's debug flag overridden with this value.
         self.debug = debug
-        #: A dictionary with arbitrary data that can be associated with
-        #: this script info.
+        # : A dictionary with arbitrary data that can be associated with
+        # : this script info.
         self.data = {}
         self._loaded_app = None
         self.db_var_name = None
@@ -171,11 +171,11 @@ class WeppyGroup(click.Group):
         params = list(extra.pop('params', None) or ())
         if add_app_option:
             params.append(app_option)
-        #if add_debug_option:
+        # if add_debug_option:
         #    params.append(debug_option)
 
         click.Group.__init__(self, params=params, **extra)
-        #self.create_app = create_app
+        # self.create_app = create_app
 
         if add_default_commands:
             self.add_command(run_command)
@@ -242,8 +242,8 @@ def shell_command(info):
         sys.version,
         sys.platform,
         app.import_name
-        #app.debug and ' [debug]' or '',
-        #app.instance_path,
+        # app.debug and ' [debug]' or '',
+        # app.instance_path,
     )
     code.interact(banner=banner, local=app.make_shell_context())
 

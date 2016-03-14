@@ -314,7 +314,7 @@ def url_unquote_plus(s, charset='utf-8', errors='replace'):
 
 
 def url_parse(url, scheme=None, allow_fragments=True):
-    #s = make_literal_wrapper(url)
+    # s = make_literal_wrapper(url)
     is_text_based = isinstance(url, text_type)
     if scheme is None:
         scheme = ''
@@ -330,7 +330,7 @@ def url_parse(url, scheme=None, allow_fragments=True):
 
     if url[:2] == '//':
         delim = len(url)
-        for c in '/?#':
+        for c in '/?# ':
             wdelim = url.find(c, 2)
             if wdelim >= 0:
                 delim = min(delim, wdelim)
@@ -339,8 +339,8 @@ def url_parse(url, scheme=None, allow_fragments=True):
            (']' in netloc and '[' not in netloc):
             raise ValueError('Invalid IPv6 URL')
 
-    if allow_fragments and '#' in url:
-        url, fragment = url.split('#', 1)
+    if allow_fragments and '# ' in url:
+        url, fragment = url.split('# ', 1)
     if '?' in url:
         url, query = url.split('?', 1)
 
@@ -351,7 +351,7 @@ def url_parse(url, scheme=None, allow_fragments=True):
 def url_unparse(components):
     scheme, netloc, path, query, fragment = components
     #    normalize_string_tuple(components)
-    #s = make_literal_wrapper(scheme)
+    # s = make_literal_wrapper(scheme)
     url = ''
 
     # We generally treat file:///x and file:/x the same which is also
@@ -369,7 +369,7 @@ def url_unparse(components):
     if query:
         url = url + '?' + query
     if fragment:
-        url = url + '#' + fragment
+        url = url + '# ' + fragment
     return url
 
 
@@ -404,8 +404,8 @@ def uri_to_iri(uri, charset='utf-8', errors='replace'):
         uri = url_unparse(uri)
     uri = url_parse(to_unicode(uri, charset))
     path = url_unquote(uri.path, charset, errors, '%/;?')
-    query = url_unquote(uri.query, charset, errors, '%;/?:@&=+,$#')
-    fragment = url_unquote(uri.fragment, charset, errors, '%;/?:@&=+,$#')
+    query = url_unquote(uri.query, charset, errors, '%;/?:@&=+,$# ')
+    fragment = url_unquote(uri.fragment, charset, errors, '%;/?:@&=+,$# ')
     return url_unparse((uri.scheme, uri.decode_netloc(),
                         path, query, fragment))
 

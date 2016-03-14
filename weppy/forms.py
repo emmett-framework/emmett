@@ -34,48 +34,48 @@ class Form(TAG):
         return Expose.application.config.ui.forms_style or FormStyle
 
     def __init__(self, fields={}, **kwargs):
-        #: get fields from kwargs
+        # : get fields from kwargs
         for name, parameter in iteritems(kwargs):
             if isinstance(parameter, Field):
                 fields[name] = parameter
         for name in iterkeys(fields):
             if name in kwargs:
                 del kwargs[name]
-        #: order fields correctly
+        # : order fields correctly
         sorted_fields = []
         for name, field in iteritems(fields):
             sorted_fields.append((name, field))
         sorted_fields.sort(key=lambda x: x[1]._inst_count_)
-        #: init fields
+        # : init fields
         self.fields = []
         for name, obj in sorted_fields:
             self.fields.append(obj._make_field(name))
         self._preprocess_(**kwargs)
 
     def _preprocess_(self, **kwargs):
-        #: process attributes
+        # : process attributes
         self.attributes = {}
         for key, val in Form.default_attrs.items():
             self.attributes[key] = kwargs.get(key, val)
         self.attributes['formstyle'] = self.attributes.get(
             'formstyle', self._get_default_style())
-        #: init the form
+        # : init the form
         self.errors = sdict()
         self.params = sdict()
         self.input_params = None
         self.processed = False
         self.accepted = False
         self.formkey = "undef"
-        #: move some attributes to self, just because it's handy
+        # : move some attributes to self, just because it's handy
         self.keepvalues = self.attributes['keepvalues']
         self.onvalidation = self.attributes['onvalidation']
         del self.attributes['keepvalues']
         del self.attributes['onvalidation']
-        #: verify formstyle consistence
+        # : verify formstyle consistence
         if not issubclass(self.attributes['formstyle'], FormStyle):
             raise RuntimeError('%s is an invalid weppy form style'
                                % self.attributes['formstyle'].__name__)
-        #: process the form
+        # : process the form
         self._process()
 
     @property
@@ -219,43 +219,43 @@ class DALForm(Form):
                  exclude_fields=[], **attributes):
         self.table = table
         self.record = record or table(record_id)
-        #: build fields for form
+        # : build fields for form
         self.fields = []
         if fields is not None:
-            #: developer has selected specific fields
+            # : developer has selected specific fields
             for field in fields:
                 self.fields.append(table[field])
         else:
-            #: use table fields
+            # : use table fields
             for field in table:
                 if field.type != 'id' and field.writable and \
                         field.name not in exclude_fields:
                     self.fields.append(field)
-        #: use tablename for form id
-        attributes['id_prefix'] = table._tablename+"_"
-        #: finally init the form
+        # : use tablename for form id
+        attributes['id_prefix'] = table._tablename + "_"
+        # : finally init the form
         self._preprocess_(**attributes)
 
     def _process(self):
-        #: send record id to validators if needed
+        # : send record id to validators if needed
         current._form_validation_record_id_ = None
         if self.record:
             current._form_validation_record_id_ = self.record.id
-        #: load super `_process`
+        # : load super `_process`
         Form._process(self)
-        #: clear current and run additional operations for DAL
+        # : clear current and run additional operations for DAL
         del current._form_validation_record_id_
         if self.accepted:
             for field in self.fields:
-                #: handle uploads
+                # : handle uploads
                 if field.type == 'upload':
                     f = self.params[field.name]
-                    fd = field.name+"__del"
+                    fd = field.name + "__del"
                     if f == '' or f is None:
                         if self.input_params.get(fd, False):
                             self.params[field.name] = \
                                 self.table[field.name].default or ''
-                            ## TODO?: we want to physically delete file?
+                            # TODO: we want to physically delete file?
                         else:
                             if self.record and self.record[field.name]:
                                 self.params[field.name] = \
@@ -270,7 +270,7 @@ class DALForm(Form):
                     if isinstance(field.uploadfield, str):
                         self.params[field.uploadfield] = source_file.read()
                     self.params[field.name] = newfilename
-            #: add default values to hidden fields if needed
+            # : add default values to hidden fields if needed
             ffields = [field.name for field in self.fields]
             for field in self.table:
                 if field.name not in ffields and field.writable is False \
@@ -380,10 +380,10 @@ class FormStyle(object):
         return tag.select(*option_items, _name=field.name, _class=_class,
                           multiple='multiple', _id=_id or field.name)
 
-    #: TO-DO
-    #@staticmethod
-    #def widget_list(attr, field, value, _class='', _id=None):
-    #    return ""
+    # : TO-DO:
+    # @staticmethod
+    # def widget_list(attr, field, value, _class='', _id=None):
+    #     return ""
 
     @staticmethod
     def widget_upload(attr, field, value, _class='upload',
@@ -414,9 +414,9 @@ class FormStyle(object):
             if not requires or (isinstance(v, isEmptyOr) for v in requires):
                 elements.append(tag.div(
                     tag.input(_type='checkbox', _class='checkbox',
-                              _id=_id+'__del', _name=field.name+'__del',
+                              _id=_id + '__del', _name=field.name + '__del',
                               _style="display: inline;"),
-                    tag.label('delete', _for=_id+'__del',
+                    tag.label('delete', _for=_id + '__del',
                               _style="margin: 4px"),
                     _style="white-space: nowrap;"))
         return tag.div(*elements, _class='upload_wrap')
@@ -437,7 +437,7 @@ class FormStyle(object):
                     return v
         return None
 
-    #: returns the widget for the field and a boolean (True if widget is
+    # : returns the widget for the field and a boolean (True if widget is
     #  defined by user, False if it comes from styler default ones)
     def _get_widget(self, field, value):
         if field.widget:
@@ -449,7 +449,7 @@ class FormStyle(object):
             wtype = 'int'
         widget_id = self.attr["id_prefix"] + field.name
         try:
-            return getattr(self, "widget_"+wtype)(
+            return getattr(self, "widget_" + wtype)(
                 self.attr, field, value, _id=widget_id), False
         except AttributeError:
             raise RuntimeError("Missing form widget for field %s of type %s" %

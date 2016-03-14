@@ -64,7 +64,7 @@ class SessionFSManager(Handler):
         self._filename_template = filename_template
         from .expose import Expose
         self._path = os.path.join(Expose.application.root_path, 'sessions')
-        #: create required paths if needed
+        # : create required paths if needed
         if not os.path.exists(self._path):
             os.mkdir(self._path)
         self.expire = expire
@@ -98,7 +98,7 @@ class SessionFSManager(Handler):
         f = os.fdopen(fd, 'wb')
         try:
             pickle.dump(exp, f, 1)
-            #f.write(session._dump)
+            # f.write(session._dump)
             pickle.dump(sdict(session), f, pickle.HIGHEST_PROTOCOL)
         finally:
             f.close()
@@ -130,11 +130,11 @@ class SessionFSManager(Handler):
         if not current.session:
             self._delete(current.session)
             if current.session._modified:
-                #: if we got here means we want to destroy session definitely
+                # : if we got here means we want to destroy session definitely
                 if self.cookie_data_name in response.cookies:
                     del response.cookies[self.cookie_data_name]
             return
-        #: store and update cookies
+        # : store and update cookies
         expiration = current.session._expiration or self.expire
         if current.session._modified:
             self._store(current.session, expiration)
@@ -164,8 +164,8 @@ class SessionRedisManager(Handler):
         self.cookie_data_name = 'wpp_session_data_%s' % request.application
         if self.cookie_data_name in request.cookies:
             sid = request.cookies[self.cookie_data_name].value
-            #: load from redis
-            data = self.redis.get(self.prefix+sid)
+            # : load from redis
+            data = self.redis.get(self.prefix + sid)
             if data is not None:
                 current.session = SessionData(pickle.loads(data), sid=sid)
         if not current.session:
@@ -174,13 +174,13 @@ class SessionRedisManager(Handler):
 
     def on_end(self):
         if not current.session:
-            self.redis.delete(self.prefix+current.session._sid)
+            self.redis.delete(self.prefix + current.session._sid)
             if current.session._modified:
-                #: if we got here means we want to destroy session definitely
+                # : if we got here means we want to destroy session definitely
                 if self.cookie_data_name in response.cookies:
                     del response.cookies[self.cookie_data_name]
             return
-        #: store on redis and update cookies
+        # : store on redis and update cookies
         expiration = current.session._expiration or self.expire
         if current.session._modified:
             self.redis.setex(self.prefix + current.session._sid,
@@ -196,4 +196,4 @@ class SessionRedisManager(Handler):
             response.cookies[self.cookie_data_name]['domain'] = self.domain
 
     def clear(self):
-        self.redis.delete(self.prefix+"*")
+        self.redis.delete(self.prefix + "*")

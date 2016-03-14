@@ -67,12 +67,12 @@ class DefaultLoginHandler(AuthLoginHandler):
 
     def onaccept(self, form):
         userfield = self.userfield
-        #passfield = self.passfield
+        # passfield = self.passfield
         entered_username = form.params[userfield]
-        #if multi_login and '@' in entered_username:
+        # if multi_login and '@' in entered_username:
         #   # if '@' in username check for email, not username
         #   user = self.table_user(email = entered_username)
-        #else:
+        # else:
         user = self.auth.table_user(**{userfield: entered_username})
         if user:
             # user in db, check if registration pending or disabled
@@ -87,7 +87,7 @@ class DefaultLoginHandler(AuthLoginHandler):
                     temp_user.registration_key.strip():
                 flash(self.auth.messages.registration_verifying)
                 return
-            #: verify password
+            # : verify password
             if form.params.get('password', '') == temp_user.password:
                 # success
                 self.user = temp_user
@@ -125,7 +125,7 @@ class DefaultLoginHandler(AuthLoginHandler):
         '''
         if form.accepted:
             self.onaccept(form)
-            ## rebuild the form
+            # # rebuild the form
             if not self.user:
                 return self.login_form()
         return form
@@ -133,7 +133,7 @@ class DefaultLoginHandler(AuthLoginHandler):
 
 class AuthManager(Handler):
     def __init__(self, auth):
-        #: the Auth() instance
+        # : the Auth() instance
         self.auth = auth
         self._virtuals = []
         for field in itervalues(self.auth.settings.models.user.table):
@@ -147,7 +147,7 @@ class AuthManager(Handler):
         self.auth.user.delete_record = RecordDeleter(
             self.auth.table_user, self.auth.user.id
         )
-        #: inject virtual fields on session data
+        # : inject virtual fields on session data
         r = sdict()
         r[self.auth.settings.table_user_name] = self.auth.user
         for field in self._virtuals:
@@ -176,18 +176,18 @@ class AuthManager(Handler):
         # check auth session is valid
         authsess = self.auth._auth
         if authsess:
-            #: check session has needed data
+            # : check session has needed data
             if not authsess.last_visit or not authsess.last_dbcheck:
                 del session.auth
                 return
-            #: is session expired?
+            # : is session expired?
             if (authsess.last_visit +
                timedelta(seconds=authsess.expiration) < request.now):
                 del session.auth
-            #: does session need re-sync with db?
+            # : does session need re-sync with db?
             elif authsess.last_dbcheck + timedelta(seconds=360) < request.now:
                 if self.auth.user:
-                    #: is user still valid?
+                    # : is user still valid?
                     dbrow = self.auth.table_user(id=self.auth.user.id)
                     if dbrow and not dbrow.registration_key:
                         self.auth.login_user(
@@ -196,11 +196,11 @@ class AuthManager(Handler):
                     else:
                         del session.auth
             else:
-                #: set last_visit if make sense
+                # : set last_visit if make sense
                 if ((request.now - authsess.last_visit).seconds >
                    (authsess.expiration / 10)):
                     authsess.last_visit = request.now
-        #: load virtuals from Auth Model
+        # : load virtuals from Auth Model
         if self.auth.user:
             self._load_virtuals()
 

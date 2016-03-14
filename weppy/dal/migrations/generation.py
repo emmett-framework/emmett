@@ -92,15 +92,15 @@ class Comparator(object):
     def tables(self):
         db_table_names = OrderedSet([t._tablename for t in self.db])
         meta_table_names = OrderedSet(list(self.meta.tables))
-        #: new tables
+        # : new tables
         for table_name in db_table_names.difference(meta_table_names):
             self.ops.append(
                 CreateTableOp.from_table(
                     self._build_metatable(self.db[table_name])))
-        #: removed tables
+        # : removed tables
         for table_name in meta_table_names.difference(db_table_names):
             self.ops.append(DropTableOp.drop_table(table_name))
-        #: existing tables
+        # : existing tables
         for table_name in meta_table_names.intersection(db_table_names):
             self.columns(
                 self.db[table_name], self.meta.tables[table_name])
@@ -122,18 +122,18 @@ class Comparator(object):
     def columns(self, dbtable, metatable):
         db_column_names = OrderedSet([fname for fname in dbtable.fields])
         meta_column_names = OrderedSet(metatable.fields)
-        #: new columns
+        # : new columns
         for column_name in db_column_names.difference(meta_column_names):
             self.ops.append(AddColumnOp.from_column_and_tablename(
                 dbtable._tablename, Column.from_field(dbtable[column_name])))
-        #: existing columns
+        # : existing columns
         for column_name in meta_column_names.intersection(db_column_names):
             self.ops.append(AlterColumnOp(dbtable._tablename, column_name))
             self.column(
                 dbtable[column_name], metatable.columns[column_name])
             if not self.ops[-1].has_changes():
                 self.ops.pop()
-        #: removed columns
+        # : removed columns
         for column_name in meta_column_names.difference(db_column_names):
             self.ops.append(
                 DropColumnOp.drop_column(dbtable._tablename, column_name))
@@ -231,9 +231,9 @@ def _add_table(op):
     indent = " " * 12
 
     if len(args) > 255:
-        args = '*[' + (',\n'+indent).join(args) + ']'
+        args = '*[' + (',\n' + indent).join(args) + ']'
     else:
-        args = (',\n'+indent).join(args)
+        args = (',\n' + indent).join(args)
 
     text = ("self.create_table(\n" + indent + "%(tablename)r,\n" + indent +
             "%(args)s") % {
@@ -241,7 +241,7 @@ def _add_table(op):
         'args': args
     }
     for k in sorted(op.kw):
-        text += ",\n"+indent+"%s=%r" % (k.replace(" ", "_"), op.kw[k])
+        text += ",\n" + indent + "%s=%r" % (k.replace(" ", "_"), op.kw[k])
     text += ")"
     return text
 

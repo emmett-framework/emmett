@@ -122,7 +122,7 @@ class Engine(MetaEngine):
                 )
         else:
             csql_info = dict(
-                index_name=self.adapter.QUOTE_TEMPLATE % (column.name+'__idx'),
+                index_name=self.adapter.QUOTE_TEMPLATE % (column.name + '__idx'),
                 field_name=rfieldname,
                 constraint_name=self.adapter.QUOTE_TEMPLATE % constraint_name,
                 foreign_key='%s (%s)' % (rtablename, rfieldname),
@@ -249,8 +249,7 @@ class Engine(MetaEngine):
             changes['default'][1] = self.represent(
                 changes['default'][1], ftype)
         if 'type' in changes:
-            if not self._feasible_as_changed_type(
-                 changes['type'][0], changes['type'][1], col_len):
+            if not self._feasible_as_changed_type(changes['type'][0], changes['type'][1], col_len):
                 del changes['type']
                 return
             coltype = changes['type'][1]

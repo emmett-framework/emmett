@@ -63,9 +63,9 @@ class TemplateParser(object):
         self.writer = writer
 
         # Dictionary of custom name lexers to use.
-        #if isinstance(lexers, dict):
+        # if isinstance(lexers, dict):
         #    self.lexers = lexers
-        #else:
+        # else:
         #    self.lexers = {}
         self.lexers = default_lexers
         self.lexers.update(self.templater.lexers)
@@ -81,7 +81,7 @@ class TemplateParser(object):
             escaped_delimiters = (escape(delimiters[0]),
                                   escape(delimiters[1]))
             self.r_tag = compile(r'(%s.*?%s)' % escaped_delimiters, DOTALL)
-        #elif hasattr(context.get('response', None), 'delimiters'):
+        # elif hasattr(context.get('response', None), 'delimiters'):
         #    if context['response'].delimiters != self.default_delimiters:
         #        escaped_delimiters = (
         #            escape(context['response'].delimiters[0]),
@@ -159,9 +159,9 @@ class TemplateParser(object):
         # Current indentation
         k = 0
 
-        #################
+        # # # # # # # # # # # # # # # # #
         # THINGS TO KNOW
-        #################
+        # # # # # # # # # # # # # # # # #
 
         # k += 1 means indent
         # k -= 1 means unindent
@@ -204,7 +204,7 @@ class TemplateParser(object):
 
             # If we are an if statement, a try, or a semi-colon we
             # probably need to indent the next line.
-            if line.endswith(':') and not line.startswith('#'):
+            if line.endswith(':') and not line.startswith('# '):
                 k += 1
 
         # This must come before so that we can raise an error with the
@@ -212,11 +212,11 @@ class TemplateParser(object):
         new_text = u'\n'.join(new_lines)
 
         if k > 0:
-            #self._raise_error('missing "pass" in view', new_text)
+            # self._raise_error('missing "pass" in view', new_text)
             raise TemplateError(self.path, 'missing "pass" in view',
                                 self.name, 1)
         elif k < 0:
-            #self._raise_error('too many "pass" in view', new_text)
+            # self._raise_error('too many "pass" in view', new_text)
             raise TemplateError(self.path, 'too many "pass" in view',
                                 self.name, 1)
 
@@ -231,13 +231,13 @@ class TemplateParser(object):
 
         # If they didn't specify a filename, how can we find one!
         if not filename.strip():
-            #self._raise_error('Invalid template filename')
+            # self._raise_error('Invalid template filename')
             raise TemplateError(self.path, 'Invalid template filename',
                                 self.name, 1)
 
         # Allow Views to include other views dynamically
         context = self.context
-        #if current and not "response" in context:
+        # if current and not "response" in context:
         #    context["response"] = getattr(current, 'response', None)
 
         # Get the filename; filename looks like ``"template.html"``.
@@ -245,9 +245,9 @@ class TemplateParser(object):
         filename = eval(filename, context)
 
         # Get the path of the file on the system.
-        #filepath = self.path and os.path.join(self.path, filename) or filename
+        # filepath = self.path and os.path.join(self.path, filename) or filename
 
-        ## Get the file and read the content
+        # # Get the file and read the content
         tpath, tname = self.templater.preload(
             self.path, filename)
         filepath = tpath and os.path.join(tpath, tname) or tname
@@ -370,7 +370,7 @@ class TemplateParser(object):
             if i:
                 self.current_lines = (self.current_lines[1],
                                       self.current_lines[1] +
-                                      len(i.split("\n"))-1)
+                                      len(i.split("\n")) - 1)
 
                 if not stack:
                     raise TemplateError(

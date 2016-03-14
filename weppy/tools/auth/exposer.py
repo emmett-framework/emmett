@@ -47,7 +47,7 @@ class Exposer(object):
         ]
         for i, fieldname in enumerate(all_fieldkeys):
             if fieldname == 'password':
-                all_fieldkeys.insert(i+1, 'password2')
+                all_fieldkeys.insert(i + 1, 'password2')
                 break
         form_fields = {}
         for i, fieldname in enumerate(all_fieldkeys):
@@ -386,7 +386,7 @@ class Exposer(object):
     def profile(self):
         if not self.auth.is_logged_in():
             redirect(self.settings.login_url)
-        #passfield = self.settings.password_field
+        # passfield = self.settings.password_field
         nextv = get_vars_next() or self.settings.profile_next
         onvalidation = self.settings.profile_onvalidation
         onaccept = self.settings.profile_onaccept
@@ -412,8 +412,8 @@ class Exposer(object):
             flash(self.messages.profile_updated)
             self.auth.log_event(log, self.auth.user)
             callback(onaccept, form)
-            ## TO-DO: update this
-            #if form.deleted:
+            # # TO-DO: update this
+            # if form.deleted:
             #   return self.logout()
             if not nextv:
                 nextv = self.auth.url('profile')
@@ -423,9 +423,9 @@ class Exposer(object):
         return form
 
     """
-    ## REMOVED in 0.4
+    # # REMOVED in 0.4
     def groups(self):
-        #: displays the groups and their roles for the logged in user
+        # : displays the groups and their roles for the logged in user
         if not self.is_logged_in():
             redirect(self.settings.login_url)
         memberships = self.db(

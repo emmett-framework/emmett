@@ -13,13 +13,13 @@ class isStrong(object):
     lowerset = frozenset(u'abcdefghijklmnopqrstuvwxyz')
     upperset = frozenset(u'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     numberset = frozenset(u'0123456789')
-    sym1set = frozenset(u'!@#$%^&*()')
+    sym1set = frozenset(u'!@# $%^&*()')
     sym2set = frozenset(u'~`-_=+[]{}\\|;:\'",.<>?/')
     otherset = frozenset(u'0123456789abcdefghijklmnopqrstuvwxyz')
 
     def __init__(self, min=None, max=None, upper=None, lower=None, number=None,
                  entropy=None,
-                 special=None, specials=r'~!@#$%^&*()_+-=?<>,.:;{}[]|',
+                 special=None, specials=r'~!@# $%^&*()_+-=?<>,.:;{}[]|',
                  invalid=' "', error_message=None, es=False):
         self.entropy = entropy
         if entropy is None:

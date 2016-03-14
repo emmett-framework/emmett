@@ -37,10 +37,10 @@ class BaseCache(object):
     def clear(self, key=None):
         return
 
-    #def inc(self, key, dt=1):
+    # def inc(self, key, dt=1):
     #    return
     #
-    #def dec(self, key, dt=1):
+    # def dec(self, key, dt=1):
     #    return
 
 
@@ -66,7 +66,7 @@ class RamCache(BaseCache):
         key = self._prefix + key
         now = time.time()
         if dt is None:
-            dt = 60*60*24*365
+            dt = 60 * 60 * 24 * 365
         if dt == "default":
             dt = self._default_expire
         if function:
@@ -145,14 +145,14 @@ class DiskCache(BaseCache):
         self._threshold = threshold
         from .expose import Expose
         self._path = os.path.join(Expose.application.root_path, cache_dir)
-        #: create required paths if needed
+        # : create required paths if needed
         if not os.path.exists(self._path):
             os.mkdir(self._path)
 
     def __call__(self, key, function=None, dt='default'):
         now = time.time()
         if dt is None:
-            dt = 60*60*24*365
+            dt = 60 * 60 * 24 * 365
         if dt == "default":
             dt = self._default_expire
         if function:
@@ -189,7 +189,7 @@ class DiskCache(BaseCache):
                     for i, fpath in enumerate(entries):
                         remove = False
                         f = LockedFile(fpath, 'rb')
-                        #with open(fpath, 'rb') as f:
+                        # with open(fpath, 'rb') as f:
                         exp = pickle.load(f.file)
                         f.close()
                         remove = exp <= now or i % 3 == 0
@@ -214,7 +214,7 @@ class DiskCache(BaseCache):
             with self.lock:
                 now = time.time()
                 f = LockedFile(filename, 'rb')
-                #with open(filename, 'rb') as f:
+                # with open(filename, 'rb') as f:
                 exp = pickle.load(f.file)
                 if exp < now:
                     f.close()
@@ -256,7 +256,7 @@ class RedisCache(BaseCache):
     def __call__(self, key, function=None, dt='default'):
         key = self._prefix + key
         if dt is None:
-            dt = 60*60*24*365
+            dt = 60 * 60 * 24 * 365
         if dt == "default":
             dt = self._default_expire
         if function:
@@ -307,7 +307,7 @@ class RedisCache(BaseCache):
 
 class Cache(object):
     def __init__(self, **kwargs):
-        #: load handlers
+        # : load handlers
         handlers = []
         for key, val in iteritems(kwargs):
             if key == "default":
@@ -315,7 +315,7 @@ class Cache(object):
             handlers.append((key, val))
         if not handlers:
             handlers.append(('ram', RamCache()))
-        #: set handlers
+        # : set handlers
         for name, handler in handlers:
             setattr(self, name, handler)
         self.default_handler = kwargs.get('default', handlers[0][0])

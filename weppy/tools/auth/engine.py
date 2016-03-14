@@ -68,36 +68,36 @@ class Auth(object):
                  **kwargs):
         self.db = db
         self.csrf_prevention = csrf_prevention
-        #: generate hmac_key if needed
+        # : generate hmac_key if needed
         if hmac_key is None:
             hmac_key = self.get_or_create_key(app, hmac_key_file)
-        #: init settings
+        # : init settings
         url_index = base_url or "account"
         settings = self.settings = self._init_settings()
         settings.update(
             base_url=url_index,
-            #cas_domains=[request.env.http_host],
-            #cas_provider=cas_provider,
-            #cas_actions=dict(login='login',
+            # cas_domains=[request.env.http_host],
+            # cas_provider=cas_provider,
+            # cas_actions=dict(login='login',
             #                validate='validate',
             #                servicevalidate='serviceValidate',
             #                proxyvalidate='proxyValidate',
             #                logout='logout'),
             download_url="/download",
-            mailer=(mailer == True) and Mail(app) or mailer,
+            mailer=(mailer is True) and Mail(app) or mailer,
             login_methods=[self],
             login_form=self,
             hmac_key=hmac_key
         )
-        #: load user's settings
+        # : load user's settings
         for key, value in app.config.auth.items():
             if key in self.settings.keys():
                 self.settings[key] = value
-        #: load messages
+        # : load messages
         messages = self.messages = sdict()
         messages.update(default_messages)
         messages.update(self.settings.messages)
-        #: init models
+        # : init models
         self._usermodel = None
         if usermodel:
             if not issubclass(usermodel, AuthModel):
@@ -105,15 +105,15 @@ class Auth(object):
                                    usermodel.__name__)
             self.settings.models.user = usermodel
         self.define_models()
-        #: load exposer
+        # : load exposer
         self.exposer = Exposer(self)
-        #: define allowed actions
+        # : define allowed actions
         default_actions = [
             'login', 'logout', 'register', 'verify_email',
             'retrieve_username', 'retrieve_password',
             'reset_password', 'request_reset_password',
             'change_password', 'profile',
-            #'groups', 'impersonate',
+            # 'groups', 'impersonate',
             'not_authorized']
         for k in default_actions:
             if k not in self.settings.actions_disabled:
@@ -155,8 +155,8 @@ class Auth(object):
     def table_event(self):
         return self.db[self._model_names.event]
 
-    #@property
-    #def table_cas(self):
+    # @property
+    # def table_cas(self):
     #   return self.db[self.settings.table_cas_name]
 
     @property
@@ -186,7 +186,7 @@ class Auth(object):
     def __get_migrate(self, tablename, migrate=True):
         if type(migrate).__name__ == 'str':
             return (migrate + tablename + '.table')
-        elif migrate == False:
+        elif migrate is False:
             return False
         else:
             return True
@@ -220,13 +220,13 @@ class Auth(object):
         self.__set_models_labels()
         names = self.__get_modelnames()
         models = self.settings.models
-        #: AuthUser
+        # : AuthUser
         user_model = models['user']
         many_refs = [
-            {names['membership']+'s': models['membership'].__name__},
-            {names['event']+'s': models['event'].__name__},
-            {names['group']+'s': {'via': names['membership']+'s'}},
-            {names['permission']+'s': {'via': names['group']+'s'}}
+            {names['membership'] + 's': models['membership'].__name__},
+            {names['event'] + 's': models['event'].__name__},
+            {names['group'] + 's': {'via': names['membership'] + 's'}},
+            {names['permission'] + 's': {'via': names['group'] + 's'}}
         ]
         if getattr(user_model, '_auto_relations', True):
             user_model._hasmany_ref_ = many_refs + user_model._hasmany_ref_
@@ -235,18 +235,18 @@ class Auth(object):
                 'len': {'gt': self.settings.password_min_length},
                 'crypt': {'key': self.settings.hmac_key}
             }
-        #: AuthGroup
+        # : AuthGroup
         group_model = models['group']
         if not hasattr(group_model, 'format'):
             setattr(group_model, 'format', '%(role)s (%(id)s)')
         many_refs = [
-            {names['membership']+'s': models['membership'].__name__},
-            {names['permission']+'s': models['permission'].__name__},
-            {names['user']+'s': {'via': names['membership']+'s'}}
+            {names['membership'] + 's': models['membership'].__name__},
+            {names['permission'] + 's': models['permission'].__name__},
+            {names['user'] + 's': {'via': names['membership'] + 's'}}
         ]
         if getattr(group_model, '_auto_relations', True):
             group_model._hasmany_ref_ = many_refs + group_model._hasmany_ref_
-        #: AuthMembership
+        # : AuthMembership
         membership_model = models['membership']
         belongs_refs = [
             {names['user']: models['user'].__name__},
@@ -255,7 +255,7 @@ class Auth(object):
         if getattr(membership_model, '_auto_relations', True):
             membership_model._belongs_ref_ = \
                 belongs_refs + membership_model._belongs_ref_
-        #: AuthPermission
+        # : AuthPermission
         permission_model = models['permission']
         belongs_refs = [
             {names['group']: models['group'].__name__}
@@ -263,7 +263,7 @@ class Auth(object):
         if getattr(permission_model, '_auto_relations', True):
             permission_model._belongs_ref_ = \
                 belongs_refs + permission_model._belongs_ref_
-        #: AuthEvent
+        # : AuthEvent
         event_model = models['event']
         belongs_refs = [
             {names['user']: models['user'].__name__}
@@ -482,13 +482,13 @@ class Auth(object):
         else:
             unext = handler.next
 
-        #: init handler form if required
+        # : init handler form if required
         #  note: we need to load the form before calling `get_user()`, as the
         #        handler could use the form itself to init the user var
         loginform = None
         if hasattr(handler, 'login_form'):
             loginform = handler.login_form()
-        #: get user from handler
+        # : get user from handler
         user = handler.get_user()
         if user:
             if not handler.store_password:
@@ -497,24 +497,24 @@ class Auth(object):
                 user = self.get_or_create_user(
                     self.table_user._filter_fields(user),
                     settings.update_fields)
-        #: return form if required
+        # : return form if required
         elif loginform is not None:
             return loginform
-        #: use external login url
+        # : use external login url
         else:
             redirect(handler.login_url(unext))
 
-        #: process authenticated users
+        # : process authenticated users
         self.login_user(user, request.params.get('remember', False))
-        #: log login
+        # : log login
         self.log_event(log, user)
-        #: handler callback
+        # : handler callback
         handler.onsuccess()
 
-        #: clean session next
+        # : clean session next
         if unext == session._auth_next:
             del session._auth_next
-        #: proceed
+        # : proceed
         redirect(unext)
 
     def is_logged_in(self):
@@ -660,7 +660,7 @@ class Auth(object):
                 return False
             parent = self.user
 
-        rows = parent[names['permission']+'s'](query=query)
+        rows = parent[names['permission'] + 's'](query=query)
         if rows:
             return True
         return False

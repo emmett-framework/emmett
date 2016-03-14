@@ -133,7 +133,7 @@ class isDate(_is):
     def check(self, value):
         if self._check_instance(value):
             if self.timezone is not None:
-                value = value - timedelta(seconds=self.timezone*3600)
+                value = value - timedelta(seconds=self.timezone * 3600)
             return value, None
         try:
             val = self._parse(value)
@@ -193,7 +193,7 @@ class isDatetime(isDate):
 
 class isEmail(_is):
     rule = re.compile(
-        "^(?!\.)([-a-z0-9!\#$%&'*+/=?^_`{|}~]|(?<!\.)\.)+(?<!\.)@" +
+        "^(?!\.)([-a-z0-9!\# $%&'*+/=?^_`{|}~]|(?<!\.)\.)+(?<!\.)@" +
         "(localhost|([a-z0-9]([-\w]*[a-z0-9])?\.)+[a-z]{2,})$",
         re.VERBOSE | re.IGNORECASE
     )
@@ -216,7 +216,7 @@ class isList(ParentValidator):
         ParentValidator.__init__(self, children, message)
         self.splitter = None
         if splitter:
-            self.splitter = re.compile('[^'+splitter+'\s]+')
+            self.splitter = re.compile('[^' + splitter + '\s]+')
 
     def __call__(self, value):
         if self.splitter is not None and isinstance(value, basestring):
@@ -367,7 +367,7 @@ class _isGenericUrl(Validator):
 
     GENERIC_URL = re.compile(
         r"%[^0-9A-Fa-f]{2}|%[^0-9A-Fa-f][0-9A-Fa-f]|%[0-9A-Fa-f][^0-9A-Fa-f]|%$|%[0-9A-Fa-f]$|%[^0-9A-Fa-f]$")
-    GENERIC_URL_VALID = re.compile(r"[A-Za-z0-9;/?:@&=+$,\-_\.!~*'\(\)%#]+$")
+    GENERIC_URL_VALID = re.compile(r"[A-Za-z0-9;/?:@&=+$,\-_\.!~*'\(\)%# ]+$")
 
     def __call__(self, value):
         try:
@@ -503,7 +503,7 @@ class _isHTTPUrl(Validator):
 
 
 class isUrl(Validator):
-    #: use `_isGenericUrl` and `_isHTTPUrl` depending on `mode` parameter
+    # : use `_isGenericUrl` and `_isHTTPUrl` depending on `mode` parameter
     message = "Invalid URL"
 
     def __init__(self, mode='http', schemes=None, prepend_scheme='http',
@@ -548,12 +548,12 @@ class isUrl(Validator):
             try:
                 asciiValue = unicode_to_ascii_url(value, self.prepend_scheme)
             except Exception:
-                #If we are not able to convert the unicode url into a
+                # If we are not able to convert the unicode url into a
                 # US-ASCII URL, then the URL is not valid
                 return value, translate(self.message)
 
             rv = subValidator(asciiValue)
-            #if the validation of the US-ASCII version of the value failed
+            # if the validation of the US-ASCII version of the value failed
             if not rv[1] is None:
                 # then return the original input value, not the US-ASCII
                 return value, rv[1]

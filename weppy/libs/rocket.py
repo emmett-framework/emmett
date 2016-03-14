@@ -96,7 +96,7 @@ except ImportError:
 # Import Package Modules
 # package imports removed in monolithic build
 # TODO - This part is still very experimental.
-#from .filelike import FileLikeSocket
+# from .filelike import FileLikeSocket
 
 
 class Connection(object):
@@ -1090,8 +1090,8 @@ class ThreadPool:
             self.app_info['executor'].shutdown(wait=False)
 
         # Give them the gun
-        #active_threads = [t for t in self.threads if t.isAlive()]
-        #while active_threads:
+        # active_threads = [t for t in self.threads if t.isAlive()]
+        # while active_threads:
         #    t = active_threads.pop()
         #    t.kill()
 
@@ -1209,9 +1209,9 @@ re_REQUEST_LINE = re.compile(r"""^
 \                                                            # (single space)
 (
     (?P<scheme>[^:/]+)                                       # Scheme
-    (://)  #
+    (://)  # 
     (?P<host>[^/]+)                                          # Host
-)? #
+)? # 
 (?P<path>(\*|/[^ \?]*))                                      # Path
 (\? (?P<query_string>[^ ]*))?                                # Query String
 \                                                            # (single space)

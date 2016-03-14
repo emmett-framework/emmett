@@ -31,39 +31,39 @@ class App(object):
     def __init__(self, import_name, root_path=None,
                  template_folder='templates', config_folder='config'):
         self.import_name = import_name
-        #: Set paths for the application
+        # : Set paths for the application
         if root_path is None:
             root_path = get_root_path(self.import_name)
         self.root_path = root_path
         self.static_path = os.path.join(self.root_path, "static")
         self.template_path = os.path.join(self.root_path, template_folder)
         self.config_path = os.path.join(self.root_path, config_folder)
-        #: The click command line context for this application.
+        # : The click command line context for this application.
         self.cli = click.Group(self)
-        #: Init the configuration
+        # : Init the configuration
         self.config = ConfigData()
         self.config.hostname_default = None
         self.config.static_version = None
         self.config.static_version_urls = None
         self.config.url_default_namespace = None
         self.config.templates_auto_reload = False
-        #: Trying to create needed folders
+        # : Trying to create needed folders
         create_missing_app_folders(self)
-        #: init expose module
+        # : init expose module
         Expose.application = self
         self.error_handlers = {}
         self.template_default_extension = '.html'
-        #: init logger
+        # : init logger
         self._logger = None
         self.logger_name = self.import_name
-        #: set request.now reference
+        # : set request.now reference
         self.now_reference = "utc"
-        #: init languages
+        # : init languages
         self.languages = []
         self.language_default = None
         self.language_force_on_url = False
         self.language_write = False
-        #: init extensions
+        # : init extensions
         self.ext = sdict()
         self._extensions_env = sdict()
         self.template_extensions = []
@@ -140,14 +140,14 @@ class App(object):
         return render_template(self, filename)
 
     def config_from_yaml(self, filename, namespace=None):
-        #: import configuration from yaml files
+        # : import configuration from yaml files
         rc = read_file(os.path.join(self.config_path, filename))
         rc = ymlload(rc)
         c = self.config if namespace is None else self.config[namespace]
         for key, val in rc.items():
             c[key] = dict_to_sdict(val)
 
-    #: Creates the extensions' environments and configs
+    # : Creates the extensions' environments and configs
     def __init_extension(self, ext):
         if ext.namespace is None:
             ext.namespace = ext.__name__
@@ -155,7 +155,7 @@ class App(object):
             self._extensions_env[ext.namespace] = sdict()
         return self._extensions_env[ext.namespace], self.config[ext.namespace]
 
-    #: Add an extension to application
+    # : Add an extension to application
     def use_extension(self, ext):
         if not issubclass(ext, Extension):
             raise RuntimeError('%s is an invalid weppy extension' %
@@ -164,7 +164,7 @@ class App(object):
         self.ext[ext.__name__] = ext(self, ext_env, ext_config)
         self.ext[ext.__name__].on_load()
 
-    #: Add a template extension to application
+    # : Add a template extension to application
     def add_template_extension(self, ext):
         if not issubclass(ext, TemplateExtension):
             raise RuntimeError('%s is an invalid weppy template extension' %
@@ -185,9 +185,9 @@ class App(object):
         application.  This runs all the registered shell context
         processors.
         """
-        #rv = {'app': self, 'g': g}
+        # rv = {'app': self, 'g': g}
         rv = {'app': self}
-        #for processor in self.shell_context_processors:
+        # for processor in self.shell_context_processors:
         #    rv.update(processor())
         return rv
 
@@ -236,17 +236,17 @@ class AppModule(object):
         if root_path is None:
             root_path = get_root_path(self.import_name)
         self.root_path = root_path
-        #: template_folder is referred to application template_path
+        # : template_folder is referred to application template_path
         self.template_folder = template_folder
-        #: template_path is referred to module root_directory
+        # : template_path is referred to module root_directory
         if template_path and not template_path.startswith("/"):
-            template_path = self.root_path+template_path
+            template_path = self.root_path + template_path
         self.template_path = template_path
-        ## how to route static?
-        ## and.. do we want this?? I think not..
-        #if static_folder:
+        # how to route static?
+        # and.. do we want this?? I think not..
+        # if static_folder:
         #    self.static_folder = self.root_path+"/"+static_folder
-        #if static_prefix:
+        # if static_prefix:
         #    self.static_folder = self.app.static_folder+"/"+static_prefix
         self.url_prefix = url_prefix
         self.hostname = hostname
@@ -262,7 +262,7 @@ class AppModule(object):
             raise RuntimeError(
                 "App modules' exposed names should not contains dots"
             )
-        name = self.name+"."+(name or "")
+        name = self.name + "." + (name or "")
         handlers = kwargs.get('handlers', [])
         helpers = kwargs.get('helpers', [])
         if self.common_handlers:

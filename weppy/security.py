@@ -34,7 +34,7 @@ class CSRFStorage(OrderedDict):
     def _clean(self):
         now = time.time()
         for key in list(self):
-            if self[key]+3600 > now:
+            if self[key] + 3600 > now:
                 break
             del self[key]
 
@@ -108,7 +108,7 @@ DIGEST_ALG_BY_SIZE = {
 def _pad(s, n=32, padchar='.'):
     expected_len = ((len(s) + n) - len(s) % n)
     return s.ljust(expected_len, to_bytes(padchar))
-    #return s + (32 - len(s) % 32) * padchar
+    # return s + (32 - len(s) % 32) * padchar
 
 
 def secure_dumps(data, encryption_key, hash_key=None, compression_level=None):

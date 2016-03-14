@@ -33,7 +33,7 @@ class AuthModel(Model):
     form_profile_rw = {}
 
     def __super_method(self, name):
-        return getattr(super(AuthModel, self), '_Model__'+name)
+        return getattr(super(AuthModel, self), '_Model__' + name)
 
     def _define_(self):
         self.__super_method('define_validation')()
@@ -48,7 +48,7 @@ class AuthModel(Model):
         self.__define_authform_utils()
         self.setup()
 
-    #def __define_extra_fields(self):
+    # def __define_extra_fields(self):
     #    self.auth.settings.extra_fields['auth_user'] = self.fields
 
     def __hide_all(self):
@@ -72,8 +72,8 @@ class AuthModel(Model):
             for field, value in getattr(self, attr).items():
                 show = value[1] if isinstance(value, (tuple, list)) else value
                 if show:
-                    #self.table[field].writable = value[0]
-                    #self.table[field].readable = value[1]
+                    # self.table[field].writable = value[0]
+                    # self.table[field].readable = value[1]
                     l.append(field)
                 else:
                     if field in l:
@@ -85,7 +85,7 @@ class AuthModel(Model):
 class AuthUserBasic(AuthModel, TimestampedModel):
     tablename = "auth_users"
     format = '%(email)s (%(id)s)'
-    #: injected by Auth
+    # : injected by Auth
     #  has_many(
     #      {'memberships': 'AuthMembership'},
     #      {'authevents': 'AuthEvent'},
@@ -137,7 +137,7 @@ class AuthUser(AuthUserBasic):
 
 class AuthGroup(TimestampedModel):
     format = '%(role)s (%(id)s)'
-    #: injected by Auth
+    # : injected by Auth
     #  has_many(
     #      {'memberships': 'AuthMembership'},
     #      {'permissions': 'AuthPermission'},
@@ -154,13 +154,13 @@ class AuthGroup(TimestampedModel):
 
 
 class AuthMembership(TimestampedModel):
-    #: injected by Auth
+    # : injected by Auth
     #  belongs_to({'user': 'AuthUser'}, {'authgroup': 'AuthGroup'})
     pass
 
 
 class AuthPermission(TimestampedModel):
-    #: injected by Auth
+    # : injected by Auth
     #  belongs_to({'authgroup': 'AuthGroup'})
 
     name = Field(length=512, default='default', notnull=True)
@@ -179,7 +179,7 @@ class AuthPermission(TimestampedModel):
 
 
 class AuthEvent(TimestampedModel):
-    #: injected by Auth
+    # : injected by Auth
     #  belongs_to({'user': 'AuthUser'})
 
     client_ip = Field()
@@ -193,7 +193,7 @@ class AuthEvent(TimestampedModel):
         'description': ''
     }
 
-    #: labels injected by Auth
+    # : labels injected by Auth
     form_labels = {
         'client_ip': 'Client IP',
         'origin': 'Origin',

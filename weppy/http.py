@@ -60,7 +60,7 @@ class HTTP(Exception):
         self.headers = list(headers.items()) if headers else []
         if cookies:
             self.headers += HTTP.cookies2header(cookies)
-        #if status_code != 200:
+        # if status_code != 200:
         #    if str(status_code)[0] == '4' and len(self.body) < 512:
         #        self.body += '<!-- %s //-->' % ('x' * 512)  # trick IE
 

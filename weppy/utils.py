@@ -14,7 +14,7 @@ import socket
 
 
 class cachedprop(object):
-    #: a read-only @property that is only evaluated once.
+    # : a read-only @property that is only evaluated once.
     def __init__(self, fget, doc=None):
         self.fget = fget
         self.__doc__ = doc or fget.__doc__

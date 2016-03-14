@@ -92,7 +92,7 @@ class LazyCrypt(object):
         else:
             digest_alg, key = self.crypt.digest_alg, ''
         if self.crypt.salt:
-            if self.crypt.salt == True:
+            if self.crypt.salt is True:
                 salt = str(uuid()).replace('-', '')[-16:]
             else:
                 salt = self.crypt.salt
@@ -189,18 +189,18 @@ def _unicode_to_ascii_authority(authority):
     '''
     label_split_regex = re.compile(u'[\u002e\u3002\uff0e\uff61]')
 
-    #RFC 3490, Section 4, Step 1
-    #The encodings.idna Python module assumes that AllowUnassigned == True
+    # RFC 3490, Section 4, Step 1
+    # The encodings.idna Python module assumes that AllowUnassigned == True
 
-    #RFC 3490, Section 4, Step 2
+    # RFC 3490, Section 4, Step 2
     labels = label_split_regex.split(authority)
 
-    #RFC 3490, Section 4, Step 3
-    #The encodings.idna Python module assumes that UseSTD3ASCIIRules == False
+    # RFC 3490, Section 4, Step 3
+    # The encodings.idna Python module assumes that UseSTD3ASCIIRules == False
 
-    #RFC 3490, Section 4, Step 4
-    #We use the ToASCII operation because we are about to put the authority
-    #into an IDN-unaware slot
+    # RFC 3490, Section 4, Step 4
+    # We use the ToASCII operation because we are about to put the authority
+    # into an IDN-unaware slot
     asciiLabels = []
     try:
         import encodings.idna
@@ -208,13 +208,13 @@ def _unicode_to_ascii_authority(authority):
             if label:
                 asciiLabels.append(encodings.idna.ToASCII(label))
             else:
-                #encodings.idna.ToASCII does not accept an empty string, but
-                #it is necessary for us to allow for empty labels so that we
-                #don't modify the URL
+                # encodings.idna.ToASCII does not accept an empty string, but
+                # it is necessary for us to allow for empty labels so that we
+                # don't modify the URL
                 asciiLabels.append('')
     except:
         asciiLabels = [str(label) for label in labels]
-    #RFC 3490, Section 4, Step 5
+    # RFC 3490, Section 4, Step 5
     return str(reduce(lambda x, y: x + unichr(0x002E) + y, asciiLabels))
 
 
@@ -250,22 +250,22 @@ def unicode_to_ascii_url(url, prepend_scheme):
 
     @author: Jonathan Benn
     '''
-    #convert the authority component of the URL into an ASCII punycode string,
-    #but encode the rest using the regular URI character encoding
+    # convert the authority component of the URL into an ASCII punycode string,
+    # but encode the rest using the regular URI character encoding
 
     groups = url_split_regex.match(url).groups()
-    #If no authority was found
+    # If no authority was found
     if not groups[3]:
-        #Try appending a scheme to see if that fixes the problem
+        # Try appending a scheme to see if that fixes the problem
         scheme_to_prepend = prepend_scheme or 'http'
         groups = url_split_regex.match(
             to_unicode(scheme_to_prepend) + u'://' + url).groups()
-    #if we still can't find the authority
+    # if we still can't find the authority
     if not groups[3]:
         raise Exception('No authority component found, ' +
                         'could not decode unicode to US-ASCII')
 
-    #We're here if we found an authority, let's rebuild the URL
+    # We're here if we found an authority, let's rebuild the URL
     scheme = groups[1]
     authority = groups[3]
     path = groups[4] or ''
@@ -280,7 +280,7 @@ def unicode_to_ascii_url(url, prepend_scheme):
         _escape_unicode(path) + _escape_unicode(query) + str(fragment)
 
 url_split_regex = \
-    re.compile('^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?')
+    re.compile('^(([^:/?# ]+):)?(//([^/?# ]*))?([^?# ]*)(\?([^# ]*))?(# (.*))?')
 
 official_url_schemes = [
     'aaa', 'aaas', 'acap', 'cap', 'cid', 'crid', 'data', 'dav', 'dict',
