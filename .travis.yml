@@ -1,7 +1,5 @@
 language: python
 
-sudo: false
-
 cache:
   directories:
     - $HOME/.pip-cache/
