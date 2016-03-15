@@ -235,16 +235,16 @@ class TLanguage(object):
 
     def get_t(self, message, prefix=u''):
         """
-        use # # to add a comment into a translation string
+        use ## to add a comment into a translation string
         the comment can be useful do discriminate different possible
         translations for the same string (for example different locations)
 
         T(' hello world ') -> ' hello world '
-        T(' hello world # # token') -> ' hello world '
-        T('hello # # world# # token') -> 'hello # # world'
+        T(' hello world ## token') -> ' hello world '
+        T('hello ## world## token') -> 'hello ## world'
 
-        the # # notation is ignored in multiline strings and strings that
-        start with # #. this is to allow markmin syntax to be translated
+        the ## notation is ignored in multiline strings and strings that
+        start with ##. this is to allow markmin syntax to be translated
         """
         message = to_unicode(message)
         key = prefix + message
@@ -252,9 +252,9 @@ class TLanguage(object):
         if mt is not None:
             return mt
         # we did not find a translation
-        if message.find('# #') > 0 and '\n' not in message:
+        if message.find('##') > 0 and '\n' not in message:
             # remove comments
-            message = message.rsplit('# #', 1)[0]
+            message = message.rsplit('##', 1)[0]
         # guess translation same as original
         # self.t[key] = mt = self.default_t.get(key, message)
         mt = self.get_default(key, message)

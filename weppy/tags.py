@@ -133,7 +133,7 @@ class TAG(object):
         return self
 
     regex_tag = re.compile('^([\w\-\:]+)')
-    regex_id = re.compile('# ([\w\-]+)')
+    regex_id = re.compile('#([\w\-]+)')
     regex_class = re.compile('\.([\w\-]+)')
     regex_attr = re.compile('\[([\w\-\:]+)=(.*?)\]')
 

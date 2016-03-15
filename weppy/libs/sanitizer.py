@@ -30,7 +30,7 @@ __all__ = ['sanitize']
 def xssescape(text):
     """Gets rid of < and > and & and, for good measure, :"""
 
-    return escape(text, quote=True).replace(':', '&# 58;')
+    return escape(text, quote=True).replace(':', '&#58;')
 
 
 class XssCleaner(HTMLParser):
@@ -74,9 +74,9 @@ class XssCleaner(HTMLParser):
         if self.in_disallowed:
             return
         elif len(ref) < 7 and ref.isdigit():
-            self.result += '&# %s;' % ref
+            self.result += '&#%s;' % ref
         else:
-            self.result += xssescape('&# %s' % ref)
+            self.result += xssescape('&#%s' % ref)
 
     def handle_entityref(self, ref):
         if self.in_disallowed:

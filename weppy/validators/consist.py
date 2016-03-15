@@ -193,7 +193,7 @@ class isDatetime(isDate):
 
 class isEmail(_is):
     rule = re.compile(
-        "^(?!\.)([-a-z0-9!\# $%&'*+/=?^_`{|}~]|(?<!\.)\.)+(?<!\.)@" +
+        "^(?!\.)([-a-z0-9!\#$%&'*+/=?^_`{|}~]|(?<!\.)\.)+(?<!\.)@" +
         "(localhost|([a-z0-9]([-\w]*[a-z0-9])?\.)+[a-z]{2,})$",
         re.VERBOSE | re.IGNORECASE
     )
@@ -367,7 +367,7 @@ class _isGenericUrl(Validator):
 
     GENERIC_URL = re.compile(
         r"%[^0-9A-Fa-f]{2}|%[^0-9A-Fa-f][0-9A-Fa-f]|%[0-9A-Fa-f][^0-9A-Fa-f]|%$|%[0-9A-Fa-f]$|%[^0-9A-Fa-f]$")
-    GENERIC_URL_VALID = re.compile(r"[A-Za-z0-9;/?:@&=+$,\-_\.!~*'\(\)%# ]+$")
+    GENERIC_URL_VALID = re.compile(r"[A-Za-z0-9;/?:@&=+$,\-_\.!~*'\(\)%#]+$")
 
     def __call__(self, value):
         try:
