@@ -74,12 +74,12 @@ class Expose(object):
         return self.application.root_path
 
     def build_name(self):
-        short = self.filename[1+len(self.folder):].rsplit('.', 1)[0]
+        short = self.filename[1 + len(self.folder):].rsplit('.', 1)[0]
         if not short:
             short = self.filename.rsplit('.', 1)[0]
         if short == "__init__":
             short = self.folder.rsplit('/', 1)[-1]
-        ## allow only one level of naming if name is builded
+        # allow only one level of naming if name is builded
         if len(short.split(os.sep)) > 1:
             short = short.split(os.sep)[-1]
         return '.'.join(short.split(os.sep) + [self.func_name])
@@ -152,11 +152,11 @@ class Expose(object):
             self.name = self.name + self.func_name
         #
         if not self.path.startswith('/'):
-            self.path = '/'+self.path
+            self.path = '/' + self.path
         if self.prefix:
             if not self.prefix.startswith('/'):
-                self.prefix = '/'+self.prefix
-            self.path = (self.path != '/' and self.prefix+self.path) \
+                self.prefix = '/' + self.prefix
+            self.path = (self.path != '/' and self.prefix + self.path) \
                 or self.prefix
         if not self.template:
             self.template = self.func_name + \
@@ -195,7 +195,7 @@ class Expose(object):
         if lang in cls.application.languages and lang != default:
             new_path = '/'.join([arg for arg in clean_path.split('/')[1:]])
             if path.startswith('/'):
-                new_path = '/'+new_path
+                new_path = '/' + new_path
             return new_path, lang
         return path, default
 
@@ -319,12 +319,12 @@ def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
             midargs = url.split("{{:arg:}}")
             if len(midargs) > 1:
                 u = ""
-                if len(args) >= len(midargs)-1:
-                    for i in range(0, len(midargs)-1):
-                        u += midargs[i]+uquote(str(args[i]))
+                if len(args) >= len(midargs) - 1:
+                    for i in range(0, len(midargs) - 1):
+                        u += midargs[i] + uquote(str(args[i]))
                     u += midargs[-1]
                     url = u
-                    args = args[len(midargs)-1:]
+                    args = args[len(midargs) - 1:]
                 else:
                     raise RuntimeError(
                         'invalid url("%s",...): needs args for params' % path
@@ -346,7 +346,7 @@ def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
     # add static versioning
     if url[0:7] == '/static':
         if Expose.static_versioning():
-            url = url[0:7] + "/_"+str(Expose.static_versioning()) + url[7:]
+            url = url[0:7] + "/_" + str(Expose.static_versioning()) + url[7:]
     # language
     if Expose.application.language_force_on_url:
         if url.startswith("/"):
@@ -360,7 +360,7 @@ def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
                 if hasattr(current, 'request'):
                     lang = current.request.language
             if lang and lang != Expose.application.language_default:
-                url = '/'+lang+url
+                url = '/' + lang + url
     # add extension (useless??)
     if extension:
         url = url + '.' + extension

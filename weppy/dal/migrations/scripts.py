@@ -282,7 +282,7 @@ class Script(Revision):
                 " (head)" if self._is_real_head else "",
                 " (effective head)" if self.is_head and
                     not self._is_real_head else ""
-                )
+            )
         if tree_indicators:
             text += "%s%s" % (
                 " (branchpoint)" if self.is_branch_point else "",

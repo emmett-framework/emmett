@@ -39,7 +39,7 @@ class XssCleaner(HTMLParser):
         self,
         permitted_tags=['a', 'b', 'blockquote', 'br/', 'i',
                         'li', 'ol', 'ul', 'p', 'cite',
-                        'code', 'pre', 'img/',],
+                        'code', 'pre', 'img/', ],
         allowed_attributes={
             'a': ['href', 'title'],
             'img': ['src', 'alt'],
@@ -108,8 +108,8 @@ class XssCleaner(HTMLParser):
             if tag in self.allowed_attributes:
                 attrs = dict(attrs)
                 self.allowed_attributes_here = [x for x in
-                                                self.allowed_attributes[tag] if x in attrs
-                                                and len(attrs[x]) > 0]
+                                                self.allowed_attributes[tag] if x in attrs and
+                                                len(attrs[x]) > 0]
                 for attribute in self.allowed_attributes_here:
                     if attribute in ['href', 'src', 'background']:
                         if self.url_is_acceptable(attrs[attribute]):
@@ -196,8 +196,7 @@ def sanitize(
     permitted_tags=['a', 'b', 'blockquote', 'br/', 'i', 'li',
                     'ol', 'ul', 'p', 'cite', 'code', 'pre',
                     'img/', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                    'table', 'tr', 'td', 'div',
-    ],
+                    'table', 'tr', 'td', 'div', ],
     allowed_attributes={
         'a': ['href', 'title'],
         'img': ['src', 'alt'],

@@ -247,7 +247,7 @@ class TemplateParser(object):
         # Get the path of the file on the system.
         #filepath = self.path and os.path.join(self.path, filename) or filename
 
-        ## Get the file and read the content
+        # Get the file and read the content
         tpath, tname = self.templater.preload(
             self.path, filename)
         filepath = tpath and os.path.join(tpath, tname) or tname
@@ -370,7 +370,7 @@ class TemplateParser(object):
             if i:
                 self.current_lines = (self.current_lines[1],
                                       self.current_lines[1] +
-                                      len(i.split("\n"))-1)
+                                      len(i.split("\n")) - 1)
 
                 if not stack:
                     raise TemplateError(

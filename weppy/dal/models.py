@@ -258,10 +258,10 @@ class Model(with_metaclass(MetaModel)):
                 else:
                     tablename = self.tablename
                 if isbelongs:
-                    fieldobj = Field('reference '+tablename)
+                    fieldobj = Field('reference ' + tablename)
                 else:
                     fieldobj = Field(
-                        'reference '+tablename, ondelete='nullify',
+                        'reference ' + tablename, ondelete='nullify',
                         _isrefers=True)
                 setattr(self.__class__, reference['name'], fieldobj)
                 self.fields.append(
@@ -299,7 +299,7 @@ class Model(with_metaclass(MetaModel)):
                     self._virtual_relations_[reference['name']] = \
                         virtualfield(reference['name'])(
                             HasManyViaWrap(reference)
-                        )
+                        )  # NOQA
                 else:
                     #: maps has_many('things'),
                     #  has_many({'things': 'othername'})
@@ -308,7 +308,7 @@ class Model(with_metaclass(MetaModel)):
                     self._virtual_relations_[reference['name']] = \
                         virtualfield(reference['name'])(
                             HasManyWrap(reference)
-                        )
+                        )  # NOQA
                 hasmany_references[reference['name']] = reference
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
 

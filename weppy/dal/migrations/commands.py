@@ -93,9 +93,10 @@ class Command(object):
                 self._current_revision_.append(dest[0])
             else:
                 self.schema_db(
-                    self.schema_db.Schema.version == source[0]).update(
-                        version=dest[0]
-                    )
+                    self.schema_db.Schema.version == source[0]
+                ).update(
+                    version=dest[0]
+                )
                 print(logs['upd'] % (source[0], dest[0]))
                 self._current_revision_ = [dest[0]]
         self.schema_db.commit()

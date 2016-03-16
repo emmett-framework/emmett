@@ -47,7 +47,7 @@ class Exposer(object):
         ]
         for i, fieldname in enumerate(all_fieldkeys):
             if fieldname == 'password':
-                all_fieldkeys.insert(i+1, 'password2')
+                all_fieldkeys.insert(i + 1, 'password2')
                 break
         form_fields = {}
         for i, fieldname in enumerate(all_fieldkeys):
@@ -412,7 +412,7 @@ class Exposer(object):
             flash(self.messages.profile_updated)
             self.auth.log_event(log, self.auth.user)
             callback(onaccept, form)
-            ## TO-DO: update this
+            # TODO: update this
             #if form.deleted:
             #   return self.logout()
             if not nextv:

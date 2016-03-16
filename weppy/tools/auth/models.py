@@ -33,7 +33,7 @@ class AuthModel(Model):
     form_profile_rw = {}
 
     def __super_method(self, name):
-        return getattr(super(AuthModel, self), '_Model__'+name)
+        return getattr(super(AuthModel, self), '_Model__' + name)
 
     def _define_(self):
         self.__super_method('define_validation')()

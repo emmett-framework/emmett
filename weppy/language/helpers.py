@@ -99,7 +99,7 @@ def write_plural_dict(filename, contents):
         fp.write(to_bytes(u'#!/usr/bin/env python\n{\n# "singular form (0)": ["first plural form (1)", "second plural form (2)", ...],\n'))
         # coding: utf8\n{\n')
         for key in sorted(contents):
-            forms = u'[' + u','.join('"'+form+'"' for form in contents[key]) + u']'
+            forms = u'[' + u','.join('"' + form + '"' for form in contents[key]) + u']'
             val = u'"%s": %s,\n' % (key, forms)
             fp.write(to_bytes(val))
         fp.write(to_bytes(u'}\n'))

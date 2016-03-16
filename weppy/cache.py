@@ -66,7 +66,7 @@ class RamCache(BaseCache):
         key = self._prefix + key
         now = time.time()
         if dt is None:
-            dt = 60*60*24*365
+            dt = 60 * 60 * 24 * 365
         if dt == "default":
             dt = self._default_expire
         if function:
@@ -152,7 +152,7 @@ class DiskCache(BaseCache):
     def __call__(self, key, function=None, dt='default'):
         now = time.time()
         if dt is None:
-            dt = 60*60*24*365
+            dt = 60 * 60 * 24 * 365
         if dt == "default":
             dt = self._default_expire
         if function:
@@ -256,7 +256,7 @@ class RedisCache(BaseCache):
     def __call__(self, key, function=None, dt='default'):
         key = self._prefix + key
         if dt is None:
-            dt = 60*60*24*365
+            dt = 60 * 60 * 24 * 365
         if dt == "default":
             dt = self._default_expire
         if function:

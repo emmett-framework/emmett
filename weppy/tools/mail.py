@@ -113,7 +113,7 @@ class Mail(object):
             MIMEBase.__init__(self, *content_type.split('/', 1))
             self.set_payload(payload)
             self['Content-Disposition'] = 'attachment; filename="%s"' % filename
-            if not content_id is None:
+            if content_id is not None:
                 self['Content-Id'] = '<%s>' % content_id.encode(encoding)
             Encoders.encode_base64(self)
 
@@ -178,8 +178,8 @@ class Mail(object):
         """
 
         self.app = app
-        ## read config from app
-        ##
+        # read config from app
+
         settings = self.settings = sdict()
         settings.server = server
         settings.sender = sender
@@ -204,8 +204,8 @@ class Mail(object):
     def send(
         self,
         to,
-        subject = '[no subject]',
-        message = '[no message]',
+        subject='[no subject]',
+        message='[no message]',
         attachments=None,
         cc=None,
         bcc=None,
@@ -348,16 +348,16 @@ class Mail(object):
             text = message
             html = None
 
-        if (not text is None or not html is None) and (not raw):
+        if (text is not None or html is not None) and (not raw):
 
-            if not text is None:
+            if text is not None:
                 if not isinstance(text, basestring):
                     text = text.read()
                 if isinstance(text, unicode):
                     text = text.encode('utf-8')
                 elif not encoding == 'utf-8':
                     text = text.decode(encoding).encode('utf-8')
-            if not html is None:
+            if html is not None:
                 if not isinstance(html, basestring):
                     html = html.read()
                 if isinstance(html, unicode):
@@ -445,8 +445,8 @@ class Mail(object):
                                                           boundary=None,
                                                           _subparts=None,
                                                           **dict(
-                                                          micalg="pgp-sha1",
-                                                          protocol="application/pgp-signature"))
+                                                          micalg="pgp-sha1",  # NOQA
+                                                          protocol="application/pgp-signature"))  # NOQA
                     # insert the origin payload
                     payload.attach(payload_in)
                     # insert the detached signature
@@ -610,7 +610,7 @@ class Mail(object):
         try:
             if self.settings.server == 'logging':
                 self.app.log.warn('email not sent\n%s\nFrom: %s\nTo: %s\nSubject: %s\n\n%s\n%s\n' %
-                            ('-' * 40, sender,
+                            ('-' * 40, sender,  # NOQA
                              ', '.join(to), subject,
                              text or html, '-' * 40))
             elif self.settings.server == 'gae':
