@@ -75,7 +75,7 @@ So, how we build our schema? We will use the default `AuthUser` class for the us
 
 ```python
 from weppy import request, session
-from weppy.dal import Field, Model
+from weppy.dal import Field, Model, belongs_to, has_many
 from weppy.tools.auth import AuthUser
 
 class User(AuthUser):
