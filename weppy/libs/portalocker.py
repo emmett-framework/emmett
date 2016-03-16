@@ -116,7 +116,7 @@ class LockedFile(object):
         elif 'w' in mode or 'a' in mode:
             self.file = open(filename, mode.replace('w', 'a'))
             lock(self.file, LOCK_EX)
-            if not 'a' in mode:
+            if 'a' not in mode:
                 self.file.seek(0)
                 self.file.truncate()
         else:
@@ -136,13 +136,13 @@ class LockedFile(object):
         self.file.flush()
 
     def close(self):
-        if not self.file is None:
+        if self.file is not None:
             unlock(self.file)
             self.file.close()
             self.file = None
 
     def __del__(self):
-        if not self.file is None:
+        if self.file is not None:
             self.close()
 
 

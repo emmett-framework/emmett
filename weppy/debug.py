@@ -201,9 +201,9 @@ class Frame(object):
     @property
     def rendered_filename(self):
         if self.is_in_app:
-            return self.filename[len(self.app.root_path)+1:]
+            return self.filename[len(self.app.root_path) + 1:]
         if self.is_in_fw:
-            return "weppy."+self.filename[len(os.path.dirname(__file__))+1:]\
+            return "weppy." + self.filename[len(os.path.dirname(__file__)) + 1:]\
                 .replace("/", ".").split(".py")[0]
         return self.filename
 
@@ -219,14 +219,14 @@ class Frame(object):
     @property
     def sourceblock(self):
         lmax = self.lineno + 4
-        return u'\n'.join(self.sourcelines[self.first_line_no-1:lmax])
+        return u'\n'.join(self.sourcelines[self.first_line_no - 1:lmax])
 
     @property
     def first_line_no(self):
         l = self.lineno > 5 and (self.lineno - 5) or 1
         if l > len(self.sourcelines):
             l = 1
-        while not self.sourcelines[l-1]:
+        while not self.sourcelines[l - 1]:
             l += 1
             if l > len(self.sourcelines):
                 break
@@ -378,14 +378,14 @@ def fake_exc_info(exc_info, filename, lineno):
 
     # assamble fake globals we need
     globals = {
-        '__name__':             filename,
-        '__file__':             filename,
-        '__weppy_exception__':  exc_info[:2],
+        '__name__': filename,
+        '__file__': filename,
+        '__weppy_exception__': exc_info[:2],
 
         # we don't want to keep the reference to the template around
         # to not cause circular dependencies, but we mark it as weppy
         # frame for the ProcessedTraceback
-        '__weppy_template__':   None
+        '__weppy_template__': None
     }
 
     # and fake the exception

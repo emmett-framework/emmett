@@ -85,7 +85,7 @@ class Set(_Set):
             else:
                 offset = pagination
                 limit = 10
-            options['limitby'] = ((offset-1)*limit, offset*limit)
+            options['limitby'] = ((offset - 1) * limit, offset * limit)
             del options['paginate']
         including = options.get('including')
         if including and self._model_ is not None:
@@ -200,13 +200,13 @@ class DAL(_pyDAL):
         if config.adapter == "<zombie>":
             return config.adapter
         if config.adapter == "sqlite" and config.host == "memory":
-            return config.adapter+":"+config.host
-        uri = config.adapter+"://"
+            return config.adapter + ":" + config.host
+        uri = config.adapter + "://"
         if config.user:
-            uri = uri+config.user+":"+config.password+"@"
-        uri = uri+config.host
+            uri = uri + config.user + ":" + config.password + "@"
+        uri = uri + config.host
         if config.database:
-            uri += "/"+config.database
+            uri += "/" + config.database
         return uri
 
     def __new__(cls, app, *args, **kwargs):
