@@ -136,7 +136,10 @@ def render(application, path, template, context):
     tpath, tname = templater.preload(path, template)
     filepath = os.path.join(tpath, tname)
     if not os.path.exists(filepath):
-        raise HTTP(404, body="Invalid view\n")
+        if application.debug:
+            raise HTTP(500, body="Template Not Found: {}\n".format(filepath))
+        else:
+            raise HTTP(500, body="Internal Server Error\n")
     tsource = templater.load(filepath)
     tsource = templater.prerender(tsource, tname)
     return templater.render(tsource, tpath, tname, context)
