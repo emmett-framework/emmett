@@ -223,10 +223,10 @@ class Auth(object):
         #: AuthUser
         user_model = models['user']
         many_refs = [
-            {names['membership']+'s': models['membership'].__name__},
-            {names['event']+'s': models['event'].__name__},
-            {names['group']+'s': {'via': names['membership']+'s'}},
-            {names['permission']+'s': {'via': names['group']+'s'}}
+            {names['membership'] + 's': models['membership'].__name__},
+            {names['event'] + 's': models['event'].__name__},
+            {names['group'] + 's': {'via': names['membership'] + 's'}},
+            {names['permission'] + 's': {'via': names['group'] + 's'}}
         ]
         if getattr(user_model, '_auto_relations', True):
             user_model._hasmany_ref_ = many_refs + user_model._hasmany_ref_
@@ -240,9 +240,9 @@ class Auth(object):
         if not hasattr(group_model, 'format'):
             setattr(group_model, 'format', '%(role)s (%(id)s)')
         many_refs = [
-            {names['membership']+'s': models['membership'].__name__},
-            {names['permission']+'s': models['permission'].__name__},
-            {names['user']+'s': {'via': names['membership']+'s'}}
+            {names['membership'] + 's': models['membership'].__name__},
+            {names['permission'] + 's': models['permission'].__name__},
+            {names['user'] + 's': {'via': names['membership'] + 's'}}
         ]
         if getattr(group_model, '_auto_relations', True):
             group_model._hasmany_ref_ = many_refs + group_model._hasmany_ref_
@@ -660,7 +660,7 @@ class Auth(object):
                 return False
             parent = self.user
 
-        rows = parent[names['permission']+'s'](query=query)
+        rows = parent[names['permission'] + 's'](query=query)
         if rows:
             return True
         return False

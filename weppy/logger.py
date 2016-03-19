@@ -32,7 +32,7 @@ _levels = {
 
 _def_log_config = sdict(
     production=sdict(
-        max_size=5*1024*1024,
+        max_size=5 * 1024 * 1024,
         file_no=4,
         level='warning',
         format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
@@ -80,7 +80,7 @@ def create_logger(app):
     if not app_logs:
         app_logs = _def_log_config
     for lname, lconf in app_logs.items():
-        lfile = os.path.join(app.root_path, 'logs', lname+'.log')
+        lfile = os.path.join(app.root_path, 'logs', lname + '.log')
         max_size = lconf.max_size or _def_log_config.production.max_size
         file_no = lconf.file_no or _def_log_config.production.file_no
         level = _levels.get(lconf.level or 0)

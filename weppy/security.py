@@ -34,7 +34,7 @@ class CSRFStorage(OrderedDict):
     def _clean(self):
         now = time.time()
         for key in list(self):
-            if self[key]+3600 > now:
+            if self[key] + 3600 > now:
                 break
             del self[key]
 

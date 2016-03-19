@@ -15,7 +15,10 @@ python:
   - "pypy3"
 
 install:
-  - pip install tox>=1.8
+  - pip install tox>=1.8 flake8
+
+before_script:
+  - flake8 weppy
 
 script:
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION | tr -d . | sed -e 's/pypypy/pypy/')

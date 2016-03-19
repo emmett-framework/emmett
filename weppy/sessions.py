@@ -165,7 +165,7 @@ class SessionRedisManager(Handler):
         if self.cookie_data_name in request.cookies:
             sid = request.cookies[self.cookie_data_name].value
             #: load from redis
-            data = self.redis.get(self.prefix+sid)
+            data = self.redis.get(self.prefix + sid)
             if data is not None:
                 current.session = SessionData(pickle.loads(data), sid=sid)
         if not current.session:
@@ -174,7 +174,7 @@ class SessionRedisManager(Handler):
 
     def on_end(self):
         if not current.session:
-            self.redis.delete(self.prefix+current.session._sid)
+            self.redis.delete(self.prefix + current.session._sid)
             if current.session._modified:
                 #: if we got here means we want to destroy session definitely
                 if self.cookie_data_name in response.cookies:
@@ -196,4 +196,4 @@ class SessionRedisManager(Handler):
             response.cookies[self.cookie_data_name]['domain'] = self.domain
 
     def clear(self):
-        self.redis.delete(self.prefix+"*")
+        self.redis.delete(self.prefix + "*")

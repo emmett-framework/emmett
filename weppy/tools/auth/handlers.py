@@ -125,7 +125,7 @@ class DefaultLoginHandler(AuthLoginHandler):
         '''
         if form.accepted:
             self.onaccept(form)
-            ## rebuild the form
+            #: rebuild the form
             if not self.user:
                 return self.login_form()
         return form

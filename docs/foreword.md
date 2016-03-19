@@ -19,7 +19,7 @@ situation, less immediate; moreover, python is somewhat more *solid* than
 Ruby&mdash;maybe even too much solid. I think even Python would be advantaged by
 a more dynamic community: just think about Python 3's adoption status (Ed.).
 
-I really enjoyed writing code in Python, and after gaining some confidence,  
+I really enjoyed writing code in Python, and after gaining some confidence,
 I faced the second "big decision": which framework to use to write my 
 applications Looking at the Python scene, I (obviously) started looking at 
 *django*, the most famous one, but after a while I found I didn't like it. 

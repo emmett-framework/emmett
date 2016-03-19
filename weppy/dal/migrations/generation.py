@@ -231,9 +231,9 @@ def _add_table(op):
     indent = " " * 12
 
     if len(args) > 255:
-        args = '*[' + (',\n'+indent).join(args) + ']'
+        args = '*[' + (',\n' + indent).join(args) + ']'
     else:
-        args = (',\n'+indent).join(args)
+        args = (',\n' + indent).join(args)
 
     text = ("self.create_table(\n" + indent + "%(tablename)r,\n" + indent +
             "%(args)s") % {
@@ -241,7 +241,7 @@ def _add_table(op):
         'args': args
     }
     for k in sorted(op.kw):
-        text += ",\n"+indent+"%s=%r" % (k.replace(" ", "_"), op.kw[k])
+        text += ",\n" + indent + "%s=%r" % (k.replace(" ", "_"), op.kw[k])
     text += ")"
     return text
 

@@ -240,10 +240,10 @@ class AppModule(object):
         self.template_folder = template_folder
         #: template_path is referred to module root_directory
         if template_path and not template_path.startswith("/"):
-            template_path = self.root_path+template_path
+            template_path = self.root_path + template_path
         self.template_path = template_path
-        ## how to route static?
-        ## and.. do we want this?? I think not..
+        # how to route static?
+        # and.. do we want this?? I think not..
         #if static_folder:
         #    self.static_folder = self.root_path+"/"+static_folder
         #if static_prefix:
@@ -262,7 +262,7 @@ class AppModule(object):
             raise RuntimeError(
                 "App modules' exposed names should not contains dots"
             )
-        name = self.name+"."+(name or "")
+        name = self.name + "." + (name or "")
         handlers = kwargs.get('handlers', [])
         helpers = kwargs.get('helpers', [])
         if self.common_handlers:

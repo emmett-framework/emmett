@@ -77,7 +77,7 @@ class SessionData(sdict):
 
     @property
     def _dump(self):
-        ## note: self.__dump is updated only on _modified call
+        # note: self.__dump is updated only on _modified call
         return self.__dump
 
     def _expires_after(self, value):
@@ -89,12 +89,12 @@ def _unique_list(seq, hashfunc=None):
     seen_add = seen.add
     if not hashfunc:
         return [x for x in seq
-                if x not in seen
-                and not seen_add(x)]
+                if x not in seen and
+                not seen_add(x)]
     else:
         return [x for x in seq
-                if hashfunc(x) not in seen
-                and not seen_add(hashfunc(x))]
+                if hashfunc(x) not in seen and
+                not seen_add(hashfunc(x))]
 
 
 class OrderedSet(set):

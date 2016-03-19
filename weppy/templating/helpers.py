@@ -69,9 +69,9 @@ class TemplateReference(object):
                                                                       blocks)
             else:
                 node_lines = node._rendered_lines()
-                if len(node_lines) == node.lines[1]-node.lines[0]+1:
-                    linenos = [(i, i+1) for i in range(node.lines[0],
-                                                       node.lines[1]+1)]
+                if len(node_lines) == node.lines[1] - node.lines[0] + 1:
+                    linenos = [(i, i + 1) for i in range(node.lines[0],
+                                                         node.lines[1] + 1)]
                 else:
                     linenos = [(node.lines[0], node.lines[1])
                                for i in range(0, len(node_lines))]
@@ -81,7 +81,7 @@ class TemplateReference(object):
 
     def match_template(self, dummy_lineno):
         try:
-            reference = self.lines[dummy_lineno-1]
+            reference = self.lines[dummy_lineno - 1]
         except:
             reference = (self.parser.name, ('<unknown>', 'unknown'))
         return reference[0], reference[1][0]

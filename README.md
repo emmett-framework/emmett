@@ -69,7 +69,7 @@ weppy provides support for Python 2.7, 3.3, 3.4 and 3.5.
 
 We would be very glad if you contributed to the project in one or all of these ways:
 
-* Talking about weppy with firends and on the web
+* Talking about weppy with friends and on the web
 * Participating in [weppy users group](https://groups.google.com/forum/#!forum/weppy-talk)
 * Adding issues and features requests here on GitHub
 * Participating in discussions about new features and issues here on GitHub

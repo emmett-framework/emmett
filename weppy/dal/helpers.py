@@ -396,4 +396,4 @@ class JoinRows(Rows):
 def make_tablename(classname):
     words = re.findall('[A-Z][^A-Z]*', classname)
     tablename = '_'.join(words)
-    return tablename.lower()+"s"
+    return tablename.lower() + "s"

@@ -2,8 +2,9 @@
 # -*- coding: utf8 -*-
 # Plural-Forms for lt (Lithuanian)
 
-nplurals=3 # Lithuanian language has 3 forms:
-           # 1 singular and 2 plurals
+# Lithuanian language has 3 forms:  1 singular and 2 plurals
+nplurals = 3
+
 
 # Determine plural_id for number *n* as sequence of positive
 # integers: 0,1,...
@@ -16,4 +17,3 @@ get_plural_id = lambda n: (0 if n % 10 == 1 and n % 100 != 11 else
 # *plural_id* (which ALWAYS>0). This function will be executed
 # for words (or phrases) not found in plural_dict dictionary
 # construct_plural_form = lambda word, plural_id: (word + 'suffix')
-

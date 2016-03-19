@@ -108,8 +108,7 @@ default_messages = sdict(
     retrieve_username_subject='Username retrieve',
     retrieve_password='Your password is: %(password)s',
     retrieve_password_subject='Password retrieve',
-    reset_password=
-    'Click on the link %(link)s to reset your password',
+    reset_password='Click on the link %(link)s to reset your password',
     reset_password_subject='Password reset',
     invalid_reset_password='Invalid reset password',
     profile_updated='Profile updated',
