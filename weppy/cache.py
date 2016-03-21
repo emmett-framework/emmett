@@ -32,10 +32,10 @@ class BaseCache(object):
         return None
 
     def _set(self, key, value, dt):
-        return
+        return None
 
     def clear(self, key=None):
-        return
+        return None
 
     #def inc(self, key, dt=1):
     #    return

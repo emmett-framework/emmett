@@ -12,3 +12,10 @@ tests/databases/*
 tests/logs/*
 tests/private/*
 weppy.egg-info/*
+
+.venv/
+.coverage
+htmlcov/
+.tox/
+.eggs/
+.cache/

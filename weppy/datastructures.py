@@ -21,7 +21,13 @@ class sdict(dict):
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
     __getitem__ = dict.get
-    __getattr__ = dict.get
+
+    # see http://stackoverflow.com/questions/10364332/how-to-pickle-python-object-derived-from-dict
+    def __getattr__(self, attr):
+        if attr.startswith('__'):
+            raise AttributeError
+        return self.get(attr, None)
+
     __repr__ = lambda self: '<sdict %s>' % dict.__repr__(self)
     __getstate__ = lambda self: None
     __copy__ = lambda self: sdict(self)
