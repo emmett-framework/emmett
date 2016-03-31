@@ -39,7 +39,7 @@ class Expose(object):
     REGEX_INT = re.compile('<int\:(\w+)>')
     REGEX_STR = re.compile('<str\:(\w+)>')
     REGEX_ANY = re.compile('<any\:(\w+)>')
-    REGEX_ALPHA = re.compile('<str\:(\w+)>')
+    REGEX_ALPHA = re.compile('<alpha\:(\w+)>')
     REGEX_DATE = re.compile('<date\:(\w+)>')
     REGEX_DECORATION = re.compile(
         '(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
@@ -89,7 +89,7 @@ class Expose(object):
         path = cls.REGEX_INT.sub('(?P<\g<1>>\d+)', path)
         path = cls.REGEX_STR.sub('(?P<\g<1>>[^/]+)', path)
         path = cls.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
-        path = cls.REGEX_ALPHA.sub('(?P<\g<1>>\w+)', path)
+        path = cls.REGEX_ALPHA.sub('(?P<\g<1>>[^/\W\d_]+)', path)
         path = cls.REGEX_DATE.sub('(?P<\g<1>>\d{4}-\d{2}-\d{2})', path)
         re_schemes = ('|'.join(schemes)).lower()
         re_methods = ('|'.join(methods)).lower()
