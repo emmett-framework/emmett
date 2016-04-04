@@ -47,7 +47,7 @@ class Expose(object):
                  helpers=None, schemes=None, hostname=None, methods=None,
                  prefix=None, template_folder=None, template_path=None):
         if callable(path):
-            raise SyntaxError('@expose(), not @expose')
+            raise SyntaxError('@route(), not @route')
         self.schemes = schemes or ('http', 'https')
         if not isinstance(self.schemes, (list, tuple)):
             self.schemes = (self.schemes,)
