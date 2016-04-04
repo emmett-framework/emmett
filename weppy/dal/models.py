@@ -23,6 +23,7 @@ class MetaModel(type):
         if bases == (object,):
             return new_class
         #: collect declared attributes
+        tablename = attrs.get('tablename')
         current_fields = []
         current_vfields = []
         computations = {}
@@ -68,6 +69,8 @@ class MetaModel(type):
                 declared_callbacks.update(base._declared_callbacks_)
             if hasattr(base, '_declared_scopes_'):
                 declared_scopes.update(base._declared_scopes_)
+        #: set tablename
+        new_class._declared_tablename_ = tablename
         #: set fields with correct order
         current_fields.sort(key=lambda x: x[1]._inst_count_)
         declared_fields.update(current_fields)
@@ -147,11 +150,6 @@ class Model(with_metaclass(MetaModel)):
         sup = getattr(cls, superattr)
         if not sup:
             return
-        if hasattr(cls, 'tablename'):
-            for model in sup:
-                if cls.tablename == getattr(model, 'tablename', None):
-                    cls.tablename = make_tablename(cls.__name__)
-                    break
         #: get super model fields' properties
         proplist = ['validation', 'default_values', 'update_values',
                     'repr_values', 'form_labels', 'form_info', 'form_rw',
@@ -167,7 +165,7 @@ class Model(with_metaclass(MetaModel)):
             setattr(cls, prop, props)
 
     def __new__(cls):
-        if not getattr(cls, 'tablename', None):
+        if cls._declared_tablename_ is None:
             cls.tablename = make_tablename(cls.__name__)
         cls.__getsuperprops()
         return super(Model, cls).__new__(cls)
