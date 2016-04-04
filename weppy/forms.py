@@ -10,7 +10,6 @@
 """
 
 from ._compat import iteritems, iterkeys
-from ._internal import deprecated
 from .dal import Field
 from .datastructures import sdict
 from .globals import current, request, session
@@ -77,16 +76,6 @@ class Form(TAG):
                                % self.attributes['formstyle'].__name__)
         #: process the form
         self._process()
-
-    @property
-    @deprecated('vars', 'params', 'Form')
-    def vars(self):
-        return self.params
-
-    @property
-    @deprecated('input_vars', 'input_params', 'Form')
-    def input_vars(self):
-        return self.input_params
 
     @property
     def csrf(self):

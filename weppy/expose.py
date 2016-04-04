@@ -14,7 +14,6 @@ import re
 import os
 
 from ._compat import PY2, iteritems, text_type
-from ._internal import warn_of_deprecation
 from .handlers import Handler, _wrapWithHandlers
 from .templating import render
 from .globals import current
@@ -277,7 +276,7 @@ class _ResponseHandler(Handler):
 
 
 def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
-        host=None, language=None, vars=None):
+        host=None, language=None):
     """
     usages:
         url('index') # assumes app or default expose file
@@ -286,10 +285,6 @@ def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
         url('static', 'file') # for static files
         url('/myurl') # a normal url
     """
-
-    if vars is not None:
-        warn_of_deprecation('url(vars=..)', 'url(params=..)', stack=3)
-        params = vars
 
     if not isinstance(args, (list, tuple)):
         args = [args]

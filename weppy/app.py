@@ -14,7 +14,7 @@ import os
 import click
 from yaml import load as ymlload
 from ._compat import basestring
-from ._internal import get_root_path, create_missing_app_folders, deprecated
+from ._internal import get_root_path, create_missing_app_folders
 from .utils import dict_to_sdict, cachedprop
 from .expose import Expose
 from .datastructures import sdict, ConfigData
@@ -89,11 +89,6 @@ class App(object):
     @property
     def route(self):
         return Expose
-
-    @property
-    @deprecated('expose', 'route', 'App')
-    def expose(self):
-        return self.route
 
     @property
     def common_handlers(self):
@@ -252,10 +247,6 @@ class AppModule(object):
         self.hostname = hostname
         self.common_handlers = []
         self.common_helpers = []
-
-    @deprecated('expose', 'route', 'AppModule')
-    def expose(self, *args, **kwargs):
-        return self.route(*args, **kwargs)
 
     def route(self, path=None, name=None, template=None, **kwargs):
         if name is not None and "." in name:
