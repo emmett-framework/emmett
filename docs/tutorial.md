@@ -184,7 +184,7 @@ But, wait, how do we add an admin user who can write posts? We can write a
 @app.command('setup')
 def setup():
     # create the user
-    user = db.User.validate_and_insert(
+    user = User.create(
         email="walter@massivedynamics.com",
         first_name="Walter",
         last_name="Bishop",
@@ -237,7 +237,7 @@ the posts in reverse chronological order.
 ```python
 @app.route("/")
 def index():
-    posts = db(Post.id > 0).select(orderby=~Post.date)
+    posts = Post.all().select(orderby=~Post.date)
     return dict(posts=posts)
 ```
 
@@ -253,7 +253,7 @@ def one(pid):
         # manually set post id in comment form
         form.params.post = pid
     # get post and return 404 if doesn't exist
-    post = db.Post(id=pid)
+    post = Post.get(pid)
     if not post:
         abort(404)
     # get comments and create a form
