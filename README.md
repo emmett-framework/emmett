@@ -11,6 +11,10 @@ The aim of weppy is to be clearly understandable, easy to be learned and to be u
 so you can focus completely on your product's features:
 
 ```python
+from weppy import request, response
+from weppy.tools import service, requires
+from myapp import app, auth
+
 @app.route()
 @service.json
 @requires(auth.is_logged_in, otherwise=not_authorized)
