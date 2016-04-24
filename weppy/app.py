@@ -175,16 +175,13 @@ class App(object):
         for name, lexer in lexers.items():
             self.template_lexers[name] = lexer(self.template_extensions[-1])
 
-    def make_shell_context(self):
+    def make_shell_context(self, context={}):
         """Returns the shell context for an interactive shell for this
         application.  This runs all the registered shell context
         processors.
         """
-        #rv = {'app': self, 'g': g}
-        rv = {'app': self}
-        #for processor in self.shell_context_processors:
-        #    rv.update(processor())
-        return rv
+        context['app'] = self
+        return context
 
     def _run(self, host, port):
         from .libs.rocket import Rocket

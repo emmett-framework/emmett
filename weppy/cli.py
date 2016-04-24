@@ -14,10 +14,13 @@
 """
 
 from __future__ import print_function
+
+import click
 import os
 import sys
-import click
+import types
 from ._compat import iteritems
+from . import __version__ as weppy_version
 
 
 def find_best_app(module):
@@ -121,8 +124,23 @@ class ScriptInfo(object):
         #: A dictionary with arbitrary data that can be associated with
         #: this script info.
         self.data = {}
+        self._loaded_ctx = None
         self._loaded_app = None
         self.db_var_name = None
+
+    def load_appctx(self):
+        if self._loaded_ctx is not None:
+            return self._loaded_ctx
+        if self.app_import_path is None:
+            raise Exception("Could not locate application.")
+        module, mod, app_obj = get_app_module(self.app_import_path)
+        ctx = {}
+        for key, value in iteritems(mod.__dict__):
+            if key == "__builtins__" or isinstance(value, types.FunctionType):
+                continue
+            ctx[key] = value
+        self._loaded_ctx = ctx
+        return ctx
 
     def load_app(self):
         """Loads the app (if not yet loaded) and returns it.  Calling
@@ -237,15 +255,15 @@ def run_command(info, host, port, reloader, debug):
 @pass_script_info
 def shell_command(info):
     import code
+    ctx = info.load_appctx()
     app = info.load_app()
-    banner = 'Python %s on %s\nweppy shell on app: %s' % (
+    banner = 'Python %s on %s\nweppy %s shell on app: %s' % (
         sys.version,
         sys.platform,
+        weppy_version,
         app.import_name
-        #app.debug and ' [debug]' or '',
-        #app.instance_path,
     )
-    code.interact(banner=banner, local=app.make_shell_context())
+    code.interact(banner=banner, local=app.make_shell_context(ctx))
 
 
 cli = WeppyGroup(help="")
