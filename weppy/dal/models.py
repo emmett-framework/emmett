@@ -486,3 +486,20 @@ class Model(with_metaclass(MetaModel)):
     def form(cls, record=None, **kwargs):
         from ..forms import DALForm
         return DALForm(cls.table, record, **kwargs)
+
+    @fieldmethod('update_record')
+    def _update_record(self, row, **fields):
+        newfields = fields or dict(row)
+        for fieldname in list(newfields.keys()):
+            if fieldname not in self.table.fields or \
+               self.table[fieldname].type == 'id':
+                del newfields[fieldname]
+        self.db(self.table._id == row.id, ignore_common_filters=True).update(
+            **newfields
+        )
+        row.update(newfields)
+        return row
+
+    @fieldmethod('delete_record')
+    def _delete_record(self, row):
+        return self.db(self.db[self.tablename]._id == row.id).delete()

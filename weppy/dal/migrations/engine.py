@@ -53,6 +53,10 @@ class Engine(MetaEngine):
     def adapter(self):
         return self.db._adapter
 
+    @property
+    def dialect(self):
+        return self.db._adapter.dialect
+
     def _log_and_exec(self, sql):
         self.db.logger.debug("executing SQL:\n%s" % sql)
         self.adapter.execute(sql)
@@ -67,7 +71,7 @@ class Engine(MetaEngine):
 
     def drop_table(self, name):
         adapt_v = sdict(sqlsafe=name)
-        sql_list = self.adapter._drop(adapt_v, '')
+        sql_list = self.dialect.drop(adapt_v, '')
         for sql in sql_list:
             self._log_and_exec(sql)
 
@@ -85,9 +89,6 @@ class Engine(MetaEngine):
         if sql is not None:
             self._log_and_exec(sql)
 
-    def _quote(self, v):
-        return self.adapter.QUOTE_TEMPLATE % v
-
     def _gen_reference(self, tablename, column, tfks):
         if column.type.startswith('reference'):
             referenced = column.type[10:].strip()
@@ -95,7 +96,7 @@ class Engine(MetaEngine):
         else:
             referenced = column.type[14:].strip()
             type_name = 'big-reference'
-        constraint_name = self.adapter.constraint_name(tablename, column.name)
+        constraint_name = self.dialect.constraint_name(tablename, column.name)
         try:
             rtablename, rfieldname = referenced.split('.')
         except:
@@ -122,22 +123,22 @@ class Engine(MetaEngine):
                 )
         else:
             csql_info = dict(
-                index_name=self.adapter.QUOTE_TEMPLATE % (column.name + '__idx'),
+                index_name=self.dialect.quote(column.name + '__idx'),
                 field_name=rfieldname,
-                constraint_name=self.adapter.QUOTE_TEMPLATE % constraint_name,
+                constraint_name=self.dialect(constraint_name),
                 foreign_key='%s (%s)' % (rtablename, rfieldname),
                 on_delete_action=column.ondelete)
             csql_info['null'] = ' NOT NULL' if column.notnull else \
-                self.adapter.ALLOW_NULL()
+                self.adapter.allow_null
             csql_info['unique'] = ' UNIQUE' if column.unique else ''
             csql = self.adapter.types[type_name] % csql_info
         return csql
 
     def _gen_primary_key(self, fields, primary_keys=[]):
         if primary_keys:
-            fields.append(self.db.PRIMARY_KEY(
+            fields.append(self.dialect.primary_key(
                 ', '.join([
-                    self.db.QUOTE_TEMPLATE % pk for pk in primary_keys])))
+                    self.dialect.quote(pk) for pk in primary_keys])))
 
     def _gen_geo(self, tablename, column):
         if not hasattr(self.adapter, 'srid'):
@@ -180,7 +181,7 @@ class Engine(MetaEngine):
         if not column.type.startswith(('id', 'reference', 'big-reference')):
             csql += cprops % {
                 'notnull': ' NOT NULL' if column.notnull
-                           else self.adapter.ALLOW_NULL(),
+                           else self.dialect.allow_null,
                 'default': ' DEFAULT %s' %
                            self.adapter.represent(column.default, column.type)
                            if column.default is not None else '',
@@ -215,7 +216,7 @@ class Engine(MetaEngine):
         if self.adapter.dbengine == 'mysql':
             if not primary_keys:
                 primary_keys.append(id_col)
-            engine = self.db.adapter_args.get('engine', 'InnoDB')
+            engine = self.adapter.adapter_args.get('engine', 'InnoDB')
             extras += ' ENGINE=%s CHARACTER SET utf8' % engine
 
         self._gen_primary_key(fields, primary_keys)
@@ -225,8 +226,9 @@ class Engine(MetaEngine):
     def _add_column_sql(self, tablename, column):
         csql = self._new_column_sql(tablename, column, {})
         return 'ALTER TABLE %(tname)s ADD %(cname)s %(sql)s;' % {
-            'tname': self._quote(tablename),
-            'cname': self._quote(column.name), 'sql': csql
+            'tname': self.dialect.quote(tablename),
+            'cname': self.dialect.quote(column.name),
+            'sql': csql
         }
 
     def _drop_column_sql(self, table_name, column_name):
@@ -234,7 +236,8 @@ class Engine(MetaEngine):
             sql = 'ALTER TABLE %s DROP %s;'
         else:
             sql = 'ALTER TABLE %s DROP COLUMN %s;'
-        return sql % (self._quote(table_name), self._quote(column_name))
+        return sql % (
+            self.dialect.quote(table_name), self.dialect.quote(column_name))
 
     def _feasible_as_changed_type(self, oldv, newv, clen):
         old_sqltype = self.adapter.types[oldv] % {'length': clen}
@@ -295,7 +298,7 @@ class Engine(MetaEngine):
         if not sql_changes:
             return None
         return sql % {
-            'tname': self._quote(table_name),
-            'cname': self._quote(column_name),
+            'tname': self.dialect.quote(table_name),
+            'cname': self.dialect.quote(column_name),
             'changes': " ".join(sql_changes)
         }

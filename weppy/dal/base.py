@@ -11,6 +11,7 @@
 
 import os
 from pydal import DAL as _pyDAL, Field as _Field
+from pydal._globals import THREAD_LOCAL
 from pydal.objects import (
     Table as _Table, Set as _Set, LazySet as _LazySet, Expression
 )
@@ -193,6 +194,9 @@ class DAL(_pyDAL):
     logger = None
     uuid = lambda x: _uuid()
 
+    record_operators = {}
+    execution_handlers = []
+
     @staticmethod
     def uri_from_config(config=None):
         if config is None or config.adapter is None:
@@ -239,12 +243,20 @@ class DAL(_pyDAL):
             os.mkdir(folder)
         #: set pool_size
         pool_size = self.config.pool_size or pool_size or 0
+        #: add timings storage if requested
+        if config.store_execution_timings:
+            from .helpers import TimingHandler
+            self.execution_handlers.append(TimingHandler)
         #: finally setup pyDAL instance
         super(DAL, self).__init__(self.config.uri, pool_size, folder, **kwargs)
 
     @property
     def handler(self):
         return DALHandler(self)
+
+    @property
+    def execution_timings(self):
+        return getattr(THREAD_LOCAL, '_weppydal_timings_', [])
 
     def define_models(self, *models):
         if len(models) == 1 and isinstance(models[0], (list, tuple)):

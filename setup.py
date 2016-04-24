@@ -43,8 +43,11 @@ setup(
     install_requires=[
         'click>=0.6',
         'pyaes',
-        'pyDAL==15.12',
+        'pyDAL==16.4.dev0',
         'pyyaml'
+    ],
+    dependency_links=[
+        'https://github.com/web2py/pydal/tarball/master#egg=pydal-16.4.dev0',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

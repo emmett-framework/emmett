@@ -10,8 +10,10 @@
 """
 
 import re
+import time
+from pydal._globals import THREAD_LOCAL
 from pydal.objects import Rows
-from pydal.helpers.classes import Reference as _IDReference
+from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
 from ..utils import cachedprop
 from .base import Set, LazySet
 
@@ -391,6 +393,24 @@ class JoinRows(Rows):
             items = [item for item in self]
         self.compact = oc
         return items
+
+
+class TimingHandler(ExecutionHandler):
+    def _timings(self):
+        THREAD_LOCAL._weppydal_timings_ = getattr(
+            THREAD_LOCAL, '_weppydal_timings_', [])
+        return THREAD_LOCAL._weppydal_timings_
+
+    @cachedprop
+    def timings(self):
+        return self._timings()
+
+    def before_execute(self, command):
+        self.t = time.time()
+
+    def after_execute(self, command):
+        dt = time.time() - self.t
+        self.timings.append((command, dt))
 
 
 def make_tablename(classname):
