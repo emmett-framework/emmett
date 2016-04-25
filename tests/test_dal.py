@@ -188,9 +188,11 @@ class Organization(Model):
     name = Field()
     has_many(
         'memberships', {'users': {'via': 'memberships'}},
-        {'admin_memberships': {
-            'target': 'Membership.organization', 'scope': 'admins'}},
-        {'admins': {'via': 'admin_memberships.user'}})
+        {'admin_memberships': {'target': 'Membership', 'scope': 'admins'}},
+        {'admins': {'via': 'admin_memberships.user'}},
+        {'admin_memberships2': {
+            'target': 'Membership', 'where': lambda m: m.role == 'admin'}},
+        {'admins2': {'via': 'admin_memberships2.user'}})
 
 
 class Membership(Model):
@@ -494,6 +496,7 @@ def test_relations_scopes(db):
     frank = db.User.insert(name="Frank")
     org.users.add(frank, role='manager')
     assert org.admins.count() == 1
+    assert org.admins2.count() == 1
 
 
 def test_model_where(db):
