@@ -284,6 +284,28 @@ class Person(Model):
 
 As you can see, we defined a model `Person` which can have a relation with another record of the same table: father is a `Person` too. In order to achieve this result, we simply used the keyword `self`. You can also use the model name for the relation, changing `'self'` with `'Person'`, and weppy will understand that too, but we think this way is more self-explanatory.
 
+### Scoped relations
+*New in version 0.7*
+
+Sometimes you may need to specify scopes on `has_one` and `has_many` relations. A common example is when you use *soft-deleting* in your application:
+
+```python
+class User(Model):
+    name = Field()
+    has_many({'todos': {'target': 'Todo', 'scope': 'not_deleted'}})
+
+class Todo(Model):
+    belongs_to('user')
+    description = Field()
+    is_deleted = Field('bool')
+
+    @scope('not_deleted')
+    def _not_deleted(self):
+        return self.is_deleted == False
+```
+
+As you can see, we have that the `Todo` model has an `is_deleted` field and a scope `not_deleted` that filters out the records we have set as deleted. Using the `scope` option in the `has_many` relation of the `User` model, weppy will returns only those records when selecting rows from a specific user, and, also, will set the fields with the correct values from the scope query when we add or create new records related to a specific user.
+
 Operations with relations
 -------------------------
 
