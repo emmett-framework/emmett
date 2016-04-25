@@ -45,7 +45,10 @@ class RelationBuilder(object):
         if ref['scope'] is not None:
             ref_model = self.model.db[ref['model']]._model_
             scope = ref_model._scopes_[ref['scope']].f
-            return query & scope(ref_model)
+            query = query & scope(ref_model)
+        if ref['where'] is not None:
+            ref_model = self.model.db[ref['model']]._model_
+            query = query & ref['where'](ref_model)
         return query
 
     def _get_belongs(self, modelname, value):
@@ -60,12 +63,15 @@ class RelationBuilder(object):
         return self._patch_query_with_scope(self.ref, query)
 
     def many(self, row=None):
-        scope = self.ref['scope']
-        if scope is not None:
+        scopes = []
+        if self.ref['scope'] is not None:
             ref_model = self.model.db[self.ref['model']]._model_
-            scope_m = ref_model._scopes_[scope].f
-            scope = lambda f=scope_m, m=ref_model: f(m)
-        return self._many_elements(row), scope
+            scope_m = ref_model._scopes_[self.ref['scope']].f
+            scopes.append(lambda f=scope_m, m=ref_model: f(m))
+        if self.ref['where'] is not None:
+            ref_model = self.model.db[self.ref['model']]._model_
+            scopes.append(lambda f=self.ref['where'], m=ref_model: f(m))
+        return self._many_elements(row), scopes
 
     def via(self, row=None):
         db = self.model.db
@@ -167,7 +173,7 @@ class HasOneWrap(object):
 
     def __call__(self, model, row):
         rel_data = RelationBuilder(self.ref, model).many(row)
-        return HasOneSet(*rel_data[0], scope=rel_data[1])
+        return HasOneSet(*rel_data[0], scopes=rel_data[1])
 
 
 class HasManySet(RelationSet):
@@ -203,7 +209,7 @@ class HasManyWrap(object):
 
     def __call__(self, model, row):
         rel_data = RelationBuilder(self.ref, model).many(row)
-        return HasManySet(*rel_data[0], scope=rel_data[1])
+        return HasManySet(*rel_data[0], scopes=rel_data[1])
 
 
 class HasManyViaSet(ScopedRelationSet, Set):

@@ -173,15 +173,15 @@ class Set(_Set):
 
 
 class LazySet(_LazySet):
-    def __init__(self, field, id, scope=None):
+    def __init__(self, field, id, scopes=[]):
         super(LazySet, self).__init__(field, id)
         self._model_ = self.db[self.tablename]._model_
-        self._scope_ = scope
+        self._scopes_ = scopes
 
     def _getset(self):
         query = self.db[self.tablename][self.fieldname] == self.id
-        if self._scope_:
-            query = query & self._scope_()
+        for scope in self._scopes_:
+            query = query & scope()
         return Set(self.db, query, model=self._model_)
 
     def join(self, *args):

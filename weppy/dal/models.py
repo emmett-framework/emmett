@@ -212,7 +212,7 @@ class Model(with_metaclass(MetaModel)):
             relation['field'] = self.__class__.__name__.lower()
 
     def __parse_many_relation(self, item, singularize=True):
-        rv = {'scope': None}
+        rv = {'scope': None, 'where': None}
         if isinstance(item, dict):
             rv['name'] = list(item)[0]
             rv['model'] = item[rv['name']]
@@ -223,6 +223,8 @@ class Model(with_metaclass(MetaModel)):
                 else:
                     if 'scope' in rv['model']:
                         rv['scope'] = rv['model']['scope']
+                    if 'where' in rv['model']:
+                        rv['where'] = rv['model']['where']
                     if 'target' in rv['model']:
                         rv['model'] = rv['model']['target']
                     if not isinstance(rv['model'], str):
