@@ -186,12 +186,20 @@ class User(Model):
 
 class Organization(Model):
     name = Field()
-    has_many('memberships', {'users': {'via': 'memberships'}})
+    has_many(
+        'memberships', {'users': {'via': 'memberships'}},
+        {'admin_memberships': {
+            'target': 'Membership.organization', 'scope': 'admins'}},
+        {'admins': {'via': 'admin_memberships.user'}})
 
 
 class Membership(Model):
     belongs_to('user', 'organization')
     role = Field()
+
+    @scope('admins')
+    def filter_admins(self):
+        return self.role == 'admin'
 
 
 class House(Model):
@@ -364,13 +372,13 @@ def test_virtualfields(db):
     db.Stuff._after_insert = []
     db.Stuff.insert(a="foo", b="bar", price=12.95, quantity=3)
     db.commit()
-    row = db(db.Stuff.id > 0).select().first()
+    row = db(db.Stuff).select().first()
     assert row.totalv == 12.95*3
     assert row.totalv2 == 12.95*3
 
 
 def test_fieldmethods(db):
-    row = db(db.Stuff.id > 0).select().first()
+    row = db(db.Stuff).select().first()
     assert row.totalm() == 12.95*3
     assert row.totalm2() == 12.95*3
 
@@ -465,7 +473,7 @@ def test_scopes(db):
     db.Subscription.insert(
         name="c", expires_at=datetime.now()+timedelta(hours=20), person=p,
         status=3)
-    rows = db(db.Subscription.id > 0).expired().select()
+    rows = db(db.Subscription).expired().select()
     assert len(rows) == 1 and rows[0].id == s
     rows = p.subscriptions.expired().select()
     assert len(rows) == 1 and rows[0].id == s
@@ -477,6 +485,15 @@ def test_scopes(db):
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
     rows = Subscription.of_status('active', 'suspended').select()
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
+
+
+def test_relations_scopes(db):
+    gus = db.User.insert(name="Gus Fring")
+    org = db.Organization.insert(name="Los pollos hermanos")
+    org.users.add(gus, role="admin")
+    frank = db.User.insert(name="Frank")
+    org.users.add(frank, role='manager')
+    assert org.admins.count() == 1
 
 
 def test_model_where(db):

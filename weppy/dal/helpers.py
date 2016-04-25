@@ -41,6 +41,13 @@ class RelationBuilder(object):
         field = self.model.db[self.ref['model']][self.ref['field']]
         return field, rid
 
+    def _patch_query_with_scope(self, ref, query):
+        if ref['scope'] is not None:
+            ref_model = self.model.db[ref['model']]._model_
+            scope = ref_model._scopes_[ref['scope']].f
+            return query & scope(ref_model)
+        return query
+
     def _get_belongs(self, modelname, value):
         return self.model.db[modelname]._model_._belongs_ref_.get(value)
 
@@ -49,10 +56,16 @@ class RelationBuilder(object):
 
     def many_query(self, row=None):
         field, rid = self._many_elements(row)
-        return (field == rid)
+        query = (field == rid)
+        return self._patch_query_with_scope(self.ref, query)
 
     def many(self, row=None):
-        return self._many_elements(row)
+        scope = self.ref['scope']
+        if scope is not None:
+            ref_model = self.model.db[self.ref['model']]._model_
+            scope_m = ref_model._scopes_[scope].f
+            scope = lambda f=scope_m, m=ref_model: f(m)
+        return self._many_elements(row), scope
 
     def via(self, row=None):
         db = self.model.db
@@ -65,7 +78,8 @@ class RelationBuilder(object):
         while midrel.get('via') is not None:
             stack.insert(0, midrel)
             midrel = self.model._hasmany_ref_[midrel['via']]
-        query = (db[midrel['model']][midrel['field']] == rid)
+        query = self._patch_query_with_scope(
+            midrel, db[midrel['model']][midrel['field']] == rid)
         sel_field = db[midrel['model']].ALL
         step_model = midrel['model']
         lbelongs = None
@@ -85,7 +99,8 @@ class RelationBuilder(object):
                 lbelongs = None
                 rname = via['field'] or via['name']
                 many = db[step_model]._model_._hasmany_ref_[rname]
-                _query = (
+                _query = self._patch_query_with_scope(
+                    many,
                     db[many['model']][many['field']] == db[step_model].id)
                 sel_field = db[many['model']].ALL
                 step_model = many['model']
@@ -122,7 +137,8 @@ class HasOneWrap(object):
         self.ref = ref
 
     def __call__(self, model, row):
-        return HasOneSet(*RelationBuilder(self.ref, model).many(row))
+        rel_data = RelationBuilder(self.ref, model).many(row)
+        return HasOneSet(*rel_data[0], scope=rel_data[1])
 
 
 class HasManySet(RelationSet):
@@ -156,7 +172,8 @@ class HasManyWrap(object):
         self.ref = ref
 
     def __call__(self, model, row):
-        return HasManySet(*RelationBuilder(self.ref, model).many(row))
+        rel_data = RelationBuilder(self.ref, model).many(row)
+        return HasManySet(*rel_data[0], scope=rel_data[1])
 
 
 class HasManyViaSet(Set):
@@ -182,6 +199,11 @@ class HasManyViaSet(Set):
                 return self._last_resultset
             args = [self._rfield]
         return self.select(*args, **kwargs)
+
+    def select(self, *args, **kwargs):
+        if kwargs.get('reload'):
+            del kwargs['reload']
+        return super(HasManyViaSet, self).select(*args, **kwargs)
 
     def _get_relation_fields(self):
         current_model = self.db[self._modelname]._model_
