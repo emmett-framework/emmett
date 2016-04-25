@@ -12,10 +12,10 @@
 import re
 import time
 from pydal._globals import THREAD_LOCAL
-from pydal.objects import Rows
+from pydal.objects import Rows, Query
 from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
 from ..utils import cachedprop
-from .base import Set, LazySet
+from .base import Set, LazySet, Field
 
 
 class Reference(object):
@@ -108,11 +108,40 @@ class RelationBuilder(object):
         return query, sel_field, sname, rid, lbelongs, lvia
 
 
-class RelationSet(LazySet):
+class ScopedRelationSet(object):
+    @staticmethod
+    def _get_fields_from_scope(scope):
+        rv = {}
+        if scope:
+            query = scope()
+            components = [query.second, query.first]
+            current_kv = []
+            while components:
+                component = components.pop()
+                if isinstance(component, Query):
+                    components.append(component.second)
+                    components.append(component.first)
+                else:
+                    if isinstance(component, Field):
+                        current_kv.append(component)
+                    else:
+                        if current_kv:
+                            current_kv.append(component)
+                        else:
+                            components.pop()
+                if len(current_kv) > 1:
+                    rv[current_kv[0].name] = current_kv[1]
+                    current_kv = []
+        return rv
+
+
+class RelationSet(ScopedRelationSet, LazySet):
     def create(self, **kwargs):
-        kwargs[self.fieldname] = self.id
+        attributes = self._get_fields_from_scope(self._scope_)
+        attributes.update(**kwargs)
+        attributes[self.fieldname] = self.id
         return self._model_.create(
-            **kwargs
+            **attributes
         )
 
     def select(self, *args, **kwargs):
@@ -152,10 +181,11 @@ class HasManySet(RelationSet):
         return self.select(*args, **kwargs)
 
     def add(self, obj):
+        attributes = self._get_fields_from_scope(self._scope_)
+        attributes[self.fieldname] = self.id
         return self.db(
-            self.db[self.tablename].id == obj.id).validate_and_update(
-            **{self.fieldname: self.id}
-        )
+            self.db[self.tablename].id == obj.id
+        ).validate_and_update(**attributes)
 
     def remove(self, obj):
         if self.db[self.tablename][self.fieldname]._isrefers:
@@ -176,7 +206,7 @@ class HasManyWrap(object):
         return HasManySet(*rel_data[0], scope=rel_data[1])
 
 
-class HasManyViaSet(Set):
+class HasManyViaSet(ScopedRelationSet, Set):
     def __init__(self, db, query, rfield, modelname, rid, via, viadata,
                  **kwargs):
         self._rfield = rfield
@@ -211,6 +241,18 @@ class HasManyViaSet(Set):
         rel_field = self._viadata['field'] or self._viadata['name'][:-1]
         return self_field, rel_field
 
+    def _fields_from_scope(self):
+        current_model = self.db[self._modelname]._model_
+        scope = current_model._hasmany_ref_[self._viadata['via']]['scope']
+        if scope:
+            join_model = self.db[
+                current_model._hasmany_ref_[self._viadata['via']]['model']
+            ]._model_
+            scope_m = join_model._scopes_[scope].f
+            scope = lambda f=scope_m, m=join_model: f(m)
+            return self._get_fields_from_scope(scope)
+        return {}
+
     def create(self, **kwargs):
         raise RuntimeError('Cannot create third objects for many relations')
 
@@ -218,7 +260,8 @@ class HasManyViaSet(Set):
         # works on join tables only!
         if self._via is None:
             raise RuntimeError(self._via_error % 'add')
-        nrow = kwargs
+        nrow = self._fields_from_scope()
+        nrow.update(**kwargs)
         #: get belongs references
         self_field, rel_field = self._get_relation_fields()
         nrow[self_field] = self._rid
