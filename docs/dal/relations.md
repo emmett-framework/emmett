@@ -292,7 +292,7 @@ Sometimes you may need to specify scopes on `has_one` and `has_many` relations. 
 ```python
 class User(Model):
     name = Field()
-    has_many({'todos': {'target': 'Todo', 'scope': 'not_deleted'}})
+    has_many({'todos': {'scope': 'not_deleted'}})
 
 class Todo(Model):
     belongs_to('user')
@@ -305,6 +305,18 @@ class Todo(Model):
 ```
 
 As you can see, we have that the `Todo` model has an `is_deleted` field and a scope `not_deleted` that filters out the records we have set as deleted. Using the `scope` option in the `has_many` relation of the `User` model, weppy will returns only those records when selecting rows from a specific user, and, also, will set the fields with the correct values from the scope query when we add or create new records related to a specific user.
+
+Whenever you have to specify the reference field using the `scope` option, weppy requires you to combine it with the `target` one:
+
+```python
+class User(Model):
+    has_many({'todos': {'target': 'Todo.owner', 'scope': 'not_deleted'}})
+
+class Todo(Model):
+    belongs_to({'owner': 'User'})
+```
+
+> **Note:** the `scope` option is not available when you're using the `via` one, since it wouldn't be clear on which model the scope should be applied. Whenever you want to use scopes with `via`, you should create the relations for the via with the scopes, and the use these relations as sources for the `via` ones.
 
 Operations with relations
 -------------------------
