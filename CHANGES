@@ -1,6 +1,15 @@
 weppy changelog
 ===============
 
+Next
+----
+
+(Release date to be announced, codename to be selected)
+
+- Shell command now loads the entire application context
+- Added `scope` options to `has_one` and `has_many` relations
+
+
 Version 0.6
 -----------
 
