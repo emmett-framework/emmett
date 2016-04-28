@@ -28,11 +28,11 @@ def test_define(app):
     assert templater.render(
         source='{{=a}}', filename='test2',
         context={'a': 'nuvolosità variabile'}
-    ) == 'nuvolosità variabile'
+    ) == 'nuvolosit&#224; variabile'
     assert templater.render(
         source='{{=a}}', path='templates', filename='test3',
         context={'a': u'nuvolosità variabile'}
-    ) == 'nuvolosità variabile'
+    ) == 'nuvolosit&#224; variabile'
     assert templater.render(
         source='{{=a}}', filename='test4',
         context={'a': [i for i in range(0, 5)]}
@@ -106,7 +106,7 @@ rendered_value = """
         <div class="page">
             <a href="/" class="title"><h1>Test</h1></a>
             <div class="nav">
-                <a href="/">nuvolosità variabile</a>
+                <a href="/">nuvolosit&#224; variabile</a>
             </div>
             <ul class="posts">
                 <li>
