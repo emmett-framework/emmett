@@ -12,8 +12,8 @@
 import os
 import cgi
 import sys
-from .._compat import StringIO, reduce, text_type, to_native, to_unicode, \
-    to_bytes
+from .._compat import StringIO, reduce, string_types, text_type, to_native, \
+    to_unicode, to_bytes
 from ..globals import current
 from ..http import HTTP
 from ..tags import asis
@@ -38,6 +38,12 @@ class DummyResponse():
             data = to_unicode(data)
         return to_native(data)
 
+    @staticmethod
+    def _to_unicode(data):
+        if not isinstance(data, string_types):
+            return text_type(data)
+        return to_unicode(data)
+
     def write(self, data, escape=True):
         body = None
         if escape:
@@ -50,7 +56,8 @@ class DummyResponse():
                 body = self._to_native(
                     self._to_html(
                         cgi.escape(
-                            to_unicode(data), True).replace(u"'", u"&#x27;")))
+                            self._to_unicode(data), True
+                        ).replace(u"'", u"&#x27;")))
         else:
             body = self._to_native(data)
         self.body.write(body)
