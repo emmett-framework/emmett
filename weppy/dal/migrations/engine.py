@@ -215,7 +215,7 @@ class Engine(MetaEngine):
         if self.adapter.dbengine == 'mysql':
             if not primary_keys:
                 primary_keys.append(id_col)
-            engine = self.db.adapter_args.get('engine', 'InnoDB')
+            engine = self.adapter.adapter_args.get('engine', 'InnoDB')
             extras += ' ENGINE=%s CHARACTER SET utf8' % engine
 
         self._gen_primary_key(fields, primary_keys)
