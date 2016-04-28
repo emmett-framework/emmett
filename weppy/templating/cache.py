@@ -9,12 +9,13 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import hashlib
 import os
-from .._compat import hashlib_md5, iteritems
+from .._compat import iteritems, to_bytes
 
 
 def make_md5(value):
-    return hashlib_md5(value).hexdigest()[:8]
+    return hashlib.md5(to_bytes(value)).hexdigest()[:8]
 
 
 class TemplaterCache(object):

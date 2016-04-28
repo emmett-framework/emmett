@@ -12,7 +12,8 @@
 import os
 import cgi
 import sys
-from .._compat import StringIO, reduce, string_types, to_native, to_unicode
+from .._compat import StringIO, reduce, text_type, to_native, to_unicode, \
+    to_bytes
 from ..globals import current
 from ..http import HTTP
 from ..tags import asis
@@ -28,26 +29,30 @@ class DummyResponse():
         self.body = StringIO()
 
     @staticmethod
+    def _to_html(data):
+        return to_bytes(data, 'ascii', 'xmlcharrefreplace')
+
+    @staticmethod
     def _to_native(data):
-        if not isinstance(data, string_types):
-            data = str(data)
-        if not isinstance(data, str):
-            data = to_native(data, 'utf8', 'xmlcharrefreplace')
-        return data
+        if not isinstance(data, text_type):
+            data = to_unicode(data)
+        return to_native(data)
 
     def write(self, data, escape=True):
         body = None
-        if not escape:
-            body = self._to_native(data)
-        else:
+        if escape:
             if hasattr(data, 'to_html'):
                 try:
                     body = to_native(data.to_html())
                 except:
                     pass
-        if body is None:
-            data = self._to_native(data)
-            body = cgi.escape(data, True).replace("'", "&#x27;")
+            if body is None:
+                body = self._to_native(
+                    self._to_html(
+                        cgi.escape(
+                            to_unicode(data), True).replace(u"'", u"&#x27;")))
+        else:
+            body = self._to_native(data)
         self.body.write(body)
 
 
