@@ -13,7 +13,6 @@
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
-from cgi import escape
 import os
 
 from .._compat import PY2, implements_bool, implements_to_string, iteritems, \
@@ -112,8 +111,8 @@ class TElement(object):
     def __bool__(self):
         return len(self.m) > 0
 
-    def to_html(self):
-        return str(self) if self.M else escape(str(self))
+    # def to_html(self):
+    #     return str(self) if self.M else escape(str(self))
 
     def encode(self, *a, **b):
         return str(self).encode(*a, **b)
