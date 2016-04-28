@@ -135,9 +135,9 @@ class Engine(MetaEngine):
 
     def _gen_primary_key(self, fields, primary_keys=[]):
         if primary_keys:
-            fields.append(self.db.PRIMARY_KEY(
+            fields.append(self.adapter.PRIMARY_KEY(
                 ', '.join([
-                    self.db.QUOTE_TEMPLATE % pk for pk in primary_keys])))
+                    self.adapter.QUOTE_TEMPLATE % pk for pk in primary_keys])))
 
     def _gen_geo(self, tablename, column):
         if not hasattr(self.adapter, 'srid'):
