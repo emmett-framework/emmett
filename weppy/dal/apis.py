@@ -45,8 +45,12 @@ class has_many(Reference):
 
 
 class computation(object):
+    _inst_count_ = 0
+
     def __init__(self, field_name):
         self.field_name = field_name
+        self._inst_count_ = computation._inst_count_
+        computation._inst_count_ += 1
 
     def __call__(self, f):
         self.f = f

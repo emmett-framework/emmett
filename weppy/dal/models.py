@@ -26,8 +26,8 @@ class MetaModel(type):
         tablename = attrs.get('tablename')
         current_fields = []
         current_vfields = []
-        computations = {}
-        callbacks = {}
+        computations = []
+        callbacks = []
         scopes = {}
         for key, value in list(attrs.items()):
             if isinstance(value, Field):
@@ -35,9 +35,9 @@ class MetaModel(type):
             elif isinstance(value, virtualfield):
                 current_vfields.append((key, value))
             elif isinstance(value, computation):
-                computations[key] = value
+                computations.append((key, value))
             elif isinstance(value, Callback):
-                callbacks[key] = value
+                callbacks.append((key, value))
             elif isinstance(value, scope):
                 scopes[key] = value
         #: get super declared attributes
@@ -47,8 +47,8 @@ class MetaModel(type):
             _belongs_ref_=[], _refers_ref_=[],
             _hasone_ref_=[], _hasmany_ref_=[]
         )
-        declared_computations = {}
-        declared_callbacks = {}
+        declared_computations = OrderedDict()
+        declared_callbacks = OrderedDict()
         declared_scopes = {}
         for base in reversed(new_class.__mro__[1:]):
             #: collect fields from base class
@@ -102,9 +102,11 @@ class MetaModel(type):
         declared_vfields.update(current_vfields)
         new_class._declared_virtuals_ = declared_vfields
         #: set computations
+        computations.sort(key=lambda x: x[1]._inst_count_)
         declared_computations.update(computations)
         new_class._declared_computations_ = declared_computations
         #: set callbacks
+        callbacks.sort(key=lambda x: x[1]._inst_count_)
         declared_callbacks.update(callbacks)
         new_class._declared_callbacks_ = declared_callbacks
         #: set scopes

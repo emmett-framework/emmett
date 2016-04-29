@@ -319,6 +319,8 @@ class ScopeWrap(object):
 
 
 class Callback(object):
+    _inst_count_ = 0
+
     def __init__(self, f, t):
         self.t = []
         if isinstance(f, Callback):
@@ -326,6 +328,8 @@ class Callback(object):
             f = f.f
         self.f = f
         self.t.append(t)
+        self._inst_count_ = Callback._inst_count_
+        Callback._inst_count_ += 1
 
     def __call__(self):
         return None
