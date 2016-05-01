@@ -8,6 +8,7 @@ Next
 
 - Shell command now loads the entire application context
 - Added `scope` options to `has_one` and `has_many` relations
+- Added `where` options to `has_one` and `has_many` relations
 
 
 Version 0.6
