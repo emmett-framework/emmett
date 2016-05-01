@@ -41,13 +41,14 @@ class RelationBuilder(object):
         field = self.model.db[self.ref['model']][self.ref['field']]
         return field, rid
 
-    def _patch_query_with_scope(self, ref, query):
+    def _patch_query_with_scope(self, ref, query, model_name=None):
+        mname = model_name or ref['model']
         if ref['scope'] is not None:
-            ref_model = self.model.db[ref['model']]._model_
+            ref_model = self.model.db[mname]._model_
             scope = ref_model._scopes_[ref['scope']].f
             query = query & scope(ref_model)
         if ref['where'] is not None:
-            ref_model = self.model.db[ref['model']]._model_
+            ref_model = self.model.db[mname]._model_
             query = query & ref['where'](ref_model)
         return query
 
@@ -111,6 +112,7 @@ class RelationBuilder(object):
                 sel_field = db[many['model']].ALL
                 step_model = many['model']
             query = query & _query
+        query = self._patch_query_with_scope(via, query, step_model)
         return query, sel_field, sname, rid, lbelongs, lvia
 
 

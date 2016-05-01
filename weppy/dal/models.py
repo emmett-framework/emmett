@@ -219,14 +219,14 @@ class Model(with_metaclass(MetaModel)):
             rv['name'] = list(item)[0]
             rv['model'] = item[rv['name']]
             if isinstance(rv['model'], dict):
+                if 'scope' in rv['model']:
+                    rv['scope'] = rv['model']['scope']
+                if 'where' in rv['model']:
+                    rv['where'] = rv['model']['where']
                 if 'via' in rv['model']:
                     rv.update(self.__parse_relation_via(rv['model']['via']))
                     rv['model'] = None
                 else:
-                    if 'scope' in rv['model']:
-                        rv['scope'] = rv['model']['scope']
-                    if 'where' in rv['model']:
-                        rv['where'] = rv['model']['where']
                     if 'target' in rv['model']:
                         rv['model'] = rv['model']['target']
                     if not isinstance(rv['model'], str):

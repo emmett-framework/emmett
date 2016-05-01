@@ -181,11 +181,17 @@ class Appointment(Model):
 
 class User(Model):
     name = Field()
-    has_many('memberships', {'organizations': {'via': 'memberships'}})
+    has_many(
+        'memberships', {'organizations': {'via': 'memberships'}},
+        {'cover_orgs': {
+            'via': 'memberships.organization',
+            'where': lambda m: m.is_cover == True}})
 
 
 class Organization(Model):
     name = Field()
+    is_cover = Field('bool', default=False)
+
     has_many(
         'memberships', {'users': {'via': 'memberships'}},
         {'admin_memberships': {'target': 'Membership', 'scope': 'admins'}},
@@ -497,6 +503,10 @@ def test_relations_scopes(db):
     org.users.add(frank, role='manager')
     assert org.admins.count() == 1
     assert org.admins2.count() == 1
+    org2 = db.Organization.insert(name="Laundry", is_cover=True)
+    org2.users.add(gus, role="admin")
+    assert len(gus.cover_orgs()) == 1
+    assert gus.cover_orgs().first().id == org2
 
 
 def test_model_where(db):
