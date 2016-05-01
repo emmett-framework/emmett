@@ -316,7 +316,30 @@ class Todo(Model):
     belongs_to({'owner': 'User'})
 ```
 
-> **Note:** the `scope` option is not available when you're using the `via` one, since it wouldn't be clear on which model the scope should be applied. Whenever you want to use scopes with `via`, you should create the relations for the via with the scopes, and the use these relations as sources for the `via` ones.
+> **Note:** when using `scope` on `via` relations, remember you're applying the scope condition on the final model involved in the relation.
+
+### Where condition on relations
+*New in version 0.7*
+
+Similarly to the `scope` option, you can use the `where` option to specify queries that should be applied by weppy when building the relation: this is handy when you need the condition just one and you don't need to write a scope for that.
+
+For example, we can change the upper example and rewrite it as:
+
+```python
+class User(Model):
+    name = Field()
+    has_many({'todos': {'where': lambda m: m.is_deleted == False}})
+
+class Todo(Model):
+    belongs_to('user')
+    description = Field()
+    is_deleted = Field('bool')
+```
+
+As you can see the `where` value must be a `lambda` function accepting just one parameter: the model you're referring to. The condition can be any valid expression in the weppy query language.
+
+> **Hint:** you can also specify `where` conditions on existing `scope` relations, to combine the queries.
+
 
 Operations with relations
 -------------------------
