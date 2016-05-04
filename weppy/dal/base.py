@@ -108,7 +108,7 @@ class Set(_Set):
             joins = []
             jtables = []
             for arg in args:
-                join_data = self._parse_rjoin(arg, True)
+                join_data = self._parse_rjoin(arg)
                 joins.append(join_data[0])
                 jtables.append((arg, join_data[1]._tablename, join_data[2]))
             if joins:
@@ -120,35 +120,27 @@ class Set(_Set):
                 return JoinSet._from_set(rv, self._model_.tablename, jtables)
         return rv
 
-    def _parse_rjoin(self, arg, with_extras=False):
+    def _parse_rjoin(self, arg):
         from .helpers import RelationBuilder
         #: match has_many
         rel = self._model_._hasmany_ref_.get(arg)
         if rel:
             if isinstance(rel, dict) and rel.get('via'):
                 r = RelationBuilder(rel, self._model_).via()
-                if with_extras:
-                    return r[0], r[1]._table, False
-                return r[0]
+                return r[0], r[1]._table, False
             else:
                 r = RelationBuilder(rel, self._model_)
-                if with_extras:
-                    return r.many_query(), r._many_elements()[0]._table, False
-                return r.many_query()
+                return r.many(), rel.table, False
         #: match belongs_to and refers_to
         rel = self._model_._belongs_ref_.get(arg)
         if rel:
             r = RelationBuilder((rel, arg), self._model_).belongs_query()
-            if with_extras:
-                return r, self._model_.db[rel], True
-            return r
+            return r, self._model_.db[rel], True
         #: match has_one
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
             r = RelationBuilder(rel, self._model_)
-            if with_extras:
-                return r.many_query(), r._many_elements()[0]._table, False
-            return r.many_query()
+            return r.many(), rel.table, False
         raise RuntimeError(
             'Unable to find %s relation of %s model' %
             (arg, self._model_.__name__))
@@ -159,7 +151,7 @@ class Set(_Set):
         joins = []
         jdata = []
         for arg in args:
-            join = self._parse_rjoin(arg, True)
+            join = self._parse_rjoin(arg)
             joins.append(join[1].on(join[0]))
             jdata.append((arg, join[2]))
         return joins, jdata
@@ -169,7 +161,7 @@ class Set(_Set):
         if scope:
             from .helpers import ScopeWrap
             return ScopeWrap(self, self._model_, scope.f)
-        raise AttributeError()
+        raise AttributeError(name)
 
 
 class LazySet(_LazySet):

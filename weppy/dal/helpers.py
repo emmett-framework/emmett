@@ -14,18 +14,64 @@ import time
 from pydal._globals import THREAD_LOCAL
 from pydal.objects import Rows, Query
 from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
+from ..datastructures import sdict
 from ..utils import cachedprop
-from .base import Set, LazySet, Field
+from .base import Set, Field
 
 
 class Reference(object):
-    def __init__(self, *args):
+    def __init__(self, *args, **params):
         self.reference = [arg for arg in args]
+        self.params = params
         self.refobj[id(self)] = self
+
+    def __call__(self, func):
+        if not callable(func):
+            raise SyntaxError('Argument must be callable')
+        if self.reference:
+            raise SyntaxError(
+                'When using %s as decorator, you can use field option' %
+                self.__class__.__name__)
+        new_reference = {func.__name__: {'method': func}}
+        field = self.params.get('field')
+        if field:
+            new_reference[func.__name__]['field'] = field
+        self.reference = [new_reference]
+        return self
 
     @property
     def refobj(self):
         return {}
+
+
+class ReferenceData(sdict):
+    def __init__(self, model_class, **kwargs):
+        self.model_class = model_class
+        super(ReferenceData, self).__init__(**kwargs)
+
+    @cachedprop
+    def dbset(self):
+        if self.method:
+            return self.method(self.model_class)
+        return self.model_class.db
+
+    @cachedprop
+    def model_instance(self):
+        if self.method:
+            return self.dbset._model_
+        return self.dbset[self.model]._model_
+
+    @property
+    def table(self):
+        return self.model_instance.table
+
+    @property
+    def table_name(self):
+        return self.model_instance.tablename
+
+    @property
+    def field_instance(self):
+        return self.table[self.field]
 
 
 class RelationBuilder(object):
@@ -36,20 +82,25 @@ class RelationBuilder(object):
     def _make_refid(self, row):
         return row.id if row is not None else self.model.id
 
-    def _many_elements(self, row=None):
-        rid = self._make_refid(row)
-        field = self.model.db[self.ref['model']][self.ref['field']]
-        return field, rid
+    def _extra_scopes(self, ref, model_instance=None):
+        model_instance = model_instance or ref.model_instance
+        rv = []
+        if ref.scope is not None:
+            scope_m = model_instance._scopes_[ref.scope].f
+            rv.append(lambda f=scope_m, m=model_instance: f(m))
+        if ref.where is not None:
+            rv.append(lambda f=ref.where, m=model_instance: f(m))
+        return rv
 
-    def _patch_query_with_scope(self, ref, query, model_name=None):
-        mname = model_name or ref['model']
-        if ref['scope'] is not None:
-            ref_model = self.model.db[mname]._model_
-            scope = ref_model._scopes_[ref['scope']].f
-            query = query & scope(ref_model)
-        if ref['where'] is not None:
-            ref_model = self.model.db[mname]._model_
-            query = query & ref['where'](ref_model)
+    def _patch_query_with_scopes(self, ref, query):
+        for scope in self._extra_scopes(ref):
+            query = query & scope()
+        return query
+
+    def _patch_query_with_scopes_on(self, ref, query, model_name):
+        model = self.model.db[model_name]._model_
+        for scope in self._extra_scopes(ref, model):
+            query = query & scope()
         return query
 
     def _get_belongs(self, modelname, value):
@@ -58,69 +109,110 @@ class RelationBuilder(object):
     def belongs_query(self):
         return (self.model.table[self.ref[1]] == self.model.db[self.ref[0]].id)
 
-    def many_query(self, row=None):
-        field, rid = self._many_elements(row)
-        query = (field == rid)
-        return self._patch_query_with_scope(self.ref, query)
+    @staticmethod
+    def many_query(ref, rid):
+        return ref.model_instance.table[ref.field] == rid
+
+    def _many(self, ref, rid):
+        return ref.dbset.where(
+            self._patch_query_with_scopes(ref, self.many_query(ref, rid))
+        ).query
 
     def many(self, row=None):
-        scopes = []
-        if self.ref['scope'] is not None:
-            ref_model = self.model.db[self.ref['model']]._model_
-            scope_m = ref_model._scopes_[self.ref['scope']].f
-            scopes.append(lambda f=scope_m, m=ref_model: f(m))
-        if self.ref['where'] is not None:
-            ref_model = self.model.db[self.ref['model']]._model_
-            scopes.append(lambda f=self.ref['where'], m=ref_model: f(m))
-        return self._many_elements(row), scopes
+        return self._many(self.ref, self._make_refid(row))
 
     def via(self, row=None):
         db = self.model.db
         rid = self._make_refid(row)
         sname = self.model.__class__.__name__
         stack = []
-        via = self.ref['via']
-        midrel = self.model._hasmany_ref_[via]
+        midrel = self.model._hasmany_ref_[self.ref.via]
         stack.append(self.ref)
-        while midrel.get('via') is not None:
+        while midrel.via is not None:
             stack.insert(0, midrel)
-            midrel = self.model._hasmany_ref_[midrel['via']]
-        query = self._patch_query_with_scope(
-            midrel, db[midrel['model']][midrel['field']] == rid)
-        sel_field = db[midrel['model']].ALL
-        step_model = midrel['model']
-        lbelongs = None
-        lvia = None
+            midrel = self.model._hasmany_ref_[midrel.via]
+        query = self._many(midrel, rid)
+        step_model = midrel.table_name
+        sel_field = db[step_model].ALL
+        last_belongs = None
+        last_via = None
         for via in stack:
-            rname = via['field'] or via['name'][:-1]
-            belongs = self._get_belongs(step_model, rname)
-            if belongs:
+            rname = via.field or via.name[:-1]
+            belongs_model = self._get_belongs(step_model, rname)
+            if belongs_model:
                 #: join table way
-                lbelongs = step_model
-                lvia = via
-                _query = (db[belongs].id == db[step_model][rname])
-                sel_field = db[belongs].ALL
-                step_model = belongs
+                last_belongs = step_model
+                last_via = via
+                _query = (db[belongs_model].id == db[step_model][rname])
+                sel_field = db[belongs_model].ALL
+                step_model = belongs_model
             else:
-                #: shortcut mode
-                lbelongs = None
-                rname = via['field'] or via['name']
-                many = db[step_model]._model_._hasmany_ref_[rname]
-                _query = self._patch_query_with_scope(
-                    many,
-                    db[many['model']][many['field']] == db[step_model].id)
-                sel_field = db[many['model']].ALL
-                step_model = many['model']
+                #: shortcut way
+                last_belongs = None
+                rname = via.field or via.name
+                midrel = db[step_model]._model_._hasmany_ref_[rname]
+                _query = self._many(midrel, db[step_model].id)
+                step_model = midrel.table_name
+                sel_field = db[step_model].ALL
             query = query & _query
-        query = self._patch_query_with_scope(via, query, step_model)
-        return query, sel_field, sname, rid, lbelongs, lvia
+        query = via.dbset.where(
+            self._patch_query_with_scopes_on(via, query, step_model)).query
+        return query, sel_field, sname, rid, last_belongs, last_via
 
 
-class ScopedRelationSet(object):
+class RelationSet(object):
+    _relation_method_ = 'many'
+
+    def __init__(self, db, relation_builder, row):
+        self.db = db
+        self._relation_ = relation_builder
+        self._row_ = row
+
+    def _get_query_(self):
+        return getattr(self._relation_, self._relation_method_)(self._row_)
+
+    @property
+    def _model_(self):
+        return self._relation_.ref.model_instance
+
+    @cachedprop
+    def _field_(self):
+        return self._relation_.ref.field_instance
+
+    @cachedprop
+    def _scopes_(self):
+        return self._relation_._extra_scopes(self._relation_.ref)
+
+    @cachedprop
+    def _set(self):
+        return Set(self.db, self._get_query_(), model=self._model_)
+
+    def __getattr__(self, name):
+        return getattr(self._set, name)
+
+    def __repr__(self):
+        return repr(self._set)
+
+    def __call__(self, query, ignore_common_filters=False):
+        return self._set.where(query, ignore_common_filters)
+
+    def select(self, *args, **kwargs):
+        if 'reload' in kwargs:
+            del kwargs['reload']
+        return self._set.select(*args, **kwargs)
+
+    def create(self, **kwargs):
+        attributes = self._get_fields_from_scopes(self._scopes_)
+        attributes.update(**kwargs)
+        attributes[self._field_.name] = self._row_.id
+        return self._model_.create(
+            **attributes
+        )
+
     @staticmethod
-    def _get_fields_from_scope(scope):
+    def _get_fields_from_scopes(scopes):
         rv = {}
-        if scope:
+        for scope in scopes:
             query = scope()
             components = [query.second, query.first]
             current_kv = []
@@ -143,21 +235,6 @@ class ScopedRelationSet(object):
         return rv
 
 
-class RelationSet(ScopedRelationSet, LazySet):
-    def create(self, **kwargs):
-        attributes = self._get_fields_from_scope(self._scope_)
-        attributes.update(**kwargs)
-        attributes[self.fieldname] = self.id
-        return self._model_.create(
-            **attributes
-        )
-
-    def select(self, *args, **kwargs):
-        if kwargs.get('reload'):
-            del kwargs['reload']
-        return super(RelationSet, self).select(*args, **kwargs)
-
-
 class HasOneSet(RelationSet):
     @cachedprop
     def _last_resultset(self):
@@ -174,8 +251,7 @@ class HasOneWrap(object):
         self.ref = ref
 
     def __call__(self, model, row):
-        rel_data = RelationBuilder(self.ref, model).many(row)
-        return HasOneSet(*rel_data[0], scopes=rel_data[1])
+        return HasOneSet(model.db, RelationBuilder(self.ref, model), row)
 
 
 class HasManySet(RelationSet):
@@ -189,20 +265,19 @@ class HasManySet(RelationSet):
         return self.select(*args, **kwargs)
 
     def add(self, obj):
-        attributes = self._get_fields_from_scope(self._scope_)
-        attributes[self.fieldname] = self.id
+        attributes = self._get_fields_from_scopes(self._scopes_)
+        attributes[self._field_.name] = self._row_.id
         return self.db(
-            self.db[self.tablename].id == obj.id
+            self.db[self._field_._tablename].id == obj.id
         ).validate_and_update(**attributes)
 
     def remove(self, obj):
-        if self.db[self.tablename][self.fieldname]._isrefers:
+        if self.db[self._field_._tablename][self._field_.name]._isrefers:
             return self.db(
-                self.db[self.tablename].id == obj.id).validate_and_update(
-                **{self.fieldname: None}
+                self._field_._table.id == obj.id).validate_and_update(
+                **{self._field_.name: None}
             )
-        else:
-            return self.db(self.db[self.tablename].id == obj.id).delete()
+        return self.db(self._field_._table.id == obj.id).delete()
 
 
 class HasManyWrap(object):
@@ -210,83 +285,77 @@ class HasManyWrap(object):
         self.ref = ref
 
     def __call__(self, model, row):
-        rel_data = RelationBuilder(self.ref, model).many(row)
-        return HasManySet(*rel_data[0], scopes=rel_data[1])
+        return HasManySet(model.db, RelationBuilder(self.ref, model), row)
 
 
-class HasManyViaSet(ScopedRelationSet, Set):
-    def __init__(self, db, query, rfield, modelname, rid, via, viadata,
-                 **kwargs):
-        self._rfield = rfield
-        self._modelname = modelname
-        self._rid = rid
-        self._via = via
-        self._viadata = viadata
-        super(HasManyViaSet, self).__init__(
-            db, query, model=db[modelname]._model_, **kwargs)
-        self._via_error = \
-            'Cannot %s elements to an has_many relation without a join table'
+class HasManyViaSet(RelationSet):
+    _relation_method_ = 'via'
+    _via_error = "Can't %s elements in has_many relations without a join table"
+
+    @cachedprop
+    def _viadata(self):
+        query, rfield, model_name, rid, via, viadata = \
+            super(HasManyViaSet, self)._get_query_()
+        return sdict(
+            query=query, rfield=rfield, model_name=model_name, rid=rid,
+            via=via, data=viadata
+        )
+
+    def _get_query_(self):
+        return self._viadata.query
+
+    @property
+    def _model_(self):
+        return self.db[self._viadata.model_name]._model_
 
     @cachedprop
     def _last_resultset(self):
-        return self.select(self._rfield)
+        return self.select(self._viadata.rfield)
 
     def __call__(self, *args, **kwargs):
         if not args:
             if not kwargs:
                 return self._last_resultset
-            args = [self._rfield]
+            args = [self._viadata.rfield]
         return self.select(*args, **kwargs)
 
-    def select(self, *args, **kwargs):
-        if kwargs.get('reload'):
-            del kwargs['reload']
-        return super(HasManyViaSet, self).select(*args, **kwargs)
-
     def _get_relation_fields(self):
-        current_model = self.db[self._modelname]._model_
-        self_field = current_model._hasmany_ref_[self._viadata['via']]['field']
-        rel_field = self._viadata['field'] or self._viadata['name'][:-1]
+        viadata = self._viadata.data
+        self_field = self._model_._hasmany_ref_[viadata.via].field
+        rel_field = viadata.field or viadata.name[:-1]
         return self_field, rel_field
 
-    def _fields_from_scope(self):
-        current_model = self.db[self._modelname]._model_
-        scope = current_model._hasmany_ref_[self._viadata['via']]['scope']
-        if scope:
-            join_model = self.db[
-                current_model._hasmany_ref_[self._viadata['via']]['model']
-            ]._model_
-            scope_m = join_model._scopes_[scope].f
-            scope = lambda f=scope_m, m=join_model: f(m)
-            return self._get_fields_from_scope(scope)
-        return {}
+    def _fields_from_scopes(self):
+        viadata = self._viadata.data
+        rel = self._model_._hasmany_ref_[viadata.via]
+        return self._get_fields_from_scopes(self._relation_._extra_scopes(rel))
 
     def create(self, **kwargs):
         raise RuntimeError('Cannot create third objects for many relations')
 
     def add(self, obj, **kwargs):
         # works on join tables only!
-        if self._via is None:
+        if self._viadata.via is None:
             raise RuntimeError(self._via_error % 'add')
-        nrow = self._fields_from_scope()
+        nrow = self._fields_from_scopes()
         nrow.update(**kwargs)
         #: get belongs references
         self_field, rel_field = self._get_relation_fields()
-        nrow[self_field] = self._rid
+        nrow[self_field] = self._viadata.rid
         nrow[rel_field] = obj.id
         #: validate and insert
-        return self.db[self._via]._model_.create(nrow)
+        return self.db[self._viadata.via]._model_.create(nrow)
 
     def remove(self, obj):
         # works on join tables only!
-        if self._via is None:
+        if self._viadata.via is None:
             raise RuntimeError(self._via_error % 'remove')
         #: get belongs references
         self_field, rel_field = self._get_relation_fields()
         #: delete
         return self.db(
-            (self.db[self._via][self_field] == self._rid) &
-            (self.db[self._via][rel_field] == obj.id)).delete()
+            (self.db[self._viadata.via][self_field] == self._viadata.rid) &
+            (self.db[self._viadata.via][rel_field] == obj.id)).delete()
 
 
 class HasManyViaWrap(object):
@@ -294,8 +363,7 @@ class HasManyViaWrap(object):
         self.ref = ref
 
     def __call__(self, model, row):
-        return HasManyViaSet(
-            model.db, *RelationBuilder(self.ref, model).via(row))
+        return HasManyViaSet(model.db, RelationBuilder(self.ref, model), row)
 
 
 class VirtualWrap(object):

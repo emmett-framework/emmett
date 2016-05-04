@@ -14,7 +14,7 @@ from .._compat import iteritems, with_metaclass
 from .apis import computation, virtualfield, fieldmethod, scope
 from .base import Field, _Field, sdict
 from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
-    VirtualWrap, ScopeWrap, Callback, make_tablename
+    VirtualWrap, ScopeWrap, Callback, ReferenceData, make_tablename
 
 
 class MetaModel(type):
@@ -181,65 +181,73 @@ class Model(with_metaclass(MetaModel)):
     def __parse_relation_via(self, via):
         if via is None:
             return via
-        rv = {'field': None}
+        rv = sdict()
         splitted = via.split('.')
-        rv['via'] = splitted[0]
+        rv.via = splitted[0]
         if len(splitted) > 1:
-            rv['field'] = splitted[1]
+            rv.field = splitted[1]
         return rv
 
     def __parse_belongs_relation(self, item):
-        rv = {}
+        rv = sdict()
         if isinstance(item, dict):
-            rv['name'] = list(item)[0]
-            rv['model'] = item[rv['name']]
-            if rv['model'] == "self":
-                rv['model'] = self.__class__.__name__
+            rv.name = list(item)[0]
+            rv.model = item[rv.name]
+            if rv.model == "self":
+                rv.model = self.__class__.__name__
         else:
-            rv['name'] = item
-            rv['model'] = item.capitalize()
+            rv.name = item
+            rv.model = item.capitalize()
         return rv
 
     def __build_relation_modelname(self, name, relation, singularize):
-        relation['model'] = name.capitalize()
+        relation.model = name.capitalize()
         if singularize:
-            relation['model'] = relation['model'][:-1]
+            relation.model = relation.model[:-1]
 
     def __build_relation_fieldname(self, relation):
-        splitted = relation['model'].split('.')
-        relation['model'] = splitted[0]
+        splitted = relation.model.split('.')
+        relation.model = splitted[0]
         if len(splitted) > 1:
-            relation['field'] = splitted[1]
+            relation.field = splitted[1]
         else:
-            relation['field'] = self.__class__.__name__.lower()
+            relation.field = self.__class__.__name__.lower()
+
+    def __parse_relation_dict(self, rel, singularize):
+        if 'scope' in rel.model:
+            rel.scope = rel.model['scope']
+        if 'where' in rel.model:
+            rel.where = rel.model['where']
+        if 'via' in rel.model:
+            rel.update(self.__parse_relation_via(rel.model['via']))
+            del rel.model
+        else:
+            if 'target' in rel.model:
+                rel.model = rel.model['target']
+            if not isinstance(rel.model, str):
+                self.__build_relation_modelname(rel.name, rel, singularize)
 
     def __parse_many_relation(self, item, singularize=True):
-        rv = {'scope': None, 'where': None}
+        rv = ReferenceData(self)
         if isinstance(item, dict):
-            rv['name'] = list(item)[0]
-            rv['model'] = item[rv['name']]
-            if isinstance(rv['model'], dict):
-                if 'scope' in rv['model']:
-                    rv['scope'] = rv['model']['scope']
-                if 'where' in rv['model']:
-                    rv['where'] = rv['model']['where']
-                if 'via' in rv['model']:
-                    rv.update(self.__parse_relation_via(rv['model']['via']))
-                    rv['model'] = None
+            rv.name = list(item)[0]
+            rv.model = item[rv.name]
+            if isinstance(rv.model, dict):
+                if 'method' in rv.model:
+                    rv.field = rv.model.get(
+                        'field', self.__class__.__name__.lower())
+                    rv.method = rv.model['method']
+                    del rv.model
                 else:
-                    if 'target' in rv['model']:
-                        rv['model'] = rv['model']['target']
-                    if not isinstance(rv['model'], str):
-                        self.__build_relation_modelname(
-                            rv['name'], rv, singularize)
+                    self.__parse_relation_dict(rv, singularize)
         else:
-            rv['name'] = item
+            rv.name = item
             self.__build_relation_modelname(item, rv, singularize)
-        if rv['model']:
-            if 'field' not in rv:
+        if rv.model:
+            if not rv.field:
                 self.__build_relation_fieldname(rv)
-            if rv['model'] == "self":
-                rv['model'] = self.__class__.__name__
+            if rv.model == "self":
+                rv.model = self.__class__.__name__
         return rv
 
     def _define_props_(self):
@@ -270,8 +278,8 @@ class Model(with_metaclass(MetaModel)):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_belongs_relation(item)
-                if reference['model'] != self.__class__.__name__:
-                    tablename = self.db[reference['model']]._tablename
+                if reference.model != self.__class__.__name__:
+                    tablename = self.db[reference.model]._tablename
                 else:
                     tablename = self.tablename
                 if isbelongs:
@@ -280,12 +288,12 @@ class Model(with_metaclass(MetaModel)):
                     fieldobj = Field(
                         'reference ' + tablename, ondelete='nullify',
                         _isrefers=True)
-                setattr(self.__class__, reference['name'], fieldobj)
+                setattr(self.__class__, reference.name, fieldobj)
                 self.fields.append(
-                    getattr(self, reference['name'])._make_field(
-                        reference['name'], self)
+                    getattr(self, reference.name)._make_field(
+                        reference.name, self)
                 )
-                belongs_references[reference['name']] = reference['model']
+                belongs_references[reference.name] = reference.model
             isbelongs = False
         setattr(self.__class__, '_belongs_ref_', belongs_references)
         #: has_one are mapped with virtualfield()
@@ -295,9 +303,9 @@ class Model(with_metaclass(MetaModel)):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item, False)
-                self._virtual_relations_[reference['name']] = \
-                    virtualfield(reference['name'])(HasOneWrap(reference))
-                hasone_references[reference['name']] = reference
+                self._virtual_relations_[reference.name] = \
+                    virtualfield(reference.name)(HasOneWrap(reference))
+                hasone_references[reference.name] = reference
         setattr(self.__class__, '_hasone_ref_', hasone_references)
         #: has_many are mapped with virtualfield()
         hasmany_references = {}
@@ -306,20 +314,16 @@ class Model(with_metaclass(MetaModel)):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item)
-                if reference.get('via') is not None:
+                if reference.via is not None:
                     #: maps has_many({'things': {'via': 'otherthings'}})
-                    self._virtual_relations_[reference['name']] = \
-                        virtualfield(reference['name'])(
-                            HasManyViaWrap(reference)
-                        )  # NOQA
+                    wrapper = HasManyViaWrap
                 else:
                     #: maps has_many('things'),
                     #  has_many({'things': 'othername'})
-                    self._virtual_relations_[reference['name']] = \
-                        virtualfield(reference['name'])(
-                            HasManyWrap(reference)
-                        )  # NOQA
-                hasmany_references[reference['name']] = reference
+                    wrapper = HasManyWrap
+                self._virtual_relations_[reference.name] = \
+                    virtualfield(reference.name)(wrapper(reference))
+                hasmany_references[reference.name] = reference
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
 
     def _define_virtuals_(self):
