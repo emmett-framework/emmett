@@ -12,9 +12,7 @@
 import os
 from pydal import DAL as _pyDAL, Field as _Field
 from pydal._globals import THREAD_LOCAL
-from pydal.objects import (
-    Table as _Table, Set as _Set, LazySet as _LazySet, Expression
-)
+from pydal.objects import Table as _Table, Set as _Set, Expression
 from .._compat import copyreg
 from ..datastructures import sdict
 from ..handlers import Handler
@@ -162,25 +160,6 @@ class Set(_Set):
             from .helpers import ScopeWrap
             return ScopeWrap(self, self._model_, scope.f)
         raise AttributeError(name)
-
-
-class LazySet(_LazySet):
-    def __init__(self, field, id, scopes=[]):
-        super(LazySet, self).__init__(field, id)
-        self._model_ = self.db[self.tablename]._model_
-        self._scopes_ = scopes
-
-    def _getset(self):
-        query = self.db[self.tablename][self.fieldname] == self.id
-        for scope in self._scopes_:
-            query = query & scope()
-        return Set(self.db, query, model=self._model_)
-
-    def join(self, *args):
-        return self._getset().join(*args)
-
-    def __getattr__(self, name):
-        return getattr(self._getset(), name)
 
 
 class DAL(_pyDAL):

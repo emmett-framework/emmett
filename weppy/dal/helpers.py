@@ -181,6 +181,8 @@ class RelationSet(object):
 
     @cachedprop
     def _scopes_(self):
+        if self._relation_.ref.method:
+            return [lambda: self._relation_.ref.dbset.query]
         return self._relation_._extra_scopes(self._relation_.ref)
 
     @cachedprop
@@ -202,7 +204,8 @@ class RelationSet(object):
         return self._set.select(*args, **kwargs)
 
     def create(self, **kwargs):
-        attributes = self._get_fields_from_scopes(self._scopes_)
+        attributes = self._get_fields_from_scopes(
+            self._scopes_, self._model_.tablename)
         attributes.update(**kwargs)
         attributes[self._field_.name] = self._row_.id
         return self._model_.create(
@@ -210,7 +213,7 @@ class RelationSet(object):
         )
 
     @staticmethod
-    def _get_fields_from_scopes(scopes):
+    def _get_fields_from_scopes(scopes, table_name):
         rv = {}
         for scope in scopes:
             query = scope()
@@ -222,7 +225,8 @@ class RelationSet(object):
                     components.append(component.second)
                     components.append(component.first)
                 else:
-                    if isinstance(component, Field):
+                    if isinstance(component, Field) and \
+                       component._tablename == table_name:
                         current_kv.append(component)
                     else:
                         if current_kv:
@@ -265,7 +269,8 @@ class HasManySet(RelationSet):
         return self.select(*args, **kwargs)
 
     def add(self, obj):
-        attributes = self._get_fields_from_scopes(self._scopes_)
+        attributes = self._get_fields_from_scopes(
+            self._scopes_, self._model_.tablename)
         attributes[self._field_.name] = self._row_.id
         return self.db(
             self.db[self._field_._tablename].id == obj.id
@@ -328,7 +333,11 @@ class HasManyViaSet(RelationSet):
     def _fields_from_scopes(self):
         viadata = self._viadata.data
         rel = self._model_._hasmany_ref_[viadata.via]
-        return self._get_fields_from_scopes(self._relation_._extra_scopes(rel))
+        if rel.method:
+            scopes = [lambda: rel.dbset.query]
+        else:
+            scopes = self._relation_._extra_scopes(rel)
+        return self._get_fields_from_scopes(scopes, rel.table_name)
 
     def create(self, **kwargs):
         raise RuntimeError('Cannot create third objects for many relations')

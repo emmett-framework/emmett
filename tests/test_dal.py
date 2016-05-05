@@ -507,6 +507,22 @@ def test_relations_scopes(db):
     org2.users.add(gus, role="admin")
     assert len(gus.cover_orgs()) == 1
     assert gus.cover_orgs().first().id == org2
+    org.delete_record()
+    org2.delete_record()
+    #: creation/addition
+    org = db.Organization.insert(name="Los pollos hermanos")
+    org.admins.add(gus)
+    assert org.admins.count() == 1
+    org.delete_record()
+    org = db.Organization.insert(name="Los pollos hermanos")
+    org.admins2.add(gus)
+    assert org.admins2.count() == 1
+    org.delete_record()
+    gus = User.get(name="Gus Fring")
+    org2 = db.Organization.insert(name="Laundry", is_cover=True)
+    gus.cover_orgs.add(org2)
+    assert len(gus.cover_orgs()) == 1
+    assert gus.cover_orgs().first().id == org2
 
 
 def test_model_where(db):
