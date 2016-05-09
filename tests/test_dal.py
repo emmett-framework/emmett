@@ -192,13 +192,18 @@ class Organization(Model):
     name = Field()
     is_cover = Field('bool', default=False)
 
+    @has_many()
+    def admin_memberships3(self):
+        return Membership.admins()
+
     has_many(
         'memberships', {'users': {'via': 'memberships'}},
         {'admin_memberships': {'target': 'Membership', 'scope': 'admins'}},
         {'admins': {'via': 'admin_memberships.user'}},
         {'admin_memberships2': {
             'target': 'Membership', 'where': lambda m: m.role == 'admin'}},
-        {'admins2': {'via': 'admin_memberships2.user'}})
+        {'admins2': {'via': 'admin_memberships2.user'}},
+        {'admins3': {'via': 'admin_memberships3.user'}})
 
 
 class Membership(Model):
@@ -503,6 +508,7 @@ def test_relations_scopes(db):
     org.users.add(frank, role='manager')
     assert org.admins.count() == 1
     assert org.admins2.count() == 1
+    assert org.admins3.count() == 1
     org2 = db.Organization.insert(name="Laundry", is_cover=True)
     org2.users.add(gus, role="admin")
     assert len(gus.cover_orgs()) == 1
@@ -517,6 +523,10 @@ def test_relations_scopes(db):
     org = db.Organization.insert(name="Los pollos hermanos")
     org.admins2.add(gus)
     assert org.admins2.count() == 1
+    org.delete_record()
+    org = db.Organization.insert(name="Los pollos hermanos")
+    org.admins3.add(gus)
+    assert org.admins3.count() == 1
     org.delete_record()
     gus = User.get(name="Gus Fring")
     org2 = db.Organization.insert(name="Laundry", is_cover=True)
