@@ -169,7 +169,10 @@ class RelationSet(object):
         self._row_ = row
 
     def _get_query_(self):
-        return getattr(self._relation_, self._relation_method_)(self._row_)
+        try:
+            return getattr(self._relation_, self._relation_method_)(self._row_)
+        except Exception as e:
+            raise RuntimeError(e.message)
 
     @property
     def _model_(self):
