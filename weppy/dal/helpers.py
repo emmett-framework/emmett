@@ -171,8 +171,10 @@ class RelationSet(object):
     def _get_query_(self):
         try:
             return getattr(self._relation_, self._relation_method_)(self._row_)
-        except Exception as e:
+        except AttributeError as e:
             raise RuntimeError(e.message)
+        except Exception:
+            raise
 
     @property
     def _model_(self):
