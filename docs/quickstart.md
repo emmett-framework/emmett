@@ -265,7 +265,7 @@ app = App(__name__)
 @service.json
 def f():
     l = [1, 2, {'foo': 'bar'}]
-    return dict(status="OK", data=l}
+    return dict(status="OK", data=l)
 ```
 The output will be a JSON object with the converted content of your Python
 dictionary.
