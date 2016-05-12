@@ -19,7 +19,7 @@ from weppy import App
 app = App(__name__)
 
 @app.route("/<str:msg>")
-def echo():
+def echo(msg):
     return dict(message=msg)
 ```
 
