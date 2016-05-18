@@ -70,7 +70,7 @@ class Engine(MetaEngine):
         self._log_and_exec(sql)
 
     def drop_table(self, name):
-        adapt_v = sdict(sqlsafe=name)
+        adapt_v = sdict(sqlsafe=self.dialect.quote(name))
         sql_list = self.dialect.drop(adapt_v, '')
         for sql in sql_list:
             self._log_and_exec(sql)
