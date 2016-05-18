@@ -113,7 +113,7 @@ class Message(Model):
         ).select(
             orderby=self.written_at, 
             limitby=(0, 1)
-        )
+        ).first()
 ```
 
 Then, once we have a message, we can access the next quickly:
