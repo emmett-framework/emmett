@@ -58,13 +58,13 @@ class StepOneThing(Model):
     name = Field()
     value = Field('float')
 
-_step_one_sql = """CREATE TABLE step_one_things(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name CHAR(512),
-    value DOUBLE
+_step_one_sql = """CREATE TABLE "step_one_things"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" CHAR(512),
+    "value" DOUBLE
 );"""
 
-_step_one_sql_drop = "DROP TABLE step_one_things;"
+_step_one_sql_drop = 'DROP TABLE "step_one_things";'
 
 
 def test_step_one_create_table(app):
@@ -105,11 +105,11 @@ class StepTwoThing(Model):
     value = Field('float', default=8.8)
     available = Field('bool', default=True)
 
-_step_two_sql = """CREATE TABLE step_two_things(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name CHAR(512) NOT NULL,
-    value DOUBLE DEFAULT '8.8',
-    available CHAR(1) DEFAULT 'T'
+_step_two_sql = """CREATE TABLE "step_two_things"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" CHAR(512) NOT NULL,
+    "value" DOUBLE DEFAULT '8.8',
+    "available" CHAR(1) DEFAULT 'T'
 );"""
 
 
@@ -136,8 +136,8 @@ class StepThreeThingThree(Model):
     tablename = "step_three_thing_ones"
     b = Field()
 
-_step_three_sql = "ALTER TABLE step_three_thing_ones ADD b CHAR(512);"
-_step_three_sql_drop = "ALTER TABLE step_three_thing_ones DROP COLUMN a;"
+_step_three_sql = 'ALTER TABLE "step_three_thing_ones" ADD "b" CHAR(512);'
+_step_three_sql_drop = 'ALTER TABLE "step_three_thing_ones" DROP COLUMN "a";'
 
 
 def test_step_three_create_column(app):
@@ -178,9 +178,9 @@ class StepFourThingEdit(Model):
     available = Field('bool', default=True)
     asd = Field('int')
 
-_step_four_sql = """ALTER_TABLE step_four_things ALTER COLUMN name DROP NOT NULL;
-ALTER_TABLE step_four_things ALTER COLUMN value DROP DEFAULT;
-ALTER_TABLE step_four_things ALTER COLUMN asd TYPE INTEGER;"""
+_step_four_sql = """ALTER_TABLE "step_four_things" ALTER COLUMN "name" DROP NOT NULL;
+ALTER_TABLE "step_four_things" ALTER COLUMN "value" DROP DEFAULT;
+ALTER_TABLE "step_four_things" ALTER COLUMN "asd" TYPE INTEGER;"""
 
 
 def test_step_three_alter_table(app):

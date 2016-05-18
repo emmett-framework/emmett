@@ -210,7 +210,7 @@ class Engine(MetaEngine):
         tfks = {}
         for sortable, column in enumerate(columns, start=1):
             csql = self._new_column_sql(tablename, column, tfks)
-            fields.append('%s %s' % (column.name, csql))
+            fields.append('%s %s' % (self.dialect.quote(column.name), csql))
         extras = ''
         # backend-specific extensions to fields
         if self.adapter.dbengine == 'mysql':
@@ -221,7 +221,8 @@ class Engine(MetaEngine):
 
         self._gen_primary_key(fields, primary_keys)
         fields = ',\n    '.join(fields)
-        return "CREATE TABLE %s(\n    %s\n)%s;" % (tablename, fields, extras)
+        return "CREATE TABLE %s(\n    %s\n)%s;" % (
+            self.dialect.quote(tablename), fields, extras)
 
     def _add_column_sql(self, tablename, column):
         csql = self._new_column_sql(tablename, column, {})
