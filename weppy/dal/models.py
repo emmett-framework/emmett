@@ -10,6 +10,7 @@
 """
 
 from collections import OrderedDict
+from pydal.objects import Row
 from .._compat import iteritems, with_metaclass
 from .apis import computation, virtualfield, fieldmethod, scope
 from .base import Field, _Field, sdict
@@ -439,6 +440,33 @@ class Model(with_metaclass(MetaModel)):
 
     def setup(self):
         pass
+
+    @classmethod
+    def _inject_virtuals_on_row(cls, row):
+        virtualrow = sdict({cls.tablename: row})
+        for virtual in cls.table._virtual_fields:
+            try:
+                row[virtual.name] = virtual.f(virtualrow)
+            except (AttributeError, KeyError):
+                pass
+        for virtualmethod in cls.table._virtual_methods:
+            try:
+                row[virtualmethod.name] = \
+                    lambda row=virtualrow, m=virtualmethod: m.f(row)
+            except (AttributeError, KeyError):
+                pass
+        return row
+
+    @classmethod
+    def new(cls, **attributes):
+        row = Row()
+        for field in cls.table.fields:
+            val = attributes.get(field, cls.table[field].default)
+            if callable(val):
+                val = val()
+            row[field] = val
+        cls._inject_virtuals_on_row(row)
+        return row
 
     @classmethod
     def create(cls, *args, **kwargs):

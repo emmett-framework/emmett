@@ -12,12 +12,14 @@
 import os
 from pydal import DAL as _pyDAL, Field as _Field
 from pydal._globals import THREAD_LOCAL
-from pydal.objects import Table as _Table, Set as _Set, Expression
+from pydal.objects import Table as _Table, Set as _Set, Rows as _Rows, \
+    Expression, Row
 from .._compat import copyreg
 from ..datastructures import sdict
 from ..handlers import Handler
 from ..security import uuid as _uuid
 from ..serializers import _custom_json, xml
+from ..utils import cachedprop
 from ..validators import ValidateFromDict
 
 
@@ -162,6 +164,56 @@ class Set(_Set):
         raise AttributeError(name)
 
 
+class Rows(_Rows):
+    def __init__(self, db=None, records=[], colnames=[], compact=True,
+                 rawrows=None):
+        self.db = db
+        self.records = records
+        self.colnames = colnames
+        self._rowkeys_ = list(self.records[0].keys()) if self.records else []
+        self._getrow = self._getrow_compact_ if self.compact else self._getrow_
+
+    @cachedprop
+    def compact(self):
+        if not self.records:
+            return True
+        return len(self._rowkeys_) == 1 and self._rowkeys_[0] != '_extra'
+
+    @cachedprop
+    def compact_tablename(self):
+        if not self._rowkeys_:
+            return None
+        return self._rowkeys_[0]
+
+    def _getrow_(self, i):
+        return self.records[i]
+
+    def _getrow_compact_(self, i):
+        return self._getrow_(i)[self.compact_tablename]
+
+    def __getitem__(self, i):
+        return self._getrow(i)
+
+    def column(self, column=None):
+        colname = str(column) if column else self.colnames[0]
+        return [r[colname] for r in self]
+
+    def sort(self, f, reverse=False):
+        records = [
+            r for (r, s) in sorted(
+                zip(self.records, self), key=lambda r: f(r[1]),
+                reverse=reverse)]
+        return Rows(self.db, records, self.colnames)
+
+    def append(self, obj):
+        row = Row({self.compact_tablename: obj}) if self.compact else obj
+        self.records.append(row)
+
+    def insert(self, position, obj):
+        row = Row({self.compact_tablename: obj}) if self.compact else obj
+        self.records.insert(position, row)
+
+
 class DAL(_pyDAL):
     serializers = {'json': _custom_json, 'xml': xml}
     logger = None
@@ -169,6 +221,8 @@ class DAL(_pyDAL):
 
     record_operators = {}
     execution_handlers = []
+
+    Rows = Rows
 
     @staticmethod
     def uri_from_config(config=None):
