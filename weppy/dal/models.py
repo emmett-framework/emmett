@@ -126,6 +126,7 @@ class Model(with_metaclass(MetaModel)):
     validation = {}
     default_values = {}
     update_values = {}
+    indexes = {}
     repr_values = {}
     form_labels = {}
     form_info = {}
@@ -154,9 +155,10 @@ class Model(with_metaclass(MetaModel)):
         if not sup:
             return
         #: get super model fields' properties
-        proplist = ['validation', 'default_values', 'update_values',
-                    'repr_values', 'form_labels', 'form_info', 'form_rw',
-                    'form_widgets']
+        proplist = [
+            'validation', 'default_values', 'update_values', 'indexes',
+            'repr_values', 'form_labels', 'form_info', 'form_rw',
+            'form_widgets']
         for prop in proplist:
             props = {}
             for model in sup:
@@ -353,6 +355,7 @@ class Model(with_metaclass(MetaModel)):
         self.__define_computations()
         self.__define_callbacks()
         self.__define_scopes()
+        self.__define_indexes()
         self.__define_form_utils()
         self.setup()
 
@@ -412,6 +415,58 @@ class Model(with_metaclass(MetaModel)):
                 setattr(
                     self.__class__, obj.name,
                     ScopeWrap(self.__class__.db, self, obj.f))
+
+    def __prepend_table_on_index_name(self, name):
+        return '%s_widx__%s' % (self.tablename, name)
+
+    def __create_index_name(self, *values):
+        components = []
+        for value in values:
+            components.append(value.replace('_', ''))
+        return self.__prepend_table_on_index_name("_".join(components))
+
+    def __parse_index_dict(self, value):
+        rv = {}
+        fields = value.get('fields') or []
+        if not isinstance(fields, (list, tuple)):
+            fields = [fields]
+        rv['fields'] = fields
+        where_query = None
+        where_cond = value.get('where')
+        if callable(where_cond):
+            where_query = where_cond(self.__class__)
+        if where_query:
+            rv['where'] = where_query
+        expressions = []
+        expressions_cond = value.get('expressions')
+        if callable(expressions_cond):
+            expressions = expressions_cond(self.__class__)
+        if not isinstance(expressions, (tuple, list)):
+            expressions = [expressions]
+        rv['expressions'] = expressions
+        rv['unique'] = value.get('unique', False)
+        return rv
+
+    def __define_indexes(self):
+        self._indexes_ = {}
+        for key, value in iteritems(self.indexes):
+            if isinstance(value, bool):
+                if not value:
+                    continue
+                if not isinstance(key, tuple):
+                    key = [key]
+                if any(field not in self.table for field in key):
+                    raise SyntaxError(
+                        'Invalid field specified in indexes: %s' % str(key))
+                idx_name = self.__create_index_name(*key)
+                idx_dict = {'fields': key, 'expressions': [], 'unique': False}
+            elif isinstance(value, dict):
+                idx_name = self.__prepend_table_on_index_name(key)
+                idx_dict = self.__parse_index_dict(value)
+            else:
+                raise SyntaxError(
+                    'Values in indexes dict should be booleans or dicts')
+            self._indexes_[idx_name] = idx_dict
 
     def __define_form_utils(self):
         #: labels

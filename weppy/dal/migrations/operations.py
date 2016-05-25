@@ -47,6 +47,21 @@ class OpContainer(Operation):
                 yield op.to_diff_tuple()
 
 
+class ModifyTableOps(OpContainer):
+    #: a sequence of operations that all apply to a single Table
+    def __init__(self, table_name, ops):
+        super(ModifyTableOps, self).__init__(ops)
+        self.table_name = table_name
+
+    def reverse(self):
+        return ModifyTableOps(
+            self.table_name,
+            ops=list(reversed(
+                [op.reverse() for op in self.ops]
+            ))
+        )
+
+
 class UpgradeOps(OpContainer):
     #: contains a sequence of operations that would apply during upgrade
     def __init__(self, ops=(), upgrade_token="upgrades"):
@@ -88,8 +103,7 @@ class MigrationOp(Operation):
 
 @Migration.register_operation("create_table")
 class CreateTableOp(Operation):
-    def __init__(
-            self, table_name, columns, _orig_table=None, **kw):
+    def __init__(self, table_name, columns, _orig_table=None, **kw):
         self.table_name = table_name
         self.columns = columns
         self.kw = kw
@@ -127,8 +141,7 @@ class CreateTableOp(Operation):
 
 @Migration.register_operation("drop_table")
 class DropTableOp(Operation):
-    def __init__(
-            self, table_name, table_kw=None, _orig_table=None):
+    def __init__(self, table_name, table_kw=None, _orig_table=None):
         self.table_name = table_name
         self.table_kw = table_kw or {}
         self._orig_table = _orig_table
@@ -214,8 +227,7 @@ class AddColumnOp(AlterTableOp):
 
 @Migration.register_operation("drop_column")
 class DropColumnOp(AlterTableOp):
-    def __init__(
-            self, table_name, column_name, _orig_column=None, **kw):
+    def __init__(self, table_name, column_name, _orig_column=None, **kw):
         super(DropColumnOp, self).__init__(table_name)
         self.column_name = column_name
         self.kw = kw
@@ -380,6 +392,89 @@ class AlterColumnOp(AlterTableOp):
     def run(self):
         self.engine.alter_column(
             self.table_name, self.column_name, self.to_diff_tuple())
+
+
+@Migration.register_operation("create_index")
+class CreateIndexOp(Operation):
+    def __init__(
+        self, index_name, table_name, fields=[], expressions=[], unique=False,
+        _orig_index=None, **kw
+    ):
+        self.index_name = index_name
+        self.table_name = table_name
+        self.fields = fields
+        self.expressions = expressions
+        self.unique = unique
+        self.kw = kw
+        self._orig_index = _orig_index
+
+    def reverse(self):
+        return DropIndexOp.from_index(self.to_index())
+
+    def to_diff_tuple(self):
+        return ("create_index", self.to_index())
+
+    @classmethod
+    def from_index(cls, index):
+        return cls(
+            index.name, index.table_name, index.fields, index.expressions,
+            index.unique, _orig_index=index, **index.kw
+        )
+
+    def to_index(self):
+        if self._orig_index is not None:
+            return self._orig_index
+        from .generation import MetaIndex
+        return MetaIndex(
+            self.table_name, self.index_name, self.fields, self.expressions,
+            self.unique, **self.kw)
+
+    @classmethod
+    def create_index(
+        cls, index_name, table_name, fields=[], expressions=[], unique=False,
+        **kw
+    ):
+        return cls(index_name, table_name, fields, expressions, unique, **kw)
+
+    def run(self):
+        self.engine.create_index(
+            self.index_name, self.table_name, self.fields, self.expressions,
+            self.unique, **self.kw)
+
+
+@Migration.register_operation("drop_index")
+class DropIndexOp(Operation):
+    def __init__(self, index_name, table_name=None, _orig_index=None):
+        self.index_name = index_name
+        self.table_name = table_name
+        self._orig_index = _orig_index
+
+    def to_diff_tuple(self):
+        return ("remove_index", self.to_index())
+
+    def reverse(self):
+        if self._orig_index is None:
+            raise ValueError(
+                "operation is not reversible; "
+                "original index is not present")
+        return CreateIndexOp.from_index(self._orig_index)
+
+    @classmethod
+    def from_index(cls, index):
+        return cls(index.name, index.table_name, index)
+
+    def to_index(self):
+        if self._orig_index is not None:
+            return self._orig_index
+        from .generation import MetaIndex
+        return MetaIndex(self.table_name, self.index_name)
+
+    @classmethod
+    def drop_index(cls, index_name, table_name):
+        return cls(index_name, table_name)
+
+    def run(self):
+        self.engine.drop_index(self.index_name, self.table_name)
 
 
 # @Migration.register_operation("execute")

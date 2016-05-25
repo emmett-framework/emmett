@@ -34,6 +34,12 @@ class MetaEngine(object):
         updates = {k: v[1] for k, v in iteritems(pchanges)}
         self.db.change_column(table_name, column_name, updates)
 
+    def create_index(self, name, table_name, fields, expr, unique, **kw):
+        self.db.create_index(table_name, name, fields, expr, unique, **kw)
+
+    def drop_index(self, name, table_name):
+        self.db.drop_index(table_name, name)
+
     @staticmethod
     def _parse_column_changes(changes):
         rv = {}
@@ -89,6 +95,19 @@ class Engine(MetaEngine):
         if sql is not None:
             self._log_and_exec(sql)
 
+    def create_index(self, name, table_name, fields, expr, unique, **kw):
+        adapt_t = sdict(sqlsafe=self.dialect.quote(table_name))
+        components = [self.dialect.quote(field) for field in fields]
+        components += expr
+        sql = self.dialect.create_index(
+            name, adapt_t, components, unique, **kw)
+        self._log_and_exec(sql)
+
+    def drop_index(self, name, table_name):
+        adapt_t = sdict(sqlsafe=self.dialect.quote(table_name))
+        sql = self.dialect.drop_index(name, adapt_t)
+        self._log_and_exec(sql)
+
     def _gen_reference(self, tablename, column, tfks):
         if column.type.startswith('reference'):
             referenced = column.type[10:].strip()
@@ -125,11 +144,11 @@ class Engine(MetaEngine):
             csql_info = dict(
                 index_name=self.dialect.quote(column.name + '__idx'),
                 field_name=rfieldname,
-                constraint_name=self.dialect(constraint_name),
+                constraint_name=self.dialect.quote(constraint_name),
                 foreign_key='%s (%s)' % (rtablename, rfieldname),
                 on_delete_action=column.ondelete)
             csql_info['null'] = ' NOT NULL' if column.notnull else \
-                self.adapter.allow_null
+                self.dialect.allow_null
             csql_info['unique'] = ' UNIQUE' if column.unique else ''
             csql = self.adapter.types[type_name] % csql_info
         return csql

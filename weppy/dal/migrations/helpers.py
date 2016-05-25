@@ -21,8 +21,7 @@ DEFAULT_VALUE = lambda: None
 
 
 def make_migration_id():
-    val = int(uuid4()) % 100000000000000
-    return hex(val)[2:-1]
+    return uuid4().hex[-12:]
 
 
 class WrappedOperation(object):
