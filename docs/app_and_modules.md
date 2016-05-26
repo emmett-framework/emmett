@@ -131,7 +131,7 @@ import blog
 from weppy import AppModule
 from myapp import app
 
-blog = App(app, "blog", __name__)
+blog = AppModule(app, "blog", __name__)
 
 @blog.route("/blog")
 def index():
@@ -145,7 +145,7 @@ The route is included with the `AppModule` constructor so that we can
 re-write the *blog.py* module like this:
 
 ```python
-blog = App(app, "blog", __name__, url_prefix="blog")
+blog = AppModule(app, "blog", __name__, url_prefix="blog")
 
 @blog.route("/")
 def index():
