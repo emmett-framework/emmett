@@ -43,7 +43,11 @@ To run an interactive Python shell, you can use the `shell` command:
 
 This will start up an interactive Python shell, setup the correct application
 context and setup the local variables in the shell. By default, you have access
+<<<<<<< HEAD
 to your `app` object, and all the variables you defined in your application module.
+=======
+to your `app` object.
+>>>>>>> ce967e22675dfecc547c53ca8831e39b9615066b
 
 Custom Commands
 ---------------
