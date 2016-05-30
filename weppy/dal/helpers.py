@@ -26,11 +26,14 @@ class Reference(object):
         self.refobj[id(self)] = self
 
     def __call__(self, func):
+        if self.__class__.__name__ not in ['has_one', 'has_many']:
+            raise SyntaxError(
+                '%s cannot be used as a decorator' % self.__class__.__name__)
         if not callable(func):
             raise SyntaxError('Argument must be callable')
         if self.reference:
             raise SyntaxError(
-                'When using %s as decorator, you can use field option' %
+                "When using %s as decorator, you must use the 'field' option" %
                 self.__class__.__name__)
         new_reference = {func.__name__: {'method': func}}
         field = self.params.get('field')
