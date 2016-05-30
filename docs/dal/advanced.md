@@ -113,3 +113,99 @@ you will have the fields, default values and scopes from this model too.
 > **Warning:** every time you using inheritance with model ensure every class is a subclass of the `Model` one.
 
 > **Note:** when you need to override a decorated method of the super model, ensure to decorate it also in the subclassed one and to use the same method name of the super one.
+
+Customize has\_one and has\_many sets
+-------------------------------------
+
+Sometimes you will need to customize the way weppy generates relations sets for `has_one` and `has_many` relations.
+
+For example, you may want to change the behavior of a relation depending on some conditions:
+
+```python
+from weppy import session
+
+class User(Model):
+    @has_many
+    def posts(self):
+        if session.user.is_admin:
+            return Post.where(lambda m: m.is_trashed == True)
+        return Post.where(lambda m: m.is_trashed == False)
+```
+
+As you can see we used the `has_many` helper as a decorator over custom `posts` method we defined inside our `User` model. This way, the `posts` attribute of a user will have different sets depending on the condition we defined. 
+
+Another common scenario would be a *polimorphic* relation, where you want to create multiple association to a single model. Let's say, for example, that you want to use a single table to store your photos, but you want to refer this table to several ones, for example to a table of cars and also one of trucks:
+
+```python
+class Photo(Model):
+    url = Field()
+    entity_type = Field()
+    entity_id = Field('int')
+    
+class Car(Model):
+    name = Field()
+    price = Field('float')
+    
+    @has_many(field='entity_id')
+    def photos(self):
+        return Photo.where(lambda m: m.entity_type == 'Car')
+
+class Truck(Model):
+    name = Field()
+    hp = Field('int')
+    price = Field('float')
+    
+    @has_many(field='entity_id')
+    def photos(self):
+        return Photo.where(lamdba m: m.entity_type == 'Truck')
+```
+
+As you can see, in this case we also specified the field weppy should use as the foreign key for the relation – if not specified this field is the name of the downcase name of the model.
+
+You can use *polimorphic* relations also for many-to-many relations, for example for a tagging system like this:
+
+```python
+class Tag(Model):
+    name = Field()
+
+class Tagging(Model):
+    belongs_to('tag')
+    tagged_type = Field()
+    tagged_id = Field()
+
+class Post(Model):
+    @has_many(field='tagged_id')
+    def taggings(self):
+        return Tagging.where(lambda m: m.tagged_type == 'Post')
+    
+    has_many({'tags': {'via': 'taggings'})
+    
+class Video(Model):
+    @has_many(field='tagged_id')
+    def taggings(self):
+        return Tagging.where(lambda m: m.tagged_type == 'Video')
+    
+    has_many({'tags': {'via': 'taggings'})
+```
+
+Note that inheritance we explained in the section above is great to avoid repeating code:
+
+```python
+class Taggable(Model):
+    @has_many(field='tagged_id')
+    def taggings(self):
+        return Tagging.where(
+            lambda m: m.tagged_type == self.__class__.__name__)
+     
+    has_many({'tags': {'via': 'taggings'})
+     
+    @fieldmethod('taglist')
+    def get_taglist(self, row):
+        return row.tags().column('name')
+
+class Post(Taggable):
+    title = Field()
+     
+class Video(Taggable):
+    title = Field()
+```
