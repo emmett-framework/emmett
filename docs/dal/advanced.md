@@ -111,3 +111,5 @@ class Post(TimeStampModel, Hidden):
 you will have the fields, default values and scopes from this model too.
 
 > **Warning:** every time you using inheritance with model ensure every class is a subclass of the `Model` one.
+
+> **Note:** when you need to override a decorated method of the super model, ensure to decorate it also in the subclassed one and to use the same method name of the super one.
