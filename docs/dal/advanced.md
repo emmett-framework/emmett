@@ -157,7 +157,7 @@ class Truck(Model):
     
     @has_many(field='entity_id')
     def photos(self):
-        return Photo.where(lamdba m: m.entity_type == 'Truck')
+        return Photo.where(lambda m: m.entity_type == 'Truck')
 ```
 
 As you can see, in this case we also specified the field weppy should use as the foreign key for the relation – if not specified this field is the name of the downcase name of the model.
@@ -178,14 +178,14 @@ class Post(Model):
     def taggings(self):
         return Tagging.where(lambda m: m.tagged_type == 'Post')
     
-    has_many({'tags': {'via': 'taggings'})
+    has_many({'tags': {'via': 'taggings'}})
     
 class Video(Model):
     @has_many(field='tagged_id')
     def taggings(self):
         return Tagging.where(lambda m: m.tagged_type == 'Video')
     
-    has_many({'tags': {'via': 'taggings'})
+    has_many({'tags': {'via': 'taggings'}})
 ```
 
 Note that inheritance we explained in the section above is great to avoid repeating code:
@@ -197,7 +197,7 @@ class Taggable(Model):
         return Tagging.where(
             lambda m: m.tagged_type == self.__class__.__name__)
      
-    has_many({'tags': {'via': 'taggings'})
+    has_many({'tags': {'via': 'taggings'}})
      
     @fieldmethod('taglist')
     def get_taglist(self, row):
