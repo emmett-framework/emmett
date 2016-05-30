@@ -19,8 +19,7 @@ from ...datastructures import OrderedSet
 from .base import Column
 from .helpers import Dispatcher, DEFAULT_VALUE, _feasible_as_dbms_default
 from .operations import UpgradeOps, CreateTableOp, DropTableOp, \
-    AddColumnOp, DropColumnOp, AlterColumnOp, ModifyTableOps, CreateIndexOp, \
-    DropIndexOp
+    AddColumnOp, DropColumnOp, AlterColumnOp, CreateIndexOp, DropIndexOp
 
 
 class MetaTable(object):
@@ -146,14 +145,16 @@ class Comparator(object):
         for table_name in db_table_names.difference(meta_table_names):
             meta_table = self._build_metatable(self.db[table_name])
             self.ops.append(CreateTableOp.from_table(meta_table))
-            modify_ops = ModifyTableOps(table_name, [])
-            self.indexes_and_uniques(
-                self.db[table_name], meta_table, modify_ops.ops)
-            if modify_ops.ops:
-                self.ops.append(modify_ops)
+            self.indexes_and_uniques(self.db[table_name], meta_table)
         #: removed tables
         for table_name in meta_table_names.difference(db_table_names):
-            self.ops.append(DropTableOp.drop_table(table_name))
+            #: remove table indexes too
+            metatable = self.meta.tables[table_name]
+            for idx_name, idx in metatable.indexes.items():
+                self.ops.append(DropIndexOp.from_index(idx))
+            #: remove table
+            self.ops.append(
+                DropTableOp.from_table(self.meta.tables[table_name]))
         #: existing tables
         for table_name in meta_table_names.intersection(db_table_names):
             self.columns(
@@ -166,13 +167,13 @@ class Comparator(object):
         self.foreign_keys(dbtable, metatable)
 
     def indexes_and_uniques(self, dbtable, metatable, ops_stack=None):
-        ops = ops_stack or self.ops
+        ops = ops_stack if ops_stack is not None else self.ops
         db_index_names = OrderedSet(
             [idxname for idxname in dbtable._model_._indexes_.keys()])
         meta_index_names = OrderedSet(list(metatable.indexes))
         #: removed indexes
         for index_name in meta_index_names.difference(db_index_names):
-            ops.append(DropIndexOp.drop_index(index_name, dbtable._tablename))
+            ops.append(DropIndexOp.from_index(metatable.indexes[index_name]))
         #: new indexs
         for index_name in db_index_names.difference(meta_index_names):
             ops.append(
@@ -211,7 +212,8 @@ class Comparator(object):
         #: removed columns
         for column_name in meta_column_names.difference(db_column_names):
             self.ops.append(
-                DropColumnOp.drop_column(dbtable._tablename, column_name))
+                DropColumnOp.from_column_and_tablename(
+                    dbtable._tablename, metatable.columns[column_name]))
 
     def column(self, dbcolumn, metacolumn):
         self.notnulls(dbcolumn, metacolumn)

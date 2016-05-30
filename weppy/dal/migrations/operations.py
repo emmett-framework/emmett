@@ -467,7 +467,7 @@ class DropIndexOp(Operation):
         if self._orig_index is not None:
             return self._orig_index
         from .generation import MetaIndex
-        return MetaIndex(self.table_name, self.index_name)
+        return MetaIndex(self.table_name, self.index_name, [], [], False)
 
     @classmethod
     def drop_index(cls, index_name, table_name):

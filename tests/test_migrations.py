@@ -183,7 +183,7 @@ ALTER_TABLE "step_four_things" ALTER COLUMN "value" DROP DEFAULT;
 ALTER_TABLE "step_four_things" ALTER COLUMN "asd" TYPE INTEGER;"""
 
 
-def test_step_three_alter_table(app):
+def test_step_four_alter_table(app):
     db = DAL(app, auto_migrate=False)
     db.define_models(StepFourThing)
     ops = _make_ops(db)
@@ -194,3 +194,52 @@ def test_step_three_alter_table(app):
     for op in ops2.ops:
         sql.append(_make_sql(db2, op))
     assert "\n".join(sql) == _step_four_sql
+
+
+class StepFiveThing(Model):
+    name = Field()
+    value = Field('int')
+    created_at = Field('datetime')
+
+    indexes = {
+        'name': True,
+        ('name', 'value'): True
+    }
+
+
+class StepFiveThingEdit(StepFiveThing):
+    tablename = "step_five_things"
+
+    indexes = {
+        'name': False,
+        'name_created': {
+            'fields': 'name',
+            'expressions': lambda m: m.created_at.coalesce(None)}
+    }
+
+
+_step_five_sql_before = [
+    'CREATE INDEX "step_five_things_widx__name" ON "step_five_things" ("name");',
+    'CREATE INDEX "step_five_things_widx__name_value" ON "step_five_things" ("name","value");'
+]
+
+_step_five_sql_after = [
+    'DROP INDEX "step_five_things_widx__name";',
+    'CREATE INDEX "step_five_things_widx__name_created" ON "step_five_things" ("name",COALESCE("created_at",NULL));'
+]
+
+
+def test_step_five_indexes(app):
+    db = DAL(app, auto_migrate=False)
+    db.define_models(StepFiveThing)
+    ops = _make_ops(db)
+    index_ops = ops.ops[1:]
+    for i, op in enumerate(index_ops):
+        sql = _make_sql(db, op)
+        assert sql == _step_five_sql_before[i]
+    db2 = DAL(app, auto_migrate=False)
+    db2.define_models(StepFiveThingEdit)
+    ops2 = _make_ops(db2, ops)
+    for i, op in enumerate(ops2.ops):
+        sql = _make_sql(db, op)
+        assert sql == _step_five_sql_after[i]
