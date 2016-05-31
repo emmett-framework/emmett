@@ -178,6 +178,40 @@ started = Field('datetime', update=lambda: request.now)
 
 The values defined in this way will be used on the update of existing records in the database if no other value is given during the operation.
 
+Indexes
+-------
+
+*New in version 0.7*
+
+weppy provides an `indexes` attribute on models which helps you define indexes on your tables:
+
+```python
+indexes = {
+    'field1': True,
+    ('field1', 'field2'): True,
+    'custom_index_name': {'fields': ['fields3', 'fields4']}
+}
+```
+
+> **Note:** indexes are available only when using DAL with [migrations](./migrations) enabled.
+
+As you can see, weppy supports different formats for indexes, since we defined:
+
+- an index on the field *field1*
+- a combined index on fields *field1* and *field2*
+- a combined index on fields *fields3* and *fields4* with a custom name
+
+Practically speaking, the rules weppy apply on the indexes definition are:
+
+- when the value is a `bool`, the key must be a field of your model or a tuple of fields of your model
+- when the value is a `dict`, the key will be the name of the index
+
+> **Note:** every index defined in weppy models will have its name starting with `modelname_widx__name`.
+
+When using the `dict` notation, you can also specify the `unique` option as a boolean, which is `False` on default behavior.
+
+Weppy supports some advanced options on defining indexes, see the [advanced chapter](./advanced#advanced-indexes) of the documentation for further informations.
+
 Values representation
 ---------------------
 Sometimes you need to give a better representation for the value of your entity, for example rendering dates or shows only a portion of a text field. In these cases, the `repr_values` attribute of your models will help:

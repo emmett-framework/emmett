@@ -195,7 +195,7 @@ class Taggable(Model):
     @has_many(field='tagged_id')
     def taggings(self):
         return Tagging.where(
-            lambda m: m.tagged_type == self.__class__.__name__)
+            lambda m: m.tagged_type == self.tablename)
      
     has_many({'tags': {'via': 'taggings'}})
      
@@ -209,3 +209,51 @@ class Post(Taggable):
 class Video(Taggable):
     title = Field()
 ```
+
+Advanced indexes
+----------------
+
+*New in version 0.7*
+
+### Using expressions
+
+> **Note:** support for expressions in indexes depends on the DBMS in use.
+
+weppy supports expressions on indexes definition, which can be useful when you want to *coalesce* values from your rows:
+
+```python
+class Post(Model):
+    author = Field()
+    is_private = Field('bool')
+    title = Field()
+    
+    indexes = {
+        'author_and_priv': {
+            'fields': ['author'], 
+            'expressions': lambda m: m.is_private.coalesce(False)
+        }
+    }
+```
+
+As you can see the `expressions` option accepts one or a list of lambda functions, that should accept just one parameter: the model. The returning value should by any weppy valid sql expression on a field of the model itself.
+
+### Conditional indexes
+
+> **Note:** support for conditional indexes depends on the DBMS in use.
+
+weppy supports a `where` option on indexes definition, which can be used to define conditional indexes:
+
+```python
+class Post(Model):
+    author = Field()
+    is_private = Field('bool')
+    
+    indexes = {
+        'author_and_priv': {
+            'fields': ['author'], 
+            'where': lambda m: (m.is_private == False)
+        }
+    }
+```
+
+The `where` option accepts a lambda function that should accept the model as first parameter and should return any valid query using the weppy query language.
