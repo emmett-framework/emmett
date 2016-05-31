@@ -234,12 +234,12 @@ def test_step_five_indexes(app):
     db.define_models(StepFiveThing)
     ops = _make_ops(db)
     index_ops = ops.ops[1:]
-    for i, op in enumerate(index_ops):
+    for op in index_ops:
         sql = _make_sql(db, op)
-        assert sql == _step_five_sql_before[i]
+        assert sql in _step_five_sql_before
     db2 = DAL(app, auto_migrate=False)
     db2.define_models(StepFiveThingEdit)
     ops2 = _make_ops(db2, ops)
-    for i, op in enumerate(ops2.ops):
+    for op in ops2.ops:
         sql = _make_sql(db, op)
-        assert sql == _step_five_sql_after[i]
+        assert sql in _step_five_sql_after
