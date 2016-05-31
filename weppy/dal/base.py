@@ -427,6 +427,7 @@ class Field(_Field):
         if self._type in ['string', 'text', 'password']:
             rv['len'] = {'lt': self.length}
         if self._type == 'password':
+            rv['len']['gte'] = 6
             rv['crypt'] = True
         if self._type == 'list:int':
             rv['is'] = {'list:int'}

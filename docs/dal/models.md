@@ -122,6 +122,7 @@ While you can find the complete list of available validators in the [appropriate
 | list:int | `{'is': 'list:int'}`| no |
 | list:reference *tablename* | `{'presence': True}` | no |
 | json | `{'is': 'json'}` | no |
+| password | `{'len': {'gte': 6}, 'crypt': True}}` | no |
 
 > **Tip:**    
 > When you want to allow your fields been empty, you can use the *allow* validator:   
