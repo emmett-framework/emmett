@@ -16,7 +16,7 @@ import json
 import re
 import threading
 
-from ._compat import SimpleCookie, iteritems
+from ._compat import SimpleCookie, iteritems, to_native
 from ._internal import ObjectProxy, LimitedStream
 from .datastructures import sdict
 from .helpers import get_flashed_messages
@@ -72,7 +72,8 @@ class Request(object):
         if content_length is None:
             return {}
         try:
-            params = json.load(LimitedStream(self.input, content_length))
+            stream = LimitedStream(self.input, content_length)
+            params = json.loads(to_native(stream.read()))
         except:
             params = {}
         return params
