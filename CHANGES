@@ -16,6 +16,11 @@ Next
 - Added `Model.new` method
 - Added databse indexing support
 - Added default validation for 'password' fields
+- Added 'routes' command to default application cli
+- Deprecated `@computation`, `@virtualfield` and `@fieldmethod` in favor of
+  `@compute`, `@rowattr` and `@rowmethod`
+- Updated `current_model_only` parameter of `@virtualfield` and `@fieldmethod`
+  to `bind_to_model` in `@rowattr` and `@rowmethod`
 
 
 Version 0.6
