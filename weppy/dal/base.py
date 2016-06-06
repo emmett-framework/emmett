@@ -198,12 +198,15 @@ class Rows(_Rows):
         colname = str(column) if column else self.colnames[0]
         return [r[colname] for r in self]
 
+    def sorted(self, f, reverse=False):
+        if self.compact:
+            keyf = lambda r: f(r[self.compact_tablename])
+        else:
+            keyf = f
+        return [r for r in sorted(self.records, key=keyf, reverse=reverse)]
+
     def sort(self, f, reverse=False):
-        records = [
-            r for (r, s) in sorted(
-                zip(self.records, self), key=lambda r: f(r[1]),
-                reverse=reverse)]
-        return Rows(self.db, records, self.colnames)
+        self.records = self.sorted(f, reverse)
 
     def append(self, obj):
         row = Row({self.compact_tablename: obj}) if self.compact else obj
