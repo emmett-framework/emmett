@@ -3,12 +3,11 @@
 [![pip version](https://img.shields.io/pypi/v/weppy.svg?style=flat)](https://pypi.python.org/pypi/weppy) 
 [![build status](https://img.shields.io/travis/gi0baro/weppy.svg?style=flat)](https://travis-ci.org/gi0baro/weppy)
 
-weppy is a full-stack Python framework that includes everything needed to easily
-create fast, scalable, and secure web applications. It takes some components from
-*web2py* and has a syntax inspired by *Flask*.
+weppy is a full-stack python web framework designed with simplicity in mind.
+It takes some components from *web2py* and has a syntax inspired by *Flask*.
 
-The aim of weppy is to be clearly understandable, easy to be learned and to be used,
-so you can focus completely on your product's features:
+The aim of weppy is to be clearly understandable, easy to be learned and to be 
+used, so you can focus completely on your product's features:
 
 ```python
 from weppy import request, response
@@ -40,10 +39,12 @@ The sources are available under the *docs* folder.
 
 ## Examples
 
-The "bloggy" example described in the [Tutorial](http://weppy.org/docs/latest/tutorial)
-is available under the *examples* folder. While we're still populating this folder
-with more examples, you can also take a look at [H-Funding](https://github.com/gi0baro/h-funding),
-which uses many of weppy's features.
+The "bloggy" example described in the [Tutorial](http://weppy.org/docs/latest/tutorial) is available under the *examples* folder. 
+While we're still populating this folder with more examples, you can also take a look at [H-Funding](https://github.com/gi0baro/h-funding), which uses many of weppy's features.
+
+## Starter kit
+
+Aside from the examples, we encourage you to look at the [starter kit](https://github.com/mijdavis2/starter_weppy) and the convenient [scaffold generator](https://github.com/mijdavis2/generator-weppy-mvc) written by [MJ Davis](https://github.com/mijdavis2). These projects can really help you writing your next weppy application.
 
 ## Benchmarks
 
