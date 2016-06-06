@@ -121,11 +121,11 @@ class Stuff(Model):
     def eval_total_m(self, row):
         return row.price*row.quantity
 
-    @rowattr('totalv2', current_model_only=False)
+    @rowattr('totalv2', bind_to_model=False)
     def eval_total_v2(self, row):
         return row.stuffs.price*row.stuffs.quantity
 
-    @rowmethod('totalm2', current_model_only=False)
+    @rowmethod('totalm2', bind_to_model=False)
     def eval_total_m2(self, row):
         return row.stuffs.price*row.stuffs.quantity
 
