@@ -21,7 +21,13 @@ class sdict(dict):
     __setattr__ = dict.__setitem__
     __delattr__ = dict.__delitem__
     __getitem__ = dict.get
-    __getattr__ = dict.get
+
+    # see http://stackoverflow.com/questions/10364332/how-to-pickle-python-object-derived-from-dict
+    def __getattr__(self, attr):
+        if attr.startswith('__'):
+            raise AttributeError
+        return self.get(attr, None)
+
     __repr__ = lambda self: '<sdict %s>' % dict.__repr__(self)
     __getstate__ = lambda self: None
     __copy__ = lambda self: sdict(self)
@@ -71,7 +77,7 @@ class SessionData(sdict):
 
     @property
     def _dump(self):
-        ## note: self.__dump is updated only on _modified call
+        # note: self.__dump is updated only on _modified call
         return self.__dump
 
     def _expires_after(self, value):
@@ -83,12 +89,12 @@ def _unique_list(seq, hashfunc=None):
     seen_add = seen.add
     if not hashfunc:
         return [x for x in seq
-                if x not in seen
-                and not seen_add(x)]
+                if x not in seen and
+                not seen_add(x)]
     else:
         return [x for x in seq
-                if hashfunc(x) not in seen
-                and not seen_add(hashfunc(x))]
+                if hashfunc(x) not in seen and
+                not seen_add(hashfunc(x))]
 
 
 class OrderedSet(set):

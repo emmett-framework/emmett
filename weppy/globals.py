@@ -16,8 +16,8 @@ import json
 import re
 import threading
 
-from ._compat import SimpleCookie, iteritems
-from ._internal import ObjectProxy, LimitedStream, deprecated
+from ._compat import SimpleCookie, iteritems, to_native
+from ._internal import ObjectProxy, LimitedStream
 from .datastructures import sdict
 from .helpers import get_flashed_messages
 from .tags import htmlescape
@@ -72,7 +72,8 @@ class Request(object):
         if content_length is None:
             return {}
         try:
-            params = json.load(LimitedStream(self.input, content_length))
+            stream = LimitedStream(self.input, content_length)
+            params = json.loads(to_native(stream.read()))
         except:
             params = {}
         return params
@@ -115,21 +116,6 @@ class Request(object):
                     rv[key] = [rv[key]]
                 rv[key] += val if isinstance(val, list) else [val]
         return rv
-
-    @property
-    @deprecated('get_vars', 'query_params', 'Request', 1)
-    def get_vars(self):
-        return self.query_params
-
-    @property
-    @deprecated('post_vars', 'body_params', 'Request', 1)
-    def post_vars(self):
-        return self.body_params
-
-    @property
-    @deprecated('vars', 'params', 'Request', 1)
-    def vars(self):
-        return self.params
 
     @cachedprop
     def cookies(self):

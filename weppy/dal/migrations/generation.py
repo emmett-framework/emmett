@@ -19,15 +19,16 @@ from ...datastructures import OrderedSet
 from .base import Column
 from .helpers import Dispatcher, DEFAULT_VALUE, _feasible_as_dbms_default
 from .operations import UpgradeOps, CreateTableOp, DropTableOp, \
-    AddColumnOp, DropColumnOp, AlterColumnOp
+    AddColumnOp, DropColumnOp, AlterColumnOp, CreateIndexOp, DropIndexOp
 
 
 class MetaTable(object):
-    def __init__(self, name, columns=[], **kw):
+    def __init__(self, name, columns=[], indexes=[], **kw):
         self.name = name
         self.columns = OrderedDict()
         for column in columns:
             self.columns[column.name] = column
+        self.indexes = {}
         self.kw = kw
 
     @property
@@ -50,6 +51,29 @@ class MetaTable(object):
         )
 
 
+class MetaIndex(object):
+    def __init__(self, table_name, name, fields, expressions, unique, **kw):
+        self.table_name = table_name
+        self.name = name
+        self.fields = fields
+        self.expressions = expressions
+        self.unique = unique
+        self.kw = kw
+
+    @property
+    def where(self):
+        return self.kw.get('where')
+
+    def __repr__(self):
+        opts = [('expressions', self.expressions), ('unique', self.unique)]
+        for key, val in self.kw.items():
+            opts.append((key, val))
+        return "Index(%r, %r, %s)" % (
+            self.name, self.fields,
+            ", ".join(["%s=%r" % (opt[0], opt[1]) for opt in opts])
+        )
+
+
 class MetaData(object):
     def __init__(self):
         self.tables = {}
@@ -68,6 +92,16 @@ class MetaData(object):
 
     def change_column(self, table_name, column_name, changes):
         self.tables[table_name][column_name].update(**changes)
+
+    def create_index(
+        self, table_name, index_name, fields, expressions, unique, **kw
+    ):
+        self.tables[table_name].indexes[index_name] = MetaIndex(
+            table_name, index_name, fields, expressions, unique, **kw
+        )
+
+    def drop_index(self, table_name, index_name):
+        del self.tables[table_name].indexes[index_name]
 
 
 class Comparator(object):
@@ -89,17 +123,38 @@ class Comparator(object):
             columns
         )
 
+    def _build_metaindex(self, dbtable, index_name):
+        model = dbtable._model_
+        dbindex = model._indexes_[index_name]
+        kw = {}
+        with self.db._adapter.index_expander():
+            if 'where' in dbindex:
+                kw['where'] = str(dbindex['where'])
+            rv = MetaIndex(
+                model.tablename, index_name,
+                [field for field in dbindex['fields']],
+                [str(expr) for expr in dbindex['expressions']],
+                dbindex['unique'], **kw
+            )
+        return rv
+
     def tables(self):
         db_table_names = OrderedSet([t._tablename for t in self.db])
         meta_table_names = OrderedSet(list(self.meta.tables))
         #: new tables
         for table_name in db_table_names.difference(meta_table_names):
-            self.ops.append(
-                CreateTableOp.from_table(
-                    self._build_metatable(self.db[table_name])))
+            meta_table = self._build_metatable(self.db[table_name])
+            self.ops.append(CreateTableOp.from_table(meta_table))
+            self.indexes_and_uniques(self.db[table_name], meta_table)
         #: removed tables
         for table_name in meta_table_names.difference(db_table_names):
-            self.ops.append(DropTableOp.drop_table(table_name))
+            #: remove table indexes too
+            metatable = self.meta.tables[table_name]
+            for idx_name, idx in metatable.indexes.items():
+                self.ops.append(DropIndexOp.from_index(idx))
+            #: remove table
+            self.ops.append(
+                DropTableOp.from_table(self.meta.tables[table_name]))
         #: existing tables
         for table_name in meta_table_names.intersection(db_table_names):
             self.columns(
@@ -111,11 +166,32 @@ class Comparator(object):
         self.indexes_and_uniques(dbtable, metatable)
         self.foreign_keys(dbtable, metatable)
 
-    def indexes_and_uniques(self, dbtable, metatable):
-        # TODO
-        pass
+    def indexes_and_uniques(self, dbtable, metatable, ops_stack=None):
+        ops = ops_stack if ops_stack is not None else self.ops
+        db_index_names = OrderedSet(
+            [idxname for idxname in dbtable._model_._indexes_.keys()])
+        meta_index_names = OrderedSet(list(metatable.indexes))
+        #: removed indexes
+        for index_name in meta_index_names.difference(db_index_names):
+            ops.append(DropIndexOp.from_index(metatable.indexes[index_name]))
+        #: new indexs
+        for index_name in db_index_names.difference(meta_index_names):
+            ops.append(
+                CreateIndexOp.from_index(
+                    self._build_metaindex(dbtable, index_name)))
+        #: existing indexes
+        for index_name in meta_index_names.intersection(db_index_names):
+            metaindex = metatable.indexes[index_name]
+            dbindex = self._build_metaindex(dbtable, index_name)
+            if any(
+                getattr(metaindex, key) != getattr(dbindex, key)
+                for key in ['fields', 'expressions', 'unique', 'kw']
+            ):
+                ops.append(DropIndexOp.from_index(metaindex))
+                ops.append(CreateIndexOp.from_index(dbindex))
+        # TODO: uniques
 
-    def foreign_keys(self, dbtable, metatable):
+    def foreign_keys(self, dbtable, metatable, ops_stack=None):
         # TODO
         pass
 
@@ -136,7 +212,8 @@ class Comparator(object):
         #: removed columns
         for column_name in meta_column_names.difference(db_column_names):
             self.ops.append(
-                DropColumnOp.drop_column(dbtable._tablename, column_name))
+                DropColumnOp.from_column_and_tablename(
+                    dbtable._tablename, metatable.columns[column_name]))
 
     def column(self, dbcolumn, metacolumn):
         self.notnulls(dbcolumn, metacolumn)
@@ -176,7 +253,9 @@ class Generator(object):
         self._load_head_to_meta()
 
     def _load_head_to_meta(self):
-        for revision in self.scriptdir.walk_revisions("base", self.head):
+        for revision in reversed(
+            list(self.scriptdir.walk_revisions("base", self.head))
+        ):
             migration = revision.migration_class(
                 None, self.meta, is_meta=True)
             migration.up()
@@ -231,9 +310,9 @@ def _add_table(op):
     indent = " " * 12
 
     if len(args) > 255:
-        args = '*[' + (',\n'+indent).join(args) + ']'
+        args = '*[' + (',\n' + indent).join(args) + ']'
     else:
-        args = (',\n'+indent).join(args)
+        args = (',\n' + indent).join(args)
 
     text = ("self.create_table(\n" + indent + "%(tablename)r,\n" + indent +
             "%(args)s") % {
@@ -241,7 +320,7 @@ def _add_table(op):
         'args': args
     }
     for k in sorted(op.kw):
-        text += ",\n"+indent+"%s=%r" % (k.replace(" ", "_"), op.kw[k])
+        text += ",\n" + indent + "%s=%r" % (k.replace(" ", "_"), op.kw[k])
     text += ")"
     return text
 
@@ -295,7 +374,7 @@ def _add_column(op):
 def _drop_column(op):
     return "self.drop_column(%(tname)r, %(cname)r)" % {
         "tname": op.table_name,
-        "column": op.column_name
+        "cname": op.column_name
     }
 
 
@@ -321,3 +400,25 @@ def _alter_column(op):
 
     text += ")"
     return text
+
+
+@renderers.dispatch_for(CreateIndexOp)
+def _add_index(op):
+    kw_str = ""
+    if op.kw:
+        kw_str = ", %s" % ", ".join(
+            ["%s=%r" % (key, val) for key, val in op.kw.items()])
+    return "self.create_index(%(iname)r, %(tname)r, %(idata)s)" % {
+        "tname": op.table_name,
+        "iname": op.index_name,
+        "idata": "%r, expressions=%r, unique=%s%s" % (
+            op.fields, op.expressions, op.unique, kw_str)
+    }
+
+
+@renderers.dispatch_for(DropIndexOp)
+def _drop_index(op):
+    return "self.drop_index(%(iname)r, %(tname)r)" % {
+        "tname": op.table_name,
+        "iname": op.index_name
+    }

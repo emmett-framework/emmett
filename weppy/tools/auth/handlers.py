@@ -10,10 +10,7 @@
 """
 
 from datetime import timedelta
-from pydal.helpers.classes import RecordUpdater, RecordDeleter
-from ..._compat import itervalues
 from ...dal import Field
-from ...datastructures import sdict
 from ...forms import Form
 from ...globals import request, session
 from ...handlers import Handler
@@ -125,7 +122,7 @@ class DefaultLoginHandler(AuthLoginHandler):
         '''
         if form.accepted:
             self.onaccept(form)
-            ## rebuild the form
+            #: rebuild the form
             if not self.user:
                 return self.login_form()
         return form
@@ -135,42 +132,20 @@ class AuthManager(Handler):
     def __init__(self, auth):
         #: the Auth() instance
         self.auth = auth
-        self._virtuals = []
-        for field in itervalues(self.auth.settings.models.user.table):
-            if isinstance(field, (Field.Virtual, Field.Method)):
-                self._virtuals.append(field)
+        user_table = self.auth.settings.models.user.table
+        self._virtuals = [f.name for f in user_table._virtual_fields]
+        self._virtualmethods = [m.name for m in user_table._virtual_methods]
 
     def _load_virtuals(self):
-        self.auth.user.update_record = RecordUpdater(
-            self.auth.user, self.auth.table_user, self.auth.user.id
-        )
-        self.auth.user.delete_record = RecordDeleter(
-            self.auth.table_user, self.auth.user.id
-        )
-        #: inject virtual fields on session data
-        r = sdict()
-        r[self.auth.settings.table_user_name] = self.auth.user
-        for field in self._virtuals:
-            try:
-                if isinstance(field, Field.Virtual):
-                    self.auth.user[field.name] = field.f(r)
-                elif isinstance(field, Field.Method):
-                    self.auth.user[field.name] = \
-                        lambda row=r, field=field: field.f(row)
-            except:
-                pass
+        self.auth.settings.models.user._inject_virtuals_on_row(self.auth.user)
 
     def _unload_virtuals(self):
-        for field in self._virtuals:
-            try:
-                del self.auth.user[field.name]
-            except:
-                pass
-        try:
-            del self.auth.user.update_record
-            del self.auth.user.delete_record
-        except:
-            pass
+        for namelist in [self._virtuals, self._virtualmethods]:
+            for name in namelist:
+                try:
+                    del self.auth.user[name]
+                except:
+                    pass
 
     def on_start(self):
         # check auth session is valid

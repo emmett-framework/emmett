@@ -11,14 +11,15 @@
 
 import os
 from pydal import DAL as _pyDAL, Field as _Field
-from pydal.objects import (
-    Table as _Table, Set as _Set, LazySet as _LazySet, Expression
-)
+from pydal._globals import THREAD_LOCAL
+from pydal.objects import Table as _Table, Set as _Set, Rows as _Rows, \
+    Expression, Row
 from .._compat import copyreg
 from ..datastructures import sdict
 from ..handlers import Handler
 from ..security import uuid as _uuid
 from ..serializers import _custom_json, xml
+from ..utils import cachedprop
 from ..validators import ValidateFromDict
 
 
@@ -44,7 +45,6 @@ class Table(_Table):
         self._referenced_by = []
         self._referenced_by_list = []
         self._references = []
-        return
 
 
 class Set(_Set):
@@ -85,7 +85,7 @@ class Set(_Set):
             else:
                 offset = pagination
                 limit = 10
-            options['limitby'] = ((offset-1)*limit, offset*limit)
+            options['limitby'] = ((offset - 1) * limit, offset * limit)
             del options['paginate']
         including = options.get('including')
         if including and self._model_ is not None:
@@ -108,7 +108,7 @@ class Set(_Set):
             joins = []
             jtables = []
             for arg in args:
-                join_data = self._parse_rjoin(arg, True)
+                join_data = self._parse_rjoin(arg)
                 joins.append(join_data[0])
                 jtables.append((arg, join_data[1]._tablename, join_data[2]))
             if joins:
@@ -120,35 +120,27 @@ class Set(_Set):
                 return JoinSet._from_set(rv, self._model_.tablename, jtables)
         return rv
 
-    def _parse_rjoin(self, arg, with_extras=False):
+    def _parse_rjoin(self, arg):
         from .helpers import RelationBuilder
         #: match has_many
         rel = self._model_._hasmany_ref_.get(arg)
         if rel:
             if isinstance(rel, dict) and rel.get('via'):
                 r = RelationBuilder(rel, self._model_).via()
-                if with_extras:
-                    return r[0], r[1]._table, False
-                return r[0]
+                return r[0], r[1]._table, False
             else:
                 r = RelationBuilder(rel, self._model_)
-                if with_extras:
-                    return r.many_query(), r._many_elements()[0]._table, False
-                return r.many_query()
+                return r.many(), rel.table, False
         #: match belongs_to and refers_to
         rel = self._model_._belongs_ref_.get(arg)
         if rel:
             r = RelationBuilder((rel, arg), self._model_).belongs_query()
-            if with_extras:
-                return r, self._model_.db[rel], True
-            return r
+            return r, self._model_.db[rel], True
         #: match has_one
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
             r = RelationBuilder(rel, self._model_)
-            if with_extras:
-                return r.many_query(), r._many_elements()[0]._table, False
-            return r.many_query()
+            return r.many(), rel.table, False
         raise RuntimeError(
             'Unable to find %s relation of %s model' %
             (arg, self._model_.__name__))
@@ -159,7 +151,7 @@ class Set(_Set):
         joins = []
         jdata = []
         for arg in args:
-            join = self._parse_rjoin(arg, True)
+            join = self._parse_rjoin(arg)
             joins.append(join[1].on(join[0]))
             jdata.append((arg, join[2]))
         return joins, jdata
@@ -169,29 +161,71 @@ class Set(_Set):
         if scope:
             from .helpers import ScopeWrap
             return ScopeWrap(self, self._model_, scope.f)
-        raise AttributeError()
+        raise AttributeError(name)
 
 
-class LazySet(_LazySet):
-    def __init__(self, field, id):
-        super(LazySet, self).__init__(field, id)
-        self._model_ = self.db[self.tablename]._model_
+class Rows(_Rows):
+    def __init__(self, db=None, records=[], colnames=[], compact=True,
+                 rawrows=None):
+        self.db = db
+        self.records = records
+        self.colnames = colnames
+        self._rowkeys_ = list(self.records[0].keys()) if self.records else []
+        self._getrow = self._getrow_compact_ if self.compact else self._getrow_
 
-    def _getset(self):
-        query = self.db[self.tablename][self.fieldname] == self.id
-        return Set(self.db, query, model=self._model_)
+    @cachedprop
+    def compact(self):
+        if not self.records:
+            return True
+        return len(self._rowkeys_) == 1 and self._rowkeys_[0] != '_extra'
 
-    def join(self, *args):
-        return self._getset().join(*args)
+    @cachedprop
+    def compact_tablename(self):
+        if not self._rowkeys_:
+            return None
+        return self._rowkeys_[0]
 
-    def __getattr__(self, name):
-        return getattr(self._getset(), name)
+    def _getrow_(self, i):
+        return self.records[i]
+
+    def _getrow_compact_(self, i):
+        return self._getrow_(i)[self.compact_tablename]
+
+    def __getitem__(self, i):
+        return self._getrow(i)
+
+    def column(self, column=None):
+        colname = str(column) if column else self.colnames[0]
+        return [r[colname] for r in self]
+
+    def sorted(self, f, reverse=False):
+        if self.compact:
+            keyf = lambda r: f(r[self.compact_tablename])
+        else:
+            keyf = f
+        return [r for r in sorted(self.records, key=keyf, reverse=reverse)]
+
+    def sort(self, f, reverse=False):
+        self.records = self.sorted(f, reverse)
+
+    def append(self, obj):
+        row = Row({self.compact_tablename: obj}) if self.compact else obj
+        self.records.append(row)
+
+    def insert(self, position, obj):
+        row = Row({self.compact_tablename: obj}) if self.compact else obj
+        self.records.insert(position, row)
 
 
 class DAL(_pyDAL):
     serializers = {'json': _custom_json, 'xml': xml}
     logger = None
     uuid = lambda x: _uuid()
+
+    record_operators = {}
+    execution_handlers = []
+
+    Rows = Rows
 
     @staticmethod
     def uri_from_config(config=None):
@@ -200,13 +234,13 @@ class DAL(_pyDAL):
         if config.adapter == "<zombie>":
             return config.adapter
         if config.adapter == "sqlite" and config.host == "memory":
-            return config.adapter+":"+config.host
-        uri = config.adapter+"://"
+            return config.adapter + ":" + config.host
+        uri = config.adapter + "://"
         if config.user:
-            uri = uri+config.user+":"+config.password+"@"
-        uri = uri+config.host
+            uri = uri + config.user + ":" + config.password + "@"
+        uri = uri + config.host
         if config.database:
-            uri += "/"+config.database
+            uri += "/" + config.database
         return uri
 
     def __new__(cls, app, *args, **kwargs):
@@ -239,12 +273,20 @@ class DAL(_pyDAL):
             os.mkdir(folder)
         #: set pool_size
         pool_size = self.config.pool_size or pool_size or 0
+        #: add timings storage if requested
+        if config.store_execution_timings:
+            from .helpers import TimingHandler
+            self.execution_handlers.append(TimingHandler)
         #: finally setup pyDAL instance
         super(DAL, self).__init__(self.config.uri, pool_size, folder, **kwargs)
 
     @property
     def handler(self):
         return DALHandler(self)
+
+    @property
+    def execution_timings(self):
+        return getattr(THREAD_LOCAL, '_weppydal_timings_', [])
 
     def define_models(self, *models):
         if len(models) == 1 and isinstance(models[0], (list, tuple)):
@@ -387,8 +429,11 @@ class Field(_Field):
             rv['in'] = (False, True)
         if self._type in ['string', 'text', 'password']:
             rv['len'] = {'lt': self.length}
+        if self._type == 'password':
+            rv['len']['gte'] = 6
+            rv['crypt'] = True
         if self._type == 'list:int':
-            rv['_is'] = {'list:int'}
+            rv['is'] = {'list:int'}
         if self.notnull or self._type.startswith('reference') or \
                 self._type.startswith('list:reference'):
             rv['presence'] = True

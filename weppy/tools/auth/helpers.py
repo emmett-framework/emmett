@@ -38,7 +38,7 @@ def replace_id(u, form):
         u = u.replace('[id]', str(form.params.id))
         if u[0] == '/' or u[:4] == 'http':
             return u
-    return '/account'+u
+    return '/account' + u
 
 
 def get_vars_next():

@@ -133,7 +133,7 @@ class isDate(_is):
     def check(self, value):
         if self._check_instance(value):
             if self.timezone is not None:
-                value = value - timedelta(seconds=self.timezone*3600)
+                value = value - timedelta(seconds=self.timezone * 3600)
             return value, None
         try:
             val = self._parse(value)
@@ -216,7 +216,7 @@ class isList(ParentValidator):
         ParentValidator.__init__(self, children, message)
         self.splitter = None
         if splitter:
-            self.splitter = re.compile('[^'+splitter+'\s]+')
+            self.splitter = re.compile('[^' + splitter + '\s]+')
 
     def __call__(self, value):
         if self.splitter is not None and isinstance(value, basestring):
@@ -648,7 +648,7 @@ class isIPv4(Validator):
                     ok = False
             if not (self.is_private is None or self.is_private ==
                     (sum([number[0] <= number <= number[1]
-                     for number in self.private]) > 0)):
+                     for number in self.private]) > 0)):  # NOQA
                     ok = False
             if not (self.is_automatic is None or self.is_automatic ==
                     (self.automatic[0] <= number <= self.automatic[1])):

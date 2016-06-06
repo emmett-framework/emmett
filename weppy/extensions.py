@@ -9,14 +9,22 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from ._compat import iteritems
+
 
 class Extension(object):
     namespace = None
+    default_config = {}
 
     def __init__(self, app, env, config):
         self.app = app
         self.env = env
         self.config = config
+        self.__init_config()
+
+    def __init_config(self):
+        for key, dval in iteritems(self.default_config):
+            self.config[key] = self.config.get(key, dval)
 
     def on_load(self):
         pass

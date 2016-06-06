@@ -14,7 +14,6 @@ import re
 import os
 
 from ._compat import PY2, iteritems, text_type
-from ._internal import warn_of_deprecation
 from .handlers import Handler, _wrapWithHandlers
 from .templating import render
 from .globals import current
@@ -30,6 +29,7 @@ __all__ = ['Expose', 'url']
 
 class Expose(object):
     _routing_stack = []
+    _routes_str = []
     application = None
     routes_in = {'__any__': []}
     routes_out = {}
@@ -39,7 +39,7 @@ class Expose(object):
     REGEX_INT = re.compile('<int\:(\w+)>')
     REGEX_STR = re.compile('<str\:(\w+)>')
     REGEX_ANY = re.compile('<any\:(\w+)>')
-    REGEX_ALPHA = re.compile('<str\:(\w+)>')
+    REGEX_ALPHA = re.compile('<alpha\:(\w+)>')
     REGEX_DATE = re.compile('<date\:(\w+)>')
     REGEX_DECORATION = re.compile(
         '(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
@@ -48,7 +48,7 @@ class Expose(object):
                  helpers=None, schemes=None, hostname=None, methods=None,
                  prefix=None, template_folder=None, template_path=None):
         if callable(path):
-            raise SyntaxError('@expose(), not @expose')
+            raise SyntaxError('Use @route(), not @route.')
         self.schemes = schemes or ('http', 'https')
         if not isinstance(self.schemes, (list, tuple)):
             self.schemes = (self.schemes,)
@@ -74,12 +74,12 @@ class Expose(object):
         return self.application.root_path
 
     def build_name(self):
-        short = self.filename[1+len(self.folder):].rsplit('.', 1)[0]
+        short = self.filename[1 + len(self.folder):].rsplit('.', 1)[0]
         if not short:
             short = self.filename.rsplit('.', 1)[0]
         if short == "__init__":
             short = self.folder.rsplit('/', 1)[-1]
-        ## allow only one level of naming if name is builded
+        # allow only one level of naming if name is builded
         if len(short.split(os.sep)) > 1:
             short = short.split(os.sep)[-1]
         return '.'.join(short.split(os.sep) + [self.func_name])
@@ -89,7 +89,7 @@ class Expose(object):
         path = cls.REGEX_INT.sub('(?P<\g<1>>\d+)', path)
         path = cls.REGEX_STR.sub('(?P<\g<1>>[^/]+)', path)
         path = cls.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
-        path = cls.REGEX_ALPHA.sub('(?P<\g<1>>\w+)', path)
+        path = cls.REGEX_ALPHA.sub('(?P<\g<1>>[^/\W\d_]+)', path)
         path = cls.REGEX_DATE.sub('(?P<\g<1>>\d{4}-\d{2}-\d{2})', path)
         re_schemes = ('|'.join(schemes)).lower()
         re_methods = ('|'.join(methods)).lower()
@@ -139,11 +139,9 @@ class Expose(object):
     def __call__(self, func):
         self.func_name = func.__name__
         self.filename = os.path.realpath(func.__code__.co_filename)
-        #self.mtime = os.path.getmtime(self.filename)
         self.hostname = self.hostname or \
             self.application.config.hostname_default
         if not self.path:
-            #self.path = '/' + func.__name__ + '(.\w+)?'
             self.path = '/' + func.__name__
         if not self.name:
             self.name = self.build_name()
@@ -152,17 +150,15 @@ class Expose(object):
             self.name = self.name + self.func_name
         #
         if not self.path.startswith('/'):
-            self.path = '/'+self.path
+            self.path = '/' + self.path
         if self.prefix:
             if not self.prefix.startswith('/'):
-                self.prefix = '/'+self.prefix
-            self.path = (self.path != '/' and self.prefix+self.path) \
+                self.prefix = '/' + self.prefix
+            self.path = (self.path != '/' and self.prefix + self.path) \
                 or self.prefix
         if not self.template:
             self.template = self.func_name + \
                 self.application.template_default_extension
-        #if self.name.startswith('.'):
-        #    self.name = '%s%s' % (self.application, self.name)
         if self.template_folder:
             self.template = os.path.join(self.template_folder, self.template)
         self.template_path = self.template_path or \
@@ -173,13 +169,13 @@ class Expose(object):
             self.schemes, self.hostname, self.methods, self.path)
         route = (re.compile(self.regex), self)
         self.add_route(route)
-        logstr = "%s %s://%s%s" % (
+        self._routes_str.append("%s %s://%s%s -> %s" % (
             "|".join(s.upper() for s in self.methods),
             "|".join(s for s in self.schemes),
             self.hostname or "<any>",
-            self.path
-        )
-        self.application.log.info("exposing '%s': %s" % (self.name, logstr))
+            self.path,
+            self.name
+        ))
         for proc_handler in self.processors:
             proc_handler(self)
         self._routing_stack.pop()
@@ -195,7 +191,7 @@ class Expose(object):
         if lang in cls.application.languages and lang != default:
             new_path = '/'.join([arg for arg in clean_path.split('/')[1:]])
             if path.startswith('/'):
-                new_path = '/'+new_path
+                new_path = '/' + new_path
             return new_path, lang
         return path, default
 
@@ -277,7 +273,7 @@ class _ResponseHandler(Handler):
 
 
 def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
-        host=None, language=None, vars=None):
+        host=None, language=None):
     """
     usages:
         url('index') # assumes app or default expose file
@@ -286,10 +282,6 @@ def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
         url('static', 'file') # for static files
         url('/myurl') # a normal url
     """
-
-    if vars is not None:
-        warn_of_deprecation('url(vars=..)', 'url(params=..)', stack=3)
-        params = vars
 
     if not isinstance(args, (list, tuple)):
         args = [args]
@@ -319,12 +311,12 @@ def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
             midargs = url.split("{{:arg:}}")
             if len(midargs) > 1:
                 u = ""
-                if len(args) >= len(midargs)-1:
-                    for i in range(0, len(midargs)-1):
-                        u += midargs[i]+uquote(str(args[i]))
+                if len(args) >= len(midargs) - 1:
+                    for i in range(0, len(midargs) - 1):
+                        u += midargs[i] + uquote(str(args[i]))
                     u += midargs[-1]
                     url = u
-                    args = args[len(midargs)-1:]
+                    args = args[len(midargs) - 1:]
                 else:
                     raise RuntimeError(
                         'invalid url("%s",...): needs args for params' % path
@@ -346,7 +338,7 @@ def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
     # add static versioning
     if url[0:7] == '/static':
         if Expose.static_versioning():
-            url = url[0:7] + "/_"+str(Expose.static_versioning()) + url[7:]
+            url = url[0:7] + "/_" + str(Expose.static_versioning()) + url[7:]
     # language
     if Expose.application.language_force_on_url:
         if url.startswith("/"):
@@ -360,7 +352,7 @@ def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
                 if hasattr(current, 'request'):
                     lang = current.request.language
             if lang and lang != Expose.application.language_default:
-                url = '/'+lang+url
+                url = '/' + lang + url
     # add extension (useless??)
     if extension:
         url = url + '.' + extension

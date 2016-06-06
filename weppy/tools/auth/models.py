@@ -10,7 +10,7 @@
 """
 
 from datetime import datetime
-from ...dal import Model, Field, before_insert, fieldmethod
+from ...dal import Model, Field, before_insert, rowmethod
 from ...globals import current, request
 from ...security import uuid
 
@@ -33,7 +33,7 @@ class AuthModel(Model):
     form_profile_rw = {}
 
     def __super_method(self, name):
-        return getattr(super(AuthModel, self), '_Model__'+name)
+        return getattr(super(AuthModel, self), '_Model__' + name)
 
     def _define_(self):
         self.__super_method('define_validation')()
@@ -43,6 +43,7 @@ class AuthModel(Model):
         self.__super_method('define_computations')()
         self.__super_method('define_callbacks')()
         self.__super_method('define_scopes')()
+        self.__super_method('define_indexes')()
         self.__hide_all()
         self.__super_method('define_form_utils')
         self.__define_authform_utils()
@@ -110,15 +111,15 @@ class AuthUserBasic(AuthModel, TimestampedModel):
                 fields.get('registration_key'):
             fields['registration_key'] = uuid()
 
-    @fieldmethod('disable')
+    @rowmethod('disable')
     def _set_disabled(self, row):
         return row.update_record(registration_key='disabled')
 
-    @fieldmethod('block')
+    @rowmethod('block')
     def _set_blocked(self, row):
         return row.update_record(registration_key='blocked')
 
-    @fieldmethod('allow')
+    @rowmethod('allow')
     def _set_allowed(self, row):
         return row.update_record(registration_key='')
 

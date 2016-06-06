@@ -10,11 +10,12 @@
 """
 
 from collections import OrderedDict
+from pydal.objects import Row
 from .._compat import iteritems, with_metaclass
-from .apis import computation, virtualfield, fieldmethod, scope
+from .apis import compute, rowattr, rowmethod, scope
 from .base import Field, _Field, sdict
 from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
-    VirtualWrap, ScopeWrap, Callback, make_tablename
+    VirtualWrap, ScopeWrap, Callback, ReferenceData, make_tablename
 
 
 class MetaModel(type):
@@ -26,18 +27,18 @@ class MetaModel(type):
         tablename = attrs.get('tablename')
         current_fields = []
         current_vfields = []
-        computations = {}
-        callbacks = {}
+        computations = []
+        callbacks = []
         scopes = {}
         for key, value in list(attrs.items()):
             if isinstance(value, Field):
                 current_fields.append((key, value))
-            elif isinstance(value, virtualfield):
+            elif isinstance(value, rowattr):
                 current_vfields.append((key, value))
-            elif isinstance(value, computation):
-                computations[key] = value
+            elif isinstance(value, compute):
+                computations.append((key, value))
             elif isinstance(value, Callback):
-                callbacks[key] = value
+                callbacks.append((key, value))
             elif isinstance(value, scope):
                 scopes[key] = value
         #: get super declared attributes
@@ -47,8 +48,8 @@ class MetaModel(type):
             _belongs_ref_=[], _refers_ref_=[],
             _hasone_ref_=[], _hasmany_ref_=[]
         )
-        declared_computations = {}
-        declared_callbacks = {}
+        declared_computations = OrderedDict()
+        declared_callbacks = OrderedDict()
         declared_scopes = {}
         for base in reversed(new_class.__mro__[1:]):
             #: collect fields from base class
@@ -102,9 +103,11 @@ class MetaModel(type):
         declared_vfields.update(current_vfields)
         new_class._declared_virtuals_ = declared_vfields
         #: set computations
+        computations.sort(key=lambda x: x[1]._inst_count_)
         declared_computations.update(computations)
         new_class._declared_computations_ = declared_computations
         #: set callbacks
+        callbacks.sort(key=lambda x: x[1]._inst_count_)
         declared_callbacks.update(callbacks)
         new_class._declared_callbacks_ = declared_callbacks
         #: set scopes
@@ -123,6 +126,7 @@ class Model(with_metaclass(MetaModel)):
     validation = {}
     default_values = {}
     update_values = {}
+    indexes = {}
     repr_values = {}
     form_labels = {}
     form_info = {}
@@ -151,9 +155,10 @@ class Model(with_metaclass(MetaModel)):
         if not sup:
             return
         #: get super model fields' properties
-        proplist = ['validation', 'default_values', 'update_values',
-                    'repr_values', 'form_labels', 'form_info', 'form_rw',
-                    'form_widgets']
+        proplist = [
+            'validation', 'default_values', 'update_values', 'indexes',
+            'repr_values', 'form_labels', 'form_info', 'form_rw',
+            'form_widgets']
         for prop in proplist:
             props = {}
             for model in sup:
@@ -179,48 +184,73 @@ class Model(with_metaclass(MetaModel)):
     def __parse_relation_via(self, via):
         if via is None:
             return via
-        rv = {'field': None}
+        rv = sdict()
         splitted = via.split('.')
-        rv['via'] = splitted[0]
+        rv.via = splitted[0]
         if len(splitted) > 1:
-            rv['field'] = splitted[1]
+            rv.field = splitted[1]
         return rv
 
     def __parse_belongs_relation(self, item):
-        rv = {}
+        rv = sdict()
         if isinstance(item, dict):
-            rv['name'] = list(item)[0]
-            rv['model'] = item[rv['name']]
-            if rv['model'] == "self":
-                rv['model'] = self.__class__.__name__
+            rv.name = list(item)[0]
+            rv.model = item[rv.name]
+            if rv.model == "self":
+                rv.model = self.__class__.__name__
         else:
-            rv['name'] = item
-            rv['model'] = item.capitalize()
+            rv.name = item
+            rv.model = item.capitalize()
         return rv
 
+    def __build_relation_modelname(self, name, relation, singularize):
+        relation.model = name.capitalize()
+        if singularize:
+            relation.model = relation.model[:-1]
+
+    def __build_relation_fieldname(self, relation):
+        splitted = relation.model.split('.')
+        relation.model = splitted[0]
+        if len(splitted) > 1:
+            relation.field = splitted[1]
+        else:
+            relation.field = self.__class__.__name__.lower()
+
+    def __parse_relation_dict(self, rel, singularize):
+        if 'scope' in rel.model:
+            rel.scope = rel.model['scope']
+        if 'where' in rel.model:
+            rel.where = rel.model['where']
+        if 'via' in rel.model:
+            rel.update(self.__parse_relation_via(rel.model['via']))
+            del rel.model
+        else:
+            if 'target' in rel.model:
+                rel.model = rel.model['target']
+            if not isinstance(rel.model, str):
+                self.__build_relation_modelname(rel.name, rel, singularize)
+
     def __parse_many_relation(self, item, singularize=True):
-        rv = {}
+        rv = ReferenceData(self)
         if isinstance(item, dict):
-            rv['name'] = list(item)[0]
-            rv['model'] = item[rv['name']]
+            rv.name = list(item)[0]
+            rv.model = item[rv.name]
+            if isinstance(rv.model, dict):
+                if 'method' in rv.model:
+                    rv.field = rv.model.get(
+                        'field', self.__class__.__name__.lower())
+                    rv.method = rv.model['method']
+                    del rv.model
+                else:
+                    self.__parse_relation_dict(rv, singularize)
         else:
-            rv['name'] = item
-            rv['model'] = item.capitalize()
-            if singularize:
-                rv['model'] = rv['model'][:-1]
-        if isinstance(rv['model'], dict):
-            if rv['model'].get('via'):
-                rv.update(self.__parse_relation_via(rv['model']['via']))
-                del rv['model']
-        else:
-            splitted = rv['model'].split('.')
-            rv['model'] = splitted[0]
-            if len(splitted) > 1:
-                rv['field'] = splitted[1]
-            else:
-                rv['field'] = self.__class__.__name__.lower()
-            if rv['model'] == "self":
-                rv['model'] = self.__class__.__name__
+            rv.name = item
+            self.__build_relation_modelname(item, rv, singularize)
+        if rv.model:
+            if not rv.field:
+                self.__build_relation_fieldname(rv)
+            if rv.model == "self":
+                rv.model = self.__class__.__name__
         return rv
 
     def _define_props_(self):
@@ -251,74 +281,63 @@ class Model(with_metaclass(MetaModel)):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_belongs_relation(item)
-                if reference['model'] != self.__class__.__name__:
-                    tablename = self.db[reference['model']]._tablename
+                if reference.model != self.__class__.__name__:
+                    tablename = self.db[reference.model]._tablename
                 else:
                     tablename = self.tablename
                 if isbelongs:
-                    fieldobj = Field('reference '+tablename)
+                    fieldobj = Field('reference ' + tablename)
                 else:
                     fieldobj = Field(
-                        'reference '+tablename, ondelete='nullify',
+                        'reference ' + tablename, ondelete='nullify',
                         _isrefers=True)
-                setattr(self.__class__, reference['name'], fieldobj)
+                setattr(self.__class__, reference.name, fieldobj)
                 self.fields.append(
-                    getattr(self, reference['name'])._make_field(
-                        reference['name'], self)
+                    getattr(self, reference.name)._make_field(
+                        reference.name, self)
                 )
-                belongs_references[reference['name']] = reference['model']
+                belongs_references[reference.name] = reference.model
             isbelongs = False
         setattr(self.__class__, '_belongs_ref_', belongs_references)
-        #delattr(self.__class__, '_refers_ref_')
-        #: has_one are mapped with virtualfield()
+        #: has_one are mapped with rowattr
         hasone_references = {}
         if hasattr(self, '_hasone_ref_'):
             for item in getattr(self, '_hasone_ref_'):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item, False)
-                self._virtual_relations_[reference['name']] = \
-                    virtualfield(reference['name'])(HasOneWrap(reference))
-                hasone_references[reference['name']] = reference
+                self._virtual_relations_[reference.name] = \
+                    rowattr(reference.name)(HasOneWrap(reference))
+                hasone_references[reference.name] = reference
         setattr(self.__class__, '_hasone_ref_', hasone_references)
-        #: has_many are mapped with virtualfield()
+        #: has_many are mapped with rowattr
         hasmany_references = {}
         if hasattr(self, '_hasmany_ref_'):
             for item in getattr(self, '_hasmany_ref_'):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item)
-                #rclass = via = None
-                #if isinstance(reference, dict):
-                #    rclass = reference.get('class')
-                #    via = reference.get('via')
-                if reference.get('via') is not None:
+                if reference.via is not None:
                     #: maps has_many({'things': {'via': 'otherthings'}})
-                    self._virtual_relations_[reference['name']] = \
-                        virtualfield(reference['name'])(
-                            HasManyViaWrap(reference)
-                        )
+                    wrapper = HasManyViaWrap
                 else:
                     #: maps has_many('things'),
                     #  has_many({'things': 'othername'})
-                    #if rclass is not None:
-                    #    reference = rclass
-                    self._virtual_relations_[reference['name']] = \
-                        virtualfield(reference['name'])(
-                            HasManyWrap(reference)
-                        )
-                hasmany_references[reference['name']] = reference
+                    wrapper = HasManyWrap
+                self._virtual_relations_[reference.name] = \
+                    rowattr(reference.name)(wrapper(reference))
+                hasmany_references[reference.name] = reference
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
 
     def _define_virtuals_(self):
-        err = 'virtualfield or fieldmethod cannot have same name as an' + \
+        err = 'rowattr or rowmethod cannot have the name of an' + \
             'existent field!'
         field_names = [field.name for field in self.fields]
         for attr in ['_virtual_relations_', '_declared_virtuals_']:
             for name, obj in iteritems(getattr(self, attr, {})):
                 if obj.field_name in field_names:
                     raise RuntimeError(err)
-                if isinstance(obj, fieldmethod):
+                if isinstance(obj, rowmethod):
                     f = _Field.Method(obj.field_name, VirtualWrap(self, obj))
                 else:
                     f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
@@ -336,6 +355,7 @@ class Model(with_metaclass(MetaModel)):
         self.__define_computations()
         self.__define_callbacks()
         self.__define_scopes()
+        self.__define_indexes()
         self.__define_form_utils()
         self.setup()
 
@@ -396,6 +416,58 @@ class Model(with_metaclass(MetaModel)):
                     self.__class__, obj.name,
                     ScopeWrap(self.__class__.db, self, obj.f))
 
+    def __prepend_table_on_index_name(self, name):
+        return '%s_widx__%s' % (self.tablename, name)
+
+    def __create_index_name(self, *values):
+        components = []
+        for value in values:
+            components.append(value.replace('_', ''))
+        return self.__prepend_table_on_index_name("_".join(components))
+
+    def __parse_index_dict(self, value):
+        rv = {}
+        fields = value.get('fields') or []
+        if not isinstance(fields, (list, tuple)):
+            fields = [fields]
+        rv['fields'] = fields
+        where_query = None
+        where_cond = value.get('where')
+        if callable(where_cond):
+            where_query = where_cond(self.__class__)
+        if where_query:
+            rv['where'] = where_query
+        expressions = []
+        expressions_cond = value.get('expressions')
+        if callable(expressions_cond):
+            expressions = expressions_cond(self.__class__)
+        if not isinstance(expressions, (tuple, list)):
+            expressions = [expressions]
+        rv['expressions'] = expressions
+        rv['unique'] = value.get('unique', False)
+        return rv
+
+    def __define_indexes(self):
+        self._indexes_ = {}
+        for key, value in iteritems(self.indexes):
+            if isinstance(value, bool):
+                if not value:
+                    continue
+                if not isinstance(key, tuple):
+                    key = [key]
+                if any(field not in self.table for field in key):
+                    raise SyntaxError(
+                        'Invalid field specified in indexes: %s' % str(key))
+                idx_name = self.__create_index_name(*key)
+                idx_dict = {'fields': key, 'expressions': [], 'unique': False}
+            elif isinstance(value, dict):
+                idx_name = self.__prepend_table_on_index_name(key)
+                idx_dict = self.__parse_index_dict(value)
+            else:
+                raise SyntaxError(
+                    'Values in indexes dict should be booleans or dicts')
+            self._indexes_[idx_name] = idx_dict
+
     def __define_form_utils(self):
         #: labels
         for field, value in self.form_labels.items():
@@ -423,6 +495,33 @@ class Model(with_metaclass(MetaModel)):
 
     def setup(self):
         pass
+
+    @classmethod
+    def _inject_virtuals_on_row(cls, row):
+        virtualrow = sdict({cls.tablename: row})
+        for virtual in cls.table._virtual_fields:
+            try:
+                row[virtual.name] = virtual.f(virtualrow)
+            except (AttributeError, KeyError):
+                pass
+        for virtualmethod in cls.table._virtual_methods:
+            try:
+                row[virtualmethod.name] = \
+                    lambda row=virtualrow, m=virtualmethod: m.f(row)
+            except (AttributeError, KeyError):
+                pass
+        return row
+
+    @classmethod
+    def new(cls, **attributes):
+        row = Row()
+        for field in cls.table.fields:
+            val = attributes.get(field, cls.table[field].default)
+            if callable(val):
+                val = val()
+            row[field] = val
+        cls._inject_virtuals_on_row(row)
+        return row
 
     @classmethod
     def create(cls, *args, **kwargs):
@@ -486,3 +585,20 @@ class Model(with_metaclass(MetaModel)):
     def form(cls, record=None, **kwargs):
         from ..forms import DALForm
         return DALForm(cls.table, record, **kwargs)
+
+    @rowmethod('update_record')
+    def _update_record(self, row, **fields):
+        newfields = fields or dict(row)
+        for fieldname in list(newfields.keys()):
+            if fieldname not in self.table.fields or \
+               self.table[fieldname].type == 'id':
+                del newfields[fieldname]
+        self.db(self.table._id == row.id, ignore_common_filters=True).update(
+            **newfields
+        )
+        row.update(newfields)
+        return row
+
+    @rowmethod('delete_record')
+    def _delete_record(self, row):
+        return self.db(self.db[self.tablename]._id == row.id).delete()

@@ -17,7 +17,7 @@ from pydal import Field as _Field
 from weppy import App, sdict
 from weppy.dal import DAL, Field, Model, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
-    virtualfield, fieldmethod, has_one, has_many, belongs_to, scope
+    rowattr, rowmethod, has_one, has_many, belongs_to, scope
 from weppy.validators import isntEmpty, hasLength
 from weppy.validators._old import notInDb
 
@@ -113,19 +113,19 @@ class Stuff(Model):
     def ad(self, set):
         return _call_d(set)
 
-    @virtualfield('totalv')
+    @rowattr('totalv')
     def eval_total_v(self, row):
         return row.price*row.quantity
 
-    @fieldmethod('totalm')
+    @rowmethod('totalm')
     def eval_total_m(self, row):
         return row.price*row.quantity
 
-    @virtualfield('totalv2', current_model_only=False)
+    @rowattr('totalv2', bind_to_model=False)
     def eval_total_v2(self, row):
         return row.stuffs.price*row.stuffs.quantity
 
-    @fieldmethod('totalm2', current_model_only=False)
+    @rowmethod('totalm2', bind_to_model=False)
     def eval_total_m2(self, row):
         return row.stuffs.price*row.stuffs.quantity
 
@@ -181,17 +181,38 @@ class Appointment(Model):
 
 class User(Model):
     name = Field()
-    has_many('memberships', {'organizations': {'via': 'memberships'}})
+    has_many(
+        'memberships', {'organizations': {'via': 'memberships'}},
+        {'cover_orgs': {
+            'via': 'memberships.organization',
+            'where': lambda m: m.is_cover == True}})
 
 
 class Organization(Model):
     name = Field()
-    has_many('memberships', {'users': {'via': 'memberships'}})
+    is_cover = Field('bool', default=False)
+
+    @has_many()
+    def admin_memberships3(self):
+        return Membership.admins()
+
+    has_many(
+        'memberships', {'users': {'via': 'memberships'}},
+        {'admin_memberships': {'target': 'Membership', 'scope': 'admins'}},
+        {'admins': {'via': 'admin_memberships.user'}},
+        {'admin_memberships2': {
+            'target': 'Membership', 'where': lambda m: m.role == 'admin'}},
+        {'admins2': {'via': 'admin_memberships2.user'}},
+        {'admins3': {'via': 'admin_memberships3.user'}})
 
 
 class Membership(Model):
     belongs_to('user', 'organization')
     role = Field()
+
+    @scope('admins')
+    def filter_admins(self):
+        return self.role == 'admin'
 
 
 class House(Model):
@@ -217,11 +238,11 @@ class Animal(Model):
     belongs_to('zoo')
     name = Field()
 
-    @virtualfield('doublename')
+    @rowattr('doublename')
     def get_double_name(self, row):
         return row.name*2
 
-    @virtualfield('pretty')
+    @rowattr('pretty')
     def get_pretty(self, row):
         return row.name
 
@@ -238,7 +259,7 @@ class Elephant(Animal):
     belongs_to('mouse')
     color = Field()
 
-    @virtualfield('pretty')
+    @rowattr('pretty')
     def get_pretty(self, row):
         return row.name+" "+row.color
 
@@ -359,18 +380,18 @@ def test_callbacks(db):
     assert rv == set
 
 
-def test_virtualfields(db):
+def test_rowattrs(db):
     db.Stuff._before_insert = []
     db.Stuff._after_insert = []
     db.Stuff.insert(a="foo", b="bar", price=12.95, quantity=3)
     db.commit()
-    row = db(db.Stuff.id > 0).select().first()
+    row = db(db.Stuff).select().first()
     assert row.totalv == 12.95*3
     assert row.totalv2 == 12.95*3
 
 
-def test_fieldmethods(db):
-    row = db(db.Stuff.id > 0).select().first()
+def test_rowmethods(db):
+    row = db(db.Stuff).select().first()
     assert row.totalm() == 12.95*3
     assert row.totalm2() == 12.95*3
 
@@ -465,7 +486,7 @@ def test_scopes(db):
     db.Subscription.insert(
         name="c", expires_at=datetime.now()+timedelta(hours=20), person=p,
         status=3)
-    rows = db(db.Subscription.id > 0).expired().select()
+    rows = db(db.Subscription).expired().select()
     assert len(rows) == 1 and rows[0].id == s
     rows = p.subscriptions.expired().select()
     assert len(rows) == 1 and rows[0].id == s
@@ -477,6 +498,41 @@ def test_scopes(db):
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
     rows = Subscription.of_status('active', 'suspended').select()
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
+
+
+def test_relations_scopes(db):
+    gus = db.User.insert(name="Gus Fring")
+    org = db.Organization.insert(name="Los pollos hermanos")
+    org.users.add(gus, role="admin")
+    frank = db.User.insert(name="Frank")
+    org.users.add(frank, role='manager')
+    assert org.admins.count() == 1
+    assert org.admins2.count() == 1
+    assert org.admins3.count() == 1
+    org2 = db.Organization.insert(name="Laundry", is_cover=True)
+    org2.users.add(gus, role="admin")
+    assert len(gus.cover_orgs()) == 1
+    assert gus.cover_orgs().first().id == org2
+    org.delete_record()
+    org2.delete_record()
+    #: creation/addition
+    org = db.Organization.insert(name="Los pollos hermanos")
+    org.admins.add(gus)
+    assert org.admins.count() == 1
+    org.delete_record()
+    org = db.Organization.insert(name="Los pollos hermanos")
+    org.admins2.add(gus)
+    assert org.admins2.count() == 1
+    org.delete_record()
+    org = db.Organization.insert(name="Los pollos hermanos")
+    org.admins3.add(gus)
+    assert org.admins3.count() == 1
+    org.delete_record()
+    gus = User.get(name="Gus Fring")
+    org2 = db.Organization.insert(name="Laundry", is_cover=True)
+    gus.cover_orgs.add(org2)
+    assert len(gus.cover_orgs()) == 1
+    assert gus.cover_orgs().first().id == org2
 
 
 def test_model_where(db):

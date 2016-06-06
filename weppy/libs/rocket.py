@@ -1771,7 +1771,8 @@ class WSGIWorker(Worker):
         if self.request_method != 'HEAD':
             try:
                 if self.chunked:
-                    self.conn.sendall(b('%x\r\n%s\r\n' % (len(data), data)))
+                    self.conn.sendall(
+                        b('%x\r\n' % len(data)) + b(data) + b('\r\n'))
                 else:
                     self.conn.sendall(data)
             except socket.timeout:
@@ -1844,7 +1845,7 @@ class WSGIWorker(Worker):
 
             # Log execution time
             dt = time.time()-t0
-            self.app.log.info('[%s on %s] dispatched in %s' % (
+            self.app.log.info('[%s on %s] dispatched in %s second(s)' % (
                 environ['REMOTE_ADDR'], environ['PATH_INFO'], dt))
 
             if not hasattr(output, '__len__') and not hasattr(output, '__iter__'):

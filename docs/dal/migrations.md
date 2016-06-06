@@ -377,6 +377,31 @@ Just as a recap, here is the list of named arguments supported by the `alter_col
 - `existing_default`
 - `existing_type`
 
+### create\_index
+
+*New in version 0.7*
+
+The `create_index` method will, indeed, create a new index for a specific table in your database. It accepts the name of the index as first parameter, the name of the table as the second parameter and then the components and options for the index:
+
+```python
+self.create_index(
+    'tablename_widx__indexname', 'tablename', fields=[], expressions=[], unique=False)
+```
+
+The `fields` attribute should be a list of columns to use to build the index, while the `expressions` one should be a list of sql strings.
+
+Some DBMS also supports the `where` parameter, which should be a sql string representing the query for the conditional index.
+
+### drop\_index
+
+*New in version 0.7*
+
+The `drop_index` method is the opposite of the `create_index` one, since it will permanently remove an index from your database. It accepts two parameters: the name of the index to drop, and the name of the table on which the index is defined on.
+
+```python
+self.drop_index('tablename_widx__indexname', 'tablename')
+```
+
 Custom operations
 -----------------
 

@@ -1,7 +1,5 @@
 """
-weppy is a full-stack python framework that includes everything needed to
-easily create fast, scalable and secure web applications.
-
+weppy is a full-stack python web framework designed with simplicity in mind.
 It takes some components from *web2py* and has a syntax inspired to *Flask*.
 
 
@@ -43,7 +41,7 @@ setup(
     install_requires=[
         'click>=0.6',
         'pyaes',
-        'pyDAL==15.12',
+        'pyDAL==16.6',
         'pyyaml'
     ],
     classifiers=[

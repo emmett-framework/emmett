@@ -19,6 +19,37 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 0.7
+-----------
+
+weppy 0.7 introduces some deprecations you should be aware of, and some new features you might been interested into.
+
+### Deprecation of virtual decorators in models
+
+In the previous versions, the decorators used to make computation on existing fields and to define virtual attributes and methods for the row were available as `computation`, `virtualfield` and `fieldmethod`. Since we think this naming was not the best option, in weppy 0.7 these decorators were renamed as follows:
+
+| old name | new name |
+| --- | --- |
+| computation | compute |
+| virtualfield | rowattr |
+| fieldmethod | rowmethod |
+
+We think the new nomenclature is more self-explainatory and will make the code of weppy applications more readable.
+
+All these variables are deprecated in weppy 0.7, so you can still use them, but we really suggest to update your application code to the new naming since the old ones will be definitely removed in the next version.
+
+### New features
+
+weppy 0.7 introduces official support to database indexes, integrating them with your models and the migration engine, read more about them in the [appropriate chapter](./dal/models#indexes) of the documentation.
+
+Also, with weppy 0.7 we introduced some other small new features:
+
+- `has_one` and `has_many` helpers now support [scope](./dal/relations#scoped-relations) and [where](./dal/relations#where-condition-on-relations) options
+- `has_one` and `has_many` helpers now can be [used as decorators](./dal/advanced#customize-has_one-and-has_many-sets) to create custom relations
+- fields of type *password* now have a default validation
+- the *shell* command now loads the entire application context instead of just the application object
+- a *routes* command is now available to easily get the routing table of the entire application
+
 Version 0.6
 -----------
 

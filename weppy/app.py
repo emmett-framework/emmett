@@ -14,7 +14,7 @@ import os
 import click
 from yaml import load as ymlload
 from ._compat import basestring
-from ._internal import get_root_path, create_missing_app_folders, deprecated
+from ._internal import get_root_path, create_missing_app_folders
 from .utils import dict_to_sdict, cachedprop
 from .expose import Expose
 from .datastructures import sdict, ConfigData
@@ -89,11 +89,6 @@ class App(object):
     @property
     def route(self):
         return Expose
-
-    @property
-    @deprecated('expose', 'route', 'App')
-    def expose(self):
-        return self.route
 
     @property
     def common_handlers(self):
@@ -180,16 +175,13 @@ class App(object):
         for name, lexer in lexers.items():
             self.template_lexers[name] = lexer(self.template_extensions[-1])
 
-    def make_shell_context(self):
+    def make_shell_context(self, context={}):
         """Returns the shell context for an interactive shell for this
         application.  This runs all the registered shell context
         processors.
         """
-        #rv = {'app': self, 'g': g}
-        rv = {'app': self}
-        #for processor in self.shell_context_processors:
-        #    rv.update(processor())
-        return rv
+        context['app'] = self
+        return context
 
     def _run(self, host, port):
         from .libs.rocket import Rocket
@@ -240,10 +232,10 @@ class AppModule(object):
         self.template_folder = template_folder
         #: template_path is referred to module root_directory
         if template_path and not template_path.startswith("/"):
-            template_path = self.root_path+template_path
+            template_path = self.root_path + template_path
         self.template_path = template_path
-        ## how to route static?
-        ## and.. do we want this?? I think not..
+        # how to route static?
+        # and.. do we want this?? I think not..
         #if static_folder:
         #    self.static_folder = self.root_path+"/"+static_folder
         #if static_prefix:
@@ -253,16 +245,12 @@ class AppModule(object):
         self.common_handlers = []
         self.common_helpers = []
 
-    @deprecated('expose', 'route', 'AppModule')
-    def expose(self, *args, **kwargs):
-        return self.route(*args, **kwargs)
-
     def route(self, path=None, name=None, template=None, **kwargs):
         if name is not None and "." in name:
             raise RuntimeError(
-                "App modules' exposed names should not contains dots"
+                "App modules' route names should not contains dots"
             )
-        name = self.name+"."+(name or "")
+        name = self.name + "." + (name or "")
         handlers = kwargs.get('handlers', [])
         helpers = kwargs.get('helpers', [])
         if self.common_handlers:

@@ -58,13 +58,13 @@ class StepOneThing(Model):
     name = Field()
     value = Field('float')
 
-_step_one_sql = """CREATE TABLE step_one_things(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name CHAR(512),
-    value DOUBLE
+_step_one_sql = """CREATE TABLE "step_one_things"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" CHAR(512),
+    "value" DOUBLE
 );"""
 
-_step_one_sql_drop = "DROP TABLE step_one_things;"
+_step_one_sql_drop = 'DROP TABLE "step_one_things";'
 
 
 def test_step_one_create_table(app):
@@ -105,11 +105,11 @@ class StepTwoThing(Model):
     value = Field('float', default=8.8)
     available = Field('bool', default=True)
 
-_step_two_sql = """CREATE TABLE step_two_things(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name CHAR(512) NOT NULL,
-    value DOUBLE DEFAULT '8.8',
-    available CHAR(1) DEFAULT 'T'
+_step_two_sql = """CREATE TABLE "step_two_things"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" CHAR(512) NOT NULL,
+    "value" DOUBLE DEFAULT '8.8',
+    "available" CHAR(1) DEFAULT 'T'
 );"""
 
 
@@ -136,8 +136,8 @@ class StepThreeThingThree(Model):
     tablename = "step_three_thing_ones"
     b = Field()
 
-_step_three_sql = "ALTER TABLE step_three_thing_ones ADD b CHAR(512);"
-_step_three_sql_drop = "ALTER TABLE step_three_thing_ones DROP COLUMN a;"
+_step_three_sql = 'ALTER TABLE "step_three_thing_ones" ADD "b" CHAR(512);'
+_step_three_sql_drop = 'ALTER TABLE "step_three_thing_ones" DROP COLUMN "a";'
 
 
 def test_step_three_create_column(app):
@@ -178,12 +178,12 @@ class StepFourThingEdit(Model):
     available = Field('bool', default=True)
     asd = Field('int')
 
-_step_four_sql = """ALTER_TABLE step_four_things ALTER COLUMN name DROP NOT NULL;
-ALTER_TABLE step_four_things ALTER COLUMN value DROP DEFAULT;
-ALTER_TABLE step_four_things ALTER COLUMN asd TYPE INTEGER;"""
+_step_four_sql = """ALTER_TABLE "step_four_things" ALTER COLUMN "name" DROP NOT NULL;
+ALTER_TABLE "step_four_things" ALTER COLUMN "value" DROP DEFAULT;
+ALTER_TABLE "step_four_things" ALTER COLUMN "asd" TYPE INTEGER;"""
 
 
-def test_step_three_alter_table(app):
+def test_step_four_alter_table(app):
     db = DAL(app, auto_migrate=False)
     db.define_models(StepFourThing)
     ops = _make_ops(db)
@@ -194,3 +194,52 @@ def test_step_three_alter_table(app):
     for op in ops2.ops:
         sql.append(_make_sql(db2, op))
     assert "\n".join(sql) == _step_four_sql
+
+
+class StepFiveThing(Model):
+    name = Field()
+    value = Field('int')
+    created_at = Field('datetime')
+
+    indexes = {
+        'name': True,
+        ('name', 'value'): True
+    }
+
+
+class StepFiveThingEdit(StepFiveThing):
+    tablename = "step_five_things"
+
+    indexes = {
+        'name': False,
+        'name_created': {
+            'fields': 'name',
+            'expressions': lambda m: m.created_at.coalesce(None)}
+    }
+
+
+_step_five_sql_before = [
+    'CREATE INDEX "step_five_things_widx__name" ON "step_five_things" ("name");',
+    'CREATE INDEX "step_five_things_widx__name_value" ON "step_five_things" ("name","value");'
+]
+
+_step_five_sql_after = [
+    'DROP INDEX "step_five_things_widx__name";',
+    'CREATE INDEX "step_five_things_widx__name_created" ON "step_five_things" ("name",COALESCE("created_at",NULL));'
+]
+
+
+def test_step_five_indexes(app):
+    db = DAL(app, auto_migrate=False)
+    db.define_models(StepFiveThing)
+    ops = _make_ops(db)
+    index_ops = ops.ops[1:]
+    for op in index_ops:
+        sql = _make_sql(db, op)
+        assert sql in _step_five_sql_before
+    db2 = DAL(app, auto_migrate=False)
+    db2.define_models(StepFiveThingEdit)
+    ops2 = _make_ops(db2, ops)
+    for op in ops2.ops:
+        sql = _make_sql(db, op)
+        assert sql in _step_five_sql_after

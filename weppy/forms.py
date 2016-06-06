@@ -10,7 +10,6 @@
 """
 
 from ._compat import iteritems, iterkeys
-from ._internal import deprecated
 from .dal import Field
 from .datastructures import sdict
 from .globals import current, request, session
@@ -77,16 +76,6 @@ class Form(TAG):
                                % self.attributes['formstyle'].__name__)
         #: process the form
         self._process()
-
-    @property
-    @deprecated('vars', 'params', 'Form')
-    def vars(self):
-        return self.params
-
-    @property
-    @deprecated('input_vars', 'input_params', 'Form')
-    def input_vars(self):
-        return self.input_params
 
     @property
     def csrf(self):
@@ -232,7 +221,7 @@ class DALForm(Form):
                         field.name not in exclude_fields:
                     self.fields.append(field)
         #: use tablename for form id
-        attributes['id_prefix'] = table._tablename+"_"
+        attributes['id_prefix'] = table._tablename + "_"
         #: finally init the form
         self._preprocess_(**attributes)
 
@@ -250,12 +239,12 @@ class DALForm(Form):
                 #: handle uploads
                 if field.type == 'upload':
                     f = self.params[field.name]
-                    fd = field.name+"__del"
+                    fd = field.name + "__del"
                     if f == '' or f is None:
                         if self.input_params.get(fd, False):
                             self.params[field.name] = \
                                 self.table[field.name].default or ''
-                            ## TODO?: we want to physically delete file?
+                            # TODO: we want to physically delete file?
                         else:
                             if self.record and self.record[field.name]:
                                 self.params[field.name] = \
@@ -414,9 +403,9 @@ class FormStyle(object):
             if not requires or (isinstance(v, isEmptyOr) for v in requires):
                 elements.append(tag.div(
                     tag.input(_type='checkbox', _class='checkbox',
-                              _id=_id+'__del', _name=field.name+'__del',
+                              _id=_id + '__del', _name=field.name + '__del',
                               _style="display: inline;"),
-                    tag.label('delete', _for=_id+'__del',
+                    tag.label('delete', _for=_id + '__del',
                               _style="margin: 4px"),
                     _style="white-space: nowrap;"))
         return tag.div(*elements, _class='upload_wrap')
@@ -449,7 +438,7 @@ class FormStyle(object):
             wtype = 'int'
         widget_id = self.attr["id_prefix"] + field.name
         try:
-            return getattr(self, "widget_"+wtype)(
+            return getattr(self, "widget_" + wtype)(
                 self.attr, field, value, _id=widget_id), False
         except AttributeError:
             raise RuntimeError("Missing form widget for field %s of type %s" %

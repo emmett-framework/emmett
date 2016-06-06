@@ -33,7 +33,7 @@ def is_valid_ip_address(address):
     if address.lower() in ('127.0.0.1', 'localhost', '::1',
                            '::ffff:127.0.0.1'):
         return True
-    elif address.lower() in ('unkown', ''):
+    elif address.lower() in ('unknown', ''):
         return False
     elif address.count('.') == 3:  # assume IPv4
         if address.startswith('::ffff:'):
