@@ -12,7 +12,7 @@
 from collections import OrderedDict
 from pydal.objects import Row
 from .._compat import iteritems, with_metaclass
-from .apis import computation, virtualfield, fieldmethod, scope
+from .apis import compute, rowattr, rowmethod, scope
 from .base import Field, _Field, sdict
 from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
     VirtualWrap, ScopeWrap, Callback, ReferenceData, make_tablename
@@ -33,9 +33,9 @@ class MetaModel(type):
         for key, value in list(attrs.items()):
             if isinstance(value, Field):
                 current_fields.append((key, value))
-            elif isinstance(value, virtualfield):
+            elif isinstance(value, rowattr):
                 current_vfields.append((key, value))
-            elif isinstance(value, computation):
+            elif isinstance(value, compute):
                 computations.append((key, value))
             elif isinstance(value, Callback):
                 callbacks.append((key, value))
@@ -299,7 +299,7 @@ class Model(with_metaclass(MetaModel)):
                 belongs_references[reference.name] = reference.model
             isbelongs = False
         setattr(self.__class__, '_belongs_ref_', belongs_references)
-        #: has_one are mapped with virtualfield()
+        #: has_one are mapped with rowattr
         hasone_references = {}
         if hasattr(self, '_hasone_ref_'):
             for item in getattr(self, '_hasone_ref_'):
@@ -307,10 +307,10 @@ class Model(with_metaclass(MetaModel)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item, False)
                 self._virtual_relations_[reference.name] = \
-                    virtualfield(reference.name)(HasOneWrap(reference))
+                    rowattr(reference.name)(HasOneWrap(reference))
                 hasone_references[reference.name] = reference
         setattr(self.__class__, '_hasone_ref_', hasone_references)
-        #: has_many are mapped with virtualfield()
+        #: has_many are mapped with rowattr
         hasmany_references = {}
         if hasattr(self, '_hasmany_ref_'):
             for item in getattr(self, '_hasmany_ref_'):
@@ -325,19 +325,19 @@ class Model(with_metaclass(MetaModel)):
                     #  has_many({'things': 'othername'})
                     wrapper = HasManyWrap
                 self._virtual_relations_[reference.name] = \
-                    virtualfield(reference.name)(wrapper(reference))
+                    rowattr(reference.name)(wrapper(reference))
                 hasmany_references[reference.name] = reference
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
 
     def _define_virtuals_(self):
-        err = 'virtualfield or fieldmethod cannot have same name as an' + \
+        err = 'rowattr or rowmethod cannot have the name of an' + \
             'existent field!'
         field_names = [field.name for field in self.fields]
         for attr in ['_virtual_relations_', '_declared_virtuals_']:
             for name, obj in iteritems(getattr(self, attr, {})):
                 if obj.field_name in field_names:
                     raise RuntimeError(err)
-                if isinstance(obj, fieldmethod):
+                if isinstance(obj, rowmethod):
                     f = _Field.Method(obj.field_name, VirtualWrap(self, obj))
                 else:
                     f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
@@ -586,7 +586,7 @@ class Model(with_metaclass(MetaModel)):
         from ..forms import DALForm
         return DALForm(cls.table, record, **kwargs)
 
-    @fieldmethod('update_record')
+    @rowmethod('update_record')
     def _update_record(self, row, **fields):
         newfields = fields or dict(row)
         for fieldname in list(newfields.keys()):
@@ -599,6 +599,6 @@ class Model(with_metaclass(MetaModel)):
         row.update(newfields)
         return row
 
-    @fieldmethod('delete_record')
+    @rowmethod('delete_record')
     def _delete_record(self, row):
         return self.db(self.db[self.tablename]._id == row.id).delete()

@@ -17,7 +17,7 @@ from pydal import Field as _Field
 from weppy import App, sdict
 from weppy.dal import DAL, Field, Model, computation, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
-    virtualfield, fieldmethod, has_one, has_many, belongs_to, scope
+    rowattr, rowmethod, has_one, has_many, belongs_to, scope
 from weppy.validators import isntEmpty, hasLength
 from weppy.validators._old import notInDb
 
@@ -113,19 +113,19 @@ class Stuff(Model):
     def ad(self, set):
         return _call_d(set)
 
-    @virtualfield('totalv')
+    @rowattr('totalv')
     def eval_total_v(self, row):
         return row.price*row.quantity
 
-    @fieldmethod('totalm')
+    @rowmethod('totalm')
     def eval_total_m(self, row):
         return row.price*row.quantity
 
-    @virtualfield('totalv2', current_model_only=False)
+    @rowattr('totalv2', current_model_only=False)
     def eval_total_v2(self, row):
         return row.stuffs.price*row.stuffs.quantity
 
-    @fieldmethod('totalm2', current_model_only=False)
+    @rowmethod('totalm2', current_model_only=False)
     def eval_total_m2(self, row):
         return row.stuffs.price*row.stuffs.quantity
 
@@ -238,11 +238,11 @@ class Animal(Model):
     belongs_to('zoo')
     name = Field()
 
-    @virtualfield('doublename')
+    @rowattr('doublename')
     def get_double_name(self, row):
         return row.name*2
 
-    @virtualfield('pretty')
+    @rowattr('pretty')
     def get_pretty(self, row):
         return row.name
 
@@ -259,7 +259,7 @@ class Elephant(Animal):
     belongs_to('mouse')
     color = Field()
 
-    @virtualfield('pretty')
+    @rowattr('pretty')
     def get_pretty(self, row):
         return row.name+" "+row.color
 
@@ -380,7 +380,7 @@ def test_callbacks(db):
     assert rv == set
 
 
-def test_virtualfields(db):
+def test_rowattrs(db):
     db.Stuff._before_insert = []
     db.Stuff._after_insert = []
     db.Stuff.insert(a="foo", b="bar", price=12.95, quantity=3)
@@ -390,7 +390,7 @@ def test_virtualfields(db):
     assert row.totalv2 == 12.95*3
 
 
-def test_fieldmethods(db):
+def test_rowmethods(db):
     row = db(db.Stuff).select().first()
     assert row.totalm() == 12.95*3
     assert row.totalm2() == 12.95*3
