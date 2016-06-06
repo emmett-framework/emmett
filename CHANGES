@@ -7,11 +7,12 @@ Next
 (Release date to be announced, codename to be selected)
 
 - Shell command now loads the entire application context
-- Added `scope` options to `has_one` and `has_many` relations
-- Added `where` options to `has_one` and `has_many` relations
+- Added `scope` option to `has_one` and `has_many` relations
+- Added `where` option to `has_one` and `has_many` relations
 - `computation` and callbacks helpers now keep definition order
 - Allow usage of `has_one` and `has_many` helpers as decorators to customize
   relations' sets generation
+- Added default configuration for extensions
 - Added `Model.new` method
 - Added databse indexing support
 - Added default validation for 'password' fields
