@@ -29,6 +29,7 @@ __all__ = ['Expose', 'url']
 
 class Expose(object):
     _routing_stack = []
+    _routes_str = []
     application = None
     routes_in = {'__any__': []}
     routes_out = {}
@@ -47,7 +48,7 @@ class Expose(object):
                  helpers=None, schemes=None, hostname=None, methods=None,
                  prefix=None, template_folder=None, template_path=None):
         if callable(path):
-            raise SyntaxError('@route(), not @route')
+            raise SyntaxError('Use @route(), not @route.')
         self.schemes = schemes or ('http', 'https')
         if not isinstance(self.schemes, (list, tuple)):
             self.schemes = (self.schemes,)
@@ -138,11 +139,9 @@ class Expose(object):
     def __call__(self, func):
         self.func_name = func.__name__
         self.filename = os.path.realpath(func.__code__.co_filename)
-        #self.mtime = os.path.getmtime(self.filename)
         self.hostname = self.hostname or \
             self.application.config.hostname_default
         if not self.path:
-            #self.path = '/' + func.__name__ + '(.\w+)?'
             self.path = '/' + func.__name__
         if not self.name:
             self.name = self.build_name()
@@ -160,8 +159,6 @@ class Expose(object):
         if not self.template:
             self.template = self.func_name + \
                 self.application.template_default_extension
-        #if self.name.startswith('.'):
-        #    self.name = '%s%s' % (self.application, self.name)
         if self.template_folder:
             self.template = os.path.join(self.template_folder, self.template)
         self.template_path = self.template_path or \
@@ -172,13 +169,13 @@ class Expose(object):
             self.schemes, self.hostname, self.methods, self.path)
         route = (re.compile(self.regex), self)
         self.add_route(route)
-        logstr = "%s %s://%s%s" % (
+        self._routes_str.append("%s %s://%s%s -> %s" % (
             "|".join(s.upper() for s in self.methods),
             "|".join(s for s in self.schemes),
             self.hostname or "<any>",
-            self.path
-        )
-        self.application.log.info("exposing '%s': %s" % (self.name, logstr))
+            self.path,
+            self.name
+        ))
         for proc_handler in self.processors:
             proc_handler(self)
         self._routing_stack.pop()

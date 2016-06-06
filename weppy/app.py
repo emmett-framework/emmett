@@ -248,7 +248,7 @@ class AppModule(object):
     def route(self, path=None, name=None, template=None, **kwargs):
         if name is not None and "." in name:
             raise RuntimeError(
-                "App modules' exposed names should not contains dots"
+                "App modules' route names should not contains dots"
             )
         name = self.name + "." + (name or "")
         handlers = kwargs.get('handlers', [])

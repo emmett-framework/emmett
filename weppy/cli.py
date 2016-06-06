@@ -198,6 +198,7 @@ class WeppyGroup(click.Group):
         if add_default_commands:
             self.add_command(run_command)
             self.add_command(shell_command)
+            self.add_command(routes_command)
 
     def get_command(self, ctx, name):
         # We load built-in commands first as these should always be the
@@ -264,6 +265,15 @@ def shell_command(info):
         app.import_name
     )
     code.interact(banner=banner, local=app.make_shell_context(ctx))
+
+
+@click.command('routes', short_help='Display the app routing table.')
+@pass_script_info
+def routes_command(info):
+    app = info.load_app()
+    print("> Routing table for weppy application %s:" % app.import_name)
+    for route in app.route._routes_str:
+        print(route)
 
 
 cli = WeppyGroup(help="")
