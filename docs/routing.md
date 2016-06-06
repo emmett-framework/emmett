@@ -12,9 +12,10 @@ The `route` method of the `App` object accepts several parameters,
 as you can see from the source code:
 
 ```python
-def route(self, path=None, name=None, template=None, handlers=None,
-           helpers=None, schemes=None, hostname=None, methods=None,
-           prefix=None, template_folder=None, template_path=None):
+def route(
+    self, path=None, name=None, template=None, handlers=None, helpers=None,
+    schemes=None, hostname=None, methods=None, prefix=None, 
+    template_folder=None, template_path=None):
 ```
 
 Let's see them in detail.
@@ -47,6 +48,7 @@ def user(username):
 
 @app.route('/double/<int:number>')
 def double(number):
+    number = int(number)
     return "%d * 2 = %d" % (number, number*2)
 ```
 
