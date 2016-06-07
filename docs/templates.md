@@ -182,7 +182,7 @@ and in a template:
 ```html
 <div id="target"></div>
 <script type="text/javascript">
-    ajax({{=url('my_ajaxf'), [], ':eval'}});
+    ajax("{{=url('my_ajaxf')}}", [], ':eval');
 </script>
 ```
 
