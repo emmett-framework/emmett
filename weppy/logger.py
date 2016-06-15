@@ -83,7 +83,7 @@ def create_logger(app):
         lfile = os.path.join(app.root_path, 'logs', lname + '.log')
         max_size = lconf.max_size or _def_log_config.production.max_size
         file_no = lconf.file_no or _def_log_config.production.file_no
-        level = _levels.get(lconf.level or 0)
+        level = _levels.get(lconf.level or 'warning', _levels.get('warning'))
         lformat = lconf.format or _def_log_config.production.format
         on_app_debug = lconf.on_app_debug
         if on_app_debug:
