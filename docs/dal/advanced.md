@@ -125,7 +125,7 @@ For example, you may want to change the behavior of a relation depending on some
 from weppy import session
 
 class User(Model):
-    @has_many
+    @has_many()
     def posts(self):
         if session.user.is_admin:
             return Post.where(lambda m: m.is_trashed == True)
