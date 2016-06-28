@@ -279,6 +279,10 @@ class DAL(_pyDAL):
             self.execution_handlers.append(TimingHandler)
         #: finally setup pyDAL instance
         super(DAL, self).__init__(self.config.uri, pool_size, folder, **kwargs)
+        self._adapter._add_operators_to_parsed_row = \
+            lambda *args, **kwargs: None
+        self._adapter._add_reference_sets_to_parsed_row = \
+            lambda *args, **kwargs: None
 
     @property
     def handler(self):
