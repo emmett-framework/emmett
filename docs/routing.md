@@ -111,7 +111,7 @@ def profile():
     # code
 ```
 
-will search for the *profile.html* template in your application's *template* 
+will search for the *profile.html* template in your application's *templates* 
 folder. When you need to use a different template name, just tell weppy to load it:
 
 ```python
