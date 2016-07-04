@@ -465,14 +465,14 @@ def test_inheritance(db):
     assert 'zoo' in db.Elephant.fields
     assert 'color' in db.Elephant.fields
     assert 'color' not in db.Animal.fields
-    assert Elephant._declared_virtuals_['get_double_name'] is \
-        Animal._declared_virtuals_['get_double_name']
-    assert Elephant._declared_virtuals_['get_pretty'] is not \
-        Animal._declared_virtuals_['get_pretty']
-    assert Elephant._declared_callbacks_['bi'] is \
-        Animal._declared_callbacks_['bi']
-    assert Elephant._declared_callbacks_['bi2'] is not \
-        Animal._declared_callbacks_['bi2']
+    assert Elephant._all_virtuals_['get_double_name'] is \
+        Animal._all_virtuals_['get_double_name']
+    assert Elephant._all_virtuals_['get_pretty'] is not \
+        Animal._all_virtuals_['get_pretty']
+    assert Elephant._all_callbacks_['bi'] is \
+        Animal._all_callbacks_['bi']
+    assert Elephant._all_callbacks_['bi2'] is not \
+        Animal._all_callbacks_['bi2']
 
 
 def test_scopes(db):

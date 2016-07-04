@@ -229,7 +229,9 @@ class Auth(object):
             {names['permission'] + 's': {'via': names['group'] + 's'}}
         ]
         if getattr(user_model, '_auto_relations', True):
-            user_model._hasmany_ref_ = many_refs + user_model._hasmany_ref_
+            for el in many_refs:
+                key = list(el)[0]
+                user_model._all_hasmany_ref_[key] = el
         if user_model.validation.get('password') is None:
             user_model.validation['password'] = {
                 'len': {'gt': self.settings.password_min_length},
@@ -245,7 +247,9 @@ class Auth(object):
             {names['user'] + 's': {'via': names['membership'] + 's'}}
         ]
         if getattr(group_model, '_auto_relations', True):
-            group_model._hasmany_ref_ = many_refs + group_model._hasmany_ref_
+            for el in many_refs:
+                key = list(el)[0]
+                group_model._all_hasmany_ref_[key] = el
         #: AuthMembership
         membership_model = models['membership']
         belongs_refs = [
@@ -253,24 +257,27 @@ class Auth(object):
             {names['group']: models['group'].__name__}
         ]
         if getattr(membership_model, '_auto_relations', True):
-            membership_model._belongs_ref_ = \
-                belongs_refs + membership_model._belongs_ref_
+            for el in belongs_refs:
+                key = list(el)[0]
+                membership_model._all_belongs_ref_[key] = el
         #: AuthPermission
         permission_model = models['permission']
         belongs_refs = [
             {names['group']: models['group'].__name__}
         ]
         if getattr(permission_model, '_auto_relations', True):
-            permission_model._belongs_ref_ = \
-                belongs_refs + permission_model._belongs_ref_
+            for el in belongs_refs:
+                key = list(el)[0]
+                permission_model._all_belongs_ref_[key] = el
         #: AuthEvent
         event_model = models['event']
         belongs_refs = [
             {names['user']: models['user'].__name__}
         ]
         if getattr(event_model, '_auto_relations', True):
-            event_model._belongs_ref_ = \
-                belongs_refs + event_model._belongs_ref_
+            for el in belongs_refs:
+                key = list(el)[0]
+                event_model._all_belongs_ref_[key] = el
         models.user.auth = self
         self.db.define_models(
             models.user, models.group, models.membership, models.permission,

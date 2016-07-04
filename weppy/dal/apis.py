@@ -9,12 +9,13 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from collections import OrderedDict
 from .helpers import Reference, Callback
 from .._internal import warn_of_deprecation
 
 
 class belongs_to(Reference):
-    _references_ = {}
+    _references_ = OrderedDict()
 
     @property
     def refobj(self):
@@ -22,7 +23,7 @@ class belongs_to(Reference):
 
 
 class refers_to(Reference):
-    _references_ = {}
+    _references_ = OrderedDict()
 
     @property
     def refobj(self):
@@ -30,7 +31,7 @@ class refers_to(Reference):
 
 
 class has_one(Reference):
-    _references_ = {}
+    _references_ = OrderedDict()
 
     @property
     def refobj(self):
@@ -38,7 +39,7 @@ class has_one(Reference):
 
 
 class has_many(Reference):
-    _references_ = {}
+    _references_ = OrderedDict()
 
     @property
     def refobj(self):
