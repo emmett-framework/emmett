@@ -432,7 +432,7 @@ class Field(_Field):
         if self._type == 'bool':
             rv['in'] = (False, True)
         if self._type in ['string', 'text', 'password']:
-            rv['len'] = {'lt': self.length}
+            rv['len'] = {'lte': self.length}
         if self._type == 'password':
             rv['len']['gte'] = 6
             rv['crypt'] = True

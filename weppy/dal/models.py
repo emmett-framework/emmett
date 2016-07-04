@@ -11,7 +11,7 @@
 
 from collections import OrderedDict
 from pydal.objects import Row
-from .._compat import iteritems, with_metaclass
+from .._compat import iteritems, itervalues, with_metaclass
 from .apis import compute, rowattr, rowmethod, scope
 from .base import Field, _Field, sdict
 from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
@@ -25,94 +25,114 @@ class MetaModel(type):
             return new_class
         #: collect declared attributes
         tablename = attrs.get('tablename')
-        current_fields = []
-        current_vfields = []
+        fields = []
+        vfields = []
         computations = []
         callbacks = []
-        scopes = {}
+        declared_fields = OrderedDict()
+        declared_vfields = OrderedDict()
+        declared_computations = OrderedDict()
+        declared_callbacks = OrderedDict()
+        declared_scopes = {}
         for key, value in list(attrs.items()):
             if isinstance(value, Field):
-                current_fields.append((key, value))
+                fields.append((key, value))
             elif isinstance(value, rowattr):
-                current_vfields.append((key, value))
+                vfields.append((key, value))
             elif isinstance(value, compute):
                 computations.append((key, value))
             elif isinstance(value, Callback):
                 callbacks.append((key, value))
             elif isinstance(value, scope):
-                scopes[key] = value
-        #: get super declared attributes
-        declared_fields = OrderedDict()
-        declared_vfields = OrderedDict()
-        super_relations = sdict(
-            _belongs_ref_=[], _refers_ref_=[],
-            _hasone_ref_=[], _hasmany_ref_=[]
+                declared_scopes[key] = value
+        declared_relations = sdict(
+            belongs=OrderedDict(), refers=OrderedDict(),
+            hasone=OrderedDict(), hasmany=OrderedDict()
         )
-        declared_computations = OrderedDict()
-        declared_callbacks = OrderedDict()
-        declared_scopes = {}
-        for base in reversed(new_class.__mro__[1:]):
-            #: collect fields from base class
-            if hasattr(base, '_declared_fields_'):
-                declared_fields.update(base._declared_fields_)
-            #: collect relations from base class
-            for key in list(super_relations):
-                if hasattr(base, key):
-                    super_relations[key] += getattr(base, key)
-            #: collect virtuals from base class
-            if hasattr(base, '_declared_virtuals_'):
-                declared_vfields.update(base._declared_virtuals_)
-            #: collect computations from base class
-            if hasattr(base, '_declared_computations_'):
-                declared_computations.update(base._declared_computations_)
-            #: collect callbacks from base class
-            if hasattr(base, '_declared_callbacks_'):
-                declared_callbacks.update(base._declared_callbacks_)
-            if hasattr(base, '_declared_scopes_'):
-                declared_scopes.update(base._declared_scopes_)
-        #: set tablename
-        new_class._declared_tablename_ = tablename
-        #: set fields with correct order
-        current_fields.sort(key=lambda x: x[1]._inst_count_)
-        declared_fields.update(current_fields)
-        new_class._declared_fields_ = declared_fields
-        #: set relations references binding
         from .apis import belongs_to, refers_to, has_one, has_many
-        items = []
-        for item in belongs_to._references_.values():
-            items += item.reference
-        new_class._belongs_ref_ = super_relations._belongs_ref_ + items
+        for ref in belongs_to._references_.values():
+            for item in ref.reference:
+                rkey = list(item)[0] if isinstance(item, dict) else item
+                declared_relations.belongs[rkey] = item
         belongs_to._references_ = {}
-        items = []
-        for item in refers_to._references_.values():
-            items += item.reference
-        new_class._refers_ref_ = super_relations._refers_ref_ + items
+        for ref in refers_to._references_.values():
+            for item in ref.reference:
+                rkey = list(item)[0] if isinstance(item, dict) else item
+                declared_relations.refers[rkey] = item
         refers_to._references_ = {}
-        items = []
-        for item in has_one._references_.values():
-            items += item.reference
-        new_class._hasone_ref_ = super_relations._hasone_ref_ + items
+        for ref in has_one._references_.values():
+            for item in ref.reference:
+                rkey = list(item)[0] if isinstance(item, dict) else item
+                declared_relations.hasone[rkey] = item
         has_one._references_ = {}
-        items = []
-        for item in has_many._references_.values():
-            items += item.reference
-        new_class._hasmany_ref_ = super_relations._hasmany_ref_ + items
+        for ref in has_many._references_.values():
+            for item in ref.reference:
+                rkey = list(item)[0] if isinstance(item, dict) else item
+                declared_relations.hasmany[rkey] = item
         has_many._references_ = {}
-        #: set virtual fields with correct order
-        current_vfields.sort(key=lambda x: x[1]._inst_count_)
-        declared_vfields.update(current_vfields)
-        new_class._declared_virtuals_ = declared_vfields
-        #: set computations
+        #: sort declared attributes that keeps order
+        fields.sort(key=lambda x: x[1]._inst_count_)
+        vfields.sort(key=lambda x: x[1]._inst_count_)
         computations.sort(key=lambda x: x[1]._inst_count_)
-        declared_computations.update(computations)
-        new_class._declared_computations_ = declared_computations
-        #: set callbacks
         callbacks.sort(key=lambda x: x[1]._inst_count_)
+        declared_fields.update(fields)
+        declared_vfields.update(vfields)
+        declared_computations.update(computations)
         declared_callbacks.update(callbacks)
+        #: store declared attributes in class
+        new_class._declared_tablename_ = tablename
+        new_class._declared_fields_ = declared_fields
+        new_class._declared_virtuals_ = declared_vfields
+        new_class._declared_computations_ = declared_computations
         new_class._declared_callbacks_ = declared_callbacks
-        #: set scopes
-        declared_scopes.update(scopes)
         new_class._declared_scopes_ = declared_scopes
+        new_class._declared_belongs_ref_ = declared_relations.belongs
+        new_class._declared_refers_ref_ = declared_relations.refers
+        new_class._declared_hasone_ref_ = declared_relations.hasone
+        new_class._declared_hasmany_ref_ = declared_relations.hasmany
+        #: get super declared attributes
+        all_fields = OrderedDict()
+        all_vfields = OrderedDict()
+        all_computations = OrderedDict()
+        all_callbacks = OrderedDict()
+        all_scopes = {}
+        all_relations = sdict(
+            belongs=OrderedDict(), refers=OrderedDict(),
+            hasone=OrderedDict(), hasmany=OrderedDict()
+        )
+        for base in reversed(new_class.__mro__[1:]):
+            if hasattr(base, '_declared_fields_'):
+                all_fields.update(base._declared_fields_)
+            if hasattr(base, '_declared_virtuals_'):
+                all_vfields.update(base._declared_virtuals_)
+            if hasattr(base, '_declared_computations_'):
+                all_computations.update(base._declared_computations_)
+            if hasattr(base, '_declared_callbacks_'):
+                all_callbacks.update(base._declared_callbacks_)
+            if hasattr(base, '_declared_scopes_'):
+                all_scopes.update(base._declared_scopes_)
+            for key in list(all_relations):
+                attrkey = '_declared_' + key + '_ref_'
+                if hasattr(base, attrkey):
+                    all_relations[key].update(getattr(base, attrkey))
+        #: compose 'all' attributes
+        all_fields.update(declared_fields)
+        all_vfields.update(declared_vfields)
+        all_computations.update(declared_computations)
+        all_callbacks.update(declared_callbacks)
+        all_scopes.update(declared_scopes)
+        for key in list(all_relations):
+            all_relations[key].update(declared_relations[key])
+        #: store 'all' attributes on class
+        new_class._all_fields_ = all_fields
+        new_class._all_virtuals_ = all_vfields
+        new_class._all_computations_ = all_computations
+        new_class._all_callbacks_ = all_callbacks
+        new_class._all_scopes_ = all_scopes
+        new_class._all_belongs_ref_ = all_relations.belongs
+        new_class._all_refers_ref_ = all_relations.refers
+        new_class._all_hasone_ref_ = all_relations.hasone
+        new_class._all_hasmany_ref_ = all_relations.hasmany
         return new_class
 
 
@@ -256,7 +276,7 @@ class Model(with_metaclass(MetaModel)):
     def _define_props_(self):
         #: create pydal's Field elements
         self.fields = []
-        for name, obj in iteritems(self._declared_fields_):
+        for name, obj in iteritems(self._all_fields_):
             if obj.modelname is not None:
                 obj = Field(obj._type, *obj._args, **obj._kwargs)
                 setattr(self.__class__, name, obj)
@@ -268,11 +288,11 @@ class Model(with_metaclass(MetaModel)):
             "strings or dicts as arguments"
         #: belongs_to and refers_to are mapped with 'reference' type Field
         _references = []
-        _reference_keys = ['_belongs_ref_', '_refers_ref_']
+        _reference_keys = ['_all_belongs_ref_', '_all_refers_ref_']
         belongs_references = {}
         for key in _reference_keys:
             if hasattr(self, key):
-                _references.append(getattr(self, key))
+                _references.append(list(getattr(self, key).values()))
             else:
                 _references.append([])
         isbelongs = True
@@ -301,8 +321,8 @@ class Model(with_metaclass(MetaModel)):
         setattr(self.__class__, '_belongs_ref_', belongs_references)
         #: has_one are mapped with rowattr
         hasone_references = {}
-        if hasattr(self, '_hasone_ref_'):
-            for item in getattr(self, '_hasone_ref_'):
+        if hasattr(self, '_all_hasone_ref_'):
+            for item in itervalues(getattr(self, '_all_hasone_ref_')):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item, False)
@@ -312,8 +332,8 @@ class Model(with_metaclass(MetaModel)):
         setattr(self.__class__, '_hasone_ref_', hasone_references)
         #: has_many are mapped with rowattr
         hasmany_references = {}
-        if hasattr(self, '_hasmany_ref_'):
-            for item in getattr(self, '_hasmany_ref_'):
+        if hasattr(self, '_all_hasmany_ref_'):
+            for item in itervalues(getattr(self, '_all_hasmany_ref_')):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item)
@@ -333,7 +353,7 @@ class Model(with_metaclass(MetaModel)):
         err = 'rowattr or rowmethod cannot have the name of an' + \
             'existent field!'
         field_names = [field.name for field in self.fields]
-        for attr in ['_virtual_relations_', '_declared_virtuals_']:
+        for attr in ['_virtual_relations_', '_all_virtuals_']:
             for name, obj in iteritems(getattr(self, attr, {})):
                 if obj.field_name in field_names:
                     raise RuntimeError(err)
@@ -389,7 +409,7 @@ class Model(with_metaclass(MetaModel)):
         err = 'computations should have the name of an existing field to ' +\
             'compute!'
         field_names = [field.name for field in self.fields]
-        for name, obj in iteritems(self._declared_computations_):
+        for name, obj in iteritems(self._all_computations_):
             if obj.field_name not in field_names:
                 raise RuntimeError(err)
             # TODO add check virtuals
@@ -397,7 +417,7 @@ class Model(with_metaclass(MetaModel)):
                 lambda row, obj=obj, self=self: obj.f(self, row)
 
     def __define_callbacks(self):
-        for name, obj in iteritems(self._declared_callbacks_):
+        for name, obj in iteritems(self._all_callbacks_):
             for t in obj.t:
                 if t in ["_before_insert", "_before_delete", "_after_delete"]:
                     getattr(self.table, t).append(
@@ -409,7 +429,7 @@ class Model(with_metaclass(MetaModel)):
 
     def __define_scopes(self):
         self._scopes_ = {}
-        for name, obj in iteritems(self._declared_scopes_):
+        for name, obj in iteritems(self._all_scopes_):
             self._scopes_[obj.name] = obj
             if not hasattr(self.__class__, obj.name):
                 setattr(
