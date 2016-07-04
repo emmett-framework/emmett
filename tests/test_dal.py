@@ -15,7 +15,7 @@ from pydal.objects import Table
 from pydal import Field as _Field
 
 from weppy import App, sdict
-from weppy.dal import DAL, Field, Model, computation, before_insert, \
+from weppy.dal import DAL, Field, Model, compute, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
     rowattr, rowmethod, has_one, has_many, belongs_to, scope
 from weppy.validators import isntEmpty, hasLength
@@ -85,7 +85,7 @@ class Stuff(Model):
     def setup(self):
         self.table.b.requires = notInDb(self.db, self.table.b)
 
-    @computation('total')
+    @compute('total')
     def eval_total(self, row):
         return row.price*row.quantity
 
