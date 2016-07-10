@@ -143,9 +143,7 @@ class inDB(Validator):
         # TODO: parse set if is not table
 
     def _get_set(self):
-        self.db._adapter.reconnect()
         rv = self.db(self.db[self.set].id > 0).select().as_list()
-        self.db._adapter.close()
         return rv
 
     def options(self, zero=True):
@@ -153,9 +151,11 @@ class inDB(Validator):
         if self.label_field:
             items = [(r['id'], str(r[self.label_field]))
                      for (i, r) in enumerate(records)]
-        else:
+        elif self.db[self.set]._format:
             items = [(r['id'], self.db[self.set]._format % r)
                      for (i, r) in enumerate(records)]
+        else:
+            items = [(r['id'], r['id']) for (i, r) in enumerate(records)]
         #if self.sort:
         #    items.sort(options_sorter)
         #if zero and self.zero is not None and not self.multiple:
