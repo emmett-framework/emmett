@@ -234,7 +234,7 @@ class Auth(object):
                 user_model._all_hasmany_ref_[key] = el
         if user_model.validation.get('password') is None:
             user_model.validation['password'] = {
-                'len': {'gt': self.settings.password_min_length},
+                'len': {'gte': self.settings.password_min_length},
                 'crypt': {'key': self.settings.hmac_key}
             }
         #: AuthGroup

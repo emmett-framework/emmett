@@ -367,7 +367,8 @@ def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
     # add params
     if params:
         url = url + '?' + '&'.join(
-            '%s=%s' % (uquote(k), uquote(v)) for k, v in iteritems(params)
+            '%s=%s' % (
+                uquote(str(k)), uquote(str(v))) for k, v in iteritems(params)
         )
     # scheme=True means to use current scheme
     if scheme is True:
