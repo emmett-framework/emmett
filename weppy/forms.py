@@ -14,7 +14,7 @@ from .dal import Field
 from .datastructures import sdict
 from .globals import current, request, session
 from .security import CSRFStorage
-from .tags import tag, TAG, cat, asis
+from .tags import TAG, tag, cat, asis
 from .utils import cachedprop
 
 __all__ = ['Form', 'DALForm']
@@ -182,10 +182,7 @@ class Form(TAG):
         custom.submit = tag.input(_type="submit",
                                   value=self.attributes['submit'])
         # provides begin attribute
-        begin = '<form action="%s" method="%s" enctype="%s">' % \
-            (self.attributes['_action'],
-             self.attributes['_method'],
-             self.attributes['_enctype'])
+        begin = '<form %s>' % self._build_html_attributes()
         custom.begin = asis(begin)
         # add hidden stuffs to get weppy process working
         hidden = cat()
