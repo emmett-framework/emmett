@@ -165,12 +165,15 @@ class TAG(object):
                 tags.add(self)
         return tags
 
-    def to_html(self):
-        name = self.name
-        ca = u' '.join(
+    def _build_html_attributes(self):
+        return u' '.join(
             u'%s="%s"' % (k[1:], k[1:] if v is True else htmlescape(v))
             for (k, v) in sorted(self.attributes.items())
             if k.startswith('_') and v is not None)
+
+    def to_html(self):
+        name = self.name
+        ca = self._build_html_attributes()
         da = self.attributes.get('data', {})
         ca_data = u' '.join(
             u'data-%s="%s"' % (k, htmlescape(v)) for k, v in iteritems(da))
