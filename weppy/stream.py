@@ -91,11 +91,10 @@ def streamer(environ, static_file, version=None, headers=None,
                     headers['Vary'] = 'Accept-Encoding'
                     stream = open(static_file, 'rb')
             headers['Content-Length'] = str(fsize)
-    except IOError:
-        if sys.exc_info()[1][0] in (errno.EISDIR, errno.EACCES):
+    except IOError as e:
+        if e.errno in (errno.EISDIR, errno.EACCES):
             return HTTP(403)
-        else:
-            return HTTP(404)
+        return HTTP(404)
     else:
         # serve using wsgi.file_wrapper is available
         if 'wsgi.file_wrapper' in environ:
