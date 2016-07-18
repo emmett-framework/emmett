@@ -526,8 +526,8 @@ class Model(with_metaclass(MetaModel)):
                 pass
         for virtualmethod in cls.table._virtual_methods:
             try:
-                row[virtualmethod.name] = \
-                    lambda row=virtualrow, m=virtualmethod: m.f(row)
+                row[virtualmethod.name] = virtualmethod.handler(
+                    virtualmethod.f, virtualrow)
             except (AttributeError, KeyError):
                 pass
         return row
