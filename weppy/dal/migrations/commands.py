@@ -36,8 +36,8 @@ class Command(object):
         # TODO -> has_table method in adapter, I don't like this "dirtness"
         try:
             self.schema_db(self.schema_db.Schema.id > 0).count()
-            self.schema_db.rollback()
         except:
+            self.schema_db.rollback()
             q = self.schema_db._adapter.create_table(
                 self.schema_db.Schema, migrate=False
             )
