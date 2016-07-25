@@ -237,7 +237,7 @@ class DALForm(Form):
                 if field.type == 'upload':
                     f = self.params[field.name]
                     fd = field.name + "__del"
-                    if f == '' or f is None:
+                    if f == b'' or f is None:
                         if self.input_params.get(fd, False):
                             self.params[field.name] = \
                                 self.table[field.name].default or ''

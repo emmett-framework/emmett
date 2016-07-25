@@ -37,6 +37,7 @@ class Command(object):
         try:
             self.schema_db(self.schema_db.Schema.id > 0).count()
         except:
+            self.schema_db.rollback()
             q = self.schema_db._adapter.create_table(
                 self.schema_db.Schema, migrate=False
             )
