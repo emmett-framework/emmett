@@ -178,9 +178,9 @@ class StepFourThingEdit(Model):
     available = Field('bool', default=True)
     asd = Field('int')
 
-_step_four_sql = """ALTER_TABLE "step_four_things" ALTER COLUMN "name" DROP NOT NULL;
-ALTER_TABLE "step_four_things" ALTER COLUMN "value" DROP DEFAULT;
-ALTER_TABLE "step_four_things" ALTER COLUMN "asd" TYPE INTEGER;"""
+_step_four_sql = """ALTER TABLE "step_four_things" ALTER COLUMN "name" DROP NOT NULL;
+ALTER TABLE "step_four_things" ALTER COLUMN "value" DROP DEFAULT;
+ALTER TABLE "step_four_things" ALTER COLUMN "asd" TYPE INTEGER;"""
 
 
 def test_step_four_alter_table(app):
