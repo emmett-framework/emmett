@@ -293,7 +293,7 @@ class Engine(MetaEngine):
             changes['type'][1] = csql
 
     def _alter_column_sql(self, table_name, column_name, changes):
-        sql = 'ALTER_TABLE %(tname)s ALTER COLUMN %(cname)s %(changes)s;'
+        sql = 'ALTER TABLE %(tname)s ALTER COLUMN %(cname)s %(changes)s;'
         sql_changes_map = {
             'type': "TYPE %s",
             'notnull': {
