@@ -244,7 +244,7 @@ class Expose(object):
 
     @classmethod
     def exposing(cls):
-        return cls._routing_stack[-1]
+        return cls._routing_stack
 
 
 class _ResponseHandler(Handler):
