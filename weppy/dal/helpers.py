@@ -491,7 +491,6 @@ class LeftJoinSet(Set):
         rows = super(Set, self).iterselect(*fields, **options)
         #: build new colnames
         colnames, jcolnames = self._jcolnames_from_rowstmps(rows.tmps)
-        print(colnames, jcolnames)
         #: rebuild rowset using nested objects
         records = []
         _last_rid = None
