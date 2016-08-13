@@ -447,16 +447,7 @@ class JoinSet(Set):
         #: use iterselect for performance
         rows = super(Set, self).iterselect(*fields, **options)
         #: build new colnames
-        colnames = []
-        jcolnames = {}
-        for colname in rows.colnames:
-            tname, cname = colname.split('.')
-            if tname == self._stable_:
-                colnames.append(cname)
-            else:
-                if jcolnames.get(tname) is None:
-                    jcolnames[tname] = []
-                jcolnames[tname].append(cname)
+        colnames, jcolnames = self._jcolnames_from_rowstmps(rows.tmps)
         #: rebuild rowset using nested objects
         records = []
         _last_rid = None
@@ -468,7 +459,7 @@ class JoinSet(Set):
                 for join in self._joins_:
                     if not join[2]:
                         records[-1][join[0]] = Rows(
-                            self.db, [], jcolnames[join[1]], compact=False)
+                            self.db, [], jcolnames[join[1]])
             _last_rid = record[self._stable_].id
             #: add joins in nested Rows objects
             for join in self._joins_:
@@ -478,7 +469,7 @@ class JoinSet(Set):
                 else:
                     records[-1][join[0]].records.append(record[join[1]])
         return JoinRows(
-            self.db, records, colnames, compact=False, jtables=self._joins_)
+            self.db, records, colnames, jtables=self._joins_)
 
 
 class LeftJoinSet(Set):
@@ -486,12 +477,12 @@ class LeftJoinSet(Set):
     def _from_set(cls, obj, jdata):
         rv = cls(
             obj.db, obj.query, obj.query.ignore_common_filters, obj._model_)
+        rv._stable_ = rv._model_.tablename
         rv._jdata_ = jdata
         return rv
 
     def select(self, *fields, **options):
         #: collect tablenames
-        table = self._model_.tablename
         jtables = []
         for index, join in enumerate(options['left']):
             jdata = self._jdata_[index]
@@ -499,29 +490,20 @@ class LeftJoinSet(Set):
         #: use iterselect for performance
         rows = super(Set, self).iterselect(*fields, **options)
         #: build new colnames
-        colnames = []
-        jcolnames = {}
-        for colname in rows.colnames:
-            tname, cname = colname.split('.')
-            if tname == table:
-                colnames.append(cname)
-            else:
-                if jcolnames.get(tname) is None:
-                    jcolnames[tname] = []
-                jcolnames[tname].append(cname)
+        colnames, jcolnames = self._jcolnames_from_rowstmps(rows.tmps)
         #: rebuild rowset using nested objects
         records = []
         _last_rid = None
         for record in rows:
             #: since we have multiple rows for the same id, we take them once
-            if record[table].id != _last_rid:
-                records.append(record[table])
+            if record[self._stable_].id != _last_rid:
+                records.append(record[self._stable_])
                 #: prepare nested rows
                 for join in jtables:
                     if not join[2]:
                         records[-1][join[0]] = Rows(
-                            self.db, [], jcolnames[join[1]], compact=False)
-            _last_rid = record[table].id
+                            self.db, [], jcolnames[join[1]])
+            _last_rid = record[self._stable_].id
             #: add joins in nested Rows objects
             for join in jtables:
                 if record[join[1]].id is not None:
@@ -531,7 +513,7 @@ class LeftJoinSet(Set):
                     else:
                         records[-1][join[0]].records.append(record[join[1]])
         return JoinRows(
-            self.db, records, colnames, compact=False, jtables=jtables)
+            self.db, records, colnames, jtables=jtables)
 
 
 class JoinRows(Rows):
@@ -542,7 +524,6 @@ class JoinRows(Rows):
 
     def as_list(self, compact=True, storage_to_dict=True,
                 datetime_to_str=False, custom_types=None):
-        (oc, self.compact) = (self.compact, compact)
         if storage_to_dict:
             items = []
             for row in self:
@@ -553,7 +534,6 @@ class JoinRows(Rows):
                 items.append(item)
         else:
             items = [item for item in self]
-        self.compact = oc
         return items
 
 
