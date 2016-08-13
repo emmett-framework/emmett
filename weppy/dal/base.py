@@ -14,7 +14,7 @@ from pydal import DAL as _pyDAL, Field as _Field
 from pydal._globals import THREAD_LOCAL
 from pydal.objects import Table as _Table, Set as _Set, Rows as _Rows, \
     Expression, Row
-from .._compat import copyreg
+from .._compat import copyreg, iterkeys
 from ..datastructures import sdict
 from ..handlers import Handler
 from ..security import uuid as _uuid
@@ -155,6 +155,20 @@ class Set(_Set):
             joins.append(join[1].on(join[0]))
             jdata.append((arg, join[2]))
         return joins, jdata
+
+    def _jcolnames_from_rowstmps(self, tmps):
+        colnames = []
+        all_colnames = {}
+        jcolnames = {}
+        for colname in tmps:
+            all_colnames[colname[0]] = colname[0]
+            jcolnames[colname[0]] = jcolnames.get(colname[0], [])
+            jcolnames[colname[0]].append(colname[1])
+        for colname in iterkeys(all_colnames):
+            if colname == self._stable_:
+                colnames.append(colname)
+                del jcolnames[colname]
+        return colnames, jcolnames
 
     def __getattr__(self, name):
         scope = self._scopes_.get(name)
