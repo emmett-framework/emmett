@@ -14,6 +14,7 @@
 """
 
 import time
+from ..._compat import itervalues
 from ...dal import Field
 from ...forms import Form, DALForm
 from ...globals import request, session
@@ -37,13 +38,13 @@ class Exposer(object):
 
     def _build_register_form_(self):
         if not self.settings.register_fields:
-            self.settings.register_fields = [
+            self.settings.register_fields = {'writable': [
                 field.name for field in self.auth.table_user
                 if field.type != 'id' and field.writable
-            ]
+            ]}
         all_fieldkeys = [
             field.name for field in self.auth.table_user if field.name
-            in self.settings.register_fields
+            in self.settings.register_fields['writable']
         ]
         for i, fieldname in enumerate(all_fieldkeys):
             if fieldname == 'password':
@@ -131,7 +132,7 @@ class Exposer(object):
 
     def register(self):
         def process_form(form):
-            if form.params.password.password != form.params.password2:
+            if form.params.password.password != form.params.password2.password:
                 form.errors.password = "password mismatch"
                 form.errors.password2 = "password mismatch"
                 return
@@ -260,7 +261,7 @@ class Exposer(object):
 
     def reset_password(self):
         def process_form(form):
-            if form.params.password.password != form.params.password2:
+            if form.params.password.password != form.params.password2.password:
                 form.errors.password = self.messages.mismatched_password
                 form.errors.password2 = self.messages.mismatched_password
 
@@ -392,11 +393,14 @@ class Exposer(object):
         onaccept = self.settings.profile_onaccept
         log = self.messages['profile_log']
         if not self.settings.profile_fields:
-            self.settings.profile_fields = [
+            profile_fields = [
                 field.name for field in self.auth.table_user
                 if field.type != 'id' and field.writable]
-        if 'password' in self.settings.profile_fields:
-            self.settings.profile_fields.remove('password')
+            self.settings.profile_fields = {
+                'readable': profile_fields, 'writable': profile_fields}
+        for fields in itervalues(self.settings.profile_fields):
+            if 'password' in fields:
+                fields.remove('password')
         form = DALForm(
             self.auth.table_user,
             record_id=self.auth.user.id,
@@ -445,5 +449,5 @@ class Exposer(object):
 
     def not_authorized(self):
         if request.isajax:
-            raise abort(403, 'ACCESS DENIED')
+            abort(403, 'ACCESS DENIED')
         return 'ACCESS DENIED'

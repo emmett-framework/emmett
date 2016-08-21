@@ -216,10 +216,13 @@ class DALForm(Form):
         self.writable_fields = []
         if fields is not None:
             #: developer has selected specific fields
-            for field_name in fields:
-                field = table[field_name]
+            if not isinstance(fields, dict):
+                fields = {'writable': fields, 'readable': fields}
+            for field in table:
+                if field.name not in fields['readable']:
+                    continue
                 self.fields.append(field)
-                if field.writable:
+                if field.name in fields['writable']:
                     self.writable_fields.append(field)
         else:
             #: use table fields

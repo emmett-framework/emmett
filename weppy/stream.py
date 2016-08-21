@@ -12,7 +12,6 @@
 import os
 import re
 import time
-import sys
 import errno
 
 from .http import HTTP

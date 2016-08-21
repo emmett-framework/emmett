@@ -10,6 +10,7 @@
 """
 
 from datetime import datetime
+from ..._compat import iterkeys
 from ...dal import Model, Field, before_insert, rowmethod
 from ...globals import current, request
 from ...security import uuid
@@ -60,8 +61,7 @@ class AuthModel(Model):
                     False
 
     def __base_visibility(self):
-        return [field.name for field in self.table
-                if field.type != 'id' and field.writable]
+        return [field.name for field in self.table if field.writable]
 
     def __define_authform_utils(self):
         settings_map = {
@@ -69,18 +69,27 @@ class AuthModel(Model):
             'profile_fields': 'form_profile_rw'
         }
         for setting, attr in settings_map.items():
-            l = self.auth.settings[setting] or self.__base_visibility()
+            rwdata = self.auth.settings[setting] or self.__base_visibility()
+            if not isinstance(rwdata, dict):
+                rwdata = {'writable': rwdata, 'readable': rwdata}
             for field, value in getattr(self, attr).items():
-                show = value[1] if isinstance(value, (tuple, list)) else value
-                if show:
-                    #self.table[field].writable = value[0]
-                    #self.table[field].readable = value[1]
-                    l.append(field)
+                if isinstance(value, (tuple, list)):
+                    readable, writable = value
                 else:
-                    if field in l:
-                        l.remove(field)
-            if l:
-                self.auth.settings[setting] = l
+                    readable = writable = value
+                if readable:
+                    rwdata['readable'].append(field)
+                else:
+                    if field in rwdata['readable']:
+                        rwdata['readable'].remove(field)
+                if writable:
+                    rwdata['writable'].append(field)
+                else:
+                    if field in rwdata['writable']:
+                        rwdata['writable'].remove(field)
+            for key in iterkeys(rwdata):
+                rwdata[key] = list(set(rwdata[key]))
+            self.auth.settings[setting] = rwdata
 
 
 class AuthUserBasic(AuthModel, TimestampedModel):
