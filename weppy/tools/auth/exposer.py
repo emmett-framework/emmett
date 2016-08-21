@@ -394,7 +394,7 @@ class Exposer(object):
         if not self.settings.profile_fields:
             profile_fields = [
                 field.name for field in self.auth.table_user
-                if field.type not in ['id', 'password'] and field.writable]
+                if field.type != 'password' and field.writable]
             self.settings.profile_fields = {
                 'readable': profile_fields, 'writable': profile_fields}
         form = DALForm(
