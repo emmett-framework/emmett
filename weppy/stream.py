@@ -93,8 +93,8 @@ def streamer(environ, static_file, version=None, headers=None,
             headers['Content-Length'] = str(fsize)
     except IOError as e:
         if e.errno in (errno.EISDIR, errno.EACCES):
-            return HTTP(403)
-        return HTTP(404)
+            return HTTP(403, body="FORBIDDEN\n")
+        return HTTP(404, body="NOT FOUND\n")
     else:
         # serve using wsgi.file_wrapper is available
         if 'wsgi.file_wrapper' in environ:
