@@ -150,7 +150,7 @@ class Model(with_metaclass(MetaModel)):
     repr_values = {}
     form_labels = {}
     form_info = {}
-    form_rw = {}
+    form_rw = {'id': False}
     form_widgets = {}
 
     @property
@@ -503,7 +503,7 @@ class Model(with_metaclass(MetaModel)):
             pass
         for field, value in self.form_rw.items():
             if isinstance(value, (tuple, list)):
-                writable, readable = value
+                readable, writable = value
             else:
                 writable = value
                 readable = value

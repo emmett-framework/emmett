@@ -47,8 +47,12 @@ class Form(TAG):
         sorted_fields.sort(key=lambda x: x[1]._inst_count_)
         #: init fields
         self.fields = []
+        self.writable_fields = []
         for name, obj in sorted_fields:
-            self.fields.append(obj._make_field(name))
+            field_obj = obj._make_field(name)
+            self.fields.append(field_obj)
+            if field_obj.writable:
+                self.writable_fields.append(field_obj)
         self._preprocess_(**kwargs)
 
     def _preprocess_(self, **kwargs):
@@ -72,8 +76,9 @@ class Form(TAG):
         del self.attributes['onvalidation']
         #: verify formstyle consistence
         if not issubclass(self.attributes['formstyle'], FormStyle):
-            raise RuntimeError('%s is an invalid weppy form style'
-                               % self.attributes['formstyle'].__name__)
+            raise RuntimeError(
+                '%s is an invalid weppy form style' %
+                self.attributes['formstyle'].__name__)
         #: process the form
         self._process()
 
@@ -117,7 +122,7 @@ class Form(TAG):
         if self._submitted:
             self.processed = True
             # validate input
-            for field in self.fields:
+            for field in self.writable_fields:
                 value = self._get_input_val(field)
                 value, error = field.validate(value)
                 if error:
@@ -179,18 +184,19 @@ class Form(TAG):
                 styler.style_widget(widget)
             custom.widget[field.name] = widget
         # add submit
-        custom.submit = tag.input(_type="submit",
-                                  value=self.attributes['submit'])
+        custom.submit = tag.input(
+            _type="submit", value=self.attributes['submit'])
         # provides begin attribute
         begin = '<form %s>' % self._build_html_attributes()
         custom.begin = asis(begin)
         # add hidden stuffs to get weppy process working
         hidden = cat()
-        hidden.append(tag.input(_name='_csrf_token', _type='hidden',
-                                _value=self.formkey))
+        hidden.append(
+            tag.input(
+                _name='_csrf_token', _type='hidden', _value=self.formkey))
         for key, value in iteritems(self.attributes.get('hidden', {})):
-            hidden.append(tag.input(_name=key, _type='hidden',
-                          _value=value))
+            hidden.append(
+                tag.input(_name=key, _type='hidden', _value=value))
         # provides end attribute
         end = '%s</form>' % hidden.to_html()
         custom.end = asis(end)
@@ -207,16 +213,30 @@ class DALForm(Form):
         self.record = record or table(record_id)
         #: build fields for form
         self.fields = []
+        self.writable_fields = []
         if fields is not None:
             #: developer has selected specific fields
-            for field in fields:
-                self.fields.append(table[field])
+            for field_name in fields:
+                field = table[field_name]
+                self.fields.append(field)
+                if field.writable:
+                    self.writable_fields.append(field)
         else:
             #: use table fields
             for field in table:
-                if field.type != 'id' and field.writable and \
-                        field.name not in exclude_fields:
-                    self.fields.append(field)
+                if field.name in exclude_fields:
+                    continue
+                if not field.readable:
+                    continue
+                if not self.record and not field.writable:
+                    #: show readable fields only on update
+                    continue
+                self.fields.append(field)
+                if field.writable:
+                    self.writable_fields.append(field)
+                # if field.type != 'id' and field.writable and \
+                #         field.name not in exclude_fields:
+                #     self.fields.append(field)
         #: use tablename for form id
         attributes['id_prefix'] = table._tablename + "_"
         #: finally init the form
@@ -232,7 +252,7 @@ class DALForm(Form):
         #: clear current and run additional operations for DAL
         del current._form_validation_record_id_
         if self.accepted:
-            for field in self.fields:
+            for field in self.writable_fields:
                 #: handle uploads
                 if field.type == 'upload':
                     f = self.params[field.name]
@@ -257,14 +277,14 @@ class DALForm(Form):
                         self.params[field.uploadfield] = source_file.read()
                     self.params[field.name] = newfilename
             #: add default values to hidden fields if needed
-            ffields = [field.name for field in self.fields]
-            for field in self.table:
-                if field.name not in ffields and field.writable is False \
-                        and field.update is None and field.compute is None:
-                    if not self.record and field.default is not None:
-                        def_val = field.default() if callable(field.default) \
-                            else field.default
-                        self.params[field.name] = def_val
+            if not self.record:
+                fieldnames = [field.name for field in self.writable_fields]
+                for field in self.table:
+                    if field.name not in fieldnames and field.compute is None:
+                        if field.default is not None:
+                            def_val = field.default() \
+                                if callable(field.default) else field.default
+                            self.params[field.name] = def_val
             if self.record:
                 self.record.update_record(**self.params)
             else:
@@ -428,18 +448,26 @@ class FormStyle(object):
     def _get_widget(self, field, value):
         if field.widget:
             return field.widget(field, value), True
+        widget_id = self.attr["id_prefix"] + field.name
         wtype = field._type.split(":")[0]
         if self._validation_woptions(field) is not None:
             wtype = 'select'
         elif wtype.startswith('reference'):
             wtype = 'int'
-        widget_id = self.attr["id_prefix"] + field.name
         try:
-            return getattr(self, "widget_" + wtype)(
-                self.attr, field, value, _id=widget_id), False
+            widget = getattr(self, "widget_" + wtype)(
+                self.attr, field, value, _id=widget_id)
+            if not field.writable:
+                self._disable_widget(widget)
+            return widget, False
         except AttributeError:
-            raise RuntimeError("Missing form widget for field %s of type %s" %
-                               (field.name, wtype))
+            raise RuntimeError(
+                "Missing form widget for field %s of type %s" %
+                (field.name, wtype)
+            )
+
+    def _disable_widget(self, widget):
+        widget.attributes['_disabled'] = 'disabled'
 
     def _proc_element(self, field, value, error):
         widget, wfield = self._get_widget(field, value)
