@@ -14,6 +14,14 @@ import traceback
 from .contents import BlockNode
 
 
+class TemplateMissingError(Exception):
+    def __init__(self, tpath, filename):
+        self.path = tpath
+        self.template = filename
+        message = "Template %s not found" % self.template
+        Exception.__init__(self, message)
+
+
 class TemplateError(Exception):
     def __init__(self, tpath, message, filename, lineno):
         Exception.__init__(self, message)

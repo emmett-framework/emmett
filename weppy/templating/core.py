@@ -14,14 +14,12 @@ import cgi
 import sys
 from .._compat import StringIO, reduce, string_types, text_type, to_native, \
     to_unicode, to_bytes
-from ..globals import current
-from ..http import HTTP
 from ..tags import asis
 from ..helpers import load_component
 from ..datastructures import sdict
 from .parser import TemplateParser
 from .cache import TemplaterCache
-from .helpers import TemplateReference
+from .helpers import TemplateMissingError, TemplateReference
 
 
 class DummyResponse():
@@ -75,14 +73,14 @@ class Templater(object):
         return reduce(lambda s, e: e.preload(s[0], s[1]),
                       self.loaders.get(fext, []), (path, name))
 
-    def load(self, filename):
+    def load(self, path, filename):
         # return source as unicode str
         try:
-            file_obj = open(filename, 'r')
+            file_obj = open(os.path.join(path, filename), 'r')
             source = to_unicode(file_obj.read())
             file_obj.close()
         except IOError:
-            raise RuntimeError('Unable to open template file: ' + filename)
+            raise TemplateMissingError(path, filename)
         return source
 
     def prerender(self, source, filename):
@@ -105,13 +103,12 @@ class Templater(object):
                 filename, source, code, parserdata, parser.included_templates)
         return code, parserdata
 
-    def render(self, source='', path=None, filename=None, context={}):
+    def _render(self, source='', path=None, filename=None, context={}):
         if isinstance(context, sdict):
             context = dict(context)
-        if 'asis' not in context:
-            context['asis'] = asis
-        if 'load_component' not in context:
-            context['load_component'] = load_component
+        context['asis'] = context.get('asis', asis)
+        context['load_component'] = context.get(
+            'load_component', load_component)
         context['_DummyResponse_'] = DummyResponse()
         code, parserdata = self.parse(path, filename, source, context)
         self.inject(context)
@@ -131,24 +128,8 @@ class Templater(object):
             make_traceback(exc_info, template_ref)
         return context['_DummyResponse_'].body.getvalue()
 
-
-def render_template(application, filename):
-    templater = Templater(application)
-    tpath, tname = templater.preload(application.template_path, filename)
-    filepath = os.path.join(tpath, tname)
-    tsource = templater.load(filepath)
-    tsource = templater.prerender(tsource, tname)
-    from ..expose import url
-    context = dict(current=current, url=url)
-    return templater.render(tsource, tpath, tname, context)
-
-
-def render(application, path, template, context):
-    templater = Templater(application)
-    tpath, tname = templater.preload(path, template)
-    filepath = os.path.join(tpath, tname)
-    if not os.path.exists(filepath):
-        raise HTTP(404, body="Invalid view\n")
-    tsource = templater.load(filepath)
-    tsource = templater.prerender(tsource, tname)
-    return templater.render(tsource, tpath, tname, context)
+    def render(self, path, filename, context={}):
+        tpath, tname = self.preload(path, filename)
+        tsource = self.load(tpath, tname)
+        tsource = self.prerender(tsource, tname)
+        return self._render(tsource, tpath, tname, context)

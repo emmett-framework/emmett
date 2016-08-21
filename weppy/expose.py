@@ -15,7 +15,7 @@ import os
 
 from ._compat import PY2, iteritems, text_type
 from .handlers import Handler, _wrapWithHandlers
-from .templating import render
+from .templating.helpers import TemplateMissingError
 from .globals import current
 from .http import HTTP
 
@@ -256,14 +256,15 @@ class _ResponseHandler(Handler):
             response = current.response
             output = func(*args, **kwargs)
             if output is None:
-                output = {}
+                output = {'current': current, 'url': url}
             if isinstance(output, dict):
-                if 'current' not in output:
-                    output['current'] = current
-                if 'url' not in output:
-                    output['url'] = url
-                output = render(Expose.application, self.route.template_path,
-                                self.route.template, output)
+                output['current'] = output.get('current', current)
+                output['url'] = output.get('url', url)
+                try:
+                    output = Expose.application.templater.render(
+                        self.route.template_path, self.route.template, output)
+                except TemplateMissingError:
+                    raise HTTP(404, body="Invalid view\n")
                 response.output = output
             elif isinstance(output, text_type) or hasattr(output, '__iter__'):
                 response.output = output
