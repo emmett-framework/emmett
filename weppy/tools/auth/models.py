@@ -78,7 +78,7 @@ class AuthModel(Model):
             rwdata = self.auth.settings[setting] or \
                 self.__base_visibility(setting)
             if not isinstance(rwdata, dict):
-                rwdata = {'writable': rwdata, 'readable': rwdata}
+                rwdata = {'writable': list(rwdata), 'readable': list(rwdata)}
             for field, value in getattr(self, attr).items():
                 if isinstance(value, (tuple, list)):
                     readable, writable = value
