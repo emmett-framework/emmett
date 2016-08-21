@@ -14,7 +14,6 @@
 """
 
 import time
-from ..._compat import itervalues
 from ...dal import Field
 from ...forms import Form, DALForm
 from ...globals import request, session
@@ -395,12 +394,9 @@ class Exposer(object):
         if not self.settings.profile_fields:
             profile_fields = [
                 field.name for field in self.auth.table_user
-                if field.type != 'id' and field.writable]
+                if field.type not in ['id', 'password'] and field.writable]
             self.settings.profile_fields = {
                 'readable': profile_fields, 'writable': profile_fields}
-        for fields in itervalues(self.settings.profile_fields):
-            if 'password' in fields:
-                fields.remove('password')
         form = DALForm(
             self.auth.table_user,
             record_id=self.auth.user.id,

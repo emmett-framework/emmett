@@ -60,8 +60,14 @@ class AuthModel(Model):
                 self.table[field].writable = self.table[field].readable = \
                     False
 
-    def __base_visibility(self):
-        return [field.name for field in self.table if field.writable]
+    def __base_visibility(self, form_type):
+        exclude = []
+        if form_type == 'profile_fields':
+            exclude.append('password')
+            exclude.append('email')
+        return [
+            field.name for field in self.table if
+            field.writable and field.name not in exclude]
 
     def __define_authform_utils(self):
         settings_map = {
@@ -69,7 +75,8 @@ class AuthModel(Model):
             'profile_fields': 'form_profile_rw'
         }
         for setting, attr in settings_map.items():
-            rwdata = self.auth.settings[setting] or self.__base_visibility()
+            rwdata = self.auth.settings[setting] or \
+                self.__base_visibility(setting)
             if not isinstance(rwdata, dict):
                 rwdata = {'writable': rwdata, 'readable': rwdata}
             for field, value in getattr(self, attr).items():
