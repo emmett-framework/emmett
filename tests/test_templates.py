@@ -12,8 +12,6 @@
 import pytest
 from weppy import App
 from weppy.globals import current
-from weppy.templating import render
-from weppy.templating.core import Templater
 
 
 @pytest.fixture(scope='module')
@@ -23,17 +21,17 @@ def app():
 
 
 def test_define(app):
-    templater = Templater(app)
-    assert templater.render(source='{{=1}}', filename='test1') == '1'
-    assert templater.render(
+    templater = app.templater
+    assert templater._render(source='{{=1}}', filename='test1') == '1'
+    assert templater._render(
         source='{{=a}}', filename='test2',
         context={'a': 'nuvolosità variabile'}
     ) == 'nuvolosit&#224; variabile'
-    assert templater.render(
+    assert templater._render(
         source='{{=a}}', path='templates', filename='test3',
         context={'a': u'nuvolosità variabile'}
     ) == 'nuvolosit&#224; variabile'
-    assert templater.render(
+    assert templater._render(
         source='{{=a}}', filename='test4',
         context={'a': [i for i in range(0, 5)]}
     ) == "[0, 1, 2, 3, 4]"
@@ -44,8 +42,8 @@ def test_define(app):
 
 
 def test_helpers(app):
-    templater = Templater(app)
-    r = templater.render(source="{{include_helpers}}", filename='testh')
+    templater = app.templater
+    r = templater._render(source="{{include_helpers}}", filename='testh')
     assert r == '<script type="text/javascript" ' + \
         'src="/__weppy__/jquery.min.js"></script>\n' + \
         '<script type="text/javascript" ' + \
@@ -58,8 +56,8 @@ def test_meta(app):
         'wpp.now.local': '', 'wpp.application': ''})
     current.response.meta.foo = "bar"
     current.response.meta_prop.foo = "bar"
-    templater = Templater(app)
-    r = templater.render(
+    templater = app.templater
+    r = templater._render(
         source="{{include_meta}}", filename='mtest',
         context={'current': current})
     assert r == '<meta name="foo" content="bar" />\n' + \
@@ -67,27 +65,27 @@ def test_meta(app):
 
 
 def test_static(app):
-    templater = Templater(app)
+    templater = app.templater
     s = "{{include_static 'foo.js'}}\n{{include_static 'bar.css'}}"
-    r = templater.render(source=s, filename="stest")
+    r = templater._render(source=s, filename="stest")
     assert r == '<script type="text/javascript" src="/static/foo.js">' + \
         '</script>\n<link rel="stylesheet" href="/static/bar.css" ' + \
         'type="text/css" />'
 
 
 def test_pycode(app):
-    templater = Templater(app)
+    templater = app.templater
     #: test if block
     s = "{{if a == 1:}}foo{{elif a == 2:}}bar{{else:}}foobar{{pass}}"
-    r = templater.render(source=s, filename="ptest1", context={'a': 1})
+    r = templater._render(source=s, filename="ptest1", context={'a': 1})
     assert r == "foo"
-    r = templater.render(source=s, filename="ptest1", context={'a': 2})
+    r = templater._render(source=s, filename="ptest1", context={'a': 2})
     assert r == "bar"
-    r = templater.render(source=s, filename="ptest1", context={'a': 25})
+    r = templater._render(source=s, filename="ptest1", context={'a': 25})
     assert r == "foobar"
     #: test for block
     s = "{{for i in range(0, 5):}}{{=i}}\n{{pass}}"
-    r = templater.render(source=s, filename="ptest2")
+    r = templater._render(source=s, filename="ptest2")
     assert r == "0\n1\n2\n3\n4\n"
 
 
@@ -127,8 +125,8 @@ rendered_value = """
 
 def test_render(app):
     current._language = 'it'
-    r = render(
-        app, app.template_path, 'test.html', {
+    r = app.templater.render(
+        app.template_path, 'test.html', {
             'current': current, 'posts': [{'title': 'foo'}, {'title': 'bar'}]
         }
     )
