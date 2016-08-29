@@ -90,6 +90,17 @@ class ValidateFromDict(object):
         return isList(
             [validator(**suboptions)], **options) if validator else None
 
+    def parse_reference(self, field):
+        ref_table = None
+        multiple = None
+        if field.type.startswith('reference'):
+            multiple = False
+        elif field.type.startswith('list:reference'):
+            multiple = True
+        if multiple is not None:
+            ref_table = field.type.split(' ')[1]
+        return ref_table, multiple
+
     def __call__(self, field, data):
         validators = []
         #: parse 'presence' and 'empty'
@@ -125,6 +136,7 @@ class ValidateFromDict(object):
                     minv, maxv, inc = self.parse_num_comparisons(_len, 0, 256)
                 validators.append(hasLength(maxv, minv, inc))
         #: parse 'in'
+        _dbset = None
         _in = data.get('in', [])
         if _in:
             if isinstance(_in, (list, tuple, set)):
@@ -143,10 +155,22 @@ class ValidateFromDict(object):
                     for key in opt_keys:
                         options[key] = _in[key]
                     validators.append(inSet(_set, **options))
-                #: allows {'in': {'sub': [1, 2, 4]}}
-                #_sub = _in.get('sub')
-                #if isinstance(_sub, (list, set, tuple)):
-                #    validators.append(inSubSet(_sub))
+                #: allows {'in': {'dbset': lambda db: db.where(query)}}
+                _dbset = _in.get('dbset')
+                if callable(_dbset):
+                    ref_table, multiple = self.parse_reference(field)
+                    if ref_table:
+                        _dbset = _dbset(field.db)
+                        opt_keys = [key for key in list(_in) if key != 'dbset']
+                        for key in opt_keys:
+                            options[key] = _in[key]
+                        validators.append(
+                            inDB(
+                                field.db, ref_table, dbset=_dbset,
+                                multiple=multiple, **options))
+                    else:
+                        raise SyntaxError(
+                            "'in:dbset' validator needs a reference field")
             else:
                 raise SyntaxError(
                     "'in' validator accepts only a set or a dict")
@@ -178,7 +202,8 @@ class ValidateFromDict(object):
                 validators.append(vclass(**options))
         #: parse 'unique'
         if data.get('unique', False):
-            validators.append(notInDB(field.db, field.table, field.name))
+            validators.append(
+                notInDB(field.db, field.table, field.name, dbset=_dbset))
         #: common options ('format', 'message')
         if 'format' in data:
             for validator in validators:
@@ -200,12 +225,11 @@ class ValidateFromDict(object):
             validators.append(Not(self(field, data['not'])))
         #: insert presence/empty validation if needed
         if presence:
-            if field.type.startswith('reference'):
-                ref_table = field.type.split(' ')[1]
-                validators.append(inDB(field.db, ref_table))
-            elif field.type.startswith('list:reference'):
-                ref_table = field.type.split(' ')[1]
-                validators.append(inDB(field.db, ref_table, multiple=True))
+            ref_table, multiple = self.parse_reference(field)
+            if ref_table:
+                if not _dbset:
+                    validators.append(
+                        inDB(field.db, ref_table, multiple=multiple))
             else:
                 validators.insert(0, isntEmpty())
         if empty:

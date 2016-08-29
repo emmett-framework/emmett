@@ -14,6 +14,7 @@
 """
 
 from .._compat import integer_types
+from ..utils import cachedprop
 from .basic import Validator
 from .helpers import options_sorter, translate
 
@@ -131,28 +132,58 @@ class inSet(Validator):
 #        return value, None
 
 
-class inDB(Validator):
-    def __init__(self, db, set, field='id', label_field=None, multiple=False,
-                 message=None):
+class DBValidator(Validator):
+    def __init__(
+        self, db, tablename, fieldname='id', dbset=None, message=None
+    ):
         Validator.__init__(self, message)
         self.db = db
-        self.set = set
-        self.field = field
+        self.tablename = tablename
+        self.fieldname = fieldname
+        self._dbset = dbset
+
+    @cachedprop
+    def table(self):
+        return self.db[self.tablename]
+
+    @cachedprop
+    def dbset(self):
+        if self._dbset:
+            return self._dbset
+        return self.db(self.table)
+
+    @cachedprop
+    def field(self):
+        return self.table[self.fieldname]
+
+
+class inDB(DBValidator):
+    def __init__(
+        self, db, tablename, fieldname='id', dbset=None, label_field=None,
+        multiple=False, orderby=None, message=None
+    ):
+        super(inDB, self).__init__(db, tablename, fieldname, dbset, message)
         self.label_field = label_field
         self.multiple = multiple
-        # TODO: parse set if is not table
+        self.orderby = orderby
 
-    def _get_set(self):
-        rv = self.db(self.db[self.set].id > 0).select().as_list()
+    @cachedprop
+    def sorting(self):
+        if callable(self.orderby):
+            return self.orderby(self.table)
+        return None
+
+    def _get_rows(self):
+        rv = self.dbset.select(orderby=self.sorting).as_list()
         return rv
 
     def options(self, zero=True):
-        records = self._get_set()
+        records = self._get_rows()
         if self.label_field:
             items = [(r['id'], str(r[self.label_field]))
                      for (i, r) in enumerate(records)]
-        elif self.db[self.set]._format:
-            items = [(r['id'], self.db[self.set]._format % r)
+        elif self.db[self.tablename]._format:
+            items = [(r['id'], self.db[self.tablename]._format % r)
                      for (i, r) in enumerate(records)]
         else:
             items = [(r['id'], r['id']) for (i, r) in enumerate(records)]
@@ -163,35 +194,26 @@ class inDB(Validator):
         return items
 
     def __call__(self, value):
-        field = self.db[self.set][self.field]
         if self.multiple:
             if isinstance(value, list):
                 values = value
             else:
                 values = [value]
-            records = [i[0] for i in self._get_set()]
+            records = [i[0] for i in self._get_rows()]
             if not [v for v in values if v not in records]:
                 return values, None
         else:
-            if self.db(field == value).count():
+            if self.dbset.where(self.field == value).count():
                 return value, None
         return value, translate(self.message)
 
 
-class notInDB(Validator):
-    def __init__(self, db, set, field='id', message=None):
-        Validator.__init__(self, message)
-        self.db = db
-        self.set = set
-        self.field = field
-        self.record_id = None
-
+class notInDB(DBValidator):
     def __call__(self, value):
-        field = self.db[self.set][self.field]
-        row = self.db(field == value).select().first()
+        row = self.dbset.where(self.field == value).select().first()
         if row:
             from ..globals import current
-            record_id = getattr(current, '_form_validation_record_id_', None)
+            record_id = getattr(current, '_dbvalidation_record_id_', None)
             if row.id != record_id:
                 return value, translate(self.message)
         return value, None

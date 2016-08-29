@@ -247,13 +247,13 @@ class DALForm(Form):
 
     def _process(self):
         #: send record id to validators if needed
-        current._form_validation_record_id_ = None
+        current._dbvalidation_record_id_ = None
         if self.record:
-            current._form_validation_record_id_ = self.record.id
+            current._dbvalidation_record_id_ = self.record.id
         #: load super `_process`
         Form._process(self)
         #: clear current and run additional operations for DAL
-        del current._form_validation_record_id_
+        del current._dbvalidation_record_id_
         if self.accepted:
             for field in self.writable_fields:
                 #: handle uploads
