@@ -160,7 +160,6 @@ class ValidateFromDict(object):
                 if callable(_dbset):
                     ref_table, multiple = self.parse_reference(field)
                     if ref_table:
-                        _dbset = _dbset(field.db)
                         opt_keys = [key for key in list(_in) if key != 'dbset']
                         for key in opt_keys:
                             options[key] = _in[key]
@@ -201,9 +200,17 @@ class ValidateFromDict(object):
                             key+" validator accepts only dict or True")
                 validators.append(vclass(**options))
         #: parse 'unique'
-        if data.get('unique', False):
+        _unique = data.get('unique', False)
+        if _unique:
+            _udbset = None
+            if isinstance(_unique, dict):
+                whr = _unique.get('where', None)
+                if callable(whr):
+                    _dbset = whr
             validators.append(
-                notInDB(field.db, field.table, field.name, dbset=_dbset))
+                notInDB(field.db, field.table, field.name, dbset=_udbset))
+            table = field.db[field._tablename]
+            table._unique_fields_validation_[field.name] = 1
         #: common options ('format', 'message')
         if 'format' in data:
             for validator in validators:

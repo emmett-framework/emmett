@@ -9,13 +9,15 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import copy
 import os
 from pydal import DAL as _pyDAL, Field as _Field
 from pydal._globals import THREAD_LOCAL
 from pydal.objects import Table as _Table, Set as _Set, Rows as _Rows, \
     Expression, Row
-from .._compat import copyreg, iterkeys
+from .._compat import copyreg, iterkeys, iteritems
 from ..datastructures import sdict
+from ..globals import current
 from ..handlers import Handler
 from ..security import uuid as _uuid
 from ..serializers import _custom_json, xml
@@ -41,6 +43,10 @@ class DALHandler(Handler):
 
 
 class Table(_Table):
+    def __init__(self, *args, **kwargs):
+        super(Table, self).__init__(*args, **kwargs)
+        self._unique_fields_validation_ = {}
+
     def _create_references(self):
         self._referenced_by = []
         self._referenced_by_list = []
@@ -101,6 +107,42 @@ class Set(_Set):
             return LeftJoinSet._from_set(
                 self, jdata).select(*fields, **options)
         return super(Set, self).select(*fields, **options)
+
+    def validate_and_update(self, **update_fields):
+        tablename = self.db._adapter.get_table(self.query)
+        table = self.db[tablename]
+        current._dbvalidation_record_id_ = None
+        if table._unique_fields_validation_ and self.count() == 1:
+            if any(
+                table._unique_fields_validation_.get(fieldname)
+                for fieldname in iterkeys(update_fields)
+            ):
+                current._dbvalidation_record_id_ = \
+                    self.select(table.id).first().id
+        response = Row()
+        response.errors = Row()
+        new_fields = copy.copy(update_fields)
+        for key, value in iteritems(update_fields):
+            value, error = self.db[tablename][key].validate(value)
+            if error:
+                response.errors[key] = '%s' % error
+            else:
+                new_fields[key] = value
+        del current._dbvalidation_record_id_
+        if response.errors:
+            response.updated = None
+        else:
+            if not any(f(self, new_fields) for f in table._before_update):
+                table._attempt_upload(new_fields)
+                fields = table._listify(new_fields, update=True)
+                if not fields:
+                    raise SyntaxError("No fields to update")
+                ret = self.db._adapter.update(tablename, self.query, fields)
+                ret and [f(self, new_fields) for f in table._after_update]
+            else:
+                ret = 0
+            response.updated = ret
+        return response
 
     def join(self, *args):
         rv = self

@@ -149,7 +149,7 @@ class DBValidator(Validator):
     @cachedprop
     def dbset(self):
         if self._dbset:
-            return self._dbset
+            return self._dbset(self.db)
         return self.db(self.table)
 
     @cachedprop
@@ -210,7 +210,8 @@ class inDB(DBValidator):
 
 class notInDB(DBValidator):
     def __call__(self, value):
-        row = self.dbset.where(self.field == value).select().first()
+        row = self.dbset.where(
+            self.field == value).select(limitby=(0, 1)).first()
         if row:
             from ..globals import current
             record_id = getattr(current, '_dbvalidation_record_id_', None)
