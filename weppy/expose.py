@@ -12,8 +12,8 @@
 
 import re
 import os
-
-from ._compat import PY2, iteritems, text_type
+from collections import OrderedDict
+from ._compat import PY2, with_metaclass, itervalues, iteritems, text_type
 from .handlers import Handler, _wrapWithHandlers
 from .templating.helpers import TemplateMissingError
 from .globals import current
@@ -27,11 +27,18 @@ else:
 __all__ = ['Expose', 'url']
 
 
-class Expose(object):
+class MetaExpose(type):
+    def __new__(cls, name, bases, attrs):
+        nc = type.__new__(cls, name, bases, attrs)
+        nc._get_routes_in_for_host = nc._get_routes_in_for_host_simple
+        return nc
+
+
+class Expose(with_metaclass(MetaExpose)):
     _routing_stack = []
-    _routes_str = []
+    _routes_str = OrderedDict()
     application = None
-    routes_in = {'__any__': []}
+    routes_in = {'__any__': OrderedDict()}
     routes_out = {}
     common_handlers = []
     common_helpers = []
@@ -130,8 +137,9 @@ class Expose(object):
     def add_route(cls, route):
         host = route[1].hostname or '__any__'
         if host not in cls.routes_in:
-            cls.routes_in[host] = []
-        cls.routes_in[host].append(route)
+            cls.routes_in[host] = OrderedDict()
+            cls._get_routes_in_for_host = cls._get_routes_in_for_host_all
+        cls.routes_in[host][route[1].name] = route
         cls.routes_out[route[1].name] = {
             'host': route[1].hostname,
             'path': cls.remove_decoration(route[1].path)}
@@ -169,13 +177,13 @@ class Expose(object):
             self.schemes, self.hostname, self.methods, self.path)
         route = (re.compile(self.regex), self)
         self.add_route(route)
-        self._routes_str.append("%s %s://%s%s -> %s" % (
+        self._routes_str[self.name] = "%s %s://%s%s -> %s" % (
             "|".join(s.upper() for s in self.methods),
             "|".join(s for s in self.schemes),
             self.hostname or "<any>",
             self.path,
             self.name
-        ))
+        )
         for proc_handler in self.processors:
             proc_handler(self)
         self._routing_stack.pop()
@@ -196,6 +204,16 @@ class Expose(object):
         return path, default
 
     @classmethod
+    def _get_routes_in_for_host_all(cls, hostname):
+        return (
+            cls.routes_in.get(hostname, cls.routes_in['__any__']),
+            cls.routes_in['__any__'])
+
+    @classmethod
+    def _get_routes_in_for_host_simple(cls, hostname):
+        return (cls.routes_in['__any__'],)
+
+    @classmethod
     def match(cls, request):
         path = cls.remove_trailslash(request.path_info)
         if cls.application.language_force_on_url:
@@ -206,12 +224,11 @@ class Expose(object):
             request.language = None
         expression = '%s %s://%s%s' % (
             request.method, request.scheme, request.hostname, path)
-        routes_in = cls.routes_in.get(
-            request.hostname, cls.routes_in['__any__'])
-        for regex, obj in routes_in:
-            match = regex.match(expression)
-            if match:
-                return obj, match.groupdict()
+        for routes in cls._get_routes_in_for_host(request.hostname):
+            for regex, obj in itervalues(routes):
+                match = regex.match(expression)
+                if match:
+                    return obj, match.groupdict()
         return None, {}
 
     @staticmethod
