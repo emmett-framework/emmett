@@ -232,7 +232,7 @@ class Rows(_Rows):
     @cachedprop
     def compact(self):
         if not self.records:
-            return True
+            return False
         return len(self._rowkeys_) == 1 and self._rowkeys_[0] != '_extra'
 
     @cachedprop
