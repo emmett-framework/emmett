@@ -18,6 +18,9 @@ from ..globals import current
 from ..security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
 
 
+_DEFAULT = lambda: None
+
+
 def translate(text):
     if text is None:
         return None
