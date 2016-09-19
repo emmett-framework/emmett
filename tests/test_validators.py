@@ -354,7 +354,7 @@ def test_validation(db):
         'password': 'notverysecret',
         'd': '{:%Y-%m-%d}'.format(datetime.utcnow()),
         't': '15:23',
-        'dt': '2015-12-23 15:23:00',
+        'dt': '2015-12-23T15:23:00',
         'json': '{}'
     }
     errors = A.validate(is_data)
