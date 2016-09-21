@@ -18,8 +18,9 @@ class Decorator(object):
         pass
 
     def __call__(self, func):
-        obj = Expose.exposing()
-        obj.handlers.append(self.handler())
+        exp = Expose.exposing()
+        for obj in exp:
+            obj.handlers.append(self.handler())
         return func
 
 
