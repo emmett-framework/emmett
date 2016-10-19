@@ -1,6 +1,24 @@
 weppy changelog
 ===============
 
+Next
+----
+
+(Release date to be announced, codename to be selected)
+
+- Several bugfixes
+- Added readable fields handling in forms
+- Enhanced HTTP errors on streaming
+- Improved templater performance
+- Added `dbset` option to `in` validator
+- Ensuring `unique` validation is performed also without forms
+- Better implementation for nested selection when using `join` and `including`
+- Updated router to allow routes override
+- Changed default serialization and validation of `datetime` fields to respect
+  RFC3339 standard
+- Updated postgres default adapters to latest available from pyDAL
+
+
 Version 0.7
 -----------
 
