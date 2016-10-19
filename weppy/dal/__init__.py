@@ -1,3 +1,4 @@
+from .adapters import adapters as adapters_registry
 from .base import DAL, Field
 from .models import Model
 from .apis import belongs_to, refers_to, has_one, has_many, compute, \
