@@ -131,7 +131,7 @@ class Exposer(object):
 
     def register(self):
         def process_form(form):
-            if form.params.password.password != form.params.password2:
+            if form.params.password.password != form.params.password2.password:
                 form.errors.password = "password mismatch"
                 form.errors.password2 = "password mismatch"
                 return
@@ -260,7 +260,7 @@ class Exposer(object):
 
     def reset_password(self):
         def process_form(form):
-            if form.params.password.password != form.params.password2:
+            if form.params.password.password != form.params.password2.password:
                 form.errors.password = self.messages.mismatched_password
                 form.errors.password2 = self.messages.mismatched_password
 
@@ -351,7 +351,10 @@ class Exposer(object):
             if form.params.old_password != row.password:
                 form.errors.old_password = self.messages.invalid_password
                 return
-            if form.params.new_password.password != form.params.new_password2:
+            if (
+                form.params.new_password.password !=
+                form.params.new_password2.password
+            ):
                 form.errors.new_password = self.messages.mismatched_password
                 form.errors.new_password2 = self.messages.mismatched_password
                 return
