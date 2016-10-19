@@ -41,7 +41,7 @@ setup(
     install_requires=[
         'click>=0.6',
         'pyaes',
-        'pyDAL>=16.8',
+        'pyDAL==16.9',
         'pyyaml',
         'udatetime~=0.0.9'
     ],
