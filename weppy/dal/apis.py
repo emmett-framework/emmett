@@ -11,7 +11,6 @@
 
 from collections import OrderedDict
 from .helpers import Reference, Callback
-from .._internal import warn_of_deprecation
 
 
 class belongs_to(Reference):
@@ -59,13 +58,6 @@ class compute(object):
         return self
 
 
-#: deprecated since 0.7
-class computation(compute):
-    def __init__(self, field_name):
-        warn_of_deprecation('computation', 'compute', stack=3)
-        super(computation, self).__init__(field_name)
-
-
 class rowattr(object):
     _inst_count_ = 0
 
@@ -82,20 +74,6 @@ class rowattr(object):
 
 class rowmethod(rowattr):
     pass
-
-
-#: deprecated since 0.7
-class virtualfield(rowattr):
-    def __init__(self, field_name, current_model_only=True):
-        warn_of_deprecation('virtualfield', 'rowattr', stack=3)
-        super(virtualfield, self).__init__(field_name, current_model_only)
-
-
-#: deprecated since 0.7
-class fieldmethod(rowmethod):
-    def __init__(self, field_name, current_model_only=True):
-        warn_of_deprecation('fieldmethod', 'rowmethod', stack=3)
-        super(fieldmethod, self).__init__(field_name, current_model_only)
 
 
 def before_insert(f):
