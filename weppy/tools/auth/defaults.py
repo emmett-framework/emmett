@@ -9,7 +9,6 @@ DEFAULT = lambda: None
 default_settings = sdict(
     password_min_length=6,
     cas_maps=None,
-    reset_password_requires_verification=False,
     registration_requires_verification=False,
     registration_requires_approval=False,
     login_after_registration=False,

@@ -341,17 +341,17 @@ class Exposer(object):
         return form
 
     def retrieve_password(self):
-        if self.settings.reset_password_requires_verification:
-            return self.request_reset_password()
-        else:
-            return self.reset_password()
+        return self.request_reset_password()
 
     def change_password(self):
         def process_form(form):
             if form.params.old_password != row.password:
                 form.errors.old_password = self.messages.invalid_password
                 return
-            if form.params.new_password.password != form.params.new_password2:
+            if (
+                form.params.new_password.password !=
+                form.params.new_password2.password
+            ):
                 form.errors.new_password = self.messages.mismatched_password
                 form.errors.new_password2 = self.messages.mismatched_password
                 return
