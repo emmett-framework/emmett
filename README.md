@@ -55,9 +55,9 @@ This is an extract from the results for a simple JSON serialization:
 
 | framework | req/s | ms/req | performance |
 | --- | --- | --- | --- |
-| weppy | 10853 | 18.46 | 2.5x |
-| flask | 6831 | 29.38 | 1.6x |
-| django | 4330 | 46.61 | 1x |
+| weppy 0.5.1 | 10853 | 18.46 | 2.5x |
+| flask 0.10.1 | 6831 | 29.38 | 1.6x |
+| django 1.8.6 | 4330 | 46.61 | 1x |
 
 ## Status of the project
 
