@@ -150,9 +150,9 @@ class Set(_Set):
             joins = []
             jtables = []
             for arg in args:
-                join_data = self._parse_rjoin(arg)
-                joins.append(join_data[0])
-                jtables.append((arg, join_data[1]._tablename, join_data[2]))
+                condition, table, is_single_row = self._parse_rjoin(arg)
+                joins.append(condition)
+                jtables.append((arg, table._tablename, is_single_row))
             if joins:
                 from .helpers import JoinSet
                 q = joins[0]
@@ -182,7 +182,7 @@ class Set(_Set):
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
             r = RelationBuilder(rel, self._model_)
-            return r.many(), rel.table, False
+            return r.many(), rel.table, True
         raise RuntimeError(
             'Unable to find %s relation of %s model' %
             (arg, self._model_.__name__))
@@ -193,9 +193,9 @@ class Set(_Set):
         joins = []
         jdata = []
         for arg in args:
-            join = self._parse_rjoin(arg)
-            joins.append(join[1].on(join[0]))
-            jdata.append((arg, join[2]))
+            condition, table, is_single_row = self._parse_rjoin(arg)
+            joins.append(table.on(condition))
+            jdata.append((arg, is_single_row))
         return joins, jdata
 
     def _jcolnames_from_rowstmps(self, tmps):

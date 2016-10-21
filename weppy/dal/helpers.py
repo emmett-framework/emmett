@@ -466,18 +466,17 @@ class JoinSet(JoinableSet):
             if record[self._stable_].id != _last_rid:
                 records.append(record[self._stable_])
                 #: prepare nested rows
-                for join in self._joins_:
-                    if not join[2]:
-                        records[-1][join[0]] = Rows(
-                            self.db, [], [])
+                for jname, jtable, is_single_row in self._joins_:
+                    if not is_single_row:
+                        records[-1][jname] = Rows(self.db, [], [])
             _last_rid = record[self._stable_].id
             #: add joins in nested Rows objects
-            for join in self._joins_:
-                if join[2]:
-                    records[-1][join[0]] = JoinedIDReference._from_record(
-                        record[join[1]], self.db[join[1]])
+            for jname, jtable, is_single_row in self._joins_:
+                if is_single_row:
+                    records[-1][jname] = JoinedIDReference._from_record(
+                        record[jtable], self.db[jtable])
                 else:
-                    records[-1][join[0]].records.append(record[join[1]])
+                    records[-1][jname].records.append(record[jtable])
         return JoinRows(
             self.db, records, rows.colnames, jtables=self._joins_)
 
@@ -495,8 +494,8 @@ class LeftJoinSet(JoinableSet):
         #: collect tablenames
         jtables = []
         for index, join in enumerate(options['left']):
-            jdata = self._jdata_[index]
-            jtables.append((jdata[0], join.first._tablename, jdata[1]))
+            jname, is_single_row = self._jdata_[index]
+            jtables.append((jname, join.first._tablename, is_single_row))
         #: use iterselect for performance
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
@@ -507,19 +506,18 @@ class LeftJoinSet(JoinableSet):
             if record[self._stable_].id != _last_rid:
                 records.append(record[self._stable_])
                 #: prepare nested rows
-                for join in jtables:
-                    if not join[2]:
-                        records[-1][join[0]] = Rows(
-                            self.db, [], [])
+                for jname, jtable, is_single_row in jtables:
+                    if not is_single_row:
+                        records[-1][jname] = Rows(self.db, [], [])
             _last_rid = record[self._stable_].id
             #: add joins in nested Rows objects
-            for join in jtables:
-                if record[join[1]].id is not None:
-                    if join[2]:
-                        records[-1][join[0]] = JoinedIDReference._from_record(
-                            record[join[1]], self.db[join[1]])
+            for jname, jtable, is_single_row in jtables:
+                if record[jtable].id is not None:
+                    if is_single_row:
+                        records[-1][jname] = JoinedIDReference._from_record(
+                            record[jtable], self.db[jtable])
                     else:
-                        records[-1][join[0]].records.append(record[join[1]])
+                        records[-1][jname].records.append(record[jtable])
         return JoinRows(
             self.db, records, rows.colnames, jtables=jtables)
 
