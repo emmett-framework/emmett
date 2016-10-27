@@ -410,8 +410,8 @@ copyreg.pickle(DAL, _DAL_pickler, _DAL_unpickler)
 
 class Field(_Field):
     _weppy_types = {
-        'integer': 'int', 'double': 'float', 'bigint': 'int',
-        'boolean': 'bool', 'list:integer': 'list:int'
+        'integer': 'int', 'double': 'float', 'boolean': 'bool',
+        'list:integer': 'list:int'
     }
     _pydal_types = {
         'int': 'integer', 'bool': 'boolean', 'list:int': 'list:integer'
@@ -485,6 +485,8 @@ class Field(_Field):
         ]
         if self._type in auto_types:
             rv['is'] = self._type
+        if self._type == 'bigint':
+            rv['is'] = 'int'
         if self._type == 'bool':
             rv['in'] = (False, True)
         if self._type in ['string', 'text', 'password']:
@@ -493,7 +495,7 @@ class Field(_Field):
             rv['len']['gte'] = 6
             rv['crypt'] = True
         if self._type == 'list:int':
-            rv['is'] = {'list:int'}
+            rv['is'] = 'list:int'
         if self.notnull or self._type.startswith('reference') or \
                 self._type.startswith('list:reference'):
             rv['presence'] = True
