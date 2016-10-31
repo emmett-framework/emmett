@@ -22,7 +22,7 @@ def _custom_json(o):
         return o.custom_json()
     if isinstance(o, datetime.datetime):
         return udatetime.to_string(o)
-    if isinstance(o, (datetime.date, datetime.time)):
+    elif isinstance(o, (datetime.date, datetime.time)):
         return o.isoformat()
     elif isinstance(o, integer_types):
         return int(o)
