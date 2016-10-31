@@ -66,9 +66,8 @@ def render_template(path, template, ctx):
         )
     )
     templater = Templater(_fakeapp)
-    tpath = os.path.join(path, template)
-    source = templater.load(tpath)
-    return templater.render(source, path, template, ctx)
+    source = templater.load(path, template)
+    return templater._render(source, path, template, ctx)
 
 
 def to_tuple(x, default=None):

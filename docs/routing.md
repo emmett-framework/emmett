@@ -221,10 +221,11 @@ and not the old cached ones. weppy solves the problem for you,
 allowing you to configure your application with a `static_version`:
 
 ```python
+app.config.static\_version\_urls = True
 app.config.static_version = "1.0.0"
 ```
 
 then a call to `url('static', 'myfile.js')` will produce the URL
 */static/1.0.0/myfile.js* automatically. When you release a new version 
-of your application with changed static files, you just need to change 
+of your application with changed static files, you just need to update 
 the `static_version` string.

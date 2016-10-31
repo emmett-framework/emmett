@@ -521,7 +521,7 @@ class Translator(object):
             if lang not in self.current_languages and \
                     lang[:2] not in self.current_languages:
                 return lang
-        return langs[0]
+        return langs[0] if langs else self.current_languages[0]
 
     def translate(self, lang, message, symbols):
         lang = self.get_best_language(lang.lower())

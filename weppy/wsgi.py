@@ -13,7 +13,6 @@ import os
 import sys
 import re
 from datetime import datetime
-
 from .http import HTTP
 from .stream import stream_file_handler
 
@@ -87,7 +86,6 @@ def static_handler(app, environ, start_response):
 
 
 def error_handler(app, environ, start_response):
-    # TODO: store in tickets based on application setting
     environ['wpp.now.utc'] = datetime.utcnow()
     environ['wpp.now.local'] = datetime.now()
     try:

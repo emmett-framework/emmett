@@ -17,12 +17,14 @@ import decimal
 import json
 import re
 import struct
+import udatetime
 from datetime import date, time, datetime, timedelta
 from time import strptime
 from .._compat import PY2, basestring
 from .basic import Validator, ParentValidator, _is, Matches
 from .helpers import translate, _UTC, url_split_regex, official_url_schemes, \
-    unofficial_url_schemes, unicode_to_ascii_url, official_top_level_domains
+    unofficial_url_schemes, unicode_to_ascii_url, official_top_level_domains, \
+    _DEFAULT
 
 if PY2:
     from urllib import unquote as url_unquote
@@ -144,23 +146,16 @@ class isDate(_is):
             self.extremes.update(isDate.nice(self.format))
             return value, translate(self.message) % self.extremes
 
-    def _formatter_obj(self, year, value):
-        return datetime(year, value.month, value.day)
+    def _formatter_obj(self, value):
+        return datetime(value.year, value.month, value.day)
 
     def formatter(self, value):
         if value is None:
             return None
-        format = self.format
-        year = value.year
-        y = '%.4i' % year
-        format = format.replace('%y', y[-2:])
-        format = format.replace('%Y', y)
-        if year < 1900:
-            year = 2000
-        d = self._formatter_obj(year, value)
+        d = self._formatter_obj(value)
         if self.timezone is not None:
             d = d.replace(tzinfo=_utc).astimezone(self.timezone)
-        return d.strftime(format)
+        return d.strftime(str(self.format))
 
     @staticmethod
     def nice(format):
@@ -175,20 +170,29 @@ class isDate(_is):
 
 
 class isDatetime(isDate):
-    def __init__(self, format='%Y-%m-%d %H:%M:%S', **kwargs):
+    def __init__(self, format=_DEFAULT, **kwargs):
+        if format is _DEFAULT:
+            self._parse = self._parse_udatetime
+            format = '%Y-%m-%dT%H:%M:%S'
+        else:
+            self._parse = self._parse_strptime
         isDate.__init__(self, format=format, **kwargs)
 
-    def _parse(self, value):
+    def _parse_strptime(self, value):
         (y, m, d, hh, mm, ss, t0, t1, t2) = \
             strptime(value, str(self.format))
         return datetime(y, m, d, hh, mm, ss)
 
+    def _parse_udatetime(self, value):
+        return udatetime.from_string(value)
+
     def _check_instance(self, value):
         return isinstance(value, datetime)
 
-    def _formatter_obj(self, year, value):
-        return datetime(year, value.month, value.day, value.hour, value.minute,
-                        value.second)
+    def _formatter_obj(self, value):
+        return datetime(
+            value.year, value.month, value.day,
+            value.hour, value.minute, value.second)
 
 
 class isEmail(_is):

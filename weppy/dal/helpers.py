@@ -12,11 +12,11 @@
 import re
 import time
 from pydal._globals import THREAD_LOCAL
-from pydal.objects import Rows, Query
+from pydal.objects import Query, IterRows as _IterRows
 from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
 from ..datastructures import sdict
 from ..utils import cachedprop
-from .base import Set, Field
+from .base import Set, Field, Rows
 
 
 class Reference(object):
@@ -434,7 +434,19 @@ class JoinedIDReference(_IDReference):
         return self._record.as_dict()
 
 
-class JoinSet(Set):
+class JoinableSet(Set):
+    def _iterselect_rows(self, *fields, **attributes):
+        tablenames = self.db._adapter.tables(
+            self.query, attributes.get('join', None),
+            attributes.get('left', None), attributes.get('orderby', None),
+            attributes.get('groupby', None))
+        fields = self.db._adapter.expand_all(fields, tablenames)
+        colnames, sql = self.db._adapter._select_wcols(
+            self.query, fields, **attributes)
+        return JoinIterRows(self.db, sql, fields, colnames)
+
+
+class JoinSet(JoinableSet):
     @classmethod
     def _from_set(cls, obj, table, joins):
         rv = cls(
@@ -445,9 +457,7 @@ class JoinSet(Set):
 
     def select(self, *fields, **options):
         #: use iterselect for performance
-        rows = super(Set, self).iterselect(*fields, **options)
-        #: build new colnames
-        colnames, jcolnames = self._jcolnames_from_rowstmps(rows.tmps)
+        rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
         records = []
         _last_rid = None
@@ -456,23 +466,22 @@ class JoinSet(Set):
             if record[self._stable_].id != _last_rid:
                 records.append(record[self._stable_])
                 #: prepare nested rows
-                for join in self._joins_:
-                    if not join[2]:
-                        records[-1][join[0]] = Rows(
-                            self.db, [], jcolnames[join[1]])
+                for jname, jtable, is_single_row in self._joins_:
+                    if not is_single_row:
+                        records[-1][jname] = Rows(self.db, [], [])
             _last_rid = record[self._stable_].id
             #: add joins in nested Rows objects
-            for join in self._joins_:
-                if join[2]:
-                    records[-1][join[0]] = JoinedIDReference._from_record(
-                        record[join[1]], self.db[join[1]])
+            for jname, jtable, is_single_row in self._joins_:
+                if is_single_row:
+                    records[-1][jname] = JoinedIDReference._from_record(
+                        record[jtable], self.db[jtable])
                 else:
-                    records[-1][join[0]].records.append(record[join[1]])
+                    records[-1][jname].records.append(record[jtable])
         return JoinRows(
-            self.db, records, colnames, jtables=self._joins_)
+            self.db, records, rows.colnames, jtables=self._joins_)
 
 
-class LeftJoinSet(Set):
+class LeftJoinSet(JoinableSet):
     @classmethod
     def _from_set(cls, obj, jdata):
         rv = cls(
@@ -485,12 +494,10 @@ class LeftJoinSet(Set):
         #: collect tablenames
         jtables = []
         for index, join in enumerate(options['left']):
-            jdata = self._jdata_[index]
-            jtables.append((jdata[0], join.first._tablename, jdata[1]))
+            jname, is_single_row = self._jdata_[index]
+            jtables.append((jname, join.first._tablename, is_single_row))
         #: use iterselect for performance
-        rows = super(Set, self).iterselect(*fields, **options)
-        #: build new colnames
-        colnames, jcolnames = self._jcolnames_from_rowstmps(rows.tmps)
+        rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
         records = []
         _last_rid = None
@@ -499,21 +506,46 @@ class LeftJoinSet(Set):
             if record[self._stable_].id != _last_rid:
                 records.append(record[self._stable_])
                 #: prepare nested rows
-                for join in jtables:
-                    if not join[2]:
-                        records[-1][join[0]] = Rows(
-                            self.db, [], jcolnames[join[1]])
+                for jname, jtable, is_single_row in jtables:
+                    if not is_single_row:
+                        records[-1][jname] = Rows(self.db, [], [])
             _last_rid = record[self._stable_].id
             #: add joins in nested Rows objects
-            for join in jtables:
-                if record[join[1]].id is not None:
-                    if join[2]:
-                        records[-1][join[0]] = JoinedIDReference._from_record(
-                            record[join[1]], self.db[join[1]])
+            for jname, jtable, is_single_row in jtables:
+                if record[jtable].id is not None:
+                    if is_single_row:
+                        records[-1][jname] = JoinedIDReference._from_record(
+                            record[jtable], self.db[jtable])
                     else:
-                        records[-1][join[0]].records.append(record[join[1]])
+                        records[-1][jname].records.append(record[jtable])
         return JoinRows(
-            self.db, records, colnames, jtables=jtables)
+            self.db, records, rows.colnames, jtables=jtables)
+
+
+class JoinIterRows(_IterRows):
+    def __init__(self, db, sql, fields, colnames):
+        self.db = db
+        self.fields = fields
+        self.colnames = colnames
+        (self.fields_virtual, self.fields_lazy, self.tmps) = \
+            self.db._adapter._parse_expand_colnames(colnames)
+        self.cursor = self.db._adapter.cursor
+        self.db._adapter.execute(sql)
+        self.db._adapter.lock_cursor(self.cursor)
+        self._head = None
+        self.last_item = None
+        self.last_item_id = None
+        self.blob_decode = True
+        self.cacheable = False
+        self.sql = sql
+
+    def __next__(self):
+        db_row = self.cursor.fetchone()
+        if db_row is None:
+            raise StopIteration
+        return self.db._adapter._parse(
+            db_row, self.tmps, self.fields, self.colnames, self.blob_decode,
+            self.cacheable, self.fields_virtual, self.fields_lazy)
 
 
 class JoinRows(Rows):

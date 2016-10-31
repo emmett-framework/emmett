@@ -34,7 +34,7 @@ and *echo.html*:
 ```
 
 The dictionary returned by your functions is the *context* of the template,
-in which you can insert the values defined in Python code.   
+in which you can insert the values defined in Python code by using the `{{=myvar}}` notation.
 
 In addition, since everything you write inside the curly braces is evaluated
 as normal Python code, you can easily generate HTML with conditions and cycles:
@@ -206,9 +206,15 @@ Moreover, the templating system adds the `url()`, `asis()` and `load_component()
 methods, where the `url()` is the same weppy method you've encountered to create
 URLs for routed functions.
 
-The `asis()` method allows you to put something in the template without escaping
-it to HTML. It's useful, for example, when you need to write JavaScript objects 
-from Python, like an array:
+All these methods are python powered, so when you need to use them in your template file, you have to put an `=` before them, as we saw in this chapter:
+
+```html
+<a href="{{=url('someroute')}}">Some link</a>
+<img src="{{=url('static', 'img/foo.png)}}" />
+```
+
+Now, let's inspect the other methods more deeply.   
+The `asis()` method allows you to put something in the template without escaping it to HTML. It's useful, for example, when you need to write JavaScript objects from Python, like an array:
 
 ```html
 <script type="text/javascript">
@@ -230,4 +236,3 @@ you want to load with AJAX inside another one, you can just put in the template:
 
 Basically, `load_component()` calls an URL and appends its contents inside the
 element with the id you have specified as the second parameter.
-

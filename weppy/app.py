@@ -15,13 +15,13 @@ import click
 from yaml import load as ymlload
 from ._compat import basestring
 from ._internal import get_root_path, create_missing_app_folders
-from .utils import dict_to_sdict, cachedprop
-from .expose import Expose
 from .datastructures import sdict, ConfigData
-from .wsgi import error_handler
+from .expose import Expose, url
 from .extensions import Extension, TemplateExtension
-from .templating import render_template
-from .utils import read_file
+from .globals import current
+from .templating.core import Templater
+from .utils import dict_to_sdict, cachedprop, read_file
+from .wsgi import error_handler
 
 
 class App(object):
@@ -69,6 +69,7 @@ class App(object):
         self.template_extensions = []
         self.template_preloaders = {}
         self.template_lexers = {}
+        self.templater = Templater(self)
 
     @cachedprop
     def name(self):
@@ -132,7 +133,8 @@ class App(object):
             return rv
 
     def render_template(self, filename):
-        return render_template(self, filename)
+        ctx = {'current': current, 'url': url}
+        return self.templater.render(self.template_path, filename, ctx)
 
     def config_from_yaml(self, filename, namespace=None):
         #: import configuration from yaml files

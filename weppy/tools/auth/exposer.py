@@ -37,13 +37,13 @@ class Exposer(object):
 
     def _build_register_form_(self):
         if not self.settings.register_fields:
-            self.settings.register_fields = [
+            self.settings.register_fields = {'writable': [
                 field.name for field in self.auth.table_user
                 if field.type != 'id' and field.writable
-            ]
+            ]}
         all_fieldkeys = [
             field.name for field in self.auth.table_user if field.name
-            in self.settings.register_fields
+            in self.settings.register_fields['writable']
         ]
         for i, fieldname in enumerate(all_fieldkeys):
             if fieldname == 'password':
@@ -341,10 +341,7 @@ class Exposer(object):
         return form
 
     def retrieve_password(self):
-        if self.settings.reset_password_requires_verification:
-            return self.request_reset_password()
-        else:
-            return self.reset_password()
+        return self.request_reset_password()
 
     def change_password(self):
         def process_form(form):
@@ -395,11 +392,11 @@ class Exposer(object):
         onaccept = self.settings.profile_onaccept
         log = self.messages['profile_log']
         if not self.settings.profile_fields:
-            self.settings.profile_fields = [
+            profile_fields = [
                 field.name for field in self.auth.table_user
-                if field.type != 'id' and field.writable]
-        if 'password' in self.settings.profile_fields:
-            self.settings.profile_fields.remove('password')
+                if field.type != 'password' and field.writable]
+            self.settings.profile_fields = {
+                'readable': profile_fields, 'writable': profile_fields}
         form = DALForm(
             self.auth.table_user,
             record_id=self.auth.user.id,
@@ -448,5 +445,5 @@ class Exposer(object):
 
     def not_authorized(self):
         if request.isajax:
-            raise abort(403, 'ACCESS DENIED')
+            abort(403, 'ACCESS DENIED')
         return 'ACCESS DENIED'

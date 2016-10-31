@@ -218,6 +218,52 @@ number = Field(
 )
 ```
 
+### Inclusion in database sets
+
+*Added in version 0.8*
+
+The `'in'` validator accepts also a database set as boundary, thanks to the 'dbset' notation. 
+
+For example, if you have a reference in your model and you want its values to be in a specific subset of the database rather than just checking their existence in the referred table, you can write:
+
+```python
+belongs_to('article')
+
+validation = {
+    'article': {
+        'in': {
+            'dbset': lambda db: db.where(db.Article.id > 5)
+        }
+    }
+}
+```
+
+As you can see, the value for `'dbset'` should be a function, accept the database as a parameter and return a database set.
+
+With the `'dbset'` notation, the `'in'` validator accepts also some additional options, that will be used in rendering forms for your entity, in particular:
+
+| parameter | description |
+| --- | --- |
+| orderby | define a sorting rule for dropdowns |
+| label\_field | use a field of the reference model to render dropdowns |
+
+For example, if you have a `rating` field in your `Article` model, you can order the results by this column, and maybe you also want to use the titles of each article to render the choices:
+
+```python
+validation = {
+    'doctor': {
+        'in': {
+            'dbset': lambda db: db(db.Doctor.id > 5), 
+            'orderby': lambda doctor: ~doctor.rating,
+            'label_field': 'title'
+        }
+    }
+}
+```
+
+Remember that the `orderby` clause should be a function and, accept the referred model as a parameter and return a sorting rule, while the `label_field` one should be a string identifying the name of the field that you want to use to format results.
+
+
 Numeric boundaries
 ------------------
 

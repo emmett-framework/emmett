@@ -19,7 +19,7 @@ import click
 import os
 import sys
 import types
-from ._compat import iteritems
+from ._compat import itervalues, iteritems
 from . import __version__ as weppy_version
 
 
@@ -272,7 +272,7 @@ def shell_command(info):
 def routes_command(info):
     app = info.load_app()
     print("> Routing table for weppy application %s:" % app.import_name)
-    for route in app.route._routes_str:
+    for route in itervalues(app.route._routes_str):
         print(route)
 
 

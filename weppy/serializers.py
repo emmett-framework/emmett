@@ -10,6 +10,7 @@
 import datetime
 import decimal
 import json as json_parser
+import udatetime
 from ._compat import PY2, integer_types
 from .language.translator import TElement
 from .tags import TAG, tag, htmlescape
@@ -19,12 +20,10 @@ from .datastructures import sdict
 def _custom_json(o):
     if hasattr(o, 'custom_json') and callable(o.custom_json):
         return o.custom_json()
-    if isinstance(o, (
-        datetime.date,
-        datetime.datetime,
-        datetime.time)
-    ):
-        return o.isoformat()[:19].replace('T', ' ')
+    if isinstance(o, datetime.datetime):
+        return udatetime.to_string(o)
+    elif isinstance(o, (datetime.date, datetime.time)):
+        return o.isoformat()
     elif isinstance(o, integer_types):
         return int(o)
     elif isinstance(o, decimal.Decimal):

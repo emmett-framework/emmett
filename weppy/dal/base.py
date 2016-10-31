@@ -9,13 +9,15 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import copy
 import os
 from pydal import DAL as _pyDAL, Field as _Field
 from pydal._globals import THREAD_LOCAL
 from pydal.objects import Table as _Table, Set as _Set, Rows as _Rows, \
     Expression, Row
-from .._compat import copyreg, iterkeys
+from .._compat import copyreg, iterkeys, iteritems
 from ..datastructures import sdict
+from ..globals import current
 from ..handlers import Handler
 from ..security import uuid as _uuid
 from ..serializers import _custom_json, xml
@@ -41,6 +43,10 @@ class DALHandler(Handler):
 
 
 class Table(_Table):
+    def __init__(self, *args, **kwargs):
+        super(Table, self).__init__(*args, **kwargs)
+        self._unique_fields_validation_ = {}
+
     def _create_references(self):
         self._referenced_by = []
         self._referenced_by_list = []
@@ -102,15 +108,51 @@ class Set(_Set):
                 self, jdata).select(*fields, **options)
         return super(Set, self).select(*fields, **options)
 
+    def validate_and_update(self, **update_fields):
+        tablename = self.db._adapter.get_table(self.query)
+        table = self.db[tablename]
+        current._dbvalidation_record_id_ = None
+        if table._unique_fields_validation_ and self.count() == 1:
+            if any(
+                table._unique_fields_validation_.get(fieldname)
+                for fieldname in iterkeys(update_fields)
+            ):
+                current._dbvalidation_record_id_ = \
+                    self.select(table.id).first().id
+        response = Row()
+        response.errors = Row()
+        new_fields = copy.copy(update_fields)
+        for key, value in iteritems(update_fields):
+            value, error = self.db[tablename][key].validate(value)
+            if error:
+                response.errors[key] = '%s' % error
+            else:
+                new_fields[key] = value
+        del current._dbvalidation_record_id_
+        if response.errors:
+            response.updated = None
+        else:
+            if not any(f(self, new_fields) for f in table._before_update):
+                table._attempt_upload(new_fields)
+                fields = table._listify(new_fields, update=True)
+                if not fields:
+                    raise SyntaxError("No fields to update")
+                ret = self.db._adapter.update(tablename, self.query, fields)
+                ret and [f(self, new_fields) for f in table._after_update]
+            else:
+                ret = 0
+            response.updated = ret
+        return response
+
     def join(self, *args):
         rv = self
         if self._model_ is not None:
             joins = []
             jtables = []
             for arg in args:
-                join_data = self._parse_rjoin(arg)
-                joins.append(join_data[0])
-                jtables.append((arg, join_data[1]._tablename, join_data[2]))
+                condition, table, is_single_row = self._parse_rjoin(arg)
+                joins.append(condition)
+                jtables.append((arg, table._tablename, is_single_row))
             if joins:
                 from .helpers import JoinSet
                 q = joins[0]
@@ -140,7 +182,7 @@ class Set(_Set):
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
             r = RelationBuilder(rel, self._model_)
-            return r.many(), rel.table, False
+            return r.many(), rel.table, True
         raise RuntimeError(
             'Unable to find %s relation of %s model' %
             (arg, self._model_.__name__))
@@ -151,9 +193,9 @@ class Set(_Set):
         joins = []
         jdata = []
         for arg in args:
-            join = self._parse_rjoin(arg)
-            joins.append(join[1].on(join[0]))
-            jdata.append((arg, join[2]))
+            condition, table, is_single_row = self._parse_rjoin(arg)
+            joins.append(table.on(condition))
+            jdata.append((arg, is_single_row))
         return joins, jdata
 
     def _jcolnames_from_rowstmps(self, tmps):
@@ -190,7 +232,7 @@ class Rows(_Rows):
     @cachedprop
     def compact(self):
         if not self.records:
-            return True
+            return False
         return len(self._rowkeys_) == 1 and self._rowkeys_[0] != '_extra'
 
     @cachedprop
@@ -368,8 +410,8 @@ copyreg.pickle(DAL, _DAL_pickler, _DAL_unpickler)
 
 class Field(_Field):
     _weppy_types = {
-        'integer': 'int', 'double': 'float', 'bigint': 'int',
-        'boolean': 'bool', 'list:integer': 'list:int'
+        'integer': 'int', 'double': 'float', 'boolean': 'bool',
+        'list:integer': 'list:int'
     }
     _pydal_types = {
         'int': 'integer', 'bool': 'boolean', 'list:int': 'list:integer'
@@ -443,6 +485,8 @@ class Field(_Field):
         ]
         if self._type in auto_types:
             rv['is'] = self._type
+        if self._type == 'bigint':
+            rv['is'] = 'int'
         if self._type == 'bool':
             rv['in'] = (False, True)
         if self._type in ['string', 'text', 'password']:
@@ -451,7 +495,7 @@ class Field(_Field):
             rv['len']['gte'] = 6
             rv['crypt'] = True
         if self._type == 'list:int':
-            rv['is'] = {'list:int'}
+            rv['is'] = 'list:int'
         if self.notnull or self._type.startswith('reference') or \
                 self._type.startswith('list:reference'):
             rv['presence'] = True

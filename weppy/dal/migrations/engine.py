@@ -77,7 +77,7 @@ class Engine(MetaEngine):
 
     def drop_table(self, name):
         adapt_v = sdict(sqlsafe=self.dialect.quote(name))
-        sql_list = self.dialect.drop_table(adapt_v, '')
+        sql_list = self.dialect.drop_table(adapt_v, 'cascade')
         for sql in sql_list:
             self._log_and_exec(sql)
 
@@ -269,7 +269,7 @@ class Engine(MetaEngine):
             ftype = changes['default'][2]
             if 'type' in changes:
                 ftype = changes['type'][1]
-            changes['default'][1] = self.represent(
+            changes['default'][1] = self.adapter.represent(
                 changes['default'][1], ftype)
         if 'type' in changes:
             if not self._feasible_as_changed_type(

@@ -13,7 +13,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import os
 from re import compile, sub, escape, DOTALL
 from .._compat import implements_to_string, to_unicode
 from .contents import Node, BlockNode, Content
@@ -250,13 +249,12 @@ class TemplateParser(object):
         # Get the file and read the content
         tpath, tname = self.templater.preload(
             self.path, filename)
-        filepath = tpath and os.path.join(tpath, tname) or tname
         try:
-            tsource = self.templater.load(filepath)
+            tsource = self.templater.load(tpath, tname)
         except:
             raise TemplateError(self.path, 'Unable to open included view file',
                                 self.name, 1)
-        tsource = self.templater.prerender(tsource, filepath)
+        tsource = self.templater.prerender(tsource, tname)
 
         self.included_templates.append((tname, tsource))
 
