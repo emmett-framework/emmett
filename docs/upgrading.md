@@ -71,8 +71,8 @@ In order to enhance performance and reliability of weppy ORM above postgres setu
 
 Since the migrator won't see the change, you have two ways to adapt your old code to weppy 0.8:
 
-- run a custom migration where you manually migrate the affected columns to the new types
-- change the adapter in your database configuration from `postgres` to `postgres3`
+- run a custom migration where you manually migrate the affected columns to the new types and use the new adapter
+- change the adapter in your database configuration from `postgres` to `postgres3` in order to use the old adapter
 
 #### has_one relations in join and including selections
 
@@ -92,7 +92,7 @@ Please check your code for these conditions and update it accordingly.
 
 With weppy 0.8 we introduced some new features:
 
-- the forms now supports and display readable-only fields
+- the forms now support and display readable-only fields
 - the `'in'` validator now [supports](./validations#value-inclusion) a `'dbset'` notation to validate the presence of the record into a specific database set
 - the migrator now supports `bigint` fields
 

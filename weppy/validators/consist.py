@@ -146,23 +146,16 @@ class isDate(_is):
             self.extremes.update(isDate.nice(self.format))
             return value, translate(self.message) % self.extremes
 
-    def _formatter_obj(self, year, value):
-        return datetime(year, value.month, value.day)
+    def _formatter_obj(self, value):
+        return datetime(value.year, value.month, value.day)
 
     def formatter(self, value):
         if value is None:
             return None
-        format = self.format
-        year = value.year
-        y = '%.4i' % year
-        format = format.replace('%y', y[-2:])
-        format = format.replace('%Y', y)
-        if year < 1900:
-            year = 2000
-        d = self._formatter_obj(year, value)
+        d = self._formatter_obj(value)
         if self.timezone is not None:
             d = d.replace(tzinfo=_utc).astimezone(self.timezone)
-        return d.strftime(format)
+        return d.strftime(str(self.format))
 
     @staticmethod
     def nice(format):
@@ -196,9 +189,10 @@ class isDatetime(isDate):
     def _check_instance(self, value):
         return isinstance(value, datetime)
 
-    def _formatter_obj(self, year, value):
-        return datetime(year, value.month, value.day, value.hour, value.minute,
-                        value.second)
+    def _formatter_obj(self, value):
+        return datetime(
+            value.year, value.month, value.day,
+            value.hour, value.minute, value.second)
 
 
 class isEmail(_is):

@@ -23,7 +23,7 @@ def _custom_json(o):
     if isinstance(o, datetime.datetime):
         return udatetime.to_string(o)
     if isinstance(o, (datetime.date, datetime.time)):
-        return o.isoformat()[:19].replace('T', ' ')
+        return o.isoformat()
     elif isinstance(o, integer_types):
         return int(o)
     elif isinstance(o, decimal.Decimal):
