@@ -19,6 +19,83 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 0.8
+-----------
+
+weppy 0.8 introduces some minor breaking changes you should be aware of, and some new features you might been interested into.
+
+### Breaking changes
+
+#### Default serialization and validation of datetime fields
+
+In weppy 0.8 the default serialization and validation of `datetime` fields has been changed in order to be compliant to the RFC3339 standard. This is due to better embrace developers who uses weppy to write REST APIs, and more generally, to simplify the compatibility with the Javascript world and third party services.
+
+Practically speaking, while in weppy 0.7 and below versions, the format of `datetime` objects in serialization and validation was like this:
+
+```json
+{
+    "dt": "2016-10-31 15:37:30.997128"
+}
+```
+
+in weppy 0.8 is changed to:
+
+```json
+{
+    "dt": "2016-10-31T15:37:30.997128+00:00"
+}
+```
+
+Note that this also affects the format in forms, so if you want to stick with the previous notation for validation, add a `format` option to your validation rules:
+
+```python
+class SomeModel(Model):
+    dt = Field('datetime')
+    
+    validation = {
+        'dt': {'is':
+            {'datetime': {'format': '%Y-%m-%d %H:%M:%S'}}}
+    }
+```
+
+#### Upgraded default postgres adapters
+
+The pyDAL library contains three different adapters for postgres databases, and the default one appears to be quite old.
+
+In order to enhance performance and reliability of weppy ORM above postgres setups, we changed the default adapter to be the newest one. The main breaking differences between the adapters are the postgres types used for fields:
+
+| field type | weppy 0.7 | weppy 0.8 |
+| --- | --- | --- |
+| bool | CHAR(1) | BOOLEAN |
+| list:string | TEXT | TEXT[] |
+
+Since the migrator won't see the change, you have two ways to adapt your old code to weppy 0.8:
+
+- run a custom migration where you manually migrate the affected columns to the new types
+- change the adapter in your database configuration from `postgres` to `postgres3`
+
+#### has_one relations in join and including selections
+
+In weppy 0.7 and below versions, when you performed some select with a join of a `has_one` relation, it appeared to be a list:
+
+```python
+>>> rows = User.all().join('profile').select()
+>>> rows[0].profile
+[<Row {...}>]
+```
+
+In weppy 0.8 this is correctly added to the row attribute as a `Row` object instead of a list with a single `Row` object.
+
+Please check your code for these conditions and update it accordingly.
+
+### New features
+
+With weppy 0.8 we introduced some new features:
+
+- the forms now supports and display readable-only fields
+- the `'in'` validator now [supports](./validations#value-inclusion) a `'dbset'` notation to validate the presence of the record into a specific database set
+- the migrator now supports `bigint` fields
+
 Version 0.7
 -----------
 
