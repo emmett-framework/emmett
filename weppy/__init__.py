@@ -1,4 +1,4 @@
-__version__ = '0.8-dev'
+__version__ = '0.8'
 
 from .app import App, AppModule
 from .expose import url
