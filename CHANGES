@@ -17,6 +17,9 @@ Next
 - Changed default serialization and validation of `datetime` fields to respect
   RFC3339 standard
 - Updated postgres default adapters to latest available from pyDAL
+- Changed `has_one` attributes when using `join` and `including`
+  to not be lists
+- Added support for 'bigint' fields in the migrator
 
 
 Version 0.7
