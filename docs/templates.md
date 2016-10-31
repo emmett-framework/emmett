@@ -210,6 +210,7 @@ All these methods are python powered, so when you need to use them in your templ
 
 ```html
 <a href="{{=url('someroute')}}">Some link</a>
+<img src="{{=url('static', 'img/foo.png)}}" />
 ```
 
 Now, let's inspect the other methods more deeply.   
