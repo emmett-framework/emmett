@@ -16,29 +16,30 @@ from pydal._globals import THREAD_LOCAL
 from pydal.objects import Table as _Table, Set as _Set, Rows as _Rows, \
     Expression, Row
 from .._compat import copyreg, iterkeys, iteritems
+from .._internal import warn_of_deprecation
 from ..datastructures import sdict
 from ..globals import current
-from ..handlers import Handler
+from ..pipeline import Pipe
 from ..security import uuid as _uuid
 from ..serializers import _custom_json, xml
 from ..utils import cachedprop
 from ..validators import ValidateFromDict
 
 
-class DALHandler(Handler):
+class DALPipe(Pipe):
     def __init__(self, db):
         self.db = db
 
-    def on_start(self):
+    def open(self):
         self.db._adapter.reconnect()
 
-    def on_success(self):
+    def on_pipe_success(self):
         self.db.commit()
 
-    def on_failure(self):
+    def on_pipe_failure(self):
         self.db.rollback()
 
-    def on_end(self):
+    def close(self):
         self.db._adapter.close()
 
 
@@ -341,8 +342,13 @@ class DAL(_pyDAL):
             lambda *args, **kwargs: None
 
     @property
+    def pipe(self):
+        return DALPipe(self)
+
+    @property
     def handler(self):
-        return DALHandler(self)
+        warn_of_deprecation('handler', 'pipe', 'DAL', 3)
+        return self.pipe
 
     @property
     def execution_timings(self):

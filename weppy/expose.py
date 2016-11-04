@@ -14,7 +14,8 @@ import re
 import os
 from collections import OrderedDict
 from ._compat import PY2, with_metaclass, itervalues, iteritems, text_type
-from .handlers import Handler, _wrapWithHandlers
+from ._internal import warn_of_deprecation
+from .pipeline import Pipeline, Pipe
 from .templating.helpers import TemplateMissingError
 from .globals import current
 from .http import HTTP
@@ -40,8 +41,8 @@ class Expose(with_metaclass(MetaExpose)):
     application = None
     routes_in = {'__any__': OrderedDict()}
     routes_out = {}
-    common_handlers = []
-    common_helpers = []
+    _pipeline = []
+    _injectors = []
     processors = []
     REGEX_INT = re.compile('<int\:(\w+)>')
     REGEX_STR = re.compile('<str\:(\w+)>')
@@ -51,9 +52,11 @@ class Expose(with_metaclass(MetaExpose)):
     REGEX_DECORATION = re.compile(
         '(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
 
-    def __init__(self, path=None, name=None, template=None, handlers=None,
-                 helpers=None, schemes=None, hostname=None, methods=None,
-                 prefix=None, template_folder=None, template_path=None):
+    def __init__(
+        self, path=None, name=None, template=None, pipeline=None,
+        injectors=None, schemes=None, hostname=None, methods=None, prefix=None,
+        template_folder=None, template_path=None, **kwargs
+    ):
         if callable(path):
             raise SyntaxError('Use @route(), not @route.')
         self.schemes = schemes or ('http', 'https')
@@ -69,11 +72,17 @@ class Expose(with_metaclass(MetaExpose)):
         self.template_folder = template_folder
         self.template_path = template_path
         self.prefix = prefix
-        self.handlers = [_ResponseHandler(self)] + self.common_handlers + \
-            (handlers or []) + self.common_helpers + (helpers or [])
-        # check handlers are indeed valid handlers
-        if any(not isinstance(handler, Handler) for handler in self.handlers):
-            raise RuntimeError('Invalid Handler')
+        if 'handlers' in kwargs:
+            warn_of_deprecation('handlers', 'pipeline', 'route', 3)
+            pipeline = kwargs['handlers']
+        if 'helpers' in kwargs:
+            warn_of_deprecation('helpers', 'injectors', 'route', 3)
+            injectors = kwargs['helpers']
+        self.pipeline = [ResponsePipe(self)] + self._pipeline + \
+            (pipeline or []) + self._injectors + (injectors or [])
+        # check pipes are indeed valid pipes
+        if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
+            raise RuntimeError('Invalid pipeline')
         self._routing_stack.append(self)
 
     @property
@@ -171,7 +180,7 @@ class Expose(with_metaclass(MetaExpose)):
             self.template = os.path.join(self.template_folder, self.template)
         self.template_path = self.template_path or \
             self.application.template_path
-        wrapped_func = _wrapWithHandlers(self.handlers)(func)
+        wrapped_func = Pipeline(self.pipeline)(func)
         self.func = wrapped_func
         self.regex = self.build_regex(
             self.schemes, self.hostname, self.methods, self.path)
@@ -232,26 +241,31 @@ class Expose(with_metaclass(MetaExpose)):
         return None, {}
 
     @staticmethod
+    def _before_dispatch(route):
+        #: call pipeline `before_flow` method
+        for pipe in route.pipeline:
+            pipe.open()
+
+    @staticmethod
     def _after_dispatch(route):
-        #: call handlers `on_end` method
-        for handler in reversed(route.handlers):
-            handler.on_end()
+        #: call pipeline `after_flow` method
+        for pipe in reversed(route.pipeline):
+            pipe.close()
 
     @classmethod
     def dispatch(cls):
         #: get the right exposed function
         request = current.request
         route, reqargs = cls.match(request)
-        if route:
-            request.name = route.name
-            try:
-                route.func(**reqargs)
-            except:
-                cls._after_dispatch(route)
-                raise
-        else:
+        if not route:
             raise HTTP(404, body="Invalid action\n")
-        #: end the dispatching
+        request.name = route.name
+        cls._before_dispatch(route)
+        try:
+            route.func(**reqargs)
+        except:
+            cls._after_dispatch(route)
+            raise
         cls._after_dispatch(route)
 
     @classmethod
@@ -264,30 +278,28 @@ class Expose(with_metaclass(MetaExpose)):
         return cls._routing_stack[-1]
 
 
-class _ResponseHandler(Handler):
+class ResponsePipe(Pipe):
     def __init__(self, route):
         self.route = route
 
-    def wrap_call(self, func):
-        def wrap(*args, **kwargs):
-            response = current.response
-            output = func(*args, **kwargs)
-            if output is None:
-                output = {'current': current, 'url': url}
-            if isinstance(output, dict):
-                output['current'] = output.get('current', current)
-                output['url'] = output.get('url', url)
-                try:
-                    output = Expose.application.templater.render(
-                        self.route.template_path, self.route.template, output)
-                except TemplateMissingError:
-                    raise HTTP(404, body="Invalid view\n")
-                response.output = output
-            elif isinstance(output, text_type) or hasattr(output, '__iter__'):
-                response.output = output
-            else:
-                response.output = str(output)
-        return wrap
+    def pipe(self, next_pipe, **kwargs):
+        response = current.response
+        output = next_pipe(**kwargs)
+        if output is None:
+            output = {'current': current, 'url': url}
+        if isinstance(output, dict):
+            output['current'] = output.get('current', current)
+            output['url'] = output.get('url', url)
+            try:
+                output = Expose.application.templater.render(
+                    self.route.template_path, self.route.template, output)
+            except TemplateMissingError:
+                raise HTTP(404, body="Invalid view\n")
+            response.output = output
+        elif isinstance(output, text_type) or hasattr(output, '__iter__'):
+            response.output = output
+        else:
+            response.output = str(output)
 
 
 def url(path, args=[], params={}, extension=None, sign=None, scheme=None,

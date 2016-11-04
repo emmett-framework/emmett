@@ -14,7 +14,9 @@ import os
 import click
 from yaml import load as ymlload
 from ._compat import basestring
-from ._internal import get_root_path, create_missing_app_folders
+from ._internal import (
+    get_root_path, create_missing_app_folders, warn_of_deprecation
+)
 from .datastructures import sdict, ConfigData
 from .expose import Expose, url
 from .extensions import Extension, TemplateExtension
@@ -92,20 +94,42 @@ class App(object):
         return Expose
 
     @property
+    def pipeline(self):
+        return self.route._pipeline
+
+    @pipeline.setter
+    def pipeline(self, pipes):
+        self.route._pipeline = pipes
+
+    @property
+    def injectors(self):
+        return self.route._injectors
+
+    @injectors.setter
+    def injectors(self, injectors):
+        self.route._injectors = injectors
+
+    #: 1.0 deprecations
+    @property
     def common_handlers(self):
-        return self.route.common_handlers
+        warn_of_deprecation('common_handlers', 'pipeline', 'App', 3)
+        return self.pipeline
 
     @common_handlers.setter
     def common_handlers(self, handlers):
-        self.route.common_handlers = handlers
+        warn_of_deprecation('common_handlers', 'pipeline', 'App', 3)
+        self.pipeline = handlers
 
     @property
     def common_helpers(self):
-        return self.route.common_helpers
+        warn_of_deprecation('common_helpers', 'injectors', 'App', 3)
+        return self.injectors
 
     @common_helpers.setter
     def common_helpers(self, helpers):
-        self.route.common_helpers = helpers
+        warn_of_deprecation('common_helpers', 'injectors', 'App', 3)
+        self.injectors = helpers
+    #/
 
     @property
     def routing_processors(self):
@@ -244,8 +268,30 @@ class AppModule(object):
         #    self.static_folder = self.app.static_folder+"/"+static_prefix
         self.url_prefix = url_prefix
         self.hostname = hostname
-        self.common_handlers = []
-        self.common_helpers = []
+        self.pipeline = []
+        self.injectors = []
+
+    #: 1.0 deprecations
+    @property
+    def common_handlers(self):
+        warn_of_deprecation('common_handlers', 'pipeline', 'AppModule', 3)
+        return self.pipeline
+
+    @common_handlers.setter
+    def common_handlers(self, handlers):
+        warn_of_deprecation('common_handlers', 'pipeline', 'AppModule', 3)
+        self.pipeline = handlers
+
+    @property
+    def common_helpers(self):
+        warn_of_deprecation('common_helpers', 'injectors', 'AppModule', 3)
+        return self.injectors
+
+    @common_helpers.setter
+    def common_helpers(self, helpers):
+        warn_of_deprecation('common_helpers', 'injectors', 'AppModule', 3)
+        self.injectors = helpers
+    #/
 
     def route(self, path=None, name=None, template=None, **kwargs):
         if name is not None and "." in name:
@@ -253,14 +299,24 @@ class AppModule(object):
                 "App modules' route names should not contains dots"
             )
         name = self.name + "." + (name or "")
-        handlers = kwargs.get('handlers', [])
-        helpers = kwargs.get('helpers', [])
-        if self.common_handlers:
-            handlers = self.common_handlers + handlers
-        kwargs['handlers'] = handlers
-        if self.common_helpers:
-            helpers = self.common_helpers + helpers
-        kwargs['helpers'] = helpers
+        #: 1.0 deprecations
+        if 'handlers' in kwargs:
+            warn_of_deprecation('handlers', 'pipeline', 'route', 3)
+            pipeline = kwargs['handlers']
+            del kwargs['handlers']
+        if 'helpers' in kwargs:
+            warn_of_deprecation('helpers', 'injectors', 'route', 3)
+            injectors = kwargs['helpers']
+            del kwargs['helpers']
+        #/
+        pipeline = kwargs.get('pipeline', [])
+        injectors = kwargs.get('injectors', [])
+        if self.pipeline:
+            pipeline = self.pipeline + pipeline
+        kwargs['pipeline'] = pipeline
+        if self.injectors:
+            injectors = self.injectors + injectors
+        kwargs['injectors'] = injectors
         return self.app.route(
             path=path, name=name, template=template, prefix=self.url_prefix,
             template_folder=self.template_folder,

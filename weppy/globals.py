@@ -4,7 +4,7 @@
     -------------
 
     Provide the current object. Used by application to deal with
-    request, response, session (if loaded with handlers).
+    request, response, session (if loaded with pipeline).
 
     :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.

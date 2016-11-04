@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.tools.auth.handlers
-    -------------------------
+    weppy.tools.auth.pipes
+    ----------------------
 
-    Provides handlers for the authorization system.
+    Provides pipes for the authorization system.
 
     :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
@@ -13,10 +13,10 @@ from datetime import timedelta
 from ...dal import Field
 from ...forms import Form
 from ...globals import request, session
-from ...handlers import Handler
 from ...helpers import flash
 from ...http import redirect
 from ...language import T
+from ...pipeline import Pipe
 
 
 class AuthLoginHandler(object):
@@ -29,7 +29,7 @@ class AuthLoginHandler(object):
         self.env = env
         self.user = None
 
-    def onsuccess(self):
+    def on_success(self):
         pass
 
     def get_user(self):
@@ -41,7 +41,7 @@ class DefaultLoginHandler(AuthLoginHandler):
     create_user_onlogin = False
 
     def __init__(self, auth, env):
-        AuthLoginHandler.__init__(self, auth, env)
+        super(DefaultLoginHandler, self).__init__(auth, env)
         self.userfield = self.auth.settings.login_userfield
         # TODO: labels
         if self.userfield == 'email':
@@ -62,7 +62,7 @@ class DefaultLoginHandler(AuthLoginHandler):
     def get_user(self):
         return self.user
 
-    def onaccept(self, form):
+    def on_accept(self, form):
         userfield = self.userfield
         #passfield = self.passfield
         entered_username = form.params[userfield]
@@ -89,12 +89,12 @@ class DefaultLoginHandler(AuthLoginHandler):
                 # success
                 self.user = temp_user
         if not self.user:
-            self.onfail()
+            self.on_fail()
 
-    def onsuccess(self):
+    def on_success(self):
         flash(self.auth.messages.logged_in)
 
-    def onfail(self):
+    def on_fail(self):
         self.auth.log_event(self.auth.messages['login_failed_log'],
                             request.body_params)
         flash(self.auth.messages.invalid_login)
@@ -121,14 +121,14 @@ class DefaultLoginHandler(AuthLoginHandler):
                    settings.formstyle, 'captcha__row')
         '''
         if form.accepted:
-            self.onaccept(form)
+            self.on_accept(form)
             #: rebuild the form
             if not self.user:
                 return self.login_form()
         return form
 
 
-class AuthManager(Handler):
+class AuthManager(Pipe):
     def __init__(self, auth):
         #: the Auth() instance
         self.auth = auth
@@ -147,7 +147,7 @@ class AuthManager(Handler):
                 except:
                     pass
 
-    def on_start(self):
+    def open(self):
         # check auth session is valid
         authsess = self.auth._auth
         if authsess:
@@ -179,7 +179,7 @@ class AuthManager(Handler):
         if self.auth.user:
             self._load_virtuals()
 
-    def on_end(self):
+    def close(self):
         # set correct session expiration if requested by user
         if self.auth._auth and self.auth._auth.remember:
             session._expires_after(self.auth._auth.expiration)

@@ -1,6 +1,14 @@
 weppy changelog
 ===============
 
+Next
+----
+
+(Release date to be announced, codename to be selected)
+
+- Moved routing handlers and helpers to pipeline logic
+
+
 Version 0.8
 -----------
 

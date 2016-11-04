@@ -18,6 +18,7 @@ import os
 import time
 from pydal.objects import Row
 from ..._compat import iteritems, itervalues, to_unicode
+from ..._internal import warn_of_deprecation
 from ...datastructures import sdict
 from ...expose import url
 from ...globals import request, session
@@ -27,9 +28,9 @@ from ...security import uuid
 from ..mail import Mail
 from .defaults import default_settings, default_messages
 from .exposer import Exposer
-from .handlers import AuthManager, AuthLoginHandler
 from .helpers import get_vars_next
 from .models import AuthModel
+from .pipes import AuthManager, AuthLoginHandler
 
 
 class Auth(object):
@@ -160,8 +161,13 @@ class Auth(object):
     #   return self.db[self.settings.table_cas_name]
 
     @property
-    def handler(self):
+    def pipe(self):
         return AuthManager(self)
+
+    @property
+    def handler(self):
+        warn_of_deprecation('handler', 'pipe', 'Auth', 3)
+        return self.pipe
 
     def register_action(self, name, f):
         self.registered_actions[name] = f
@@ -461,9 +467,9 @@ class Auth(object):
             return False
         return user
 
-    def _login_with_handler(self, handler, env=None):
-        if not issubclass(handler, AuthLoginHandler):
-            raise RuntimeError('Provided handler for login is invalid')
+    def _login_with_pipe(self, handler_class, env=None):
+        if not issubclass(handler_class, AuthLoginHandler):
+            raise RuntimeError('Provided pipe class for login is invalid')
 
         settings = self.settings
         passfield = settings.password_field
@@ -473,7 +479,7 @@ class Auth(object):
         if self.user:
             redirect(self.settings.login_next or self.url('profile'))
 
-        handler = handler(self, env)
+        handler = handler_class(self, env)
 
         # use session for federated login
         snext = get_vars_next()
@@ -516,7 +522,7 @@ class Auth(object):
         #: log login
         self.log_event(log, user)
         #: handler callback
-        handler.onsuccess()
+        handler.on_success()
 
         #: clean session next
         if unext == session._auth_next:

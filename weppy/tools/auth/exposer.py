@@ -19,8 +19,8 @@ from ...forms import Form, DALForm
 from ...globals import request, session
 from ...helpers import flash, abort
 from ...http import redirect
-from .handlers import DefaultLoginHandler
 from .helpers import callback, replace_id, get_vars_next
+from .pipes import DefaultLoginHandler
 
 
 class Exposer(object):
@@ -108,7 +108,7 @@ class Exposer(object):
         self.form_data['change_password'] = form_fields
 
     def login(self):
-        return self.auth._login_with_handler(DefaultLoginHandler)
+        return self.auth._login_with_handler(DefaultLoginPipe)
 
     def logout(self):
         nextv = (get_vars_next() or self.settings.logout_next or

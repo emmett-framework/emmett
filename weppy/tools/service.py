@@ -9,14 +9,20 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ..handlers import Handler
+from .._internal import warn_of_deprecation
 from ..globals import response
+from ..pipeline import Pipe
 from ..serializers import json, xml
 
 
-class ServiceHandler(Handler):
+class ServicePipe(Pipe):
     def __init__(self, procedure):
-        self.procedure = procedure
+        if not hasattr(self, procedure):
+            raise RuntimeError(
+                'weppy cannot handle the service you requested: %s' %
+                procedure
+            )
+        self.procedure = getattr(self, procedure)
 
     def json(self, f, **kwargs):
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
@@ -28,13 +34,11 @@ class ServiceHandler(Handler):
         data = f(**kwargs)
         return xml(data)
 
-    def wrap_call(self, func):
-        def wrap(**kwargs):
-            if hasattr(self, self.procedure):
-                return self.__getattribute__(self.procedure)(func, **kwargs)
-            else:
-                raise RuntimeError(
-                    'weppy cannot handle the service you requested: %s' %
-                    self.procedure
-                )
-        return wrap
+    def pipe(self, next_pipe, **kwargs):
+        return self.procedure(next_pipe, **kwargs)
+
+
+class ServiceHandler(ServicePipe):
+    def __init__(self, *args, **kwargs):
+        warn_of_deprecation('ServiceHandler', 'ServicePipe', stack=3)
+        super(ServiceHandler, self).__init__(*args, **kwargs)
