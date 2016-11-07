@@ -12,6 +12,7 @@
 import hashlib
 import os
 from .._compat import iteritems, to_bytes
+from ..utils import cachedprop
 
 
 def make_md5(value):
@@ -25,13 +26,19 @@ class TemplaterCache(object):
     dependencies = {}
 
     def __init__(self, app, templater):
-        self.changes = app.debug or app.config.templates_auto_reload
-        if self.changes:
-            self.get = self.reloader_get
-        else:
-            self.get = self.cached_get
+        self.app = app
         self.templater = templater
         self.tpath = app.template_path
+
+    @cachedprop
+    def changes(self):
+        return self.app.debug or self.app.config.templates_auto_reload
+
+    @cachedprop
+    def get(self):
+        if self.changes:
+            return self.reloader_get
+        return self.cached_get
 
     def _fetch_dependency_source(self, filename):
         tpath, tname = self.templater.preload(self.tpath, filename)
