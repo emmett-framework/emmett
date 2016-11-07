@@ -7,6 +7,7 @@ Next
 (Release date to be announced, codename to be selected)
 
 - Moved routing handlers and helpers to pipeline logic
+- Added support for app modules nesting and inheritance
 
 
 Version 0.8
