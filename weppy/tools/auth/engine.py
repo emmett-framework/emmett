@@ -467,9 +467,9 @@ class Auth(object):
             return False
         return user
 
-    def _login_with_pipe(self, handler_class, env=None):
+    def _login_with_handler(self, handler_class, env=None):
         if not issubclass(handler_class, AuthLoginHandler):
-            raise RuntimeError('Provided pipe class for login is invalid')
+            raise RuntimeError('Provided handler class for login is invalid')
 
         settings = self.settings
         passfield = settings.password_field

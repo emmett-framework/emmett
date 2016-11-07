@@ -108,7 +108,7 @@ class Exposer(object):
         self.form_data['change_password'] = form_fields
 
     def login(self):
-        return self.auth._login_with_handler(DefaultLoginPipe)
+        return self.auth._login_with_handler(DefaultLoginHandler)
 
     def logout(self):
         nextv = (get_vars_next() or self.settings.logout_next or

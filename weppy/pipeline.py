@@ -18,31 +18,33 @@ class Pipeline(object):
         self.pipes = pipes
 
     def __call__(self, f):
-        def wrap(f, pipe):
-            @wraps(f)
+        def wrap(link):
+            @wraps(link.f)
             def pipe_flow(**kwargs):
                 try:
-                    output = pipe.pipe(pipe._wrapped_, **kwargs)
-                    pipe.on_pipe_success()
+                    output = link.pipe.pipe(link.f, **kwargs)
+                    link.pipe.on_pipe_success()
                     return output
                 except HTTP:
-                    pipe.on_pipe_success()
+                    link.pipe.on_pipe_success()
                     raise
                 except:
-                    pipe.on_pipe_failure()
+                    link.pipe.on_pipe_failure()
                     raise
-            pipe._pipe_to_(f)
             return pipe_flow
         for pipe in reversed(self.pipes):
             if isinstance(pipe, Pipe):
-                f = wrap(f, pipe)
+                f = wrap(PipeLink(pipe, f))
         return f
 
 
-class Pipe(object):
-    def _pipe_to_(self, f):
-        self._wrapped_ = f
+class PipeLink(object):
+    def __init__(self, pipe, f):
+        self.pipe = pipe
+        self.f = f
 
+
+class Pipe(object):
     def open(self):
         pass
 
