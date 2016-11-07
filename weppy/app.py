@@ -30,8 +30,10 @@ class App(object):
     debug = None
     test_client_class = None
 
-    def __init__(self, import_name, root_path=None,
-                 template_folder='templates', config_folder='config'):
+    def __init__(
+        self, import_name, root_path=None, template_folder='templates',
+        config_folder='config'
+    ):
         self.import_name = import_name
         #: Set paths for the application
         if root_path is None:
@@ -243,11 +245,61 @@ class App(object):
     def __call__(self, environ, start_request):
         return self.wsgi_handler(environ, start_request)
 
+    def module(
+        self, import_name, name, template_folder=None, template_path=None,
+        url_prefix=None, hostname=None, root_path=None
+    ):
+        return AppModule(
+            self, name, import_name, template_folder, template_path,
+            url_prefix, hostname, root_path
+        )
+
 
 class AppModule(object):
-    def __init__(self, app, name, import_name, template_folder=None,
-                 template_path=None, url_prefix=None, hostname=None,
-                 root_path=None):
+    @classmethod
+    def from_app(
+        cls, app, import_name, name, template_folder, template_path,
+        url_prefix, hostname, root_path
+    ):
+        return cls(
+            app, name, import_name, template_folder, template_path, url_prefix,
+            hostname, root_path
+        )
+
+    @classmethod
+    def from_module(
+        cls, appmod, import_name, name, template_folder, template_path,
+        url_prefix, hostname, root_path
+    ):
+        if '.' in name:
+            raise RuntimeError(
+                "Nested app modules' names should not contains dots"
+            )
+        name = appmod.name + '.' + name
+        if not url_prefix.startswith('/'):
+            url_prefix = '/' + url_prefix
+        module_url_prefix = appmod.url_prefix + url_prefix
+        hostname = hostname or appmod.hostname
+        return cls(
+            appmod.app, name, import_name, template_folder, template_path,
+            module_url_prefix, hostname, root_path, pipeline=appmod.pipeline,
+            injectors=appmod.injectors
+        )
+
+    def module(
+        self, import_name, name, template_folder=None, template_path=None,
+        url_prefix=None, hostname=None, root_path=None
+    ):
+        return self.from_module(
+            self, import_name, name, template_folder, template_path,
+            url_prefix, hostname, root_path
+        )
+
+    def __init__(
+        self, app, name, import_name, template_folder=None, template_path=None,
+        url_prefix=None, hostname=None, root_path=None, pipeline=[],
+        injectors=[]
+    ):
         self.app = app
         self.name = name
         self.import_name = import_name
@@ -260,16 +312,28 @@ class AppModule(object):
         if template_path and not template_path.startswith("/"):
             template_path = self.root_path + template_path
         self.template_path = template_path
-        # how to route static?
-        # and.. do we want this?? I think not..
-        #if static_folder:
-        #    self.static_folder = self.root_path+"/"+static_folder
-        #if static_prefix:
-        #    self.static_folder = self.app.static_folder+"/"+static_prefix
         self.url_prefix = url_prefix
         self.hostname = hostname
+        self._super_pipeline = pipeline
+        self._super_injectors = injectors
         self.pipeline = []
         self.injectors = []
+
+    @property
+    def pipeline(self):
+        return self._pipeline
+
+    @pipeline.setter
+    def pipeline(self, pipeline):
+        self._pipeline = self._super_pipeline + pipeline
+
+    @property
+    def injectors(self):
+        return self._injectors
+
+    @injectors.setter
+    def injectors(self, injectors):
+        self._injectors = self._super_injectors + injectors
 
     #: 1.0 deprecations
     @property
