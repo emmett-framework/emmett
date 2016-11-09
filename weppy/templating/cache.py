@@ -10,7 +10,6 @@
 """
 
 import hashlib
-import os
 from .._compat import iteritems, to_bytes
 from ..utils import cachedprop
 
@@ -42,8 +41,7 @@ class TemplaterCache(object):
 
     def _fetch_dependency_source(self, filename):
         tpath, tname = self.templater.preload(self.tpath, filename)
-        filepath = os.path.join(tpath, tname)
-        tsource = self.templater.load(filepath)
+        tsource = self.templater.load(tpath, tname)
         return self.templater.prerender(tsource, tname)
 
     def reloader_get(self, filename, source):
