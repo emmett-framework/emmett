@@ -16,5 +16,7 @@ The _precise_ way to run phantomjs alongside pytest-selenium is a pain to perfor
 so a `run.sh` was created for ease of use. Simply:
 
 ```
+. ./setup.sh
+
 bash run.sh
 ```

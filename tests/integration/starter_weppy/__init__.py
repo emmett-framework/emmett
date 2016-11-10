@@ -30,8 +30,8 @@ auth = Auth(
 from starter_weppy.utils import get_cryptogen_string
 app.route.common_handlers = [
     SessionCookieManager(get_cryptogen_string(16)),
-    db.handler,
-    auth.handler
+    db.pipe,
+    auth.pipe
 ]
 
 # Extensions

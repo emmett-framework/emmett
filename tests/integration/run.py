@@ -29,6 +29,6 @@ if __name__ == "__main__":
             if args.dev:
                 app.run()
             else:
-                app.run(debug=False, reloader=False)
+                app.run(reloader=False)
     else:
         app.run(host="0.0.0.0", debug=False)

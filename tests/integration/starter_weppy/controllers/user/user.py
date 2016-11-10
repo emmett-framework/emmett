@@ -1,11 +1,11 @@
 from weppy import response, AppModule
-from weppy.handlers import RequireHandler
+from weppy.handlers import RequirePipe
 
 from starter_weppy import app, db, auth
 from ..controller_utils import not_auth
 
 user = AppModule(app, 'user', __name__, template_folder="user")
-user.common_handlers = [RequireHandler(auth.is_logged_in, not_auth)]
+user.pipeline = [RequirePipe(auth.is_logged_in, not_auth)]
 
 
 @user.route("/user/<str:userid>")

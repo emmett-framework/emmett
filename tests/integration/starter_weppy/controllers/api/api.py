@@ -1,9 +1,9 @@
 from weppy import AppModule
-from weppy.tools import ServiceHandler
+from weppy.tools import ServicePipe
 from starter_weppy import app
 
 api = AppModule(app, 'api', __name__, url_prefix='api')
-api.common_handlers = [ServiceHandler('json')]
+api.pipeline = [ServicePipe('json')]
 
 
 @api.route()

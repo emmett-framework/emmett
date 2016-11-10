@@ -17,7 +17,7 @@
 # ------------------------------------------------------------------
 #  DESIGNATE REQUIRED PYTHON VERSION
 # ------------------------------------------------------------------
-PYTHON_VERSION="$(which python)"
+PYTHON_VERSION="$TRAVIS_PYTHON_VERSION"
 
 THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -47,3 +47,11 @@ else
         echo "    implement '--update' arg to download fresh copy of ezpz-setup.sh"
     }
 fi
+
+cd ../../
+
+python setup.py install
+
+cd tests/integration
+
+source ./env/bin/activate
