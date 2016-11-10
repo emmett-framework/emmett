@@ -1,0 +1,28 @@
+%nav.navbar.navbar-inverse.navbar-static-top
+  .container
+    .navbar-header
+      %button.navbar-toggle{type: "button", data-toggle: "collapse", data-target: ".navbar-collapse"}
+        %span.sr-only Toggle Navigation
+        %span.icon-bar
+        %span.icon-bar
+        %span.icon-bar
+      %a.navbar-brand{href: "{{=url('main.welcome')}}"} StarterWeppy
+    .collapse.navbar-collapse
+      %ul.nav.navbar-nav
+        %li
+          %a{href: "{{=url('main.welcome')}}"}
+            = T("Home")
+        %li
+          %a{href: "{{=url('admin.users')}}"}
+            = T("Users")
+        - if not current_user
+          %li
+            %a{href: "{{=url('main.account', 'login')}}", id: "navbar-login"}
+              = T("Login")
+        - else
+          %li
+            %a{href: "{{=url('user.profile', current_user.id)}}"}
+              = T("Profile")
+          %li
+            %a{href: "{{=url('main.account', 'logout')}}"}
+              = T("Logout")

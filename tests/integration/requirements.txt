@@ -1,0 +1,8 @@
+argparse==1.4.0
+codacy-coverage==1.2.12
+coverage==4.0.3
+pytest-cov==2.2.1
+pytest==2.9.1
+pytest-selenium==1.5.1
+selenium==3.0.1
+weppy-Haml==0.3

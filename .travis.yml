@@ -14,6 +14,9 @@ python:
   - "3.5"
   - "pypy3"
 
+env:
+  - INTEGRATION_TEST_DIR=tests/integration
+
 install:
   - pip install tox>=1.8 flake8
 
@@ -22,6 +25,7 @@ before_script:
 
 script:
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION | tr -d . | sed -e 's/pypypy/pypy/')
+  - cd $INTEGRATION_TEST_DIR && bash run.sh
 
 after_success:
   - pip install coveralls
