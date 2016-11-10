@@ -30,33 +30,31 @@ def not_authorized():
 
 You can install weppy using pip:
 
-    pip install weppy
-    
-Require headers and build tools due to [udatetime dependency](https://github.com/freach/udatetime)
+```
+$ pip install weppy
+```
 
-**Python 2**
+Since weppy depends on [udatetime](https://github.com/freach/udatetime), please ensure that you have the require headers and build tools installed on your Linux distribution.
+
+On Debian/Ubuntu:
 
 ```
+# Python 3
+$ sudo apt-get install python3-dev build-essential
+# Python 2
 $ sudo apt-get install python-dev build-essential
 ```
 
-or
+On RHEL distributions:
 
 ```
+# Python 3
+$ sudo yum install python3-devel gcc
+# Python 2
 $ sudo yum install python-devel gcc
 ```
 
-**Python 3**
-
-```
-$ sudo apt-get install python3-dev build-essential
-```
-
-or
-
-```
-$ sudo yum install python3-devel gcc
-```
+On OSX you already have headers if you have installed python with [Brew](http://brew.sh).
 
 ## Documentation
 
