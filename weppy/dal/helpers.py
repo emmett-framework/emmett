@@ -14,6 +14,7 @@ import time
 from pydal._globals import THREAD_LOCAL
 from pydal.objects import Query, IterRows as _IterRows
 from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
+from .._compat import implements_iterator
 from ..datastructures import sdict
 from ..utils import cachedprop
 from .base import Set, Field, Rows
@@ -522,6 +523,7 @@ class LeftJoinSet(JoinableSet):
             self.db, records, rows.colnames, jtables=jtables)
 
 
+@implements_iterator
 class JoinIterRows(_IterRows):
     def __init__(self, db, sql, fields, colnames):
         self.db = db
