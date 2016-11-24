@@ -11,10 +11,11 @@
 
 import re
 import time
+from collections import OrderedDict
 from pydal._globals import THREAD_LOCAL
 from pydal.objects import Query, IterRows as _IterRows
 from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
-from .._compat import implements_iterator
+from .._compat import implements_iterator, iteritems
 from ..datastructures import sdict
 from ..utils import cachedprop
 from .base import Set, Field, Rows
@@ -446,6 +447,27 @@ class JoinableSet(Set):
             self.query, fields, **attributes)
         return JoinIterRows(self.db, sql, fields, colnames)
 
+    def _split_joins(self, joins):
+        one, many = [], []
+        for jname, jtable, is_single_row in joins:
+            if is_single_row:
+                one.append((jname, jtable))
+            else:
+                many.append((jname, jtable))
+        return one, many
+
+    def _build_merged_row(self, row, many_joins):
+        for jname, jtable in many_joins:
+            row[jname] = OrderedDict()
+        return row
+
+    def _build_records_from_joined(self, joined, joins, many_joins, colnames):
+        for rid, row in iteritems(joined):
+            for jname, jtable in many_joins:
+                row[jname] = Rows(self.db, list(row[jname].values()), [])
+        return JoinRows(
+            self.db, list(joined.values()), colnames, jtables=joins)
+
 
 class JoinSet(JoinableSet):
     @classmethod
@@ -460,26 +482,21 @@ class JoinSet(JoinableSet):
         #: use iterselect for performance
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
-        records = []
-        _last_rid = None
-        for record in rows:
-            #: since we have multiple rows for the same id, we take them once
-            if record[self._stable_].id != _last_rid:
-                records.append(record[self._stable_])
-                #: prepare nested rows
-                for jname, jtable, is_single_row in self._joins_:
-                    if not is_single_row:
-                        records[-1][jname] = Rows(self.db, [], [])
-            _last_rid = record[self._stable_].id
-            #: add joins in nested Rows objects
-            for jname, jtable, is_single_row in self._joins_:
-                if is_single_row:
-                    records[-1][jname] = JoinedIDReference._from_record(
-                        record[jtable], self.db[jtable])
-                else:
-                    records[-1][jname].records.append(record[jtable])
-        return JoinRows(
-            self.db, records, rows.colnames, jtables=self._joins_)
+        rowmap = OrderedDict()
+        one_joins, many_joins = self._split_joins(self._joins_)
+        for row in rows:
+            rid = row[self._stable_].id
+            rowmap[rid] = rowmap.get(
+                rid, self._build_merged_row(row[self._stable_], many_joins)
+            )
+            for jname, jtable in one_joins:
+                rowmap[rid][jname] = JoinedIDReference._from_record(
+                    row[jtable], self.db[jtable])
+            for jname, jtable in many_joins:
+                rowmap[rid][jname][row[jtable].id] = rowmap[rid][jname].get(
+                    row[jtable].id, row[jtable])
+        return self._build_records_from_joined(
+            rowmap, self._joins_, many_joins, rows.colnames)
 
 
 class LeftJoinSet(JoinableSet):
@@ -493,34 +510,34 @@ class LeftJoinSet(JoinableSet):
 
     def select(self, *fields, **options):
         #: collect tablenames
-        jtables = []
+        jtables, one_joins, many_joins = [], [], []
         for index, join in enumerate(options['left']):
             jname, is_single_row = self._jdata_[index]
-            jtables.append((jname, join.first._tablename, is_single_row))
+            tname = join.first._tablename
+            jtables.append((jname, tname, is_single_row))
+            if is_single_row:
+                one_joins.append((jname, tname))
+            else:
+                many_joins.append((jname, tname))
         #: use iterselect for performance
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
-        records = []
-        _last_rid = None
-        for record in rows:
-            #: since we have multiple rows for the same id, we take them once
-            if record[self._stable_].id != _last_rid:
-                records.append(record[self._stable_])
-                #: prepare nested rows
-                for jname, jtable, is_single_row in jtables:
-                    if not is_single_row:
-                        records[-1][jname] = Rows(self.db, [], [])
-            _last_rid = record[self._stable_].id
-            #: add joins in nested Rows objects
-            for jname, jtable, is_single_row in jtables:
-                if record[jtable].id is not None:
-                    if is_single_row:
-                        records[-1][jname] = JoinedIDReference._from_record(
-                            record[jtable], self.db[jtable])
-                    else:
-                        records[-1][jname].records.append(record[jtable])
-        return JoinRows(
-            self.db, records, rows.colnames, jtables=jtables)
+        rowmap = OrderedDict()
+        for row in rows:
+            rid = row[self._stable_].id
+            rowmap[rid] = rowmap.get(
+                rid, self._build_merged_row(row[self._stable_], many_joins)
+            )
+            for jname, jtable in one_joins:
+                if row[jtable].id:
+                    rowmap[rid][jname] = JoinedIDReference._from_record(
+                        row[jtable], self.db[jtable])
+            for jname, jtable in many_joins:
+                if row[jtable].id:
+                    rowmap[rid][jname][row[jtable].id] = \
+                        rowmap[rid][jname].get(row[jtable].id, row[jtable])
+        return self._build_records_from_joined(
+            rowmap, jtables, many_joins, rows.colnames)
 
 
 @implements_iterator
