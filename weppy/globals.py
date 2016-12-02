@@ -73,7 +73,7 @@ class Request(object):
             return {}
         try:
             stream = LimitedStream(self.input, content_length)
-            params = json.loads(to_native(stream.read()))
+            params = json.loads(to_native(stream.read())) or {}
         except:
             params = {}
         return params
