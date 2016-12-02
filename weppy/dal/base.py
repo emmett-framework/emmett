@@ -9,21 +9,18 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import copy
 import os
-from pydal import DAL as _pyDAL, Field as _Field
+from pydal import DAL as _pyDAL
 from pydal._globals import THREAD_LOCAL
-from pydal.objects import Table as _Table, Set as _Set, Rows as _Rows, \
-    Expression, Row
-from .._compat import copyreg, iterkeys, iteritems
+from .._compat import copyreg
 from .._internal import warn_of_deprecation
 from ..datastructures import sdict
-from ..globals import current
 from ..pipeline import Pipe
 from ..security import uuid as _uuid
 from ..serializers import _custom_json, xml
-from ..utils import cachedprop
-from ..validators import ValidateFromDict
+from .objects import Table, Field, Set, Rows
+from .helpers import TimingHandler
+from .models import MetaModel
 
 
 class DALPipe(Pipe):
@@ -41,237 +38,6 @@ class DALPipe(Pipe):
 
     def close(self):
         self.db._adapter.close()
-
-
-class Table(_Table):
-    def __init__(self, *args, **kwargs):
-        super(Table, self).__init__(*args, **kwargs)
-        self._unique_fields_validation_ = {}
-
-    def _create_references(self):
-        self._referenced_by = []
-        self._referenced_by_list = []
-        self._references = []
-
-
-class Set(_Set):
-    def __init__(self, db, query, ignore_common_filters=None, model=None):
-        super(Set, self).__init__(db, query, ignore_common_filters)
-        self._model_ = model
-        self._scopes_ = {}
-        self._load_scopes_()
-
-    def _load_scopes_(self):
-        if self._model_ is None:
-            tables = self.db._adapter.tables(self.query)
-            if len(tables) == 1:
-                self._model_ = self.db[tables[0]]._model_
-        if self._model_:
-            self._scopes_ = self._model_._scopes_
-
-    def where(self, query, ignore_common_filters=False, model=None):
-        if query is None:
-            return self
-        elif isinstance(query, Table):
-            query = self.db._adapter.id_query(query)
-        elif isinstance(query, str):
-            query = Expression(self.db, query)
-        elif isinstance(query, Field):
-            query = query != None
-        q = self.query & query if self.query else query
-        return Set(
-            self.db, q, ignore_common_filters=ignore_common_filters,
-            model=model)
-
-    def select(self, *fields, **options):
-        pagination = options.get('paginate')
-        if pagination:
-            if isinstance(pagination, tuple):
-                offset = pagination[0]
-                limit = pagination[1]
-            else:
-                offset = pagination
-                limit = 10
-            options['limitby'] = ((offset - 1) * limit, offset * limit)
-            del options['paginate']
-        including = options.get('including')
-        if including and self._model_ is not None:
-            from .helpers import LeftJoinSet
-            options['left'], jdata = self._parse_left_rjoins(including)
-            del options['including']
-            #: add fields to select
-            fields = list(fields)
-            if not fields:
-                fields = [self._model_.table.ALL]
-            for join in options['left']:
-                fields.append(join.first.ALL)
-            return LeftJoinSet._from_set(
-                self, jdata).select(*fields, **options)
-        return super(Set, self).select(*fields, **options)
-
-    def validate_and_update(self, **update_fields):
-        tablename = self.db._adapter.get_table(self.query)
-        table = self.db[tablename]
-        current._dbvalidation_record_id_ = None
-        if table._unique_fields_validation_ and self.count() == 1:
-            if any(
-                table._unique_fields_validation_.get(fieldname)
-                for fieldname in iterkeys(update_fields)
-            ):
-                current._dbvalidation_record_id_ = \
-                    self.select(table.id).first().id
-        response = Row()
-        response.errors = Row()
-        new_fields = copy.copy(update_fields)
-        for key, value in iteritems(update_fields):
-            value, error = self.db[tablename][key].validate(value)
-            if error:
-                response.errors[key] = '%s' % error
-            else:
-                new_fields[key] = value
-        del current._dbvalidation_record_id_
-        if response.errors:
-            response.updated = None
-        else:
-            if not any(f(self, new_fields) for f in table._before_update):
-                table._attempt_upload(new_fields)
-                fields = table._listify(new_fields, update=True)
-                if not fields:
-                    raise SyntaxError("No fields to update")
-                ret = self.db._adapter.update(tablename, self.query, fields)
-                ret and [f(self, new_fields) for f in table._after_update]
-            else:
-                ret = 0
-            response.updated = ret
-        return response
-
-    def join(self, *args):
-        rv = self
-        if self._model_ is not None:
-            joins = []
-            jtables = []
-            for arg in args:
-                condition, table, is_single_row = self._parse_rjoin(arg)
-                joins.append(condition)
-                jtables.append((arg, table._tablename, is_single_row))
-            if joins:
-                from .helpers import JoinSet
-                q = joins[0]
-                for join in joins[1:]:
-                    q = q & join
-                rv = rv.where(q)
-                return JoinSet._from_set(rv, self._model_.tablename, jtables)
-        return rv
-
-    def _parse_rjoin(self, arg):
-        from .helpers import RelationBuilder
-        #: match has_many
-        rel = self._model_._hasmany_ref_.get(arg)
-        if rel:
-            if isinstance(rel, dict) and rel.get('via'):
-                r = RelationBuilder(rel, self._model_).via()
-                return r[0], r[1]._table, False
-            else:
-                r = RelationBuilder(rel, self._model_)
-                return r.many(), rel.table, False
-        #: match belongs_to and refers_to
-        rel = self._model_._belongs_ref_.get(arg)
-        if rel:
-            r = RelationBuilder((rel, arg), self._model_).belongs_query()
-            return r, self._model_.db[rel], True
-        #: match has_one
-        rel = self._model_._hasone_ref_.get(arg)
-        if rel:
-            r = RelationBuilder(rel, self._model_)
-            return r.many(), rel.table, True
-        raise RuntimeError(
-            'Unable to find %s relation of %s model' %
-            (arg, self._model_.__name__))
-
-    def _parse_left_rjoins(self, args):
-        if not isinstance(args, (list, tuple)):
-            args = [args]
-        joins = []
-        jdata = []
-        for arg in args:
-            condition, table, is_single_row = self._parse_rjoin(arg)
-            joins.append(table.on(condition))
-            jdata.append((arg, is_single_row))
-        return joins, jdata
-
-    def _jcolnames_from_rowstmps(self, tmps):
-        colnames = []
-        all_colnames = {}
-        jcolnames = {}
-        for colname in tmps:
-            all_colnames[colname[0]] = colname[0]
-            jcolnames[colname[0]] = jcolnames.get(colname[0], [])
-            jcolnames[colname[0]].append(colname[1])
-        for colname in iterkeys(all_colnames):
-            if colname == self._stable_:
-                colnames.append(colname)
-                del jcolnames[colname]
-        return colnames, jcolnames
-
-    def __getattr__(self, name):
-        scope = self._scopes_.get(name)
-        if scope:
-            from .helpers import ScopeWrap
-            return ScopeWrap(self, self._model_, scope.f)
-        raise AttributeError(name)
-
-
-class Rows(_Rows):
-    def __init__(self, db=None, records=[], colnames=[], compact=True,
-                 rawrows=None):
-        self.db = db
-        self.records = records
-        self.colnames = colnames
-        self._rowkeys_ = list(self.records[0].keys()) if self.records else []
-        self._getrow = self._getrow_compact_ if self.compact else self._getrow_
-
-    @cachedprop
-    def compact(self):
-        if not self.records:
-            return False
-        return len(self._rowkeys_) == 1 and self._rowkeys_[0] != '_extra'
-
-    @cachedprop
-    def compact_tablename(self):
-        if not self._rowkeys_:
-            return None
-        return self._rowkeys_[0]
-
-    def _getrow_(self, i):
-        return self.records[i]
-
-    def _getrow_compact_(self, i):
-        return self._getrow_(i)[self.compact_tablename]
-
-    def __getitem__(self, i):
-        return self._getrow(i)
-
-    def column(self, column=None):
-        colname = str(column) if column else self.colnames[0]
-        return [r[colname] for r in self]
-
-    def sorted(self, f, reverse=False):
-        if self.compact:
-            keyf = lambda r: f(r[self.compact_tablename])
-        else:
-            keyf = f
-        return [r for r in sorted(self.records, key=keyf, reverse=reverse)]
-
-    def sort(self, f, reverse=False):
-        self.records = self.sorted(f, reverse)
-
-    def append(self, obj):
-        row = Row({self.compact_tablename: obj}) if self.compact else obj
-        self.records.append(row)
-
-    def insert(self, position, obj):
-        row = Row({self.compact_tablename: obj}) if self.compact else obj
-        self.records.insert(position, row)
 
 
 class DAL(_pyDAL):
@@ -332,7 +98,6 @@ class DAL(_pyDAL):
         pool_size = self.config.pool_size or pool_size or 0
         #: add timings storage if requested
         if config.store_execution_timings:
-            from .helpers import TimingHandler
             self.execution_handlers.append(TimingHandler)
         #: finally setup pyDAL instance
         super(DAL, self).__init__(self.config.uri, pool_size, folder, **kwargs)
@@ -394,7 +159,7 @@ class DAL(_pyDAL):
             if icf:
                 ignore_common_filters = icf
         if q is None and query is not None:
-            if hasattr(query, '_belongs_ref_'):
+            if isinstance(query, MetaModel):
                 q = self._adapter.id_query(query.table)
             else:
                 q = query
@@ -411,143 +176,5 @@ def _DAL_unpickler(db_uid):
 def _DAL_pickler(db):
     return _DAL_unpickler, (db._db_uid,)
 
+
 copyreg.pickle(DAL, _DAL_pickler, _DAL_unpickler)
-
-
-class Field(_Field):
-    _weppy_types = {
-        'integer': 'int', 'double': 'float', 'boolean': 'bool',
-        'list:integer': 'list:int'
-    }
-    _pydal_types = {
-        'int': 'integer', 'bool': 'boolean', 'list:int': 'list:integer'
-    }
-    _weppy_delete = {
-        'cascade': 'CASCADE', 'nullify': 'SET NULL', 'nothing': 'NO ACTION'
-    }
-    _inst_count_ = 0
-    _obj_created_ = False
-
-    def __init__(self, type='string', *args, **kwargs):
-        self.modelname = None
-        self._auto_validation = True
-        #: convert type
-        self._type = self._weppy_types.get(type, type)
-        #: convert 'rw' -> 'readable', 'writeable'
-        if 'rw' in kwargs:
-            if isinstance(kwargs['rw'], (tuple, list)):
-                read, write = kwargs['rw']
-            else:
-                read = write = kwargs['rw']
-            kwargs['readable'] = read
-            kwargs['writable'] = write
-            del kwargs['rw']
-        #: convert 'info' -> 'comment'
-        _info = kwargs.get('info')
-        if _info:
-            kwargs['comment'] = _info
-            del kwargs['info']
-        #: convert ondelete parameter
-        _ondelete = kwargs.get('ondelete')
-        if _ondelete:
-            if _ondelete not in list(self._weppy_delete):
-                raise SyntaxError(
-                    'Field ondelete should be set on %s, %s or %s' %
-                    list(self._weppy_delete)
-                )
-            kwargs['ondelete'] = self._weppy_delete[_ondelete]
-        #: process 'refers_to' fields
-        self._isrefers = kwargs.get('_isrefers')
-        if self._isrefers:
-            del kwargs['_isrefers']
-        #: get auto validation preferences
-        if 'auto_validation' in kwargs:
-            self._auto_validation = kwargs['auto_validation']
-            del kwargs['auto_validation']
-        #: intercept validation (will be processed by `_make_field`)
-        self._requires = {}
-        self._custom_requires = []
-        if 'validation' in kwargs:
-            if isinstance(kwargs['validation'], dict):
-                self._requires = kwargs['validation']
-            else:
-                self._custom_requires = kwargs['validation']
-                if not isinstance(self._custom_requires, list):
-                    self._custom_requires = [self._custom_requires]
-            del kwargs['validation']
-        self._validation = {}
-        self._vparser = ValidateFromDict()
-        #: store args and kwargs for `_make_field`
-        self._args = args
-        self._kwargs = kwargs
-        #: increase creation counter (used to keep order of fields)
-        self._inst_count_ = Field._inst_count_
-        Field._inst_count_ += 1
-
-    def _default_validation(self):
-        rv = {}
-        auto_types = [
-            'int', 'float', 'decimal', 'date', 'time', 'datetime', 'json'
-        ]
-        if self._type in auto_types:
-            rv['is'] = self._type
-        if self._type == 'bigint':
-            rv['is'] = 'int'
-        if self._type == 'bool':
-            rv['in'] = (False, True)
-        if self._type in ['string', 'text', 'password']:
-            rv['len'] = {'lte': self.length}
-        if self._type == 'password':
-            rv['len']['gte'] = 6
-            rv['crypt'] = True
-        if self._type == 'list:int':
-            rv['is'] = 'list:int'
-        if self.notnull or self._type.startswith('reference') or \
-                self._type.startswith('list:reference'):
-            rv['presence'] = True
-        if not self.notnull and self._isrefers is True:
-            rv['allow'] = 'empty'
-        if self.unique:
-            rv['unique'] = True
-        return rv
-
-    def _parse_validation(self):
-        for key in list(self._requires):
-            self._validation[key] = self._requires[key]
-        self.requires = self._vparser(self, self._validation) + \
-            self._custom_requires
-
-    #: `_make_field` will be called by `Model` class or `Form` class
-    #  it will make weppy's Field class compatible with the pyDAL's one
-    def _make_field(self, name, model=None):
-        if self._obj_created_:
-            return self
-        if model is not None:
-            self.modelname = model.__class__.__name__
-        #: convert field type to pyDAL ones if needed
-        ftype = self._pydal_types.get(self._type, self._type)
-        #: create pyDAL's Field instance
-        super(Field, self).__init__(name, ftype, *self._args, **self._kwargs)
-        #: add automatic validation (if requested)
-        if self._auto_validation:
-            auto = True
-            if self.modelname:
-                auto = model.auto_validation
-            if auto:
-                self._validation = self._default_validation()
-        #: validators
-        if not self.modelname:
-            self._parse_validation()
-        self._obj_created_ = True
-        return self
-
-    def __str__(self):
-        if self._obj_created_:
-            return super(Field, self).__str__()
-        return object.__str__(self)
-
-    def __repr__(self):
-        if self.modelname and hasattr(self, 'name'):
-            return "<%s.%s (%s) field>" % (self.modelname, self.name,
-                                           self._type)
-        return super(Field, self).__repr__()

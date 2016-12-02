@@ -11,14 +11,10 @@
 
 import re
 import time
-from collections import OrderedDict
 from pydal._globals import THREAD_LOCAL
-from pydal.objects import Query, IterRows as _IterRows
 from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
-from .._compat import implements_iterator, iteritems
 from ..datastructures import sdict
 from ..utils import cachedprop
-from .base import Set, Field, Rows
 
 
 class Reference(object):
@@ -63,7 +59,7 @@ class ReferenceData(sdict):
     @cachedprop
     def model_instance(self):
         if self.method:
-            return self.dbset._model_
+            return self.dbset._model_._instance_()
         return self.dbset[self.model]._model_
 
     @property
@@ -80,9 +76,9 @@ class ReferenceData(sdict):
 
 
 class RelationBuilder(object):
-    def __init__(self, ref, model):
+    def __init__(self, ref, model_instance):
         self.ref = ref
-        self.model = model
+        self.model = model_instance
 
     def _make_refid(self, row):
         return row.id if row is not None else self.model.id
@@ -165,248 +161,6 @@ class RelationBuilder(object):
         return query, sel_field, sname, rid, last_belongs, last_via
 
 
-class RelationSet(object):
-    _relation_method_ = 'many'
-
-    def __init__(self, db, relation_builder, row):
-        self.db = db
-        self._relation_ = relation_builder
-        self._row_ = row
-
-    def _get_query_(self):
-        try:
-            return getattr(self._relation_, self._relation_method_)(self._row_)
-        except AttributeError as e:
-            raise RuntimeError(e.message)
-        except Exception:
-            raise
-
-    @property
-    def _model_(self):
-        return self._relation_.ref.model_instance
-
-    @cachedprop
-    def _field_(self):
-        return self._relation_.ref.field_instance
-
-    @cachedprop
-    def _scopes_(self):
-        if self._relation_.ref.method:
-            return [lambda: self._relation_.ref.dbset.query]
-        return self._relation_._extra_scopes(self._relation_.ref)
-
-    @cachedprop
-    def _set(self):
-        return Set(self.db, self._get_query_(), model=self._model_)
-
-    def __getattr__(self, name):
-        return getattr(self._set, name)
-
-    def __repr__(self):
-        return repr(self._set)
-
-    def __call__(self, query, ignore_common_filters=False):
-        return self._set.where(query, ignore_common_filters)
-
-    def select(self, *args, **kwargs):
-        if 'reload' in kwargs:
-            del kwargs['reload']
-        return self._set.select(*args, **kwargs)
-
-    def create(self, **kwargs):
-        attributes = self._get_fields_from_scopes(
-            self._scopes_, self._model_.tablename)
-        attributes.update(**kwargs)
-        attributes[self._field_.name] = self._row_.id
-        return self._model_.create(
-            **attributes
-        )
-
-    @staticmethod
-    def _get_fields_from_scopes(scopes, table_name):
-        rv = {}
-        for scope in scopes:
-            query = scope()
-            components = [query.second, query.first]
-            current_kv = []
-            while components:
-                component = components.pop()
-                if isinstance(component, Query):
-                    components.append(component.second)
-                    components.append(component.first)
-                else:
-                    if isinstance(component, Field) and \
-                       component._tablename == table_name:
-                        current_kv.append(component)
-                    else:
-                        if current_kv:
-                            current_kv.append(component)
-                        else:
-                            components.pop()
-                if len(current_kv) > 1:
-                    rv[current_kv[0].name] = current_kv[1]
-                    current_kv = []
-        return rv
-
-
-class HasOneSet(RelationSet):
-    @cachedprop
-    def _last_resultset(self):
-        return self.select().first()
-
-    def __call__(self, *args, **kwargs):
-        if not args and not kwargs:
-            return self._last_resultset
-        return self.select(*args, **kwargs).first()
-
-
-class HasOneWrap(object):
-    def __init__(self, ref):
-        self.ref = ref
-
-    def __call__(self, model, row):
-        return HasOneSet(model.db, RelationBuilder(self.ref, model), row)
-
-
-class HasManySet(RelationSet):
-    @cachedprop
-    def _last_resultset(self):
-        return self.select()
-
-    def __call__(self, *args, **kwargs):
-        if not args and not kwargs:
-            return self._last_resultset
-        return self.select(*args, **kwargs)
-
-    def add(self, obj):
-        attributes = self._get_fields_from_scopes(
-            self._scopes_, self._model_.tablename)
-        attributes[self._field_.name] = self._row_.id
-        return self.db(
-            self.db[self._field_._tablename].id == obj.id
-        ).validate_and_update(**attributes)
-
-    def remove(self, obj):
-        if self.db[self._field_._tablename][self._field_.name]._isrefers:
-            return self.db(
-                self._field_._table.id == obj.id).validate_and_update(
-                **{self._field_.name: None}
-            )
-        return self.db(self._field_._table.id == obj.id).delete()
-
-
-class HasManyWrap(object):
-    def __init__(self, ref):
-        self.ref = ref
-
-    def __call__(self, model, row):
-        return HasManySet(model.db, RelationBuilder(self.ref, model), row)
-
-
-class HasManyViaSet(RelationSet):
-    _relation_method_ = 'via'
-    _via_error = "Can't %s elements in has_many relations without a join table"
-
-    @cachedprop
-    def _viadata(self):
-        query, rfield, model_name, rid, via, viadata = \
-            super(HasManyViaSet, self)._get_query_()
-        return sdict(
-            query=query, rfield=rfield, model_name=model_name, rid=rid,
-            via=via, data=viadata
-        )
-
-    def _get_query_(self):
-        return self._viadata.query
-
-    @property
-    def _model_(self):
-        return self.db[self._viadata.model_name]._model_
-
-    @cachedprop
-    def _last_resultset(self):
-        return self.select(self._viadata.rfield)
-
-    def __call__(self, *args, **kwargs):
-        if not args:
-            if not kwargs:
-                return self._last_resultset
-            args = [self._viadata.rfield]
-        return self.select(*args, **kwargs)
-
-    def _get_relation_fields(self):
-        viadata = self._viadata.data
-        self_field = self._model_._hasmany_ref_[viadata.via].field
-        rel_field = viadata.field or viadata.name[:-1]
-        return self_field, rel_field
-
-    def _fields_from_scopes(self):
-        viadata = self._viadata.data
-        rel = self._model_._hasmany_ref_[viadata.via]
-        if rel.method:
-            scopes = [lambda: rel.dbset.query]
-        else:
-            scopes = self._relation_._extra_scopes(rel)
-        return self._get_fields_from_scopes(scopes, rel.table_name)
-
-    def create(self, **kwargs):
-        raise RuntimeError('Cannot create third objects for many relations')
-
-    def add(self, obj, **kwargs):
-        # works on join tables only!
-        if self._viadata.via is None:
-            raise RuntimeError(self._via_error % 'add')
-        nrow = self._fields_from_scopes()
-        nrow.update(**kwargs)
-        #: get belongs references
-        self_field, rel_field = self._get_relation_fields()
-        nrow[self_field] = self._viadata.rid
-        nrow[rel_field] = obj.id
-        #: validate and insert
-        return self.db[self._viadata.via]._model_.create(nrow)
-
-    def remove(self, obj):
-        # works on join tables only!
-        if self._viadata.via is None:
-            raise RuntimeError(self._via_error % 'remove')
-        #: get belongs references
-        self_field, rel_field = self._get_relation_fields()
-        #: delete
-        return self.db(
-            (self.db[self._viadata.via][self_field] == self._viadata.rid) &
-            (self.db[self._viadata.via][rel_field] == obj.id)).delete()
-
-
-class HasManyViaWrap(object):
-    def __init__(self, ref):
-        self.ref = ref
-
-    def __call__(self, model, row):
-        return HasManyViaSet(model.db, RelationBuilder(self.ref, model), row)
-
-
-class VirtualWrap(object):
-    def __init__(self, model, virtual):
-        self.model = model
-        self.virtual = virtual
-
-    def __call__(self, row, *args, **kwargs):
-        if self.virtual.inject_model:
-            row = row[self.model.tablename]
-        return self.virtual.f(self.model, row, *args, **kwargs)
-
-
-class ScopeWrap(object):
-    def __init__(self, set, model, scope):
-        self.set = set
-        self.model = model
-        self.scope = scope
-
-    def __call__(self, *args, **kwargs):
-        return self.set.where(
-            self.scope(self.model, *args, **kwargs), model=self.model)
-
-
 class Callback(object):
     _inst_count_ = 0
 
@@ -436,158 +190,6 @@ class JoinedIDReference(_IDReference):
         return self._record.as_dict()
 
 
-class JoinableSet(Set):
-    def _iterselect_rows(self, *fields, **attributes):
-        tablenames = self.db._adapter.tables(
-            self.query, attributes.get('join', None),
-            attributes.get('left', None), attributes.get('orderby', None),
-            attributes.get('groupby', None))
-        fields = self.db._adapter.expand_all(fields, tablenames)
-        colnames, sql = self.db._adapter._select_wcols(
-            self.query, fields, **attributes)
-        return JoinIterRows(self.db, sql, fields, colnames)
-
-    def _split_joins(self, joins):
-        one, many = [], []
-        for jname, jtable, is_single_row in joins:
-            if is_single_row:
-                one.append((jname, jtable))
-            else:
-                many.append((jname, jtable))
-        return one, many
-
-    def _build_merged_row(self, row, many_joins):
-        for jname, jtable in many_joins:
-            row[jname] = OrderedDict()
-        return row
-
-    def _build_records_from_joined(self, joined, joins, many_joins, colnames):
-        for rid, row in iteritems(joined):
-            for jname, jtable in many_joins:
-                row[jname] = Rows(self.db, list(row[jname].values()), [])
-        return JoinRows(
-            self.db, list(joined.values()), colnames, jtables=joins)
-
-
-class JoinSet(JoinableSet):
-    @classmethod
-    def _from_set(cls, obj, table, joins):
-        rv = cls(
-            obj.db, obj.query, obj.query.ignore_common_filters)
-        rv._stable_ = table
-        rv._joins_ = joins
-        return rv
-
-    def select(self, *fields, **options):
-        #: use iterselect for performance
-        rows = self._iterselect_rows(*fields, **options)
-        #: rebuild rowset using nested objects
-        rowmap = OrderedDict()
-        one_joins, many_joins = self._split_joins(self._joins_)
-        for row in rows:
-            rid = row[self._stable_].id
-            rowmap[rid] = rowmap.get(
-                rid, self._build_merged_row(row[self._stable_], many_joins)
-            )
-            for jname, jtable in one_joins:
-                rowmap[rid][jname] = JoinedIDReference._from_record(
-                    row[jtable], self.db[jtable])
-            for jname, jtable in many_joins:
-                rowmap[rid][jname][row[jtable].id] = rowmap[rid][jname].get(
-                    row[jtable].id, row[jtable])
-        return self._build_records_from_joined(
-            rowmap, self._joins_, many_joins, rows.colnames)
-
-
-class LeftJoinSet(JoinableSet):
-    @classmethod
-    def _from_set(cls, obj, jdata):
-        rv = cls(
-            obj.db, obj.query, obj.query.ignore_common_filters, obj._model_)
-        rv._stable_ = rv._model_.tablename
-        rv._jdata_ = jdata
-        return rv
-
-    def select(self, *fields, **options):
-        #: collect tablenames
-        jtables, one_joins, many_joins = [], [], []
-        for index, join in enumerate(options['left']):
-            jname, is_single_row = self._jdata_[index]
-            tname = join.first._tablename
-            jtables.append((jname, tname, is_single_row))
-            if is_single_row:
-                one_joins.append((jname, tname))
-            else:
-                many_joins.append((jname, tname))
-        #: use iterselect for performance
-        rows = self._iterselect_rows(*fields, **options)
-        #: rebuild rowset using nested objects
-        rowmap = OrderedDict()
-        for row in rows:
-            rid = row[self._stable_].id
-            rowmap[rid] = rowmap.get(
-                rid, self._build_merged_row(row[self._stable_], many_joins)
-            )
-            for jname, jtable in one_joins:
-                if row[jtable].id:
-                    rowmap[rid][jname] = JoinedIDReference._from_record(
-                        row[jtable], self.db[jtable])
-            for jname, jtable in many_joins:
-                if row[jtable].id:
-                    rowmap[rid][jname][row[jtable].id] = \
-                        rowmap[rid][jname].get(row[jtable].id, row[jtable])
-        return self._build_records_from_joined(
-            rowmap, jtables, many_joins, rows.colnames)
-
-
-@implements_iterator
-class JoinIterRows(_IterRows):
-    def __init__(self, db, sql, fields, colnames):
-        self.db = db
-        self.fields = fields
-        self.colnames = colnames
-        (self.fields_virtual, self.fields_lazy, self.tmps) = \
-            self.db._adapter._parse_expand_colnames(colnames)
-        self.cursor = self.db._adapter.cursor
-        self.db._adapter.execute(sql)
-        self.db._adapter.lock_cursor(self.cursor)
-        self._head = None
-        self.last_item = None
-        self.last_item_id = None
-        self.blob_decode = True
-        self.cacheable = False
-        self.sql = sql
-
-    def __next__(self):
-        db_row = self.cursor.fetchone()
-        if db_row is None:
-            raise StopIteration
-        return self.db._adapter._parse(
-            db_row, self.tmps, self.fields, self.colnames, self.blob_decode,
-            self.cacheable, self.fields_virtual, self.fields_lazy)
-
-
-class JoinRows(Rows):
-    def __init__(self, *args, **kwargs):
-        self._joins_ = kwargs['jtables']
-        del kwargs['jtables']
-        super(JoinRows, self).__init__(*args, **kwargs)
-
-    def as_list(self, compact=True, storage_to_dict=True,
-                datetime_to_str=False, custom_types=None):
-        if storage_to_dict:
-            items = []
-            for row in self:
-                item = row.as_dict(datetime_to_str, custom_types)
-                for jdata in self._joins_:
-                    if not jdata[2]:
-                        item[jdata[0]] = row[jdata[0]].as_list()
-                items.append(item)
-        else:
-            items = [item for item in self]
-        return items
-
-
 class TimingHandler(ExecutionHandler):
     def _timings(self):
         THREAD_LOCAL._weppydal_timings_ = getattr(
@@ -610,3 +212,11 @@ def make_tablename(classname):
     words = re.findall('[A-Z][^A-Z]*', classname)
     tablename = '_'.join(words)
     return tablename.lower() + "s"
+
+
+def wrap_scope_on_set(dbset, model_instance, scope):
+    def wrapped(*args, **kwargs):
+        return dbset.where(
+            scope(model_instance, *args, **kwargs),
+            model=model_instance.__class__)
+    return wrapped

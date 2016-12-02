@@ -9,13 +9,17 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import types
 from collections import OrderedDict
 from pydal.objects import Row
 from .._compat import iteritems, itervalues, with_metaclass
+from ..datastructures import sdict
 from .apis import compute, rowattr, rowmethod, scope
-from .base import Field, _Field, sdict
-from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
-    VirtualWrap, ScopeWrap, Callback, ReferenceData, make_tablename
+from .helpers import Callback, ReferenceData, make_tablename, wrap_scope_on_set
+from .objects import Field
+from .wrappers import (
+    HasOneWrap, HasManyWrap, HasManyViaWrap, VirtualWrap
+)
 
 
 class MetaModel(type):
@@ -358,9 +362,9 @@ class Model(with_metaclass(MetaModel)):
                 if obj.field_name in field_names:
                     raise RuntimeError(err)
                 if isinstance(obj, rowmethod):
-                    f = _Field.Method(obj.field_name, VirtualWrap(self, obj))
+                    f = Field.Method(obj.field_name, VirtualWrap(self, obj))
                 else:
-                    f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
+                    f = Field.Virtual(obj.field_name, VirtualWrap(self, obj))
                 self.fields.append(f)
 
     def _define_(self):
@@ -381,7 +385,7 @@ class Model(with_metaclass(MetaModel)):
 
     def __define_validation(self):
         for field in self.fields:
-            if isinstance(field, (_Field.Method, _Field.Virtual)):
+            if isinstance(field, (Field.Method, Field.Virtual)):
                 continue
             validation = self.validation.get(field.name, {})
             if isinstance(validation, dict):
@@ -434,7 +438,8 @@ class Model(with_metaclass(MetaModel)):
             if not hasattr(self.__class__, obj.name):
                 setattr(
                     self.__class__, obj.name,
-                    ScopeWrap(self.__class__.db, self, obj.f))
+                    wrap_scope_on_set(self.__class__.db, self, obj.f)
+                )
 
     def __prepend_table_on_index_name(self, name):
         return '%s_widx__%s' % (self.tablename, name)
@@ -517,6 +522,10 @@ class Model(with_metaclass(MetaModel)):
         pass
 
     @classmethod
+    def _instance_(cls):
+        return cls.table._model_
+
+    @classmethod
     def _inject_virtuals_on_row(cls, row):
         virtualrow = sdict({cls.tablename: row})
         for virtual in cls.table._virtual_fields:
@@ -579,13 +588,13 @@ class Model(with_metaclass(MetaModel)):
 
     @classmethod
     def where(cls, cond):
-        if not callable(cond):
-            raise SyntaxError('Model.where expects a function as parameter.')
-        return cls.db.where(cond(cls), model=cls.table._model_)
+        if not isinstance(cond, types.LambdaType):
+            raise ValueError("Model.where expects a lambda as parameter")
+        return cls.db.where(cond(cls), model=cls)
 
     @classmethod
     def all(cls):
-        return cls.db(cls.table)
+        return cls.db.where(cls.table, model=cls)
 
     @classmethod
     def first(cls):
