@@ -11,6 +11,7 @@
 
 import re
 import time
+from functools import wraps
 from pydal._globals import THREAD_LOCAL
 from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
 from ..datastructures import sdict
@@ -215,8 +216,17 @@ def make_tablename(classname):
 
 
 def wrap_scope_on_set(dbset, model_instance, scope):
+    @wraps(scope)
     def wrapped(*args, **kwargs):
         return dbset.where(
             scope(model_instance, *args, **kwargs),
             model=model_instance.__class__)
+    return wrapped
+
+
+def wrap_scope_on_model(scope):
+    @wraps(scope)
+    def wrapped(cls, *args, **kwargs):
+        return cls.db.where(
+            scope(cls._instance_(), *args, **kwargs), model=cls)
     return wrapped

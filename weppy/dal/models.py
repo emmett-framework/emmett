@@ -15,7 +15,9 @@ from pydal.objects import Row
 from .._compat import iteritems, itervalues, with_metaclass
 from ..datastructures import sdict
 from .apis import compute, rowattr, rowmethod, scope
-from .helpers import Callback, ReferenceData, make_tablename, wrap_scope_on_set
+from .helpers import (
+    Callback, ReferenceData, make_tablename, wrap_scope_on_model
+)
 from .objects import Field
 from .wrappers import (
     HasOneWrap, HasManyWrap, HasManyViaWrap, VirtualWrap
@@ -438,7 +440,7 @@ class Model(with_metaclass(MetaModel)):
             if not hasattr(self.__class__, obj.name):
                 setattr(
                     self.__class__, obj.name,
-                    wrap_scope_on_set(self.__class__.db, self, obj.f)
+                    classmethod(wrap_scope_on_model(obj.f))
                 )
 
     def __prepend_table_on_index_name(self, name):
