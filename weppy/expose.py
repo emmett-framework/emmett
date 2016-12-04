@@ -107,6 +107,8 @@ class Expose(with_metaclass(MetaExpose)):
         path = cls.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
         path = cls.REGEX_ALPHA.sub('(?P<\g<1>>[^/\W\d_]+)', path)
         path = cls.REGEX_DATE.sub('(?P<\g<1>>\d{4}-\d{2}-\d{2})', path)
+        if path is not '/':
+            path += '(/?)'
         re_schemes = ('|'.join(schemes)).lower()
         re_methods = ('|'.join(methods)).lower()
         re_hostname = re.escape(hostname) if hostname else '[^/]*'
@@ -224,7 +226,7 @@ class Expose(with_metaclass(MetaExpose)):
 
     @classmethod
     def match(cls, request):
-        path = cls.remove_trailslash(request.path_info)
+        path = request.path_info
         if cls.application.language_force_on_url:
             path, lang = cls.match_lang(path)
             request.language = lang
