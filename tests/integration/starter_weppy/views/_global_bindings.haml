@@ -1,0 +1,4 @@
+- current_session = current.session
+- current_auth = current.session.auth if current_session else None
+- current_user = current_auth.user if current_auth else None
+- T = current.T

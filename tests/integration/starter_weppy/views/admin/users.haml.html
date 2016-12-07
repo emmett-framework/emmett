@@ -1,0 +1,29 @@
+{{extend 'layout.haml'}}
+
+<div class='row'>
+  <div class='col-lg-12'></div>
+  <h1>{{=T("Users")}}</h1>
+  <br />
+  <table class='table table-hover'>
+    <thead>
+      <tr>
+        <th>{{=T("Firstname")}}</th>
+        <th>{{=T("Lastname")}}</th>
+        <th>{{=T("Mail")}}</th>
+
+      </tr>
+    </thead>
+    <tbody></tbody>
+    {{for user in users:}}
+      <tr>
+        <td>
+          <a href='{{=url('user.profile', user.id)}}'>
+            {{=user.first_name}}
+          </a>
+        </td>
+        <td>{{=user.last_name}}</td>
+        <td>{{=user.email}}</td>
+      </tr>
+    {{pass}}
+  </table>
+</div>

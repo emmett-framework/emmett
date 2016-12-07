@@ -1,0 +1,21 @@
+- extend 'layout.haml'
+
+.row
+  .col-lg-12
+  %h1 #{ T("Users") }
+  %br
+  %table.table.table-hover
+    %thead
+      %tr
+        %th #{ T("Firstname") }
+        %th #{ T("Lastname") }
+        %th #{ T("Mail") }
+
+    %tbody
+    - for user in users
+      %tr
+        %td
+          %a{href:"{{=url('user.profile', user.id)}}"}
+            = user.first_name
+        %td #{ user.last_name }
+        %td #{ user.email }

@@ -1,0 +1,14 @@
+{{extend 'layout.haml'}}
+
+<div class='container'>
+  <div class='row'>
+    <div class='col-lg-12'>
+      <h2>
+        {{=user.first_name + " " + user.last_name}}
+      </h2>
+      <h4 class='color-light-grey'>
+        {{=user.email}}
+      </h4>
+    </div>
+  </div>
+</div>

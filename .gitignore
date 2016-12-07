@@ -11,6 +11,12 @@ examples/*/private
 tests/databases/*
 tests/logs/*
 tests/private/*
+tests/integration/starter_weppy/databases/*
+tests/integration/starter_weppy/logs/*
+tests/integration/starter_weppy/private/*
+tests/integration/starter_weppy/views/*.html
+tests/integration/env/
+ghostdriver.log
 weppy.egg-info/*
 
 .venv/
@@ -19,3 +25,4 @@ htmlcov/
 .tox/
 .eggs/
 .cache/
+.idea/

@@ -1,0 +1,15 @@
+!!! 5
+%html
+  %head
+    - include '_global_head.haml'
+  %body
+    - include '_global_bindings.haml'
+    - include '_global_navbar.haml'
+
+    .container
+      - include
+
+    - include '_global_footer.haml'
+
+    - include_static 'bs3/js/bootstrap.min.js'
+    - include_static 'js/scripts.js'

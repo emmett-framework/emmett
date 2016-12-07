@@ -1,0 +1,14 @@
+- extend "layout.haml"
+
+- if not current_user and req != 'register'
+  %h1 Signin
+  = form
+  %br
+    %p
+      New User?
+      %a{href: "{{=url('main.account', 'register')}}"}
+        Register Here
+- else
+  %h1{id:'loggedin-header'} Profile
+  = form
+  %br
