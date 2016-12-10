@@ -402,7 +402,7 @@ Another way would be returning a 404 error:
 ```python
 from weppy import abort
 
-@app.on_error(404):
+@app.on_error(404)
 def not_found():
     #code
 
