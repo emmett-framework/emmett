@@ -238,7 +238,7 @@ Maybe, you prefer to show your 404 page:
 ```python
 from weppy import abort
 
-@app.on_error(404):
+@app.on_error(404)
 def not_found():
     return app.render_template("404.html")
 
