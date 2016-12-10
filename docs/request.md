@@ -240,7 +240,7 @@ from weppy import abort
 
 @app.on_error(404):
 def not_found():
-    app.render_template("404.html")
+    return app.render_template("404.html")
 
 @app.route("/post/<int:id>")
 def post(id):
