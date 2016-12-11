@@ -6,8 +6,14 @@ Next
 
 (Release date to be announced, codename to be selected)
 
+- Several bugfixes
 - Moved routing handlers and helpers to pipeline logic
 - Added support for app modules nesting and inheritance
+- Added lambda notation to `Set.where` when involving just one model
+- Rewritten `rowattr` and `rowmethod` injection logic
+- Removed `bind_to_model` option from `rowattr` and `rowmethod`
+- Optimized rows parsing in ORM adapters
+- Improved caching techniques on selected records relations
 
 
 Version 0.8
