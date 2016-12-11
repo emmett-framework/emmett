@@ -19,6 +19,84 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 1.0
+-----------
+
+weppy 1.0 introduces some deprecations and breaking changes you should be aware of, and some new features you might been interested into.
+
+Next paragraphs describe all these relevant changes.
+
+### Handlers deprecation in favour of pipeline
+
+*section in development*
+
+### Breaking changes
+
+#### Removed the bind\_to\_model option from virtual decorators
+
+Prior to weppy 1.0 you had the option to not bind the virtual attributes to the model namespace on selections:
+
+```python
+@rowattr('name', bind_to_model=False)
+def eval_name(self, row):
+    return row.users.first_name * row.users.last_name
+```
+
+In weppy 1.0 we removed this option since the real use-case scenario for this option was too limited. Moreover, this change allowed several optimizations on the injection of these attributes over the rows, increasing the general performance of the select operations.
+
+If you used anywhere in your code this option, please update it accordingly.
+
+#### Preserving the attributes types for relations on joined selects
+
+Prior to weppy 1.0 you had different type for the relation attributes on the records depending on the use of `join` or `including` options during selection:
+
+```python
+>>> type(User.first().posts)
+<class 'weppy.dal.objects.HasManySet'>
+>>> type(User.all().select(including='posts').first().posts)
+<class 'pydal.objects.Rows'>
+```
+
+Although this was a *design decision* in weppy, to easily locate where the code was using joined references or not, we considered the best thing overall is to have consistency over the ORM types.
+
+In weppy 1.0 the type is always kept the same, independently on how you selected records:
+
+```python
+>>> type(User.first().posts)
+<class 'weppy.orm.objects.HasManySet'>
+>>> type(User.all().select(including='posts').first().posts)
+<class 'weppy.orm.objects.HasManySet'>
+>>> type(User.first().posts())
+<class 'weppy.orm.objects.Rows'>
+>>> type(User.all().select(including='posts').first().posts())
+<class 'weppy.orm.objects.Rows'>
+```
+
+Please update your code to the new design. The most common scenario is to change something like this:
+
+```python
+for user in User.all().select(including='posts'):
+    print(user.name)
+    for post in user.posts:
+        print(post.name)
+```
+
+to add the parenthesis:
+
+```python
+for user in User.all().select(including='posts'):
+    print(user.name)
+    for post in user.posts():
+        print(post.name)
+```
+
+### New features
+
+weppy 1.0 introduces some new features you may take advantage of:
+
+- Application [modules](./app_and_modules#application-modules) nesting and inheritance
+
+
 Version 0.8
 -----------
 
@@ -132,7 +210,7 @@ Version 0.6
 
 weppy 0.6 introduces some deprecations and changes you should be aware of, and some new features you might been interested into.
 
-Next paragraphs describe all this relevant changes.
+Next paragraphs describe all these relevant changes.
 
 ### Deprecation of expose
 
