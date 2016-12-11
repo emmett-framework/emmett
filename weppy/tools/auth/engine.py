@@ -409,7 +409,6 @@ class Auth(object):
         return (True, True, is_valid_user)
 
     def login_user(self, user, remember=False):
-        user = Row(user)
         try:
             del user.password
         except:

@@ -132,20 +132,6 @@ class AuthManager(Pipe):
     def __init__(self, auth):
         #: the Auth() instance
         self.auth = auth
-        user_table = self.auth.settings.models.user.table
-        self._virtuals = [f.name for f in user_table._virtual_fields]
-        self._virtualmethods = [m.name for m in user_table._virtual_methods]
-
-    def _load_virtuals(self):
-        self.auth.settings.models.user._inject_virtuals_on_row(self.auth.user)
-
-    def _unload_virtuals(self):
-        for namelist in [self._virtuals, self._virtualmethods]:
-            for name in namelist:
-                try:
-                    del self.auth.user[name]
-                except:
-                    pass
 
     def open(self):
         # check auth session is valid
@@ -165,9 +151,7 @@ class AuthManager(Pipe):
                     #: is user still valid?
                     dbrow = self.auth.table_user(id=self.auth.user.id)
                     if dbrow and not dbrow.registration_key:
-                        self.auth.login_user(
-                            self.auth.table_user(id=self.auth.user.id),
-                            authsess.remember)
+                        self.auth.login_user(dbrow, authsess.remember)
                     else:
                         del session.auth
             else:
@@ -175,14 +159,8 @@ class AuthManager(Pipe):
                 if ((request.now - authsess.last_visit).seconds >
                    (authsess.expiration / 10)):
                     authsess.last_visit = request.now
-        #: load virtuals from Auth Model
-        if self.auth.user:
-            self._load_virtuals()
 
     def close(self):
         # set correct session expiration if requested by user
         if self.auth._auth and self.auth._auth.remember:
             session._expires_after(self.auth._auth.expiration)
-        # remove virtual fields for serialization
-        if self.auth.user:
-            self._unload_virtuals()

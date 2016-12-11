@@ -542,30 +542,14 @@ class Model(with_metaclass(MetaModel)):
         return cls.table._model_
 
     @classmethod
-    def _inject_virtuals_on_row(cls, row):
-        virtualrow = sdict({cls.tablename: row})
-        for virtual in cls.table._virtual_fields:
-            try:
-                row[virtual.name] = virtual.f(virtualrow)
-            except (AttributeError, KeyError):
-                pass
-        for virtualmethod in cls.table._virtual_methods:
-            try:
-                row[virtualmethod.name] = virtualmethod.handler(
-                    virtualmethod.f, virtualrow)
-            except (AttributeError, KeyError):
-                pass
-        return row
-
-    @classmethod
     def new(cls, **attributes):
-        row = Row()
+        row = cls._instance_()._rowclass_()
         for field in cls.table.fields:
             val = attributes.get(field, cls.table[field].default)
             if callable(val):
                 val = val()
             row[field] = val
-        cls._inject_virtuals_on_row(row)
+        row._inject_rowattrs_()
         return row
 
     @classmethod
