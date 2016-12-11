@@ -61,9 +61,8 @@ class compute(object):
 class rowattr(object):
     _inst_count_ = 0
 
-    def __init__(self, field_name, bind_to_model=True):
+    def __init__(self, field_name):
         self.field_name = field_name
-        self.inject_model = bind_to_model
         self._inst_count_ = rowattr._inst_count_
         rowattr._inst_count_ += 1
 

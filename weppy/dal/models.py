@@ -11,17 +11,15 @@
 
 import types
 from collections import OrderedDict
-from pydal.objects import Row
 from .._compat import iteritems, itervalues, with_metaclass
 from ..datastructures import sdict
 from .apis import compute, rowattr, rowmethod, scope
 from .helpers import (
-    Callback, ReferenceData, make_tablename, wrap_scope_on_model
+    Callback, ReferenceData, make_tablename, wrap_scope_on_model,
+    wrap_virtual_on_model
 )
-from .objects import Field
-from .wrappers import (
-    HasOneWrap, HasManyWrap, HasManyViaWrap, VirtualWrap
-)
+from .objects import Field, Row
+from .wrappers import HasOneWrap, HasManyWrap, HasManyViaWrap
 
 
 class MetaModel(type):
@@ -282,6 +280,9 @@ class Model(with_metaclass(MetaModel)):
     def _define_props_(self):
         #: create pydal's Field elements
         self.fields = []
+        idfield = Field('id')._make_field('id', self)
+        setattr(self.__class__, 'id', idfield)
+        self.fields.append(idfield)
         for name, obj in iteritems(self._all_fields_):
             if obj.modelname is not None:
                 obj = Field(obj._type, *obj._args, **obj._kwargs)
@@ -356,18 +357,31 @@ class Model(with_metaclass(MetaModel)):
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
 
     def _define_virtuals_(self):
-        err = 'rowattr or rowmethod cannot have the name of an' + \
+        self._all_rowattrs_ = {}
+        self._all_rowmethods_ = {}
+        err = 'rowattr or rowmethod cannot have the name of an ' + \
             'existent field!'
         field_names = [field.name for field in self.fields]
         for attr in ['_virtual_relations_', '_all_virtuals_']:
             for name, obj in iteritems(getattr(self, attr, {})):
                 if obj.field_name in field_names:
                     raise RuntimeError(err)
+                wrapped = wrap_virtual_on_model(self, obj.f)
                 if isinstance(obj, rowmethod):
-                    f = Field.Method(obj.field_name, VirtualWrap(self, obj))
+                    self._all_rowmethods_[obj.field_name] = wrapped
+                    f = Field.Method(obj.field_name, wrapped)
                 else:
-                    f = Field.Virtual(obj.field_name, VirtualWrap(self, obj))
+                    self._all_rowattrs_[obj.field_name] = wrapped
+                    f = Field.Virtual(obj.field_name, wrapped)
                 self.fields.append(f)
+
+    def _build_rowclass_(self):
+        clsname = self.__class__.__name__ + "Row"
+        attrs = {
+            '_rowattrs_': {k: v for k, v in iteritems(self._all_rowattrs_)}}
+        attrs.update(self._all_rowmethods_)
+        self._rowclass_ = type(clsname, (Row,), attrs)
+        globals()[clsname] = self._rowclass_
 
     def _define_(self):
         #if self.sign_table:

@@ -230,3 +230,9 @@ def wrap_scope_on_model(scope):
         return cls.db.where(
             scope(cls._instance_(), *args, **kwargs), model=cls)
     return wrapped
+
+
+def wrap_virtual_on_model(model, virtual):
+    def wrapped(row, *args, **kwargs):
+        return virtual(model, row, *args, **kwargs)
+    return wrapped

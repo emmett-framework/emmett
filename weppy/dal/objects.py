@@ -13,7 +13,7 @@ import copy
 import types
 from collections import OrderedDict
 from pydal.objects import Table as _Table, Field as _Field, Set as _Set, \
-    Rows as _Rows, IterRows as _IterRows, Query, Expression, Row
+    Row as _Row, Rows as _Rows, IterRows as _IterRows, Query, Expression
 from .._compat import implements_iterator, iterkeys, iteritems
 from ..datastructures import sdict
 from ..globals import current
@@ -641,6 +641,23 @@ class LeftJoinSet(JoinableSet):
                         rowmap[rid][jname].get(row[jtable].id, row[jtable])
         return self._build_records_from_joined(
             rowmap, jtables, many_joins, rows.colnames)
+
+
+class Row(_Row):
+    _rowattrs_ = {}
+
+    def __reduce__(self):
+        return self.__class__, (self.as_dict(), ), {}
+
+    def __setstate__(self, state):
+        self._inject_rowattrs_()
+
+    def _inject_rowattrs_(self):
+        for name, method in iteritems(self._rowattrs_):
+            try:
+                self[name] = method(self)
+            except:
+                pass
 
 
 class Rows(_Rows):

@@ -18,7 +18,8 @@ from ..datastructures import sdict
 from ..pipeline import Pipe
 from ..security import uuid as _uuid
 from ..serializers import _custom_json, xml
-from .objects import Table, Field, Set, Rows
+from .adapters import patch_adapter
+from .objects import Table, Field, Set, Row, Rows
 from .helpers import TimingHandler
 from .models import MetaModel
 
@@ -49,6 +50,7 @@ class DAL(_pyDAL):
     execution_handlers = []
 
     Rows = Rows
+    Row = Row
 
     @staticmethod
     def uri_from_config(config=None):
@@ -101,10 +103,7 @@ class DAL(_pyDAL):
             self.execution_handlers.append(TimingHandler)
         #: finally setup pyDAL instance
         super(DAL, self).__init__(self.config.uri, pool_size, folder, **kwargs)
-        self._adapter._add_operators_to_parsed_row = \
-            lambda *args, **kwargs: None
-        self._adapter._add_reference_sets_to_parsed_row = \
-            lambda *args, **kwargs: None
+        patch_adapter(self._adapter)
 
     @property
     def pipe(self):
@@ -131,8 +130,8 @@ class DAL(_pyDAL):
                 obj._define_props_()
                 obj._define_relations_()
                 obj._define_virtuals_()
+                obj._build_rowclass_()
                 # define table and store in model
-                #model.fields = obj.fields
                 args = dict(
                     migrate=obj.migrate,
                     format=obj.format,
@@ -142,7 +141,6 @@ class DAL(_pyDAL):
                     obj.tablename, *obj.fields, **args
                 )
                 model.table._model_ = obj
-                model.id = model.table.id
                 # load user's definitions
                 obj._define_()
                 # set reference in db for model name
