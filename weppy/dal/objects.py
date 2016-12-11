@@ -274,9 +274,9 @@ class Set(_Set):
             joins = []
             jtables = []
             for arg in args:
-                condition, table, is_single_row = self._parse_rjoin(arg)
+                condition, table, rel_type = self._parse_rjoin(arg)
                 joins.append(condition)
-                jtables.append((arg, table._tablename, is_single_row))
+                jtables.append((arg, table._tablename, rel_type))
             if joins:
                 q = joins[0]
                 for join in joins[1:]:
@@ -291,22 +291,22 @@ class Set(_Set):
         if rel:
             if isinstance(rel, dict) and rel.get('via'):
                 r = RelationBuilder(rel, self._model_._instance_()).via()
-                return r[0], r[1]._table, False
+                return r[0], r[1]._table, 'many'
             else:
                 r = RelationBuilder(rel, self._model_._instance_())
-                return r.many(), rel.table, False
+                return r.many(), rel.table, 'many'
         #: match belongs_to and refers_to
         rel = self._model_._belongs_ref_.get(arg)
         if rel:
             r = RelationBuilder(
                 (rel, arg), self._model_._instance_()
             ).belongs_query()
-            return r, self._model_.db[rel], True
+            return r, self._model_.db[rel], 'belongs'
         #: match has_one
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
             r = RelationBuilder(rel, self._model_._instance_())
-            return r.many(), rel.table, True
+            return r.many(), rel.table, 'one'
         raise RuntimeError(
             'Unable to find %s relation of %s model' %
             (arg, self._model_.__name__))
@@ -317,9 +317,9 @@ class Set(_Set):
         joins = []
         jdata = []
         for arg in args:
-            condition, table, is_single_row = self._parse_rjoin(arg)
+            condition, table, rel_type = self._parse_rjoin(arg)
             joins.append(table.on(condition))
-            jdata.append((arg, is_single_row))
+            jdata.append((arg, rel_type))
         return joins, jdata
 
     def _jcolnames_from_rowstmps(self, tmps):
@@ -386,10 +386,17 @@ class RelationSet(object):
     def __call__(self, query, ignore_common_filters=False):
         return self._set.where(query, ignore_common_filters)
 
-    def select(self, *args, **kwargs):
+    def _last_resultset(self, refresh=False):
+        if refresh or not hasattr(self, '_cached_resultset'):
+            self._cached_resultset = self._cache_resultset()
+        return self._cached_resultset
+
+    def _filter_reload(self, kwargs):
+        rv = False
         if 'reload' in kwargs:
+            rv = kwargs['reload']
             del kwargs['reload']
-        return self._set.select(*args, **kwargs)
+        return rv
 
     def create(self, **kwargs):
         attributes = self._get_fields_from_scopes(
@@ -428,24 +435,24 @@ class RelationSet(object):
 
 
 class HasOneSet(RelationSet):
-    @cachedprop
-    def _last_resultset(self):
+    def _cache_resultset(self):
         return self.select().first()
 
     def __call__(self, *args, **kwargs):
+        refresh = self._filter_reload(kwargs)
         if not args and not kwargs:
-            return self._last_resultset
+            return self._last_resultset(refresh)
         return self.select(*args, **kwargs).first()
 
 
 class HasManySet(RelationSet):
-    @cachedprop
-    def _last_resultset(self):
+    def _cache_resultset(self):
         return self.select()
 
     def __call__(self, *args, **kwargs):
+        refresh = self._filter_reload(kwargs)
         if not args and not kwargs:
-            return self._last_resultset
+            return self._last_resultset(refresh)
         return self.select(*args, **kwargs)
 
     def add(self, obj):
@@ -485,14 +492,14 @@ class HasManyViaSet(RelationSet):
     def _model_(self):
         return self.db[self._viadata.model_name]._model_
 
-    @cachedprop
-    def _last_resultset(self):
+    def _cache_resultset(self):
         return self.select(self._viadata.rfield)
 
     def __call__(self, *args, **kwargs):
+        refresh = self._filter_reload(kwargs)
         if not args:
             if not kwargs:
-                return self._last_resultset
+                return self._last_resultset(refresh)
             args = [self._viadata.rfield]
         return self.select(*args, **kwargs)
 
@@ -551,25 +558,24 @@ class JoinableSet(Set):
         return JoinIterRows(self.db, sql, fields, colnames)
 
     def _split_joins(self, joins):
-        one, many = [], []
-        for jname, jtable, is_single_row in joins:
-            if is_single_row:
-                one.append((jname, jtable))
-            else:
-                many.append((jname, jtable))
-        return one, many
+        rv = {'belongs': [], 'one': [], 'many': []}
+        for jname, jtable, rel_type in joins:
+            rv[rel_type].append((jname, jtable))
+        return rv['belongs'], rv['one'], rv['many']
 
-    def _build_merged_row(self, row, many_joins):
+    def _build_merged_row(self, row, inclusions, many_joins):
+        inclusions[row.id] = {}
         for jname, jtable in many_joins:
-            row[jname] = OrderedDict()
+            inclusions[row.id][jname] = OrderedDict()
         return row
 
-    def _build_records_from_joined(self, joined, joins, many_joins, colnames):
-        for rid, row in iteritems(joined):
-            for jname, jtable in many_joins:
-                row[jname] = Rows(self.db, list(row[jname].values()), [])
+    def _build_records_from_joined(self, rowmap, inclusions, joins, colnames):
+        for rid, many_data in iteritems(inclusions):
+            for jname, included in iteritems(many_data):
+                rowmap[rid][jname]._cached_resultset = Rows(
+                    self.db, list(included.values()), [])
         return JoinRows(
-            self.db, list(joined.values()), colnames, jtables=joins)
+            self.db, list(rowmap.values()), colnames, jtables=joins)
 
 
 class JoinSet(JoinableSet):
@@ -586,20 +592,25 @@ class JoinSet(JoinableSet):
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
         rowmap = OrderedDict()
-        one_joins, many_joins = self._split_joins(self._joins_)
+        inclusions = {}
+        belongs_joins, one_joins, many_joins = self._split_joins(self._joins_)
         for row in rows:
             rid = row[self._stable_].id
             rowmap[rid] = rowmap.get(
-                rid, self._build_merged_row(row[self._stable_], many_joins)
+                rid, self._build_merged_row(
+                    row[self._stable_], inclusions, many_joins)
             )
-            for jname, jtable in one_joins:
+            for jname, jtable in belongs_joins:
                 rowmap[rid][jname] = JoinedIDReference._from_record(
                     row[jtable], self.db[jtable])
+            for jname, jtable in one_joins:
+                rowmap[rid][jname]._cached_resultset = row[jtable]
             for jname, jtable in many_joins:
-                rowmap[rid][jname][row[jtable].id] = rowmap[rid][jname].get(
-                    row[jtable].id, row[jtable])
+                inclusions[rid][jname][row[jtable].id] = \
+                    inclusions[rid][jname].get(
+                        row[jtable].id, row[jtable])
         return self._build_records_from_joined(
-            rowmap, self._joins_, many_joins, rows.colnames)
+            rowmap, inclusions, self._joins_, rows.colnames)
 
 
 class LeftJoinSet(JoinableSet):
@@ -613,51 +624,43 @@ class LeftJoinSet(JoinableSet):
 
     def select(self, *fields, **options):
         #: collect tablenames
-        jtables, one_joins, many_joins = [], [], []
+        jtypes = {'belongs': [], 'one': [], 'many': []}
+        jtables = []
         for index, join in enumerate(options['left']):
-            jname, is_single_row = self._jdata_[index]
+            jname, rel_type = self._jdata_[index]
             tname = join.first._tablename
-            jtables.append((jname, tname, is_single_row))
-            if is_single_row:
-                one_joins.append((jname, tname))
-            else:
-                many_joins.append((jname, tname))
+            jtables.append((jname, tname, rel_type))
+            jtypes[rel_type].append((jname, tname))
         #: use iterselect for performance
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
         rowmap = OrderedDict()
+        inclusions = {}
         for row in rows:
             rid = row[self._stable_].id
             rowmap[rid] = rowmap.get(
-                rid, self._build_merged_row(row[self._stable_], many_joins)
+                rid, self._build_merged_row(
+                    row[self._stable_], inclusions, jtypes['many'])
             )
-            for jname, jtable in one_joins:
+            for jname, jtable in jtypes['belongs']:
                 if row[jtable].id:
                     rowmap[rid][jname] = JoinedIDReference._from_record(
                         row[jtable], self.db[jtable])
-            for jname, jtable in many_joins:
+            for jname, jtable in jtypes['one']:
                 if row[jtable].id:
-                    rowmap[rid][jname][row[jtable].id] = \
-                        rowmap[rid][jname].get(row[jtable].id, row[jtable])
+                    rowmap[rid][jname]._cached_resultset = row[jtable]
+            for jname, jtable in jtypes['many']:
+                if row[jtable].id:
+                    inclusions[rid][jname][row[jtable].id] = \
+                        inclusions[rid][jname].get(
+                            row[jtable].id, row[jtable])
         return self._build_records_from_joined(
-            rowmap, jtables, many_joins, rows.colnames)
+            rowmap, inclusions, jtables, rows.colnames)
 
 
 class Row(_Row):
-    _rowattrs_ = {}
-
-    def __reduce__(self):
-        return self.__class__, (self.as_dict(), ), {}
-
-    def __setstate__(self, state):
-        self._inject_rowattrs_()
-
-    def _inject_rowattrs_(self):
-        for name, method in iteritems(self._rowattrs_):
-            try:
-                self[name] = method(self)
-            except:
-                pass
+    def __getstate__(self):
+        return self.as_dict()
 
 
 class Rows(_Rows):
@@ -719,8 +722,8 @@ class JoinIterRows(_IterRows):
         self.db = db
         self.fields = fields
         self.colnames = colnames
-        (self.fields_virtual, self.fields_lazy, self.tmps) = \
-            self.db._adapter._parse_expand_colnames(colnames)
+        self.fdata, self.tables = \
+            self.db._adapter._parse_expand_colnames(fields)
         self.cursor = self.db._adapter.cursor
         self.db._adapter.execute(sql)
         self.db._adapter.lock_cursor(self.cursor)
@@ -736,8 +739,8 @@ class JoinIterRows(_IterRows):
         if db_row is None:
             raise StopIteration
         return self.db._adapter._parse(
-            db_row, self.tmps, self.fields, self.colnames, self.blob_decode,
-            self.cacheable, self.fields_virtual, self.fields_lazy)
+            db_row, self.fdata, self.tables, self.fields, self.colnames,
+            self.blob_decode)
 
 
 class JoinRows(Rows):

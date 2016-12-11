@@ -16,7 +16,7 @@ from pydal.adapters.postgres import (
     PostgreNew, PostgrePsycoNew, PostgrePG8000New,
     PostgreBoolean, PostgrePsycoBoolean, PostgrePG8000Boolean
 )
-from .._compat import iterkeys, iteritems
+from .._compat import iteritems
 from .objects import Field
 
 
@@ -42,10 +42,13 @@ def _wrap_on_adapter(f, adapter):
 
 def patch_adapter(adapter):
     adapter.parse = _wrap_on_adapter(parse, adapter)
+    adapter._parse_expand_colnames = _wrap_on_adapter(
+        _parse_expand_colnames, adapter)
+    adapter._parse = _wrap_on_adapter(_parse, adapter)
 
 
 def parse(adapter, rows, fields, colnames, blob_decode=True, cacheable=False):
-    fdata, tables = _parse_expand_colnames(fields)
+    fdata, tables = _parse_expand_colnames(adapter, fields)
     new_rows = [
         _parse(adapter, row, fdata, tables, fields, colnames, blob_decode)
         for row in rows
@@ -55,7 +58,7 @@ def parse(adapter, rows, fields, colnames, blob_decode=True, cacheable=False):
     return rowsobj
 
 
-def _parse_expand_colnames(fieldlist):
+def _parse_expand_colnames(adapter, fieldlist):
     rv, tables = [], {}
     for field in fieldlist:
         if not isinstance(field, Field):
@@ -99,9 +102,6 @@ def _parse(adapter, row, fdata, tables, fields, colnames, blob_decode):
     #: add extras if needed (eg. operations results)
     if extras:
         new_row['_extra'] = extras
-    #: add virtuals
-    for tablename in iterkeys(tables):
-        new_row[tablename]._inject_rowattrs_()
     return new_row
 
 

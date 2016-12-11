@@ -13,25 +13,22 @@ from .helpers import RelationBuilder
 from .objects import HasOneSet, HasManySet, HasManyViaSet
 
 
-class HasOneWrap(object):
+class Wrapper(object):
     def __init__(self, ref):
+        self.__name__ = ref.name
         self.ref = ref
 
+
+class HasOneWrap(Wrapper):
     def __call__(self, model, row):
         return HasOneSet(model.db, RelationBuilder(self.ref, model), row)
 
 
-class HasManyWrap(object):
-    def __init__(self, ref):
-        self.ref = ref
-
+class HasManyWrap(Wrapper):
     def __call__(self, model, row):
         return HasManySet(model.db, RelationBuilder(self.ref, model), row)
 
 
-class HasManyViaWrap(object):
-    def __init__(self, ref):
-        self.ref = ref
-
+class HasManyViaWrap(Wrapper):
     def __call__(self, model, row):
         return HasManyViaSet(model.db, RelationBuilder(self.ref, model), row)

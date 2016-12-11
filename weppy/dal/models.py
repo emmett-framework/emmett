@@ -13,6 +13,7 @@ import types
 from collections import OrderedDict
 from .._compat import iteritems, itervalues, with_metaclass
 from ..datastructures import sdict
+from ..utils import cachedprop
 from .apis import compute, rowattr, rowmethod, scope
 from .helpers import (
     Callback, ReferenceData, make_tablename, wrap_scope_on_model,
@@ -377,8 +378,7 @@ class Model(with_metaclass(MetaModel)):
 
     def _build_rowclass_(self):
         clsname = self.__class__.__name__ + "Row"
-        attrs = {
-            '_rowattrs_': {k: v for k, v in iteritems(self._all_rowattrs_)}}
+        attrs = {k: cachedprop(v) for k, v in iteritems(self._all_rowattrs_)}
         attrs.update(self._all_rowmethods_)
         self._rowclass_ = type(clsname, (Row,), attrs)
         globals()[clsname] = self._rowclass_
@@ -549,7 +549,6 @@ class Model(with_metaclass(MetaModel)):
             if callable(val):
                 val = val()
             row[field] = val
-        row._inject_rowattrs_()
         return row
 
     @classmethod

@@ -233,6 +233,7 @@ def wrap_scope_on_model(scope):
 
 
 def wrap_virtual_on_model(model, virtual):
+    @wraps(virtual)
     def wrapped(row, *args, **kwargs):
         return virtual(model, row, *args, **kwargs)
     return wrapped
