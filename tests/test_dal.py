@@ -121,14 +121,6 @@ class Stuff(Model):
     def eval_total_m(self, row):
         return row.price*row.quantity
 
-    @rowattr('totalv2', bind_to_model=False)
-    def eval_total_v2(self, row):
-        return row.stuffs.price*row.stuffs.quantity
-
-    @rowmethod('totalm2', bind_to_model=False)
-    def eval_total_m2(self, row):
-        return row.stuffs.price*row.stuffs.quantity
-
     @classmethod
     def method_test(cls, t):
         return cls.db, cls.table, t
@@ -387,13 +379,11 @@ def test_rowattrs(db):
     db.commit()
     row = db(db.Stuff).select().first()
     assert row.totalv == 12.95*3
-    assert row.totalv2 == 12.95*3
 
 
 def test_rowmethods(db):
     row = db(db.Stuff).select().first()
     assert row.totalm() == 12.95*3
-    assert row.totalm2() == 12.95*3
 
 
 def test_modelmethods(db):
