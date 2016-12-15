@@ -58,8 +58,9 @@ class Form(TAG):
     def _preprocess_(self, **kwargs):
         #: process attributes
         self.attributes = {}
+        self.attributes.update(kwargs)
         for key, val in Form.default_attrs.items():
-            self.attributes[key] = kwargs.get(key, val)
+            self.attributes[key] = self.attributes.get(key, val)
         self.attributes['formstyle'] = self.attributes.get(
             'formstyle', self._get_default_style())
         #: init the form
@@ -333,6 +334,10 @@ class FormStyle(object):
 
     @staticmethod
     def widget_int(attr, field, value, _class='int', _id=None):
+        return FormStyle.widget_string(attr, field, value, _class, _id)
+
+    @staticmethod
+    def widget_bigint(attr, field, value, _class='int', _id=None):
         return FormStyle.widget_string(attr, field, value, _class, _id)
 
     @staticmethod
