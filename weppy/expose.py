@@ -13,6 +13,8 @@
 import re
 import os
 from collections import OrderedDict
+from datetime import datetime
+from functools import wraps
 from ._compat import PY2, with_metaclass, itervalues, iteritems, text_type
 from ._internal import warn_of_deprecation
 from .pipeline import Pipeline, Pipe
@@ -100,6 +102,88 @@ class Expose(with_metaclass(MetaExpose)):
             short = short.split(os.sep)[-1]
         return '.'.join(short.split(os.sep) + [self.func_name])
 
+    def store_argtypes(self):
+        types = {'int': [], 'date': []}
+        parsers = {
+            'int': Expose._parse_int_reqarg, 'date': Expose._parse_date_reqarg
+        }
+        opt_parsers = {
+            'int': Expose._parse_int_reqarg_opt,
+            'date': Expose._parse_date_reqarg_opt
+        }
+        pipeline = []
+        for key in types.keys():
+            optionals = []
+            for element in re.compile(
+                "\(([^<]+)?<{}\:(\w+)>\)\?".format(key)
+            ).findall(self.path):
+                optionals.append(element[1])
+            elements = set(
+                re.compile("<{}\:(\w+)>".format(key)).findall(self.path))
+            args = elements - set(optionals)
+            if args:
+                parser = self._wrap_reqargs_parser(parsers[key], args)
+                pipeline.append(parser)
+            if optionals:
+                parser = self._wrap_reqargs_parser(opt_parsers[key], optionals)
+                pipeline.append(parser)
+        if pipeline:
+            self.parse_reqargs = self._wrap_reqargs_pipeline(pipeline)
+        else:
+            self.parse_reqargs = self._parse_reqargs
+
+    @staticmethod
+    def _parse_reqargs(match):
+        return match.groupdict()
+
+    @staticmethod
+    def _parse_int_reqarg(args, route_args):
+        for arg in args:
+            route_args[arg] = int(route_args[arg])
+
+    @staticmethod
+    def _parse_int_reqarg_opt(args, route_args):
+        for arg in args:
+            if route_args[arg] is None:
+                continue
+            route_args[arg] = int(route_args[arg])
+
+    @staticmethod
+    def _parse_date_reqarg(args, route_args):
+        try:
+            for arg in args:
+                route_args[arg] = datetime.strptime(
+                    route_args[arg], "%Y-%m-%d")
+        except Exception:
+            raise HTTP(404)
+
+    @staticmethod
+    def _parse_date_reqarg_opt(args, route_args):
+        try:
+            for arg in args:
+                if route_args[arg] is None:
+                    continue
+                route_args[arg] = datetime.strptime(
+                    route_args[arg], "%Y-%m-%d")
+        except Exception:
+            raise HTTP(404)
+
+    @staticmethod
+    def _wrap_reqargs_parser(parser, args):
+        @wraps(parser)
+        def wrapped(route_args):
+            return parser(args, route_args)
+        return wrapped
+
+    @staticmethod
+    def _wrap_reqargs_pipeline(parsers):
+        def wrapped(match):
+            route_args = match.groupdict()
+            for parser in parsers:
+                parser(route_args)
+            return route_args
+        return wrapped
+
     @classmethod
     def build_regex(cls, schemes, hostname, methods, path):
         path = cls.REGEX_INT.sub('(?P<\g<1>>\d+)', path)
@@ -139,8 +223,7 @@ class Expose(with_metaclass(MetaExpose)):
             new_path = cls.override_midargs(new_path)
             if new_path == path:
                 return path
-            else:
-                path = new_path
+            path = new_path
 
     @classmethod
     def add_route(cls, route):
@@ -184,6 +267,7 @@ class Expose(with_metaclass(MetaExpose)):
         self.func = wrapped_func
         self.regex = self.build_regex(
             self.schemes, self.hostname, self.methods, self.path)
+        self.store_argtypes()
         route = (re.compile(self.regex), self)
         self.add_route(route)
         self._routes_str[self.name] = "%s %s://%s%s -> %s" % (
@@ -237,7 +321,7 @@ class Expose(with_metaclass(MetaExpose)):
             for regex, obj in itervalues(routes):
                 match = regex.match(expression)
                 if match:
-                    return obj, match.groupdict()
+                    return obj, obj.parse_reqargs(match)
         return None, {}
 
     @staticmethod
@@ -302,17 +386,10 @@ class ResponsePipe(Pipe):
             response.output = str(output)
 
 
-def url(path, args=[], params={}, extension=None, sign=None, scheme=None,
-        host=None, language=None):
-    """
-    usages:
-        url('index') # assumes app or default expose file
-        url('.index') # use current exposed file
-        url('mod.index') # index function in 'mod' module
-        url('static', 'file') # for static files
-        url('/myurl') # a normal url
-    """
-
+def url(
+    path, args=[], params={}, extension=None, sign=None, scheme=None,
+    host=None, language=None
+):
     if not isinstance(args, (list, tuple)):
         args = [args]
     # allow user to use url('static', 'file')
