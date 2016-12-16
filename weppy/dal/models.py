@@ -14,7 +14,10 @@ from collections import OrderedDict
 from .._compat import iteritems, itervalues, with_metaclass
 from ..datastructures import sdict
 from ..utils import cachedprop
-from .apis import compute, rowattr, rowmethod, scope
+from .apis import (
+    compute, rowattr, rowmethod, scope, belongs_to, refers_to, has_one,
+    has_many
+)
 from .helpers import (
     Callback, ReferenceData, make_tablename, wrap_scope_on_model,
     wrap_virtual_on_model
@@ -54,7 +57,6 @@ class MetaModel(type):
             belongs=OrderedDict(), refers=OrderedDict(),
             hasone=OrderedDict(), hasmany=OrderedDict()
         )
-        from .apis import belongs_to, refers_to, has_one, has_many
         for ref in belongs_to._references_.values():
             for item in ref.reference:
                 rkey = list(item)[0] if isinstance(item, dict) else item

@@ -20,6 +20,7 @@ from ._compat import SimpleCookie, iteritems, to_native
 from ._internal import ObjectProxy, LimitedStream
 from .datastructures import sdict
 from .helpers import get_flashed_messages
+from .language import T
 from .tags import htmlescape
 from .utils import cachedprop
 from .libs.contenttype import contenttype
@@ -194,9 +195,8 @@ class Current(threading.local):
         self.session = None
         self._language = environ.get('HTTP_ACCEPT_LANGUAGE')
 
-    @cachedprop
+    @property
     def T(self):
-        from .language import T
         return T
 
 

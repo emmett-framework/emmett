@@ -11,6 +11,7 @@
 """
 
 from .._compat import to_unicode
+from ..expose import url
 from ..extensions import TemplateLexer
 from .contents import SuperNode, BlockNode
 
@@ -110,7 +111,6 @@ class StaticLexer(WeppyLexer):
     evaluate_value = True
 
     def process(self, value):
-        from ..expose import url
         file_name = value.split("?")[0]
         surl = to_unicode(url('static', file_name))
         file_ext = file_name.rsplit(".", 1)[-1]

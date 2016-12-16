@@ -15,15 +15,20 @@
 
 import os
 
-from .._compat import PY2, implements_bool, implements_to_string, iteritems, \
-    iterkeys, to_unicode
+from .._compat import (
+    PY2, implements_bool, implements_to_string, iteritems, iterkeys,
+    to_unicode
+)
+from ..globals import current
 from ..tags import asis, htmlescape
 from ..utils import cachedprop
-from .helpers import regex_backslash, regex_plural, regex_plural_dict, \
-    regex_plural_tuple, regex_language, DEFAULT_NPLURALS, \
-    DEFAULT_GET_PLURAL_ID, DEFAULT_CONSTRUCT_PLURAL_FORM, \
-    read_possible_languages, read_dict, write_dict, read_plural_dict, \
-    write_plural_dict, ttab_in, ttab_out, upper_fun, title_fun, cap_fun
+from .helpers import (
+    regex_backslash, regex_plural, regex_plural_dict, regex_plural_tuple,
+    regex_language, DEFAULT_NPLURALS, DEFAULT_GET_PLURAL_ID,
+    DEFAULT_CONSTRUCT_PLURAL_FORM, read_possible_languages, read_dict,
+    write_dict, read_plural_dict, write_plural_dict, ttab_in, ttab_out,
+    upper_fun, title_fun, cap_fun
+)
 from .cache import get_from_cache
 
 if PY2:
@@ -65,7 +70,6 @@ class TElement(object):
         if lang is None:
             #: use language provided by http_accept_language or
             #  url (if forced by application), fallback on default language
-            from ..globals import current
             lang = current._language or self.T.current_languages[0]
         # return str(self.T.apply_filter(lang, self.m, self.s) if self.M else
         #            self.T.translate(lang, self.m, self.s))

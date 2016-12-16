@@ -10,7 +10,8 @@
 
 from functools import wraps
 from ._compat import basestring
-from .http import HTTP
+from .helpers import flash
+from .http import HTTP, redirect
 
 
 class Pipeline(object):
@@ -73,13 +74,11 @@ class RequirePipe(Pipe):
     def pipe(self, next_pipe, **kwargs):
         flag = self.condition()
         if not flag:
-            from .http import redirect
             if self.otherwise is not None:
                 if callable(self.otherwise):
                     return self.otherwise()
                 redirect(self.otherwise)
             else:
-                from .helpers import flash
                 flash('Insufficient privileges')
                 redirect('/')
         return next_pipe(**kwargs)

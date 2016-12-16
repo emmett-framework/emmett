@@ -13,10 +13,12 @@ import os
 import sys
 import re
 from datetime import datetime
+from .globals import current
 from .http import HTTP
 from .stream import stream_file_handler
 
-REGEX_STATIC = re.compile('^/(?P<l>\w+/)?static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
+REGEX_STATIC = re.compile(
+    '^/(?P<l>\w+/)?static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
 REGEX_WEPPY = re.compile('^/__weppy__/(?P<f>.*?)$')
 REGEX_RANGE = re.compile('^\s*(?P<start>\d*).*(?P<stop>\d*)\s*$')
 
@@ -24,7 +26,6 @@ REGEX_RANGE = re.compile('^\s*(?P<start>\d*).*(?P<stop>\d*)\s*$')
 def dynamic_handler(app, environ, start_response):
     try:
         #: init current
-        from .globals import current
         environ["wpp.application"] = app.name
         environ["wpp.apppath"] = app.root_path
         environ["wpp.appnow"] = app.now_reference
@@ -33,8 +34,9 @@ def dynamic_handler(app, environ, start_response):
         response = current.response
         app.route.dispatch()
         #: build HTTP response
-        http = HTTP(response.status, response.output, response.headers,
-                    response.cookies)
+        http = HTTP(
+            response.status, response.output, response.headers,
+            response.cookies)
     except HTTP:
         #: catch HTTP exceptions
         http = sys.exc_info()[1]
