@@ -51,6 +51,7 @@ class Expose(with_metaclass(MetaExpose)):
     REGEX_ANY = re.compile('<any\:(\w+)>')
     REGEX_ALPHA = re.compile('<alpha\:(\w+)>')
     REGEX_DATE = re.compile('<date\:(\w+)>')
+    REGEX_FLOAT = re.compile('<float\:(\w+)>')
     REGEX_DECORATION = re.compile(
         '(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
 
@@ -103,16 +104,18 @@ class Expose(with_metaclass(MetaExpose)):
         return '.'.join(short.split(os.sep) + [self.func_name])
 
     def store_argtypes(self):
-        types = {'int': [], 'date': []}
         parsers = {
-            'int': Expose._parse_int_reqarg, 'date': Expose._parse_date_reqarg
+            'int': Expose._parse_int_reqarg,
+            'float': Expose._parse_float_reqarg,
+            'date': Expose._parse_date_reqarg
         }
         opt_parsers = {
             'int': Expose._parse_int_reqarg_opt,
+            'float': Expose._parse_float_reqarg_opt,
             'date': Expose._parse_date_reqarg_opt
         }
         pipeline = []
-        for key in types.keys():
+        for key in parsers.keys():
             optionals = []
             for element in re.compile(
                 "\(([^<]+)?<{}\:(\w+)>\)\?".format(key)
@@ -147,6 +150,18 @@ class Expose(with_metaclass(MetaExpose)):
             if route_args[arg] is None:
                 continue
             route_args[arg] = int(route_args[arg])
+
+    @staticmethod
+    def _parse_float_reqarg(args, route_args):
+        for arg in args:
+            route_args[arg] = float(route_args[arg])
+
+    @staticmethod
+    def _parse_float_reqarg_opt(args, route_args):
+        for arg in args:
+            if route_args[arg] is None:
+                continue
+            route_args[arg] = float(route_args[arg])
 
     @staticmethod
     def _parse_date_reqarg(args, route_args):
@@ -191,6 +206,7 @@ class Expose(with_metaclass(MetaExpose)):
         path = cls.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
         path = cls.REGEX_ALPHA.sub('(?P<\g<1>>[^/\W\d_]+)', path)
         path = cls.REGEX_DATE.sub('(?P<\g<1>>\d{4}-\d{2}-\d{2})', path)
+        path = cls.REGEX_FLOAT.sub('(?P<\g<1>>\d+\.\d+)', path)
         re_schemes = ('|'.join(schemes)).lower()
         re_methods = ('|'.join(methods)).lower()
         re_hostname = re.escape(hostname) if hostname else '[^/]*'
