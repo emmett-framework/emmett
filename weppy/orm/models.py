@@ -611,11 +611,6 @@ class Model(with_metaclass(MetaModel)):
             return cls.table[args[0]]
         return cls.table(**kwargs)
 
-    @classmethod
-    def form(cls, record=None, **kwargs):
-        from ..forms import ModelForm
-        return ModelForm(cls.table, record, **kwargs)
-
     @rowmethod('update_record')
     def _update_record(self, row, **fields):
         newfields = fields or dict(row)

@@ -9,11 +9,12 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from functools import wraps
 from ._compat import iteritems, iterkeys
 from ._internal import warn_of_deprecation
 from .datastructures import sdict
 from .globals import current, request, session
-from .orm.objects import Field
+from .orm import Field, Model
 from .security import CSRFStorage
 from .tags import TAG, tag, cat, asis
 from .utils import cachedprop
@@ -542,3 +543,14 @@ class FormStyle(object):
 
     def render(self):
         return tag.form(self.parent, **self.attr)
+
+
+#: patch Model to add a 'form' method
+def add_forms_on_model(cls):
+    @wraps(cls)
+    def wrapped(model, *args, **kwargs):
+        return cls(model.table, *args, **kwargs)
+    return wrapped
+
+
+setattr(Model, 'form', classmethod(add_forms_on_model(ModelForm)))
