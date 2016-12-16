@@ -14,6 +14,8 @@ Next
 - Removed `bind_to_model` option from `rowattr` and `rowmethod`
 - Optimized rows parsing in ORM adapters
 - Improved caching techniques on selected records relations
+- Added automatic casting of route variables
+- Added support for float variable rules
 
 
 Version 0.8
