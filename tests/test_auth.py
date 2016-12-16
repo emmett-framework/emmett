@@ -11,7 +11,7 @@
 
 import pytest
 from weppy import App, sdict
-from weppy.dal import DAL, Field, Model, has_many, belongs_to
+from weppy.orm import Database, Field, Model, has_many, belongs_to
 from weppy.tools import Auth
 from weppy.tools.auth.models import AuthUser
 
@@ -28,7 +28,7 @@ class Thing(Model):
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
-    db = DAL(app, config=sdict(uri='sqlite:memory'))
+    db = Database(app, config=sdict(uri='sqlite:memory'))
     auth = Auth(app, db, usermodel=User)
     db.define_models(Thing)
     return db

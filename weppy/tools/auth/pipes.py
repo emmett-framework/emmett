@@ -10,12 +10,12 @@
 """
 
 from datetime import timedelta
-from ...dal import Field
 from ...forms import Form
 from ...globals import request, session
 from ...helpers import flash
 from ...http import redirect
 from ...language import T
+from ...orm import Field
 from ...pipeline import Pipe
 
 

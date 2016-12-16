@@ -24,7 +24,7 @@ from .helpers import TimingHandler
 from .models import MetaModel
 
 
-class DALPipe(Pipe):
+class DatabasePipe(Pipe):
     def __init__(self, db):
         self.db = db
 
@@ -41,7 +41,7 @@ class DALPipe(Pipe):
         self.db._adapter.close()
 
 
-class DAL(_pyDAL):
+class Database(_pyDAL):
     serializers = {'json': _custom_json, 'xml': xml}
     logger = None
     uuid = lambda x: _uuid()
@@ -70,8 +70,8 @@ class DAL(_pyDAL):
 
     def __new__(cls, app, *args, **kwargs):
         config = kwargs.get('config', sdict()) or app.config.db
-        uri = config.uri or DAL.uri_from_config(config)
-        return super(DAL, cls).__new__(cls, uri, *args, **kwargs)
+        uri = config.uri or Database.uri_from_config(config)
+        return super(Database, cls).__new__(cls, uri, *args, **kwargs)
 
     def __init__(self, app, config=sdict(), pool_size=None, folder=None,
                  **kwargs):
@@ -102,16 +102,17 @@ class DAL(_pyDAL):
         if config.store_execution_timings:
             self.execution_handlers.append(TimingHandler)
         #: finally setup pyDAL instance
-        super(DAL, self).__init__(self.config.uri, pool_size, folder, **kwargs)
+        super(Database, self).__init__(
+            self.config.uri, pool_size, folder, **kwargs)
         patch_adapter(self._adapter)
 
     @property
     def pipe(self):
-        return DALPipe(self)
+        return DatabasePipe(self)
 
     @property
     def handler(self):
-        warn_of_deprecation('handler', 'pipe', 'DAL', 3)
+        warn_of_deprecation('handler', 'pipe', 'Database', 3)
         return self.pipe
 
     @property
@@ -165,14 +166,14 @@ class DAL(_pyDAL):
             self, q, ignore_common_filters=ignore_common_filters, model=model)
 
 
-def _DAL_unpickler(db_uid):
+def _Database_unpickler(db_uid):
     fake_app_obj = sdict(config=sdict(db=sdict()))
     fake_app_obj.config.db.adapter = '<zombie>'
-    return DAL(fake_app_obj, db_uid=db_uid)
+    return Database(fake_app_obj, db_uid=db_uid)
 
 
-def _DAL_pickler(db):
-    return _DAL_unpickler, (db._db_uid,)
+def _Database_pickler(db):
+    return _Database_unpickler, (db._db_uid,)
 
 
-copyreg.pickle(DAL, _DAL_pickler, _DAL_unpickler)
+copyreg.pickle(Database, _Database_pickler, _Database_unpickler)

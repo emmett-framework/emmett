@@ -45,13 +45,14 @@ def find_best_app(module):
     )
 
 
-def find_dal(module, var_name=None):
-    #: Given a module instance this tries to find the dal instances
+def find_db(module, var_name=None):
+    #: Given a module instance this tries to find the database instances
     #  in the module.
     if var_name:
         return [getattr(module, var_name)]
-    from .dal import DAL
-    matches = [v for k, v in iteritems(module.__dict__) if isinstance(v, DAL)]
+    from .orm import Database
+    matches = [
+        v for k, v in iteritems(module.__dict__) if isinstance(v, Database)]
 
     return matches
 
@@ -157,11 +158,11 @@ class ScriptInfo(object):
         self._loaded_app = a
         return a
 
-    def load_dal(self):
+    def load_db(self):
         if self.app_import_path is None:
             raise Exception("Could not locate application.")
         module, mod, app_obj = get_app_module(self.app_import_path)
-        return find_dal(mod, self.db_var_name)
+        return find_db(mod, self.db_var_name)
 
 
 pass_script_info = click.make_pass_decorator(ScriptInfo)
@@ -300,10 +301,10 @@ def migrations_cli():
 @click.option('--verbose', '-v', default=False, is_flag=True)
 @pass_script_info
 def migrations_status(info, verbose):
-    from .dal.migrations.commands import status
+    from .orm.migrations.commands import status
     app = info.load_app()
-    dals = info.load_dal()
-    status(app, dals, verbose)
+    dbs = info.load_db()
+    status(app, dbs, verbose)
 
 
 @migrations_cli.command('history', short_help="Shows migrations history.")
@@ -311,10 +312,10 @@ def migrations_status(info, verbose):
 @click.option('--verbose', '-v', default=False, is_flag=True)
 @pass_script_info
 def migrations_history(info, range, verbose):
-    from .dal.migrations.commands import history
+    from .orm.migrations.commands import history
     app = info.load_app()
-    dals = info.load_dal()
-    history(app, dals, range, verbose)
+    dbs = info.load_db()
+    history(app, dbs, range, verbose)
 
 
 @migrations_cli.command(
@@ -324,10 +325,10 @@ def migrations_history(info, range, verbose):
 @click.option('-head', default='head', help='The migration to generate from')
 @pass_script_info
 def migrations_generate(info, message, head):
-    from .dal.migrations.commands import generate
+    from .orm.migrations.commands import generate
     app = info.load_app()
-    dals = info.load_dal()
-    generate(app, dals, message, head)
+    dbs = info.load_db()
+    generate(app, dbs, message, head)
 
 
 @migrations_cli.command('new', short_help='Generate a new empty migration.')
@@ -336,10 +337,10 @@ def migrations_generate(info, message, head):
 @click.option('-head', default='head', help='The migration to generate from')
 @pass_script_info
 def migrations_new(info, message, head):
-    from .dal.migrations.commands import new
+    from .orm.migrations.commands import new
     app = info.load_app()
-    dals = info.load_dal()
-    new(app, dals, message, head)
+    dbs = info.load_db()
+    new(app, dbs, message, head)
 
 
 @migrations_cli.command(
@@ -348,10 +349,10 @@ def migrations_new(info, message, head):
               help='The migration to upgrade to.')
 @pass_script_info
 def migrations_up(info, revision):
-    from .dal.migrations.commands import up
+    from .orm.migrations.commands import up
     app = info.load_app()
-    dals = info.load_dal()
-    up(app, dals, revision)
+    dbs = info.load_db()
+    up(app, dbs, revision)
 
 
 @migrations_cli.command(
@@ -360,10 +361,10 @@ def migrations_up(info, revision):
               help='The migration to downgrade to.')
 @pass_script_info
 def migrations_down(info, revision):
-    from .dal.migrations.commands import down
+    from .orm.migrations.commands import down
     app = info.load_app()
-    dals = info.load_dal()
-    down(app, dals, revision)
+    dbs = info.load_db()
+    down(app, dbs, revision)
 
 
 def main(as_module=False):
@@ -384,6 +385,7 @@ def main(as_module=False):
         name = None
 
     cli.main(args=args, prog_name=name)
+
 
 if __name__ == '__main__':
     main(as_module=True)

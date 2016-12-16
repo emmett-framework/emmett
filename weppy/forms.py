@@ -10,14 +10,15 @@
 """
 
 from ._compat import iteritems, iterkeys
-from .dal import Field
+from ._internal import warn_of_deprecation
 from .datastructures import sdict
 from .globals import current, request, session
+from .orm.objects import Field
 from .security import CSRFStorage
 from .tags import TAG, tag, cat, asis
 from .utils import cachedprop
 
-__all__ = ['Form', 'DALForm']
+__all__ = ['Form', 'ModelForm']
 
 
 class Form(TAG):
@@ -207,7 +208,7 @@ class Form(TAG):
         return self._render().to_html()
 
 
-class DALForm(Form):
+class ModelForm(Form):
     def __init__(self, table, record=None, record_id=None, fields=None,
                  exclude_fields=[], **attributes):
         self.table = table
@@ -299,6 +300,12 @@ class DALForm(Form):
                     self.input_params[field.name] = self.record[field.name]
                 self.input_params[field.name] = field.formatter(
                     self.input_params[field.name])
+
+
+class DALForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        warn_of_deprecation('DALForm', 'ModelForm')
+        super(DALForm, self).__init__(*args, **kwargs)
 
 
 class FormStyle(object):

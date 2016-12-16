@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    tests.dal
+    tests.orm
     ---------
 
     Test pyDAL implementation over weppy.
@@ -15,7 +15,7 @@ from pydal.objects import Table
 from pydal import Field as _Field
 
 from weppy import App, sdict
-from weppy.dal import DAL, Field, Model, compute, before_insert, \
+from weppy.orm import Database, Field, Model, compute, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
     rowattr, rowmethod, has_one, has_many, belongs_to, scope
 from weppy.validators import isntEmpty, hasLength
@@ -288,7 +288,7 @@ class Subscription(Model):
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
-    db = DAL(app, config=sdict(uri='sqlite://dal.db'))
+    db = Database(app, config=sdict(uri='sqlite://dal.db'))
     db.define_models([
         Stuff, Person, Thing, Feature, Price, Doctor, Patient, Appointment,
         User, Organization, Membership, House, Mouse, NeedSplit, Zoo, Animal,
@@ -298,7 +298,7 @@ def db():
 
 
 def test_db_instance(db):
-    assert isinstance(db, DAL)
+    assert isinstance(db, Database)
 
 
 def test_table_definition(db):

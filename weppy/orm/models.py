@@ -613,8 +613,8 @@ class Model(with_metaclass(MetaModel)):
 
     @classmethod
     def form(cls, record=None, **kwargs):
-        from ..forms import DALForm
-        return DALForm(cls.table, record, **kwargs)
+        from ..forms import ModelForm
+        return ModelForm(cls.table, record, **kwargs)
 
     @rowmethod('update_record')
     def _update_record(self, row, **fields):

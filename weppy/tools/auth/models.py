@@ -11,8 +11,8 @@
 
 from datetime import datetime
 from ..._compat import iterkeys
-from ...dal import Model, Field, before_insert, rowmethod
 from ...globals import current, request
+from ...orm import Model, Field, before_insert, rowmethod
 from ...security import uuid
 
 

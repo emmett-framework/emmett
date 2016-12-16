@@ -12,7 +12,7 @@
 import pytest
 from datetime import datetime, timedelta
 from weppy import App, sdict
-from weppy.dal import DAL, Model, Field, has_many, belongs_to
+from weppy.orm import Database, Model, Field, has_many, belongs_to
 from weppy.validators import isEmptyOr, hasLength, isInt, isFloat, isDate, \
     isTime, isDatetime, isJSON, isntEmpty, inSet, inDB, isEmail, isUrl, isIP, \
     isImage, inRange, Equals, Lower, Upper, Cleanup, Urlify, Crypt, notInDB, \
@@ -211,7 +211,7 @@ class Mixed(Model):
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
-    db = DAL(app, config=sdict(uri='sqlite://validators.db'))
+    db = Database(app, config=sdict(uri='sqlite://validators.db'))
     db.define_models([
         A, AA, AAA, B, Consist, Len, Inside, Num, Eq, Match, Anyone, Proc,
         Person, Thing, Allowed, Mixed

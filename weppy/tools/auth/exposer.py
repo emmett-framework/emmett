@@ -14,11 +14,11 @@
 """
 
 import time
-from ...dal import Field
-from ...forms import Form, DALForm
+from ...forms import Form, ModelForm
 from ...globals import request, session
 from ...helpers import flash, abort
 from ...http import redirect
+from ...orm import Field
 from .helpers import callback, replace_id, get_vars_next
 from .pipes import DefaultLoginHandler
 
@@ -397,7 +397,7 @@ class Exposer(object):
                 if field.type != 'password' and field.writable]
             self.settings.profile_fields = {
                 'readable': profile_fields, 'writable': profile_fields}
-        form = DALForm(
+        form = ModelForm(
             self.auth.table_user,
             record_id=self.auth.user.id,
             fields=self.settings.profile_fields,
