@@ -22,6 +22,8 @@ Let's see them in detail.
 
 ### Path
 
+*Changed in 1.0*
+
 The `path` parameter is the first and the most important parameter you can
 pass to `route`. In fact, it tells weppy which URL should the function been
 exposed on; still, you've seen from the code that `path` is `None` by default.
@@ -48,7 +50,6 @@ def user(username):
 
 @app.route('/double/<int:number>')
 def double(number):
-    number = int(number)
     return "%d * 2 = %d" % (number, number*2)
 ```
 
@@ -58,6 +59,7 @@ you can use:
 | type | specification |
 |---|---|
 | int | accepts integers |
+| float | accepts floats in dot notation |
 | str | accepts strings |
 | date | accepts date strings in format *YYYY-MM-DD* |
 | alpha | accepts strings containing only literals |

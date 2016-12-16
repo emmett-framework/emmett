@@ -58,7 +58,6 @@ def user(username):
 
 @app.route('/double/<int:number>')
 def double(number):
-    number = int(number)
     return "%d * 2 = %d" % (number, number*2)
 ```
 
@@ -68,15 +67,11 @@ complete list:
 | type | specification |
 |---|---|
 | int | accepts integers |
+| float | accepts floats in dot notation |
 | str | accepts strings |
 | date | accepts date strings in format *YYYY-MM-DD* |
 | alpha | accepts strings containing only literals |
 | any | accepts any path (also with slashes) |
-
-> **Note:**    
-> the type specification won't change the type of the input variables. That will
-always be string, as they are parts of the URL. If you want to use these parts as
-real integers or dates, you have to parse them according to your needs.
 
 So, basically, if we try to open the URL for the `double` function of the last
 example with a string, like '/double/foo', it won't match and weppy will return
@@ -84,7 +79,7 @@ a 404 error.
 
 > – OK, fine. But, what if I want a conditional argument for my function?
 
-Just write the URL using the regex notation:
+Just write the URL putting the conditional part between parenthesis and a question mark at the end:
 
 ```python
 @app.route("/profile(/<int:user_id>)?")
