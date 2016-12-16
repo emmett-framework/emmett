@@ -13,6 +13,7 @@ from functools import wraps
 from ._compat import iteritems, iterkeys
 from ._internal import warn_of_deprecation
 from .datastructures import sdict
+from .expose import Expose
 from .globals import current, request, session
 from .orm import Field, Model
 from .security import CSRFStorage
@@ -31,7 +32,6 @@ class Form(TAG):
 
     @staticmethod
     def _get_default_style():
-        from .expose import Expose
         return Expose.application.config.ui.forms_style or FormStyle
 
     def __init__(self, fields={}, **kwargs):
@@ -305,7 +305,8 @@ class ModelForm(Form):
 
 class DALForm(ModelForm):
     def __init__(self, *args, **kwargs):
-        warn_of_deprecation('DALForm', 'ModelForm')
+        warn_of_deprecation(
+            'weppy.forms.DALForm', 'weppy.forms.ModelForm', stack=3)
         super(DALForm, self).__init__(*args, **kwargs)
 
 
