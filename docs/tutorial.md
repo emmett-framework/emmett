@@ -97,7 +97,7 @@ tables:
 
 ```python
 from weppy import request, session
-from weppy.dal import Field, Model, belongs_to, has_many
+from weppy.orm import Model, Field, belongs_to, has_many
 from weppy.tools.auth import AuthUser
 
 class User(AuthUser):
@@ -169,10 +169,10 @@ We've defined our schema, so now it's time to add the database and the
 authorization system to bloggy. It's as simple as writing:
 
 ```python
-from weppy import DAL
+from weppy.orm import Database
 from weppy.tools import Auth
 
-db = DAL(app)
+db = Database(app)
 auth = Auth(app, db, usermodel=User)
 db.define_models(Post, Comment)
 ```
@@ -213,21 +213,16 @@ Now that the backend is ready, we can prepare to write and *expose* our function
 Exposing functions
 ------------------
 
-Before we can start writing the functions that will handle the clients' requests,
-we need to add the database and authorization **handlers** to our application,
-so that we can use them with our functions following the request flow.
+Before we can start writing the functions that will handle the clients' requests, we need to add the database and authorization **pipes** to our application, so that we can use them with our functions following the request flow.
 
-Moreover, to use the authorization module, we need to add a **sessions manager**
-to the application's handlers, too. In this tutorial, cookie support 
-for session will be enough, and we will use "Walternate" as a secret key
-for encrypting cookies.
+Moreover, to use the authorization module, we need to add a **sessions manager** to the application's pipeline, too. In this tutorial, cookie support for session will be enough, and we will use "Walternate" as a secret key for encrypting cookies.
 
 ```python
 from weppy.sessions import SessionCookieManager
-app.common_handlers = [
+app.pipeline = [
     SessionCookieManager('Walternate'),
-    db.handler,
-    auth.handler
+    db.pipe,
+    auth.pipe
 ]
 ```
 

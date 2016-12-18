@@ -1,5 +1,5 @@
 from weppy import App, request, session, url, redirect, abort
-from weppy.dal import DAL, Field, Model, belongs_to, has_many
+from weppy.orm import Database, Model, Field, belongs_to, has_many
 from weppy.tools import requires
 from weppy.tools.auth import Auth, AuthUser
 from weppy.sessions import SessionCookieManager
@@ -55,8 +55,9 @@ class Comment(Model):
         'date': False
     }
 
+
 #: init db and auth
-db = DAL(app)
+db = Database(app)
 auth = Auth(app, db, usermodel=User)
 db.define_models(Post, Comment)
 
@@ -81,10 +82,10 @@ def setup_admin():
 def setup():
     setup_admin()
 
-#: handlers
-app.common_handlers = [
-    SessionCookieManager('Walternate'),
-    db.handler, auth.handler
+
+#: pipeline
+app.pipeline = [
+    SessionCookieManager('Walternate'), db.pipe, auth.pipe
 ]
 
 
