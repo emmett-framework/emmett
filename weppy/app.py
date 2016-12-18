@@ -366,11 +366,11 @@ class AppModule(object):
         #: 1.0 deprecations
         if 'handlers' in kwargs:
             warn_of_deprecation('handlers', 'pipeline', 'route', 3)
-            pipeline = kwargs['handlers']
+            kwargs['pipeline'] = kwargs['handlers']
             del kwargs['handlers']
         if 'helpers' in kwargs:
             warn_of_deprecation('helpers', 'injectors', 'route', 3)
-            injectors = kwargs['helpers']
+            kwargs['injectors'] = kwargs['helpers']
             del kwargs['helpers']
         #/
         pipeline = kwargs.get('pipeline', [])
