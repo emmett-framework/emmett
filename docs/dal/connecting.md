@@ -4,7 +4,7 @@ Connections and transactions
 In order to start using a database in weppy, you have to initialize an instance of the `Database` class:
 
 ```python
-from weppy import Database
+from weppy.orm import Database
 
 db = Database(app)
 ```

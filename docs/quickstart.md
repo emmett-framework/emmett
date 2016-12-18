@@ -482,7 +482,7 @@ example, you can set an `onvalidation` method to run additional validation besid
 the fields' requirements.   
 
 You can also customize the form rendering and styling, or generate forms from
-database tables created with the integrated [DAL](./dal). Check out the [Forms
+database tables created with the integrated [ORM](./dal). Check out the [Forms
 chapter](./forms) of the documentation and the [weppy BS3 extension](#) which
 adds the Bootstrap 3 style to your forms.
 
