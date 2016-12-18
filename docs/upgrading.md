@@ -113,7 +113,7 @@ def dateroute(d):
     # code
 ```
 
-This would produce errors in weppy 1.0 since the d argument is already a `datetime` object. Just be sure to remove the parsing from your code.
+This would produce errors in weppy 1.0 since the `d` argument is already a `datetime` object. Just be sure to remove the parsing from your code.
 
 ### New features
 
@@ -121,7 +121,7 @@ weppy 1.0 introduces some new features you may take advantage of:
 
 - Application [modules](./app_and_modules#application-modules) nesting and inheritance
 - The float type is now available in [route variables](./routing#path)
-- *int*, *float* and *date* variable types are now automatically casted to the relevant objects
+- *int*, *float* and *date* route variable types are now automatically casted to the relevant objects
 
 
 Version 0.8
