@@ -8,14 +8,15 @@ database tables and generate forms for access control in your application.
 So, how do you use it? Let's find out with an example:
 
 ```python
-from weppy import App, DAL
+from weppy import App
+from weppy.orm import Database
 from weppy.tools import Auth
 from weppy.sessions import SessionCookieManager
 
 app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
 
-db = DAL(app)
+db = Database(app)
 auth = Auth(app, db)
 
 app.common_handlers = [
@@ -37,8 +38,7 @@ and open [http://127.0.0.1:8000/account](http://127.0.0.1:8000/account)
 in your browser. weppy should redirect you to the login page and show you
 the related form.
 
-> **Note:** weppy's `Auth` module requires session handling and a DAL instance
-activated on your application to work properly.
+> **Note:** weppy's `Auth` module requires session handling and a Database instance activated on your application to work properly.
 
 As you've figured out, the exposed `account` function will be responsible for
 your app's authorization flow. With the default settings, the `Auth` module 
@@ -193,7 +193,7 @@ be `AuthUser` and from there you can add your fields, like an avatar.
 You could define your `User` model like so:
 
 ```python
-from weppy.dal import Field
+from weppy import Field
 from weppy.tools.auth import AuthUser
 
 class User(AuthUser):

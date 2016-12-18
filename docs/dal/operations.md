@@ -52,7 +52,7 @@ weppy has also a more *low level* method to create records, that will skip the v
 As you can see, the `insert` method of the table defined by the model will return directly the `id` of the inserted record, since no validation was performed.
 
 > **Note:**    
-> Remember that if you're not in the request flow with the `DAL` handler, you have to commit your changes to effectively have them written into the database.
+> Remember that if you're not in the request flow with the `Database` handler, you have to commit your changes to effectively have them written into the database.
 
 ### Accessing the created record
 
@@ -92,7 +92,7 @@ class Event(Model):
     happens_at = Field('datetime')
 ```
 
-and you want to query all the events for a certain location. You can use your `DAL` instance and its `where` method for that:
+and you want to query all the events for a certain location. You can use your `Database` instance and its `where` method for that:
 
 ```python
 >>> db.where(Event.location == "New York")
@@ -178,7 +178,7 @@ The resulting `Set` will obviously be the same.
 
 ### Query using tables
 
-As we seen in the [models](./models) section, adding a model to your `DAL` instance will add a `Table` object accessible both with the model name and the table name.
+As we seen in the [models](./models) section, adding a model to your `Database` instance will add a `Table` object accessible both with the model name and the table name.
 
 Since the tables share the fields with models, you can use them for querying too. In fact you can write the same query in all these ways:
 
@@ -198,7 +198,7 @@ When you want to work with all the records of a table, you have two options, one
 ```python
 # from the model
 Event.all()
-# using DAL instance
+# using Database instance
 db(db.Event)
 ```
 

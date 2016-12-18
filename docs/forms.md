@@ -31,10 +31,10 @@ input passes the validation, the `accepted` attribute is set to `True`.
 The example above shows you that you can use this attribute to do things when
 clients submit the form, and the submitted values are stored in `form.params`.
 
-Forms with DAL entities
------------------------
+Forms with database entities
+----------------------------
 Forms are quite handy for inserting or editing data in your database, for this purpose
-weppy provides another class: `DALForm`. The usage is the same of the form,
+weppy provides another class: `ModelForm`. The usage is the same of the form,
 except that you call it directly from your model:
 
 ```python
@@ -47,7 +47,7 @@ def b():
     return dict(form=form)
 ```
 
-where, obviously, the `form()` method of the models is a shortcut for the `DALForm` class.
+where, obviously, the `form()` method of the models is a shortcut for the `ModelForm` class.
 
 > – Wait, what if I need to edit a record?
 
@@ -79,7 +79,7 @@ Here is the complete list of parameters accepted by `Form` class:
 | onvalidation | `None` | set an additional validation for the form |
 | upload | `None` | define a URL for download uploaded fields |
 
-`DALForm` class add some parameters to the `Form` ones:
+`ModelForm` class add some parameters to the `Form` ones:
 
 | parameter | description |
 | --- | --- |

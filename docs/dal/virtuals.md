@@ -14,7 +14,7 @@ Sometimes you need some field values to be *computed* using other fields' values
 A solution can be to compute the value when you change the price or the quantity of the item and store that value to the database too. In this case you can use the `compute` decorator:
 
 ```python
-from weppy.dal import Model, Field, compute
+from weppy.orm import Model, Field, compute
 
 class Item(Model):
     price = Field('float')
@@ -39,7 +39,7 @@ Virtual attributes are values returned by functions that will be injected to the
 To clarify this concept, we will consider the same example we gave for the *computed* attributes and we will replace them with the `rowattr` decorator instead:
 
 ```python
-from weppy.dal import Model, Field, rowattr
+from weppy.orm import Model, Field, rowattr
 
 class Item(Model):
     price = Field('float')
@@ -72,7 +72,7 @@ Similarly to virtual attributes, these methods are helpers injected to the rows 
 Let's consider again the same example we saw above, and let's use the `rowmethod` decorator:
 
 ```python
-from weppy.dal import Model, Field, rowmethod
+from weppy.orm import Model, Field, rowmethod
 
 class Item(Model):
     price = Field('float')
@@ -98,7 +98,7 @@ Field methods are a great instrument also to run database operations from the cu
 For example, let's say you have a table of messages referring to some topics and you want to easily get the next message from the current one. You can write down a method for that:
 
 ```python
-from weppy.dal import Model, belongs_to, rowmethod
+from weppy.orm import Model, belongs_to, rowmethod
 
 class Message(Model):
     belongs_to('topic', 'author')

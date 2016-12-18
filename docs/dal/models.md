@@ -6,7 +6,7 @@ A model is the single, definitive source of information about your data. It cont
 So, how a weppy model looks like? Thinking of a post inside a blog, an example model would be like this:
 
 ```python
-from weppy.dal import Field, Model
+from weppy.orm import Field, Model
 
 class Post(Model):
     author = Field()
@@ -23,15 +23,15 @@ As you can see, we defined three fields for our model, two of type string (is th
 
 As you will see in the next paragraphs, weppy models have some reserved attributes, like `validation` which define some options for the fields inside your models. All the options listed in the next sections are available also as parameters of the `Field` class, and you can choose how to organize your code depending on your needs.
 
-In order to use the model just defined in your application you must register it using the `define_models()` method of the `DAL` class of weppy, as we seen in the [first example](./):
+In order to use the model just defined in your application you must register it using the `define_models()` method of the `Database` class of weppy, as we seen in the [first example](./):
 
 ```python
-from weppy import DAL
-db = DAL(app)
+from weppy.orm import Database
+db = Database(app)
 db.define_models(Post)
 ```
 
-This will create a `Table` object on your `DAL` instance accessible both with model name and table name:
+This will create a `Table` object on your `Database` instance accessible both with model name and table name:
 
 ```python
 db.Post
@@ -194,7 +194,7 @@ indexes = {
 }
 ```
 
-> **Note:** indexes are available only when using DAL with [migrations](./migrations) enabled.
+> **Note:** indexes are available only when using Database with [migrations](./migrations) enabled.
 
 As you can see, weppy supports different formats for indexes, since we defined:
 

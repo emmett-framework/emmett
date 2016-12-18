@@ -41,7 +41,7 @@ So, how do you use weppy's ORM? Let's see it with an example:
 
 ```python
 from weppy import App
-from weppy.dal import DAL, Model, Field
+from weppy.orm import Database, Model, Field
 
 app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
@@ -51,7 +51,7 @@ class Post(Model):
     title = Field()
     body = Field('text')
 
-db = DAL(app)
+db = Database(app)
 db.define_models(Post)
 
 app.common_handlers = [db.handler]

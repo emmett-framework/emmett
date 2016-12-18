@@ -43,7 +43,7 @@ class Comment(TimeStampModel):
     text = Field('text')
 ```
 
-Then if you pass just these models to your `DAL` instance:
+Then if you pass just these models to your `Database` instance:
 
 ```python
 db.define_models(Post, Comment)

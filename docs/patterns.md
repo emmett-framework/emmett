@@ -152,12 +152,13 @@ two sub-packages *controllers* and *models*, each with an empty *\__init__.py* f
 With this structure, your application's *\__init__.py* would look like this:
 
 ```python
-from weppy import app, DAL
+from weppy import App
+from weppy.orm import Database
 
 app = App(__name__)
 app.url_default_namespace = "main"
 
-db = DAL()
+db = Database()
 from models.user import User
 form models.article import Post
 db.define_models([User, Post])
