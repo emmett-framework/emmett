@@ -30,6 +30,16 @@ Next paragraphs describe all these relevant changes.
 
 *section in development*
 
+### DAL deprecation in favour of the orm package
+
+Since the first version, the package relevant to database utilities was named *dal* in weppy. So it was for the class responsible of creating database instance, where *DAL* was an acronym for *Database Absraction Layer*.
+
+We think this nomenclature wasn't immediate at all; moreover, during releases weppy built a real orm above pyDAL, and we felt the old name had to be changed.
+
+Since weppy 1.0 all the imports from `weppy.dal` should be moved to `weppy.orm`, and the `DAL` class is now the more convenient `Database` class.
+
+The old package and class are still available, but we suggest you to change the relevant code in your application since in the next versions of weppy these won't be available.
+
 ### Breaking changes
 
 #### Removed the bind\_to\_model option from virtual decorators
@@ -90,11 +100,28 @@ for user in User.all().select(including='posts'):
         print(post.name)
 ```
 
+#### Automatic casting of route variables
+
+In weppy 1.0 the route variables of *int* and *date* types are automatically casted to the relevant objects.
+
+While for the *int* variables this won't break your code, you should check wheter you expected a string object in routes for dates:
+
+```python
+@app.route('/dateroute/<date:d>')
+def dateroute(d):
+    d = datetime.strptime(d, "%Y-%m-%d")
+    # code
+```
+
+This would produce errors in weppy 1.0 since the d argument is already a `datetime` object. Just be sure to remove the parsing from your code.
+
 ### New features
 
 weppy 1.0 introduces some new features you may take advantage of:
 
 - Application [modules](./app_and_modules#application-modules) nesting and inheritance
+- The float type is now available in [route variables](./routing#path)
+- *int*, *float* and *date* variable types are now automatically casted to the relevant objects
 
 
 Version 0.8
