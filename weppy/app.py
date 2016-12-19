@@ -23,7 +23,10 @@ from .extensions import Extension, TemplateExtension
 from .globals import current
 from .templating.core import Templater
 from .utils import dict_to_sdict, cachedprop, read_file
-from .wsgi import error_handler
+from .wsgi import (
+    error_handler, static_handler, skip_static_handler,
+    _nolang_static_handler, _lang_static_handler
+)
 
 
 class App(object):
@@ -35,23 +38,24 @@ class App(object):
         config_folder='config'
     ):
         self.import_name = import_name
-        #: Set paths for the application
+        #: set paths for the application
         if root_path is None:
             root_path = get_root_path(self.import_name)
         self.root_path = root_path
         self.static_path = os.path.join(self.root_path, "static")
         self.template_path = os.path.join(self.root_path, template_folder)
         self.config_path = os.path.join(self.root_path, config_folder)
-        #: The click command line context for this application.
+        #: the click command line context for this application
         self.cli = click.Group(self)
-        #: Init the configuration
+        #: init the configuration
         self.config = ConfigData()
         self.config.hostname_default = None
         self.config.static_version = None
         self.config.static_version_urls = None
+        self.config.handle_static = True
         self.config.url_default_namespace = None
         self.config.templates_auto_reload = False
-        #: Trying to create needed folders
+        #: try to create needed folders
         create_missing_app_folders(self)
         #: init expose module
         Expose.application = self
@@ -73,6 +77,7 @@ class App(object):
         self.template_extensions = []
         self.template_preloaders = {}
         self.template_lexers = {}
+        #: init templater
         self.templater = Templater(self)
 
     @cachedprop
@@ -238,6 +243,18 @@ class App(object):
             from .testing import WeppyTestClient
             tclass = WeppyTestClient
         return tclass(self, use_cookies=use_cookies, **kwargs)
+
+    @cachedprop
+    def common_static_handler(self):
+        if self.config.handle_static:
+            return static_handler
+        return skip_static_handler
+
+    @cachedprop
+    def static_handler(self):
+        if self.language_force_on_url:
+            return _lang_static_handler
+        return _nolang_static_handler
 
     def wsgi_handler(self, environ, start_request):
         return error_handler(self, environ, start_request)
