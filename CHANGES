@@ -15,7 +15,9 @@ Next
 - Optimized rows parsing in ORM adapters
 - Improved caching techniques on selected records relations
 - Added automatic casting of route variables
-- Added support for float variable rules
+- Added support for float variable rules in routes
+- Added support for multiple paths in routes
+- Enhanced wsgi request handling performance
 
 
 Version 0.8
