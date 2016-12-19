@@ -303,6 +303,10 @@ class Route(object):
     def hostname(self):
         return self.exposer.hostname
 
+    @property
+    def prefix(self):
+        return self.exposer.prefix
+
     def build_argparser(self):
         parsers = {
             'int': Route._parse_int_reqarg,
