@@ -286,7 +286,7 @@ class Route(object):
         self.exposer = exposer
         self.path = path
         self.name = self.exposer.name if idx == 0 else \
-            "{}_{}".format(self.exposer.name, idx)
+            "{}.{}".format(self.exposer.name, idx)
         self.schemes = self.exposer.schemes
         self.methods = self.exposer.methods
         self.pipeline = self.exposer.pipeline
