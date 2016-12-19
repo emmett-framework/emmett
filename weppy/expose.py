@@ -56,7 +56,7 @@ class Expose(with_metaclass(MetaExpose)):
         '(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
 
     def __init__(
-        self, paths=[], name=None, template=None, pipeline=None,
+        self, paths=None, name=None, template=None, pipeline=None,
         injectors=None, schemes=None, hostname=None, methods=None, prefix=None,
         template_folder=None, template_path=None, **kwargs
     ):
@@ -70,8 +70,10 @@ class Expose(with_metaclass(MetaExpose)):
             self.methods = (self.methods, )
         self.hostname = hostname
         self.paths = paths
+        if self.paths is None:
+            self.paths = []
         if not isinstance(self.paths, (list, tuple)):
-            self.paths = (self.paths, )
+            self.paths = [self.paths]
         self.name = name
         self.template = template
         self.template_folder = template_folder
