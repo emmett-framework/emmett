@@ -56,20 +56,22 @@ class Expose(with_metaclass(MetaExpose)):
         '(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
 
     def __init__(
-        self, path=None, name=None, template=None, pipeline=None,
+        self, paths=[], name=None, template=None, pipeline=None,
         injectors=None, schemes=None, hostname=None, methods=None, prefix=None,
         template_folder=None, template_path=None, **kwargs
     ):
-        if callable(path):
+        if callable(paths):
             raise SyntaxError('Use @route(), not @route.')
         self.schemes = schemes or ('http', 'https')
         if not isinstance(self.schemes, (list, tuple)):
-            self.schemes = (self.schemes,)
+            self.schemes = (self.schemes, )
         self.methods = methods or ('get', 'post', 'head')
         if not isinstance(self.methods, (list, tuple)):
-            self.methods = (self.methods,)
+            self.methods = (self.methods, )
         self.hostname = hostname
-        self.path = path
+        self.paths = paths
+        if not isinstance(self.paths, (list, tuple)):
+            self.paths = (self.paths, )
         self.name = name
         self.template = template
         self.template_folder = template_folder
@@ -101,18 +103,216 @@ class Expose(with_metaclass(MetaExpose)):
         # allow only one level of naming if name is builded
         if len(short.split(os.sep)) > 1:
             short = short.split(os.sep)[-1]
-        return '.'.join(short.split(os.sep) + [self.func_name])
+        return '.'.join(short.split(os.sep) + [self.f_name])
 
-    def store_argtypes(self):
+    @classmethod
+    def build_regex(cls, schemes, hostname, methods, path):
+        path = cls.REGEX_INT.sub('(?P<\g<1>>\d+)', path)
+        path = cls.REGEX_STR.sub('(?P<\g<1>>[^/]+)', path)
+        path = cls.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
+        path = cls.REGEX_ALPHA.sub('(?P<\g<1>>[^/\W\d_]+)', path)
+        path = cls.REGEX_DATE.sub('(?P<\g<1>>\d{4}-\d{2}-\d{2})', path)
+        path = cls.REGEX_FLOAT.sub('(?P<\g<1>>\d+\.\d+)', path)
+        re_schemes = ('|'.join(schemes)).lower()
+        re_methods = ('|'.join(methods)).lower()
+        re_hostname = re.escape(hostname) if hostname else '[^/]*'
+        expr = '^(%s) (%s)\://(%s)(%s)$' % \
+            (re_methods, re_schemes, re_hostname, path)
+        return expr
+
+    @staticmethod
+    def remove_trailslash(path):
+        if path.endswith("/") and len(path) > 1:
+            return path[:-1]
+        return path
+
+    @staticmethod
+    def override_midargs(path):
+        args = path.split("//")
+        if len(args) > 1:
+            path = "/{{:arg:}}/".join(args)
+        return path
+
+    @classmethod
+    def remove_decoration(cls, path):
+        """
+        converts somehing like "/junk/test_args/<str:a>(/<int:b>)?"
+        into something like    "/junk/test_args" for reverse routing
+        """
+        while True:
+            new_path = cls.REGEX_DECORATION.sub('', path)
+            new_path = cls.remove_trailslash(new_path)
+            new_path = cls.override_midargs(new_path)
+            if new_path == path:
+                return path
+            path = new_path
+
+    @classmethod
+    def add_route(cls, route):
+        host = route[1].hostname or '__any__'
+        if host not in cls.routes_in:
+            cls.routes_in[host] = OrderedDict()
+            cls._get_routes_in_for_host = cls._get_routes_in_for_host_all
+        cls.routes_in[host][route[1].name] = route
+        cls.routes_out[route[1].name] = {
+            'host': route[1].hostname,
+            'path': cls.remove_decoration(route[1].path)}
+
+    def __call__(self, f):
+        self.f_name = f.__name__
+        self.filename = os.path.realpath(f.__code__.co_filename)
+        self.hostname = self.hostname or \
+            self.application.config.hostname_default
+        if not self.paths:
+            self.paths.append("/" + f.__name__)
+        if not self.name:
+            self.name = self.build_name()
+        # is it good?
+        if self.name.endswith("."):
+            self.name = self.name + self.f_name
+        #
+        if self.prefix:
+            if not self.prefix.startswith('/'):
+                self.prefix = '/' + self.prefix
+        if not self.template:
+            self.template = self.f_name + \
+                self.application.template_default_extension
+        if self.template_folder:
+            self.template = os.path.join(self.template_folder, self.template)
+        self.template_path = self.template_path or \
+            self.application.template_path
+        wrapped_f = Pipeline(self.pipeline)(f)
+        self.f = wrapped_f
+        for idx, path in enumerate(self.paths):
+            routeobj = Route(self, path, idx)
+            route = (re.compile(routeobj.regex), routeobj)
+            self.add_route(route)
+            self._routes_str[routeobj.name] = "%s %s://%s%s -> %s" % (
+                "|".join(s.upper() for s in self.methods),
+                "|".join(s for s in self.schemes),
+                self.hostname or "<any>",
+                routeobj.path,
+                self.name
+            )
+        for proc_handler in self.processors:
+            proc_handler(self)
+        self._routing_stack.pop()
+        return f
+
+    @classmethod
+    def match_lang(cls, path):
+        default = cls.application.language_default
+        if len(path) <= 1:
+            return path, default
+        clean_path = path.lstrip('/')
+        lang = clean_path.split('/', 1)[0]
+        if lang in cls.application.languages and lang != default:
+            new_path = '/'.join([arg for arg in clean_path.split('/')[1:]])
+            if path.startswith('/'):
+                new_path = '/' + new_path
+            return new_path, lang
+        return path, default
+
+    @classmethod
+    def _get_routes_in_for_host_all(cls, hostname):
+        return (
+            cls.routes_in.get(hostname, cls.routes_in['__any__']),
+            cls.routes_in['__any__'])
+
+    @classmethod
+    def _get_routes_in_for_host_simple(cls, hostname):
+        return (cls.routes_in['__any__'],)
+
+    @classmethod
+    def match(cls, request):
+        path = cls.remove_trailslash(request.path_info)
+        if cls.application.language_force_on_url:
+            path, lang = cls.match_lang(path)
+            request.language = lang
+            current._language = request.language
+        else:
+            request.language = None
+        expression = '%s %s://%s%s' % (
+            request.method, request.scheme, request.hostname, path)
+        for routes in cls._get_routes_in_for_host(request.hostname):
+            for regex, obj in itervalues(routes):
+                match = regex.match(expression)
+                if match:
+                    return obj, obj.parse_reqargs(match)
+        return None, {}
+
+    @staticmethod
+    def _before_dispatch(route):
+        #: call pipeline `before_flow` method
+        for pipe in route.pipeline:
+            pipe.open()
+
+    @staticmethod
+    def _after_dispatch(route):
+        #: call pipeline `after_flow` method
+        for pipe in reversed(route.pipeline):
+            pipe.close()
+
+    @classmethod
+    def dispatch(cls):
+        #: get the right exposed function
+        request = current.request
+        route, reqargs = cls.match(request)
+        if not route:
+            raise HTTP(404, body="Invalid action\n")
+        request.name = route.name
+        cls._before_dispatch(route)
+        try:
+            route.f(**reqargs)
+        except:
+            cls._after_dispatch(route)
+            raise
+        cls._after_dispatch(route)
+
+    @classmethod
+    def static_versioning(cls):
+        return (cls.application.config.static_version_urls and
+                cls.application.config.static_version) or ''
+
+    @classmethod
+    def exposing(cls):
+        return cls._routing_stack[-1]
+
+
+class Route(object):
+    def __init__(self, exposer, path, idx):
+        self.exposer = exposer
+        self.path = path
+        self.name = self.exposer.name if idx == 0 else \
+            "{}_{}".format(self.exposer.name, idx)
+        self.schemes = self.exposer.schemes
+        self.methods = self.exposer.methods
+        self.pipeline = self.exposer.pipeline
+        self.f = self.exposer.f
+        if not self.path.startswith('/'):
+            self.path = '/' + self.path
+        if self.exposer.prefix:
+            self.path = (
+                (self.path != '/' and self.prefix + self.path) or
+                self.exposer.prefix)
+        self.regex = self.exposer.build_regex(
+            self.schemes, self.hostname, self.methods, self.path)
+        self.build_argparser()
+
+    @property
+    def hostname(self):
+        return self.exposer.hostname
+
+    def build_argparser(self):
         parsers = {
-            'int': Expose._parse_int_reqarg,
-            'float': Expose._parse_float_reqarg,
-            'date': Expose._parse_date_reqarg
+            'int': Route._parse_int_reqarg,
+            'float': Route._parse_float_reqarg,
+            'date': Route._parse_date_reqarg
         }
         opt_parsers = {
-            'int': Expose._parse_int_reqarg_opt,
-            'float': Expose._parse_float_reqarg_opt,
-            'date': Expose._parse_date_reqarg_opt
+            'int': Route._parse_int_reqarg_opt,
+            'float': Route._parse_float_reqarg_opt,
+            'date': Route._parse_date_reqarg_opt
         }
         pipeline = []
         for key in parsers.keys():
@@ -128,7 +328,8 @@ class Expose(with_metaclass(MetaExpose)):
                 parser = self._wrap_reqargs_parser(parsers[key], args)
                 pipeline.append(parser)
             if optionals:
-                parser = self._wrap_reqargs_parser(opt_parsers[key], optionals)
+                parser = self._wrap_reqargs_parser(
+                    opt_parsers[key], optionals)
                 pipeline.append(parser)
         if pipeline:
             self.parse_reqargs = self._wrap_reqargs_pipeline(pipeline)
@@ -198,184 +399,6 @@ class Expose(with_metaclass(MetaExpose)):
                 parser(route_args)
             return route_args
         return wrapped
-
-    @classmethod
-    def build_regex(cls, schemes, hostname, methods, path):
-        path = cls.REGEX_INT.sub('(?P<\g<1>>\d+)', path)
-        path = cls.REGEX_STR.sub('(?P<\g<1>>[^/]+)', path)
-        path = cls.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
-        path = cls.REGEX_ALPHA.sub('(?P<\g<1>>[^/\W\d_]+)', path)
-        path = cls.REGEX_DATE.sub('(?P<\g<1>>\d{4}-\d{2}-\d{2})', path)
-        path = cls.REGEX_FLOAT.sub('(?P<\g<1>>\d+\.\d+)', path)
-        re_schemes = ('|'.join(schemes)).lower()
-        re_methods = ('|'.join(methods)).lower()
-        re_hostname = re.escape(hostname) if hostname else '[^/]*'
-        expr = '^(%s) (%s)\://(%s)(%s)$' % \
-            (re_methods, re_schemes, re_hostname, path)
-        return expr
-
-    @staticmethod
-    def remove_trailslash(path):
-        if path.endswith("/") and len(path) > 1:
-            return path[:-1]
-        return path
-
-    @staticmethod
-    def override_midargs(path):
-        args = path.split("//")
-        if len(args) > 1:
-            path = "/{{:arg:}}/".join(args)
-        return path
-
-    @classmethod
-    def remove_decoration(cls, path):
-        """
-        converts somehing like "/junk/test_args/<str:a>(/<int:b>)?"
-        into something like    "/junk/test_args" for reverse routing
-        """
-        while True:
-            new_path = cls.REGEX_DECORATION.sub('', path)
-            new_path = cls.remove_trailslash(new_path)
-            new_path = cls.override_midargs(new_path)
-            if new_path == path:
-                return path
-            path = new_path
-
-    @classmethod
-    def add_route(cls, route):
-        host = route[1].hostname or '__any__'
-        if host not in cls.routes_in:
-            cls.routes_in[host] = OrderedDict()
-            cls._get_routes_in_for_host = cls._get_routes_in_for_host_all
-        cls.routes_in[host][route[1].name] = route
-        cls.routes_out[route[1].name] = {
-            'host': route[1].hostname,
-            'path': cls.remove_decoration(route[1].path)}
-
-    def __call__(self, func):
-        self.func_name = func.__name__
-        self.filename = os.path.realpath(func.__code__.co_filename)
-        self.hostname = self.hostname or \
-            self.application.config.hostname_default
-        if not self.path:
-            self.path = '/' + func.__name__
-        if not self.name:
-            self.name = self.build_name()
-        # is it good?
-        if self.name.endswith("."):
-            self.name = self.name + self.func_name
-        #
-        if not self.path.startswith('/'):
-            self.path = '/' + self.path
-        if self.prefix:
-            if not self.prefix.startswith('/'):
-                self.prefix = '/' + self.prefix
-            self.path = (self.path != '/' and self.prefix + self.path) \
-                or self.prefix
-        if not self.template:
-            self.template = self.func_name + \
-                self.application.template_default_extension
-        if self.template_folder:
-            self.template = os.path.join(self.template_folder, self.template)
-        self.template_path = self.template_path or \
-            self.application.template_path
-        wrapped_func = Pipeline(self.pipeline)(func)
-        self.func = wrapped_func
-        self.regex = self.build_regex(
-            self.schemes, self.hostname, self.methods, self.path)
-        self.store_argtypes()
-        route = (re.compile(self.regex), self)
-        self.add_route(route)
-        self._routes_str[self.name] = "%s %s://%s%s -> %s" % (
-            "|".join(s.upper() for s in self.methods),
-            "|".join(s for s in self.schemes),
-            self.hostname or "<any>",
-            self.path,
-            self.name
-        )
-        for proc_handler in self.processors:
-            proc_handler(self)
-        self._routing_stack.pop()
-        return func
-
-    @classmethod
-    def match_lang(cls, path):
-        default = cls.application.language_default
-        if len(path) <= 1:
-            return path, default
-        clean_path = path.lstrip('/')
-        lang = clean_path.split('/', 1)[0]
-        if lang in cls.application.languages and lang != default:
-            new_path = '/'.join([arg for arg in clean_path.split('/')[1:]])
-            if path.startswith('/'):
-                new_path = '/' + new_path
-            return new_path, lang
-        return path, default
-
-    @classmethod
-    def _get_routes_in_for_host_all(cls, hostname):
-        return (
-            cls.routes_in.get(hostname, cls.routes_in['__any__']),
-            cls.routes_in['__any__'])
-
-    @classmethod
-    def _get_routes_in_for_host_simple(cls, hostname):
-        return (cls.routes_in['__any__'],)
-
-    @classmethod
-    def match(cls, request):
-        path = cls.remove_trailslash(request.path_info)
-        if cls.application.language_force_on_url:
-            path, lang = cls.match_lang(path)
-            request.language = lang
-            current._language = request.language
-        else:
-            request.language = None
-        expression = '%s %s://%s%s' % (
-            request.method, request.scheme, request.hostname, path)
-        for routes in cls._get_routes_in_for_host(request.hostname):
-            for regex, obj in itervalues(routes):
-                match = regex.match(expression)
-                if match:
-                    return obj, obj.parse_reqargs(match)
-        return None, {}
-
-    @staticmethod
-    def _before_dispatch(route):
-        #: call pipeline `before_flow` method
-        for pipe in route.pipeline:
-            pipe.open()
-
-    @staticmethod
-    def _after_dispatch(route):
-        #: call pipeline `after_flow` method
-        for pipe in reversed(route.pipeline):
-            pipe.close()
-
-    @classmethod
-    def dispatch(cls):
-        #: get the right exposed function
-        request = current.request
-        route, reqargs = cls.match(request)
-        if not route:
-            raise HTTP(404, body="Invalid action\n")
-        request.name = route.name
-        cls._before_dispatch(route)
-        try:
-            route.func(**reqargs)
-        except:
-            cls._after_dispatch(route)
-            raise
-        cls._after_dispatch(route)
-
-    @classmethod
-    def static_versioning(cls):
-        return (cls.application.config.static_version_urls and
-                cls.application.config.static_version) or ''
-
-    @classmethod
-    def exposing(cls):
-        return cls._routing_stack[-1]
 
 
 class ResponsePipe(Pipe):
