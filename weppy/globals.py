@@ -15,7 +15,7 @@ import copy
 import json
 import re
 import threading
-
+from datetime import datetime
 from ._compat import SimpleCookie, iteritems, to_native
 from ._internal import ObjectProxy, LimitedStream
 from .datastructures import sdict, Accept
@@ -211,6 +211,7 @@ class Response(object):
 class Current(threading.local):
     def __init__(self, *args, **kwargs):
         self._get_lang = self._empty_lang
+        self._get_now = self._sys_now
 
     def initialize(self, environ):
         self.__dict__.clear()
@@ -219,6 +220,7 @@ class Current(threading.local):
         self.response = Response(environ)
         self.session = None
         self._get_lang = self._req_lang
+        self._get_now = self._req_now
 
     @property
     def T(self):
@@ -235,9 +237,23 @@ class Current(threading.local):
     def language(self):
         return self._get_lang()
 
+    def _sys_now(self):
+        return datetime.utcnow()
+
+    def _req_now(self):
+        return self.request.now
+
+    @property
+    def now(self):
+        return self._get_now()
+
 
 current = Current()
 
 request = ObjectProxy(current, "request")
 response = ObjectProxy(current, "response")
 session = ObjectProxy(current, "session")
+
+
+def now():
+    return current._get_now()

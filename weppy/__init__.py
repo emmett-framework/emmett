@@ -5,7 +5,7 @@ from .cache import Cache
 from .datastructures import sdict
 from .expose import url
 from .forms import Form
-from .globals import request, response, session
+from .globals import request, response, session, now
 from .handlers import Handler, Helper
 from .helpers import abort, stream_file
 from .http import redirect
