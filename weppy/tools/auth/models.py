@@ -9,22 +9,15 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from datetime import datetime
 from ..._compat import iterkeys
-from ...globals import current, request
+from ...globals import current, request, now
 from ...orm import Model, Field, before_insert, rowmethod
 from ...security import uuid
 
 
-def _now():
-    if hasattr(current, 'request'):
-        return request.now
-    return datetime.utcnow()
-
-
 class TimestampedModel(Model):
-    created_at = Field('datetime', default=_now, rw=False)
-    updated_at = Field('datetime', default=_now, update=_now, rw=False)
+    created_at = Field('datetime', default=now, rw=False)
+    updated_at = Field('datetime', default=now, update=now, rw=False)
 
 
 class AuthModel(Model):

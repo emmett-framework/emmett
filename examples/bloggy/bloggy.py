@@ -1,4 +1,4 @@
-from weppy import App, request, session, url, redirect, abort
+from weppy import App, session, now, url, redirect, abort
 from weppy.orm import Database, Model, Field, belongs_to, has_many
 from weppy.tools import requires
 from weppy.tools.auth import Auth, AuthUser
@@ -24,7 +24,7 @@ class Post(Model):
 
     default_values = {
         'user': lambda: session.auth.user.id,
-        'date': lambda: request.now
+        'date': now
     }
     validation = {
         'title': {'presence': True},
@@ -44,7 +44,7 @@ class Comment(Model):
 
     default_values = {
         'user': lambda: session.auth.user.id,
-        'date': lambda: request.now
+        'date': now
     }
     validation = {
         'text': {'presence': True}
