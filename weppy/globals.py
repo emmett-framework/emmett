@@ -18,15 +18,19 @@ import threading
 
 from ._compat import SimpleCookie, iteritems, to_native
 from ._internal import ObjectProxy, LimitedStream
-from .datastructures import sdict
+from .datastructures import sdict, Accept
 from .helpers import get_flashed_messages
-from .language import T
+from .language import T, _instance as _translator_instance
+from .language.helpers import LanguageAccept
 from .tags import htmlescape
 from .utils import cachedprop
 from .libs.contenttype import contenttype
 
 
 _regex_client = re.compile('[\w\-:]+(\.[\w\-]+)*\.?')
+_regex_accept = re.compile(r'''
+    ([^\s;,]+(?:[ \t]*;[ \t]*(?:[^\s;,q][^\s;,]*|q[^\s;,=][^\s;,]*))*)
+    (?:[ \t]*;[ \t]*q=(\d*(?:\.\d+)?)[^,]*)?''', re.VERBOSE)
 
 
 class Request(object):
@@ -48,6 +52,36 @@ class Request(object):
         self.nowloc = environ['wpp.now.local']
         self.application = environ['wpp.application']
 
+    def __parse_json_params(self):
+        content_length = self.environ.get('CONTENT_LENGTH')
+        try:
+            content_length = max(0, int(content_length))
+        except:
+            content_length = None
+        if content_length is None:
+            return {}
+        try:
+            stream = LimitedStream(self.input, content_length)
+            params = json.loads(to_native(stream.read())) or {}
+        except:
+            params = {}
+        return params
+
+    def __parse_accept_header(self, value, cls=None):
+        if cls is None:
+            cls = Accept
+        if not value:
+            return cls(None)
+        result = []
+        for match in _regex_accept.finditer(value):
+            quality = match.group(2)
+            if not quality:
+                quality = 1
+            else:
+                quality = max(min(float(quality), 1), 0)
+            result.append((match.group(1), quality))
+        return cls(result)
+
     @cachedprop
     def now(self):
         if self._now_ref == "utc":
@@ -62,21 +96,6 @@ class Request(object):
         for key, value in iteritems(params):
             if isinstance(value, list) and len(value) == 1:
                 params[key] = value[0]
-        return params
-
-    def __parse_json_params(self):
-        content_length = self.environ.get('CONTENT_LENGTH')
-        try:
-            content_length = max(0, int(content_length))
-        except:
-            content_length = None
-        if content_length is None:
-            return {}
-        try:
-            stream = LimitedStream(self.input, content_length)
-            params = json.loads(to_native(stream.read())) or {}
-        except:
-            params = {}
         return params
 
     @cachedprop
@@ -124,6 +143,11 @@ class Request(object):
         for cookie in self.environ.get('HTTP_COOKIE', '').split(';'):
             cookies.load(cookie)
         return cookies
+
+    @cachedprop
+    def accept_languages(self):
+        return self.__parse_accept_header(
+            self.environ.get('HTTP_ACCEPT_LANGUAGE'), LanguageAccept)
 
     @cachedprop
     def client(self):
@@ -185,7 +209,8 @@ class Response(object):
 
 
 class Current(threading.local):
-    _language = None
+    def __init__(self, *args, **kwargs):
+        self._get_lang = self._empty_lang
 
     def initialize(self, environ):
         self.__dict__.clear()
@@ -193,11 +218,22 @@ class Current(threading.local):
         self.request = Request(environ)
         self.response = Response(environ)
         self.session = None
-        self._language = environ.get('HTTP_ACCEPT_LANGUAGE')
+        self._get_lang = self._req_lang
 
     @property
     def T(self):
         return T
+
+    def _empty_lang(self):
+        return None
+
+    def _req_lang(self):
+        return self.request.accept_languages.best_match(
+            list(_translator_instance._t.all_languages))
+
+    @cachedprop
+    def language(self):
+        return self._get_lang()
 
 
 current = Current()

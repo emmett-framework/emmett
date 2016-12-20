@@ -124,7 +124,7 @@ rendered_value = """
 
 
 def test_render(app):
-    current._language = 'it'
+    current.language = 'it'
     r = app.templater.render(
         app.template_path, 'test.html', {
             'current': current, 'posts': [{'title': 'foo'}, {'title': 'bar'}]

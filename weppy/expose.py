@@ -230,8 +230,7 @@ class Expose(with_metaclass(MetaExpose)):
         path = cls.remove_trailslash(request.path_info)
         if cls.application.language_force_on_url:
             path, lang = cls.match_lang(path)
-            request.language = lang
-            current._language = request.language
+            current.language = request.language = lang
         else:
             request.language = None
         expression = '%s %s://%s%s' % (

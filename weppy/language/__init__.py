@@ -21,6 +21,7 @@ class Instance(object):
     def T(self, *args, **kwargs):
         return self._t(*args, **kwargs)
 
+
 # We use a 'proxied' object to the translator to avoid errors
 # when user calls T() outside the request flow.
 _instance = Instance()

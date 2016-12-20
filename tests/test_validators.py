@@ -576,7 +576,7 @@ def test_validation(db):
 
 def test_multi(db):
     from weppy.globals import current
-    current._language = 'en'
+    current.language = 'en'
     p = db.Person(name="mario")
     base_data = {
         'date': '{0:%d/%m/%Y}'.format(datetime.utcnow()+timedelta(days=1)),

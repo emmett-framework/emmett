@@ -107,12 +107,11 @@ def error_handler(app, environ, start_response):
             body = debug_handler(tb)
         else:
             body = None
-            custom_handler = app.error_handlers.get(500)
-            if custom_handler:
-                try:
-                    body = custom_handler()
-                except:
-                    pass
+            custom_handler = app.error_handlers.get(500, lambda: None)
+            try:
+                body = custom_handler()
+            except:
+                pass
             if not body:
                 body = '<html><body>Internal error</body></html>'
         app.log.exception('Application exception:')
