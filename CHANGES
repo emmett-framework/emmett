@@ -18,6 +18,11 @@ Next
 - Added support for float variable rules in routes
 - Added support for multiple paths in routes
 - Enhanced wsgi request handling performance
+- Enhanced language recognition from Accept-Language header
+- Optimized translator initialization
+- Added `now` attribute and global method which returns `request.now` or
+  `datetime.now` when request context is missing
+- Added access to computed values within insert and update callbaks
 
 
 Version 0.8
