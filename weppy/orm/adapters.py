@@ -53,8 +53,7 @@ def parse(adapter, rows, fields, colnames, blob_decode=True, cacheable=False):
         _parse(adapter, row, fdata, tables, fields, colnames, blob_decode)
         for row in rows
     ]
-    rowsobj = adapter.db.Rows(
-        adapter.db, new_rows, colnames, rawrows=rows)
+    rowsobj = adapter.db.Rows(adapter.db, new_rows, colnames, rawrows=rows)
     return rowsobj
 
 

@@ -181,9 +181,9 @@ class Set(_Set):
 
     def _load_scopes_(self):
         if self._model_ is None:
-            tables = self.db._adapter.tables(self.query)
-            if len(tables) == 1:
-                self._model_ = self.db[tables[0]]._model_
+            tablemap = self.db._adapter.tables(self.query)
+            if len(tablemap) == 1:
+                self._model_ = tablemap.popitem()[1]._model_
         if self._model_:
             self._scopes_ = self._model_._instance_()._scopes_
 
@@ -233,8 +233,7 @@ class Set(_Set):
         return super(Set, self).select(*fields, **options)
 
     def validate_and_update(self, **update_fields):
-        tablename = self.db._adapter.get_table(self.query)
-        table = self.db[tablename]
+        table = self.db._adapter.get_table(self.query)
         current._dbvalidation_record_id_ = None
         if table._unique_fields_validation_ and self.count() == 1:
             if any(
@@ -247,7 +246,7 @@ class Set(_Set):
         response.errors = Row()
         new_fields = copy.copy(update_fields)
         for key, value in iteritems(update_fields):
-            value, error = self.db[tablename][key].validate(value)
+            value, error = table[key].validate(value)
             if error:
                 response.errors[key] = '%s' % error
             else:
@@ -261,7 +260,7 @@ class Set(_Set):
                 fields = table._listify(new_fields, update=True)
                 if not fields:
                     raise SyntaxError("No fields to update")
-                ret = self.db._adapter.update(tablename, self.query, fields)
+                ret = self.db._adapter.update(table, self.query, fields)
                 ret and [f(self, new_fields) for f in table._after_update]
             else:
                 ret = 0
@@ -548,11 +547,11 @@ class HasManyViaSet(RelationSet):
 
 class JoinableSet(Set):
     def _iterselect_rows(self, *fields, **attributes):
-        tablenames = self.db._adapter.tables(
+        tablemap = self.db._adapter.tables(
             self.query, attributes.get('join', None),
             attributes.get('left', None), attributes.get('orderby', None),
             attributes.get('groupby', None))
-        fields = self.db._adapter.expand_all(fields, tablenames)
+        fields = self.db._adapter.expand_all(fields, tablemap)
         colnames, sql = self.db._adapter._select_wcols(
             self.query, fields, **attributes)
         return JoinIterRows(self.db, sql, fields, colnames)
@@ -664,8 +663,9 @@ class Row(_Row):
 
 
 class Rows(_Rows):
-    def __init__(self, db=None, records=[], colnames=[], compact=True,
-                 rawrows=None):
+    def __init__(
+        self, db=None, records=[], colnames=[], compact=True, rawrows=None
+    ):
         self.db = db
         self.records = records
         self.colnames = colnames
@@ -715,6 +715,9 @@ class Rows(_Rows):
         row = Row({self.compact_tablename: obj}) if self.compact else obj
         self.records.insert(position, row)
 
+    def render(self, *args, **kwargs):
+        raise NotImplementedError
+
 
 @implements_iterator
 class JoinIterRows(_IterRows):
@@ -749,8 +752,10 @@ class JoinRows(Rows):
         del kwargs['jtables']
         super(JoinRows, self).__init__(*args, **kwargs)
 
-    def as_list(self, compact=True, storage_to_dict=True,
-                datetime_to_str=False, custom_types=None):
+    def as_list(
+        self, compact=True, storage_to_dict=True, datetime_to_str=False,
+        custom_types=None
+    ):
         if storage_to_dict:
             items = []
             for row in self:
