@@ -122,6 +122,8 @@ weppy 1.0 introduces some new features you may take advantage of:
 - Application [modules](./app_and_modules#application-modules) nesting and inheritance
 - The float type is now available in [route variables](./routing#path)
 - *int*, *float* and *date* route variable types are now automatically casted to the relevant objects
+- A `now` method is now available in weppy that returns `request.now` or `datetime.utcnow` values depending on the context
+- Computed fields values are now accesible within insert and update callbacks
 
 
 Version 0.8
