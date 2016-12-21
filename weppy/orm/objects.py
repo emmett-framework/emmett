@@ -255,15 +255,15 @@ class Set(_Set):
         if response.errors:
             response.updated = None
         else:
-            if not any(f(self, new_fields) for f in table._before_update):
-                table._attempt_upload(new_fields)
-                fields = table._listify(new_fields, update=True)
-                if not fields:
-                    raise SyntaxError("No fields to update")
-                ret = self.db._adapter.update(table, self.query, fields)
-                ret and [f(self, new_fields) for f in table._after_update]
-            else:
+            row = table._fields_and_values_for_update(new_fields)
+            if not row._values:
+                raise ValueError("No fields to update")
+            if any(f(self, row) for f in table._before_update):
                 ret = 0
+            else:
+                ret = self.db._adapter.update(
+                    table, self.query, row.op_values())
+                ret and [f(self, new_fields) for f in table._after_update]
             response.updated = ret
         return response
 
