@@ -110,10 +110,7 @@ def g():
     # code
 ```
 
-If you have no idea of what an HTTP method is&mdash;don't worry&mdash;[Wikipedia
-has good information](http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol
-#Request_methods)
-about them.
+If you have no idea of what an HTTP method is&mdash;don't worry&mdash; [Wikipedia has good information](http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol#Request_methods) about them.
 
 > – OK, I got it. What else can I do with route?
 
