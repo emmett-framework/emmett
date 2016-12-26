@@ -102,68 +102,235 @@ Simple: the three `request` attributes will look like this:
 ```
 You can always access the variables you need.
 
-Handlers and Helpers
---------------------
-Quite often, your application will need to perform operations before and after
-the request is actually processed by weppy using your exposed function.   
+Pipeline
+--------
 
-weppy helps you do this with the Handlers:
+Quite often, you will need to perform operations during the request flow, for example you might need to verify certain authorization conditions before your exposed method is invoked by weppy when the request is routed trough it, or you may want to close a database connection once the request flow is ended and the response is ready to be transmitted to the client.
 
-```python
-from weppy import Handler
+weppy uses a *pipeline* to handle the request flow trough your application, and like a water pipeline is composed of several pipes. You've already encountered some of them in the tutorial, the database and the auth ones. But how this pipes works inside the pipeline?
 
-class MyHandler(Handler):
-    def on_start(self):
-        # code
-    def on_success(self):
-        # code
-    def on_failure(self):
-        # code
-    def on_end(self):
-        # code
+You can imagine the pipeline as a real water pipeline, composed of several pipes one after another:
+
+```
+          |<----  pipeline   ---->|
+          |-------|-------|-------|
+[request] -> pipe -> pipe -> pipe -> [route]
+          |-------|-------|-------| 
 ```
 
-As you can see, `Handler` provides methods to run your code before the request
-is processed by your function (with the `on_start` method) and after your
-function were executed. weppy provides different methods for you to use, which
-will be called based on what happened during your function call. If an exception
-occurred, weppy will call the `on_failure` method; otherwise, `on_success` is called.
-The `on_end` method is **always** called after every request has been processed,
-*after* the response has been created and *before* sending it to the client.
+The request will *flow* trough the pipeline, which means will flow trough every pipe in the pipeline, and will reach the method you've exposed for that specific route.
 
-To better understand the usage of all these methods, let's assume we are writing
-a database handler that will connect to the database when a request arrives, will
-do a commit or a rollback depending on what happened during the request, and will
-close the connection after completion:
+> – Ok dude. So the pipeline is just an array of functions that will perform some actions on the request?   
+> – *Not really.*
 
-```python
-class DBHandler(Handler):
-    def on_start(self):
-        # connect to the db
-    def on_success(self):
-        # commit to the db
-    def on_failure(self):
-        # rollback the operations
-    def on_end(self):
-        # close the connection
+The pipes are not just functions but actually objects. In fact, these pipes won't just *pipe* the request trough the pipeline flow, but will have several options and responsibilities on the pipeline. weppy will use several functions on these objects during the request, so the application can customize the request flow based on its needs.
+
+Any pipe can, in fact, perform operations before the request will be piped, during the flow, or after the flow has been completed. This is because any request in weppy can be sketched in several steps above the pipeline.
+
+First of all, weppy will open up all the pipes in the pipeline:
+
+```
+         open   open   open
+          |------|------|------|
+[request] | pipe | pipe | pipe | [route]
+          |------|------|------| 
 ```
 
-Now, to register your handler to a function, you just need to write:
+You can imagine the pipes have *bulkheads* on their *entrance* and before the request is actually processed all these bulkheads are opened so that the request can flow trough the pipes.
+
+After this first step, weppy will push the request trough the pipeline:
+
+```
+         ->     ->     ->     ->
+          |------|------|------|
+[request] | pipe | pipe | pipe | [route]
+          |------|------|------| 
+```
+
+During this step, all the pipes will *pipe* the request trough the next step in the pipeline. Every step in the pipeline will compose the final flow of the request from the client to the routed method.
+
+Then the route method will compose a response, that will flow back trough the pipeline:
+
+```
+           <-     <-     <-     <-
+           |------|------|------|
+[response] | pipe | pipe | pipe | [route]
+           |------|------|------| 
+```
+
+So the pipeline is actually walked by both sides and the pipes have access to the response as well.
+
+Finally, weppy will close all the pipes and send the response to the client:
+
+```
+          close  close  close  
+           |------|------|------|
+[response] | pipe | pipe | pipe | [route]
+           |------|------|------| 
+```
+
+The *bulkheads* we imagined on the first step will be closed since the request *flow* is ended and nothing have to pass trough the pipeline.
+
+All these steps lead to have this `Pipe` class that you can extend to build your custom pipelines:
 
 ```python
-@app.route("/url", handlers=[MyHandler()])
-def f():
+from weppy import Pipe
+
+class MyPipe(Pipe):
+    def open(self):
+        pass
+    def close(self):
+        pass
+    def pipe(self, next_pipe, **kwargs):
+        return next_pipe(**kwargs)
+    def on_pipe_success(self):
+        pass
+    def on_pipe_failure(self):
+        pass
+```
+
+As we seen in the steps, the `open` and `close` method will be called before the request will flow trough the pipeline and after the response is built.
+
+The `pipe` method is the one called by weppy to *pipe* the request trough the pipeline: this means that every pipe is actually responsible to build the flow to the next pipe. And, this also means every pipe can alter the normal flow of the pipeline if needed.
+
+The `on_pipe_success` and `on_pipe_failure` will be called as soon as the flow gets back to the pipe: the failure one will be invoked in case of an exception in any subsequent point of the pipeline, otherwise the success one will be invoked.
+
+Notice that the `close` method will be always invoked on the pipeline, even if an exception occurred.
+
+So how you can use these pipes functions? Let's see some examples.
+
+A pipe responsible of connecting to the database will need to open the connection on a new request, and close the connection when the request flow is ended. Then we can write a pipe like this:
+
+```python
+class DBPipe(Pipe):
+    def __init__(self, db):
+        self.db = db
+    def open(self):
+        self.db.open_connection()
+    def close(self):
+        self.db.close_connection()
+```
+
+But we also can make it more smart, and have it commit what happened on the database when everything went right, or rollback the changes if something wrong happened:
+
+```python
+class DBPipe(Pipe):
+    def __init__(self, db):
+        self.db = db
+    def open(self):
+        self.db.open_connection()
+    def close(self):
+        self.db.close_connection()
+    def on_pipe_success(self):
+        self.db.commit()
+    def on_pipe_failure(self):
+        self.db.rollback()
+```
+
+Then we can add this handler to a single route:
+
+```python
+@app.route(pipeline=[DBPipe(db)])
+def foo():
     #code
 ```
 
-If you need to register your handler to all your application functions,
-you can omit the handler from the `route()` decorator, writing instead:
+or on every route of our application:
 
 ```python
-app.common_handlers = [MyHandler()]
+app.pipeline = [DBPipe(db)]
 ```
 
-### A peculiar Handler: the Helper class
+This makes you sure every request that have this pipeline will have a correct behaviour with the database. And this is more or less what the `Database.pipe` attribute does.
+
+A second example could be a pipe that verifies the request authorization checking the value of a specific header. In this case we want to break the request flow if the client is not authorized and return an error instead of the content of the route. We can modify the `pipe` method for this:
+
+```python
+from weppy import Pipe, request, abort
+
+class AuthPipe(Pipe):
+    def pipe(self, next_pipe, **kwargs):
+        if self.valid_header():
+            return next_pipe(**kwargs)
+        return "Bad auth"
+        
+    def valid_header(self):
+        return request.environ.get("HTTP_MY_HEADER", "") == "MY_KEY"
+```
+
+Adding this pipe to a route pipeline will make you sure the request will never flow trough the next pipe unless the condition is verified. In case of an abort the response that will be available to the pipes before the one interrupting the flow will be the content returned by this pipe.
+
+For example, in case the `AuthPipe` is in the second position of our pipeline and the request is not authorized, the flow can be sketched like this:
+
+```
+1)
+         open   open   open
+          |------|------|------|
+[request] | pipe | pipe | pipe | [route]
+          |------|------|------| 
+2)
+         ->     ->
+          |------|------|------|
+[request] | pipe | pipe | pipe | [route]
+          |------|------|------|
+3)
+           <-     <-
+           |------|------|------|
+[response] | pipe | pipe | pipe | [route]
+           |------|------|------|
+4)
+          close  close  close  
+           |------|------|------|
+[response] | pipe | pipe | pipe | [route]
+           |------|------|------| 
+```
+
+The last example is about the use of a pipe in order to change the parameters passed to the routed method. Let's say, for example that you have some routes that accept a `date` variable:
+
+```python
+@app.route("/foo/<date:start>")
+def foo(start):
+    # code
+```
+
+and you often need to build a strict period starting from the `start` parameter, so your code looks like this:
+
+```python
+from datetime import timedelta
+
+@app.route("/foo/<date:start>")
+def foo(start):
+    end = start + timedelta(days=7)
+```
+
+Then you can easily inject this to your routes writing a pipe:
+
+```python
+class PeriodPipe(Pipe):
+    def __init__(self, days):
+        self.dt = timedelta(days=days)
+    def pipe(self, next_pipe, **kwargs):
+        kwargs['end'] = kwargs['start'] + self.dt
+        return next_pipe(**kwargs)
+```
+
+and using it on every route you need:
+
+```python
+@app.route("/foo/daily/<date:start>", pipeline=[PeriodPipe(1)])
+def foo_daily(start, end):
+    # code
+    
+@app.route("/foo/weekly/<date:start>", pipeline=[PeriodPipe(7)])
+def foo_weekly(start, end):
+    # code
+    
+@app.route("/foo/monthly/<date:start>", pipeline=[PeriodPipe(30)])
+def foo_monthly(start, end):
+    # code
+```
+
+### A peculiar pipe: the Injector class
 
 Another common scenario you may encounter while building your application is
 when you need to add the same contents to your exposed functions' outputs,
@@ -187,23 +354,22 @@ And you want to use it in your templates:
 {{pass}}
 ```
 
-Instead of adding `prettydate` to every exposed function, you can do this:
+Instead of adding `prettydate` to every exposed function, you can write down an injector:
 
 ```python
-from weppy import Helper
+from weppy import Injector
 
-class MyHelper(Helper):
+class DateInjector(Injector):
     @staticmethod
     def prettydate(d):
         # your prettydate code
 
-app.common_helpers = [MyHelper()]
+app.injectors = [DateInjector()]
 ```
 
 and you can access your `prettydate` function in every template.
 
-So, basically, the `Helper` class of weppy adds everything you define inside it 
-(functions and attributes) into your exposed functions' returning *dict*.
+So, basically, the `Injector` class of weppy adds everything you define inside it (functions and attributes) into your exposed functions' returning dictionary.
 
 Errors and redirects
 --------------------
