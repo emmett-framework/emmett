@@ -143,7 +143,7 @@ We mentioned that the `name` parameter of `AppModule` object is instead used by 
 and to dive into subsequent considerations, you can read the 
 [Routing](./routing) chapter.
 
-You can also define a specific pipeline for the module, or a list of injectors, so all the routes defined on the model will consequentially use those:
+You can also define a specific [pipeline](./request#pipeline) for the module, or a list of injectors, so all the routes defined on the model will consequentially use those:
 
 ```python
 blog.pipeline = [BlogPipe()]
@@ -162,12 +162,12 @@ Let's say, for example, you are building some JSON APIs in your application, and
 apis = app.module(__name__, 'apis', url_prefix='apis')
 ```
 
-Also, since you're using JSON as serialization, you can add the appropriate service pipe to the pipeline:
+Also, since you're using JSON as serialization, you can add the appropriate [service pipe](./services) to the pipeline:
 
 ```python
-from weppy.tools import ServiceHandler
+from weppy.tools import ServicePipe
 
-apis.pipeline = [ServiceHandler('json')]
+apis.pipeline = [ServicePipe('json')]
 ```
 
 Then, let's say you want to build the first version of your apis, so that they will be accessible from the */apis/v1* endpoint. You can create a submodule from the one you've just created with the same syntax:
