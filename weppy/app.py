@@ -293,9 +293,10 @@ class AppModule(object):
                 "Nested app modules' names should not contains dots"
             )
         name = appmod.name + '.' + name
-        if not url_prefix.startswith('/'):
+        if url_prefix and not url_prefix.startswith('/'):
             url_prefix = '/' + url_prefix
-        module_url_prefix = appmod.url_prefix + url_prefix
+        module_url_prefix = (appmod.url_prefix + url_prefix) \
+            if appmod.url_prefix else url_prefix
         hostname = hostname or appmod.hostname
         return cls(
             appmod.app, name, import_name, template_folder, template_path,
