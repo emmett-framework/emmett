@@ -17,8 +17,10 @@ app = App(__name__)
 The signature of this class's `__init__` method looks like this:
 
 ```python
-def __init__(self, import_name, root_path=None,
-             template_folder='templates', config_folder='config'):
+def __init__(
+    self, import_name, root_path=None,
+    template_folder='templates', config_folder='config'
+):
     # internal code
 ```
 
@@ -97,81 +99,114 @@ of the namespace under which weppy should load the configuration.
 Application modules
 -------------------
 
-When your app's structure starts to come together, having all the functions 
-under a single file can be quite inconvenient. When you reach this level 
-of complexity, or even if you just want to improve your application's 
-organization, you can use the `AppModule` class provided by weppy.
+When your app's structure starts to come together, you might benefit of packing routes together in common structures, so you can use the same route prefix or hostname, or to have a common pipeline.
 
-How does this work? Let's see an example. We can structure our application 
-using a Python package like this:
-
-```
-/myapp
-    __init__.py
-    blog.py
-    templates/
-```
-
-Our *app.py* has become our new *\_\_init\_\_.py*:
+weppy provides application modules for this. You can create new modules using the `module` method of your application object. For example, let's say you have a minimal blog into your application. Then might be convenient create a module for it:
 
 ```python
-from weppy import App
-app = App(__name__)
-
-@app.route("/")
-def index():
-    # code
-
-import blog
+blog = app.module(__name__, name="blog", url_prefix="blog")
 ```
 
-*blog.py* looks like this:
+With this single line we created a new module for our blogging system, that will have all the routes prefixed by the */blog* url we provided. Now, in order to add a new route to the module, we can use its `route` method, which has the same syntax of the application one:
 
 ```python
-from weppy import AppModule
-from myapp import app
-
-blog = AppModule(app, "blog", __name__)
-
-@blog.route("/blog")
-def index():
-    # code
-```
-
-The blog code has now been separated from the core application.
-As you may have noticed, the `AppModule` object provides its own `route` method,
-which you would have seen before in the [Getting Started](./quickstart) chapter.
-The route is included with the `AppModule` constructor so that we can 
-re-write the *blog.py* module like this:
-
-```python
-blog = AppModule(app, "blog", __name__, url_prefix="blog")
-
 @blog.route("/")
 def index():
     # code
 ```
-to get the same result as before, but with the syntax reduced conveniently
-to route functions exposed by the blog module to */blog/[route]* automatically.
 
-This is the complete list of parameters accepted by `AppModule`:
+The resulting route will respond to the */blog* path, since the module have a defined prefix. For instance, if we define an archive route:
+
+```python
+@blog.route()
+def archive():
+    # code
+```
+
+the final route will be */blog/archive*.
+
+A part from the prefix, you can use several parameters when creating modules. Here is the complete list:
 
 | parameter | explaination |
 | --- | --- |
-| app | the weppy application to load module on |
-| name | name for the module, it will used by weppy as the namespace for building URLs on internal routing |
 | import_name | same as we seen for the `App` object |
+| name | name for the module, will be used by weppy as the namespace for internal routing |
 | template_folder | allows you to set a specific sub-folder of your application template path for module templates |
 | template_path | allows you to set a specific folder inside your module root path for module templates |
 | url_prefix | allows you to set a prefix path for module URLs |
 | hostname | allows you to set a specific hostname for module |
 | root_path | same as we seen for the `App` object |
 
-As you can see, we can bind the module to a specific host with the `hostname` 
-parameter, instead of using `url_prefix`. Considering our blog example, 
-we can bind it to *blog.ourhost.tld*.
+As you can see, we can bind the module to a specific host with the `hostname` parameter, instead of using `url_prefix`. Considering our blog example, we can bind it to *blog.ourhost.tld*.
 
-We mentioned that the `name` parameter of `AppModule` object is instead used 
-by weppy for the *namespacing* of the URLs. To completely understand this 
+We mentioned that the `name` parameter of `AppModule` object is instead used by weppy for the URLs *namespacing*. To completely understand this 
 and to dive into subsequent considerations, you can read the 
 [Routing](./routing) chapter.
+
+You can also define a specific pipeline for the module, or a list of injectors, so all the routes defined on the model will consequentially use those:
+
+```python
+blog.pipeline = [BlogPipe()]
+blog.injectors = [BlogInjector()]
+```
+
+And finally, you can create sub-modules starting from other modules.
+
+### Sub-modules
+
+One of the benefits of using modules is that you can create a hierarchy of them inside your application, in order to easily manage paths and pipelines.
+
+Let's say, for example, you are building some JSON APIs in your application, and you want every route is prefixed with */apis*. Then you can easily create a module for them:
+
+```python
+apis = app.module(__name__, 'apis', url_prefix='apis')
+```
+
+Also, since you're using JSON as serialization, you can add the appropriate service pipe to the pipeline:
+
+```python
+from weppy.tools import ServiceHandler
+
+apis.pipeline = [ServiceHandler('json')]
+```
+
+Then, let's say you want to build the first version of your apis, so that they will be accessible from the */apis/v1* endpoint. You can create a submodule from the one you've just created with the same syntax:
+
+```python
+v1_apis = apis.module(__name__, 'v1', url_prefix='v1')
+```
+
+Then you can create an endpoint for a specific entity, let's say you want to make operations above the users of your application:
+
+```python
+users = v1_apis.module(__name__, 'users', url_prefix='users')
+
+@users.route('/')
+def index():
+    # code to return a list of users
+    
+@users.route('/<int:user_id>', methods='put')
+def update(user_id):
+    # code to edit a user
+```
+
+At this point, the final endpoints for the users' index and update routes will be */apis/v1/users* and */apis/v1/users/1*.
+
+All the submodule inherit the properties of the parent module, so all the prefixes will be compose to the final one. The same happens for the internal routing, since the names of the two routes will be *apis.v1.users.index* and *apis.v1.users.update*.
+
+Every submodule can have its pipeline, that will be added consequentially to the parent one. For example, you might have different authorization systems between the first version of your apis and a new one:
+
+```python
+from weppy.tools import ServiceHandler
+
+apis = app.module(__name__, 'apis', url_prefix='apis')
+apis.pipeline = [ServiceHandler('json')]
+
+v1_apis = apis.module(__name__, 'v1', url_prefix='v1')
+v1_apis.pipeline = [SomeAuthPipe()]
+
+v2_apis = apis.module(__name__, 'v2', url_prefix='v2')
+v2_apis.pipeline = [AnotherAuthPipe()]
+```
+
+Then all the routes defined in these modules or in sub-modules of these modules will have a final pipeline composed by the one of the `apis` module, and the one of the sub-module.
