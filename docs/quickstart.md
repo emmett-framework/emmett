@@ -262,8 +262,7 @@ def f():
 The output will be a JSON object with the converted content of your Python
 dictionary.
 
-The `service` module has other helpers, like *XML* format: go further in the
-[Services chapter](.services) of the documentation.
+The `service` module has other helpers, like *XML* format: go further in the [Services chapter](./services) of the documentation.
 
 Dealing with requests
 ---------------------
@@ -318,56 +317,47 @@ raise an exception.
 More information about the `request` object could be found in the [Request
 chapter](./request) of the documentation.
 
-### Handlers: performing operations with requests
+### Pipeline: performing operations with requests
 
 > – What if I want to do something before and after the request?   
-> – *You can use an Handler*.
+> – *You can use the pipeline.*
 
-weppy uses Handlers to perform operations before and after running the functions
-defined with your routing rules.
+weppy uses the pipeline to perform operations before and after running the functions defined with your routing rules.
 
-Let's see how to create one of them:
+The pipeline is a list of *pipes*, objects of the `Pipe` class. Let's see how to create one of them:
 
 ```python
-from weppy import Handler
+from weppy import Pipe
 
-class MyHandler(Handler):
-    def on_start(self):
+class MyPipe(Pipe):
+    def open(self):
         # code
-    def on_success(self):
+    def close(self):
         # code
-    def on_failure(self):
+    def on_pipe_success(self):
         # code
-    def on_end(self):
+    def on_pipe_failure(self):
         # code
 ```
 
-As you can see `Handler` provide methods to run your code before the request is
-processed by your function (with the `on_start` method) and after your function
-were executed, providing different methods depending on what happened on your
-function: if an exception is occurred weppy will call the `on_failure` method,
-otherwise the `on_success` method. The `on_end` method is **always** called after
-every request has been processed, *after* the response has been created and
-*before* sending it to the client.
+As you can see `Pipe` provide methods to run your code before the request is processed by your function (with the `open` method) and after your function were executed, providing different methods depending on what happened on your function: if an exception is occurred weppy will call the `on_pipe_failure` method, otherwise the `on_pipe_success` method. The `close` method is **always** called after every request has been processed, *after* the response has been created and *before* sending it to the client.
 
-To register your handler to a function you just need to write:
+To register your pipe to a function you just need to write:
 
 ```python
-@app.route("/url", handlers=[MyHandler()])
+@app.route("/url", pipeline=[MyPipe()])
 def f():
     #code
 ```
 
-And if you need to register your handler to all your application functions, you
-can omit the handler from the `route()` decorator writing instead:
+And if you need to register your pipe to all your application functions, you
+can omit the pipe from the `route()` decorator writing instead:
 
 ```python
-app.common_handlers = [MyHandler()]
+app.pipeline = [MyPipe()]
 ```
 
-weppy also provides a Helper handler, which is designed to add helping methods
-to the templates. Explore the [Handlers chapter](./request#handlers-and-helpers)
-of documentation for more informations.
+weppy also provides an `Injector` pipe, which is designed to add helping methods to the templates. Explore the [Pipeline chapter](./request#pipeline) of the documentation for more informations.
 
 ### Redirects and errors
 Taking again the example given for the `request.params`, we can add a redirect
@@ -410,8 +400,7 @@ def post(id):
 ```
 
 As you can see weppy applications can handle specific actions on HTTP errors.
-For more information, check out the [Error handling chapter](./request
-#errors-and-redirects) of the documentation.
+For more information, check out the [Error handling chapter](./request#errors-and-redirects) of the documentation.
 
 Sessions
 --------
@@ -445,8 +434,7 @@ store a value to the user session and retrieve it whenever the session is kept.
 > – *same as `request.params`: the attribute will be `None` and you don't have
 to catch any exception*
 
-More information about storing systems is available in the
-[Session chapter](./sessions) of the documentation.
+More information about storing systems is available in the [Session chapter](./sessions) of the documentation.
 
 Creating forms
 --------------
@@ -532,5 +520,4 @@ Go ahead
 --------
 
 Congratulations! You've read everything you need to run a simple but functional
-weppy application. Use this *quick-start guide* as your manual, and refer to the
-[complete documentation](./) for every in-depth aspect you may encounter.
+weppy application. Use this *quick-start guide* as your manual, and refer to the [complete documentation](./) for every in-depth aspect you may encounter.
