@@ -197,10 +197,10 @@ All the submodule inherit the properties of the parent module, so all the prefix
 Every submodule can have its pipeline, that will be added consequentially to the parent one. For example, you might have different authorization systems between the first version of your apis and a new one:
 
 ```python
-from weppy.tools import ServiceHandler
+from weppy.tools import ServicePipe
 
 apis = app.module(__name__, 'apis', url_prefix='apis')
-apis.pipeline = [ServiceHandler('json')]
+apis.pipeline = [ServicePipe('json')]
 
 v1_apis = apis.module(__name__, 'v1', url_prefix='v1')
 v1_apis.pipeline = [SomeAuthPipe()]
