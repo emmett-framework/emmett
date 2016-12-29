@@ -99,6 +99,8 @@ of the namespace under which weppy should load the configuration.
 Application modules
 -------------------
 
+*Changed in 1.0*
+
 When your app's structure starts to come together, you might benefit of packing routes together in common structures, so you can use the same route prefix or hostname, or to have a common pipeline.
 
 weppy provides application modules for this. You can create new modules using the `module` method of your application object. For example, let's say you have a minimal blog into your application. Then might be convenient create a module for it:

@@ -102,6 +102,8 @@ and that's it.
 Access control with "requires"
 ------------------------------
 
+*Changed in 1.0*
+
 One of the strengths of the authorization module is that it is simple to
 introduce access controls to your application. Let's say that you need to allow
 access to a specific zone to only users who are logged in. With weppy,
@@ -159,15 +161,15 @@ so the client will also receive a JSON object on an authorization error.
 > – OK, dude. What if I want to protect an entire application module with 
 access control?
 
-You can use the `RequireHandler` instead of decorating any function 
+You can use the `RequirePipe` instead of decorating any function 
 of your module:
 
 ```python
 from weppy import AppModule
-from weppy.handlers import RequireHandler
+from weppy.pipeline import RequirePipe
 
 mymodule = AppModule(app, "mymodule", __name__)
-mymodule.common_handlers = [RequireHandler(some_condition, otherwise)]
+mymodule.pipeline = [RequirePipe(some_condition, otherwise)]
 ```
 
 If you go this route, just remember to not add access control to your 

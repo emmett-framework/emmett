@@ -8,12 +8,14 @@ using the `route` decorator on your functions.
 Exposing functions
 ------------------
 
+*Changed in 1.0*
+
 The `route` method of the `App` object accepts several parameters,
 as you can see from the source code:
 
 ```python
 def route(
-    self, path=None, name=None, template=None, handlers=None, helpers=None,
+    self, path=None, name=None, template=None, pipeline=None, injectors=None,
     schemes=None, hostname=None, methods=None, prefix=None, 
     template_folder=None, template_path=None):
 ```
@@ -21,8 +23,6 @@ def route(
 Let's see them in detail.
 
 ### Path
-
-*Changed in 1.0*
 
 The `path` parameter is the first and the most important parameter you can
 pass to `route`. In fact, it tells weppy which URL should the function been
@@ -88,6 +88,7 @@ your function's parameters will be `None`.
 Now, it's time to see the `methods` parameter of `route()`
 
 ### Methods
+
 HTTP knows different methods for accessing URLs. By default, a weppy route only
 answers to GET and POST requests, but that can be changed easily. Use a list if
 you want to accept more than one kind of list:
@@ -103,6 +104,7 @@ def g():
 ```
 
 ### Template
+
 The `template` parameter allows you to set a specific template for the function 
 you're exposing. By default, weppy searches for a template with the same 
 name as the function:
@@ -121,9 +123,8 @@ folder. When you need to use a different template name, just tell weppy to load 
 ```
 
 ### Other parameters
-weppy provides the *Handler* class to perform operations during requests. The
-`handlers` and `helpers` parameters of `route()` allows you to bind them on the
-exposed function.
+
+weppy provides the *Pipe* class to perform operations during requests. The `pipeline` and `injectors` parameters of `route()` allows you to bind them on the exposed function.
 
 Similar to the `methods` parameter, `schemes` allows you to tell weppy
 on which HTTP schemes the function should answer. By default, both *HTTP* and

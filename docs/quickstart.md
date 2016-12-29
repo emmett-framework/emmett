@@ -412,14 +412,14 @@ Session contents can be stored in several ways, such as using file or redis.
 In this quick start, we will see how to use the `session` and store its contents
 directly in the cookies of the client.
 
-You need to use the `SessionCookieManager` handler provided by weppy:
+You need to use the `SessionCookieManager` pipe provided by weppy:
 
 ```python
 from weppy import App, session
 from weppy.sessions import SessionCookieManager
 
 app = App(__name__)
-app.common_handlers = [SessionCookieManager('myverysecretkey')]
+app.pipeline = [SessionCookieManager('myverysecretkey')]
 
 @app.route("/")
 def count():

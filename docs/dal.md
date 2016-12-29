@@ -54,7 +54,7 @@ class Post(Model):
 db = Database(app)
 db.define_models(Post)
 
-app.common_handlers = [db.handler]
+app.pipeline = [db.pipe]
 
 @app.route('/posts/<str:author>')
 def post_by(author):
@@ -67,7 +67,7 @@ specific author. Let's retrace what we done in those simple lines:
 
 * we added an *sqlite* database to our application, stored on file *storage.sqlite*
 * we defined the *Post* model and its properties, which will create a *posts* table
-* we registered the database handler to our application so that it will be available during requests
+* we registered the database pipe to our application's pipeline so that it will be available during requests
 * we did a select on the *posts* table querying the *author* column
 
 As you noticed, the fields defined for the table are available for queries as

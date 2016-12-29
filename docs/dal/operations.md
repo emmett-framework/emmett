@@ -52,7 +52,7 @@ weppy has also a more *low level* method to create records, that will skip the v
 As you can see, the `insert` method of the table defined by the model will return directly the `id` of the inserted record, since no validation was performed.
 
 > **Note:**    
-> Remember that if you're not in the request flow with the `Database` handler, you have to commit your changes to effectively have them written into the database.
+> Remember that if you're not in the request flow with the `Database` pipe, you have to commit your changes to effectively have them written into the database.
 
 ### Accessing the created record
 

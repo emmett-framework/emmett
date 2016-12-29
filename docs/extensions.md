@@ -85,16 +85,16 @@ def awesome_route():
     return {'message': 'Awesome!'}
 ```
 
-or add a custom handler:
+or add a custom pipe:
 
 ```python
-class AwesomeHandler(Handler):
+class AwesomePipe(Pipe):
     # some code
     
 class Awesomeness(Extension):
     def on_load(self):
-        self.app.common_handlers.append(
-            AwesomeHandler()
+        self.app.pipeline.append(
+            AwesomePipe()
         )
 ```
 

@@ -105,6 +105,8 @@ You can always access the variables you need.
 Pipeline
 --------
 
+*Changed in 1.0*
+
 Quite often, you will need to perform operations during the request flow, for example you might need to verify certain authorization conditions before your exposed method is invoked by weppy when the request is routed trough it, or you may want to close a database connection once the request flow is ended and the response is ready to be transmitted to the client.
 
 weppy uses a *pipeline* to handle the request flow trough your application, and like a water pipeline is composed of several pipes. You've already encountered some of them in the tutorial, the database and the auth ones. But how this pipes works inside the pipeline?
@@ -227,7 +229,7 @@ class DBPipe(Pipe):
         self.db.rollback()
 ```
 
-Then we can add this handler to a single route:
+Then we can add this pipe to a single route:
 
 ```python
 @app.route(pipeline=[DBPipe(db)])

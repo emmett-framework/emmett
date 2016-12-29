@@ -84,9 +84,9 @@ Obviously, the syntax for using `ServicePipe` is the same as in the
 first example:
 
 ```python
-# providing a JSON service handler
+# providing a JSON service pipe
 ServicePipe('json')
 
-# providing an XML service handler
+# providing an XML service pipe
 ServicePipe('xml')
 ```
