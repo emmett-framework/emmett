@@ -44,7 +44,7 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=[
-        'click>=0.6',
+        'click >= 0.6',
         'pyaes',
         'pyDAL==16.12.dev0',
         'pyyaml',
