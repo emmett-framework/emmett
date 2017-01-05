@@ -11,7 +11,8 @@
 
 import copy
 import hashlib
-from ._compat import pickle, string_types
+from collections import Mapping
+from ._compat import pickle, string_types, iteritems
 from ._internal import ImmutableList, native_itermethods
 
 
@@ -203,6 +204,58 @@ class OrderedSet(set):
         return self
 
     __isub__ = difference_update
+
+
+@native_itermethods(['keys', 'values', 'items'])
+class EnvironHeaders(Mapping):
+    def __init__(self, environ):
+        self.environ = environ
+
+    __hash__ = None
+
+    def _key_to_headername(self, key):
+        return 'HTTP_' + key.upper().replace('-', '_')
+
+    def __getitem__(self, key):
+        return self.environ[self._key_to_headername(key)]
+
+    def __contains__(self, key):
+        return self._key_to_headername(key) in self.environ
+
+    def __iter__(self):
+        for key, value in iteritems(self.environ):
+            if (
+                key.startswith('HTTP_') and key not in
+                ('HTTP_CONTENT_TYPE', 'HTTP_CONTENT_LENGTH')
+            ):
+                yield (key[5:].replace('_', '-').title(), value)
+
+    def __len__(self):
+        return len(list(iter(self)))
+
+    def get(self, key, default=None, cast=None):
+        try:
+            rv = self.__getitem__(key, _get_mode=True)
+        except KeyError:
+            return default
+        if cast is None:
+            return rv
+        try:
+            return cast(rv)
+        except ValueError:
+            return default
+
+    def items(self):
+        for key, value in self:
+            yield key, value
+
+    def keys(self):
+        for key, _ in iteritems(self):
+            yield key
+
+    def values(self):
+        for _, value in iteritems(self):
+            yield value
 
 
 @native_itermethods(['values'])

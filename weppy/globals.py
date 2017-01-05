@@ -18,7 +18,7 @@ import threading
 from datetime import datetime
 from ._compat import SimpleCookie, iteritems, to_native
 from ._internal import ObjectProxy, LimitedStream
-from .datastructures import sdict, Accept
+from .datastructures import sdict, Accept, EnvironHeaders
 from .helpers import get_flashed_messages
 from .language import T, _instance as _translator_instance
 from .language.helpers import LanguageAccept
@@ -138,6 +138,10 @@ class Request(object):
         return rv
 
     @cachedprop
+    def headers(self):
+        return EnvironHeaders(self.environ)
+
+    @cachedprop
     def cookies(self):
         cookies = SimpleCookie()
         for cookie in self.environ.get('HTTP_COOKIE', '').split(';'):
@@ -173,11 +177,10 @@ class Request(object):
     @cachedprop
     def env(self):
         #: parse the environment variables into a sdict
-        _env = sdict(
+        return sdict(
             (k.lower().replace('.', '_'), v)
             for k, v in iteritems(self.environ)
         )
-        return _env
 
     __getitem__ = object.__getattribute__
     __setitem__ = object.__setattr__
