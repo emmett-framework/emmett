@@ -74,6 +74,7 @@ class App(object):
         #: init extensions
         self.ext = sdict()
         self._extensions_env = sdict()
+        self._extensions_listeners = {key: [] for key in Extension._signals_}
         self.template_extensions = []
         self.template_preloaders = {}
         self.template_lexers = {}
@@ -183,6 +184,11 @@ class App(object):
             self._extensions_env[ext.namespace] = sdict()
         return self._extensions_env[ext.namespace], self.config[ext.namespace]
 
+    #: Register extension listeners
+    def __register_extension_listeners(self, ext):
+        for signal, listener in ext._listeners_:
+            self._extensions_listeners[signal].append(listener)
+
     #: Add an extension to application
     def use_extension(self, ext):
         if not issubclass(ext, Extension):
@@ -190,6 +196,7 @@ class App(object):
                                ext.__name__)
         ext_env, ext_config = self.__init_extension(ext)
         self.ext[ext.__name__] = ext(self, ext_env, ext_config)
+        self.__register_extension_listeners(self.ext[ext.__name__])
         self.ext[ext.__name__].on_load()
 
     #: Add a template extension to application
@@ -207,6 +214,10 @@ class App(object):
         lexers = self.template_extensions[-1].lexers
         for name, lexer in lexers.items():
             self.template_lexers[name] = lexer(self.template_extensions[-1])
+
+    def send_signal(self, signal, *args, **kwargs):
+        for listener in self._extensions_listeners[signal]:
+            listener(*args, **kwargs)
 
     def make_shell_context(self, context={}):
         """Returns the shell context for an interactive shell for this

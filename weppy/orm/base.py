@@ -75,6 +75,7 @@ class Database(_pyDAL):
 
     def __init__(self, app, config=sdict(), pool_size=None, folder=None,
                  **kwargs):
+        app.send_signal('before_database')
         self.logger = app.log
         config = config or app.config.db
         if not config.uri:
@@ -106,6 +107,7 @@ class Database(_pyDAL):
             self.config.uri, pool_size, folder, **kwargs)
         patch_adapter(self._adapter)
         Model._init_inheritable_dicts_()
+        app.send_signal('after_database', database=self)
 
     @property
     def pipe(self):

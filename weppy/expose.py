@@ -38,6 +38,7 @@ class MetaExpose(type):
 
 
 class Expose(with_metaclass(MetaExpose)):
+    _routing_started_ = False
     _routing_stack = []
     _routes_str = OrderedDict()
     application = None
@@ -62,6 +63,9 @@ class Expose(with_metaclass(MetaExpose)):
     ):
         if callable(paths):
             raise SyntaxError('Use @route(), not @route.')
+        if not Expose._routing_started_:
+            Expose._routing_started_ = True
+            self.application.send_signal('before_routes')
         self.schemes = schemes or ('http', 'https')
         if not isinstance(self.schemes, (list, tuple)):
             self.schemes = (self.schemes, )
