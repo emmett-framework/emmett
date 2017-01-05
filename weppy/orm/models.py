@@ -12,6 +12,7 @@
 import types
 from collections import OrderedDict
 from .._compat import iteritems, itervalues, with_metaclass
+from .._internal import warn_of_deprecation
 from ..datastructures import sdict
 from ..utils import cachedprop
 from .apis import (
@@ -27,10 +28,14 @@ from .wrappers import HasOneWrap, HasManyWrap, HasManyViaWrap
 
 
 class MetaModel(type):
+    _inheritable_dict_attrs_ = [
+        'indexes', 'validation', ('fields_rw', {'id': False}),
+        'default_values', 'update_values', 'repr_values',
+        'form_labels', 'form_info', 'form_widgets'
+    ]
+
     def __new__(cls, name, bases, attrs):
         new_class = type.__new__(cls, name, bases, attrs)
-        if bases == (object,):
-            return new_class
         #: collect declared attributes
         tablename = attrs.get('tablename')
         fields = []
@@ -150,22 +155,22 @@ class Model(with_metaclass(MetaModel)):
     #sign_table = False
     auto_validation = True
 
-    validation = {}
-    default_values = {}
-    update_values = {}
-    indexes = {}
-    repr_values = {}
-    form_labels = {}
-    form_info = {}
-    form_rw = {'id': False}
-    form_widgets = {}
-
-    @property
-    def config(self):
-        return self.db.config
+    @classmethod
+    def _init_inheritable_dicts_(cls):
+        if cls.__bases__ != (object,):
+            return
+        for attr in cls._inheritable_dict_attrs_:
+            if isinstance(attr, tuple):
+                attr_name, default = attr
+            else:
+                attr_name, default = attr, {}
+            if not isinstance(default, dict):
+                raise SyntaxError(
+                    "{} is not a dictionary".format(attr_name))
+            setattr(cls, attr_name, default)
 
     @classmethod
-    def __getsuperprops(cls):
+    def __getsuperattrs(cls):
         superattr = "_supermodels" + cls.__name__
         if hasattr(cls, superattr):
             return
@@ -173,7 +178,7 @@ class Model(with_metaclass(MetaModel)):
         superattr_val = []
         for supermodel in supermodels:
             try:
-                supermodel.__getsuperprops()
+                supermodel.__getsuperattrs()
                 superattr_val.append(supermodel)
             except:
                 pass
@@ -181,25 +186,36 @@ class Model(with_metaclass(MetaModel)):
         sup = getattr(cls, superattr)
         if not sup:
             return
-        #: get super model fields' properties
-        proplist = [
-            'validation', 'default_values', 'update_values', 'indexes',
-            'repr_values', 'form_labels', 'form_info', 'form_rw',
-            'form_widgets']
-        for prop in proplist:
-            props = {}
+        #: get super model inheritable dicts
+        for attr in cls._inheritable_dict_attrs_:
+            if isinstance(attr, tuple):
+                attr_name = attr[0]
+            else:
+                attr_name = attr
+            attrs = {}
             for model in sup:
-                superprops = getattr(model, prop)
-                for k, v in superprops.items():
-                    props[k] = v
-            for k, v in getattr(cls, prop).items():
-                props[k] = v
-            setattr(cls, prop, props)
+                superattrs = getattr(model, attr_name)
+                for k, v in superattrs.items():
+                    attrs[k] = v
+            for k, v in getattr(cls, attr_name).items():
+                attrs[k] = v
+            setattr(cls, attr_name, attrs)
+        # deprecated since 1.0
+        if hasattr(cls, 'form_rw'):
+            warn_of_deprecation('form_rw', 'fields_rw', 'Model', stack=5)
+            attrs = {}
+            for model in sup:
+                superattrs = getattr(model, 'fields_rw', {})
+                for k, v in superattrs.items():
+                    attrs[k] = v
+            for k, v in getattr(cls, 'form_rw').items():
+                attrs[k] = v
+            setattr(cls, 'fields_rw', attrs)
 
     def __new__(cls):
         if cls._declared_tablename_ is None:
             cls.tablename = make_tablename(cls.__name__)
-        cls.__getsuperprops()
+        cls.__getsuperattrs()
         return super(Model, cls).__new__(cls)
 
     def __init__(self):
@@ -207,6 +223,10 @@ class Model(with_metaclass(MetaModel)):
             self.migrate = self.config.get('migrate', self.db._migrate)
         if not hasattr(self, 'format'):
             self.format = None
+
+    @property
+    def config(self):
+        return self.db.config
 
     def __parse_relation_via(self, via):
         if via is None:
@@ -390,14 +410,15 @@ class Model(with_metaclass(MetaModel)):
         #    from .tools import Auth
         #    fakeauth = Auth(DAL(None))
         #    self.fields.extend([fakeauth.signature])
+        self.__define_indexes()
         self.__define_validation()
+        self.__define_access()
         self.__define_defaults()
         self.__define_updates()
         self.__define_representation()
         self.__define_computations()
         self.__define_callbacks()
         self.__define_scopes()
-        self.__define_indexes()
         self.__define_form_utils()
         self.setup()
 
@@ -414,6 +435,16 @@ class Model(with_metaclass(MetaModel)):
             else:
                 field._custom_requires.append(validation)
             field._parse_validation()
+
+    def __define_access(self):
+        for field, value in self.fields_rw.items():
+            if isinstance(value, (tuple, list)):
+                readable, writable = value
+            else:
+                writable = value
+                readable = value
+            self.table[field].writable = writable
+            self.table[field].readable = readable
 
     def __define_defaults(self):
         for field, value in self.default_values.items():
@@ -518,20 +549,6 @@ class Model(with_metaclass(MetaModel)):
         #: info
         for field, value in self.form_info.items():
             self.table[field].comment = value
-        #: rw
-        try:
-            self.table.is_active.writable = self.table.is_active.readable = \
-                False
-        except:
-            pass
-        for field, value in self.form_rw.items():
-            if isinstance(value, (tuple, list)):
-                readable, writable = value
-            else:
-                writable = value
-                readable = value
-            self.table[field].writable = writable
-            self.table[field].readable = readable
         #: widgets
         for field, value in self.form_widgets.items():
             self.table[field].widget = value

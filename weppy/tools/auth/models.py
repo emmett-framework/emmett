@@ -30,15 +30,16 @@ class AuthModel(Model):
         return getattr(super(AuthModel, self), '_Model__' + name)
 
     def _define_(self):
+        self.__hide_all()
+        self.__super_method('define_indexes')()
         self.__super_method('define_validation')()
+        self.__super_method('define_access')()
         self.__super_method('define_defaults')()
         self.__super_method('define_updates')()
         self.__super_method('define_representation')()
         self.__super_method('define_computations')()
         self.__super_method('define_callbacks')()
         self.__super_method('define_scopes')()
-        self.__super_method('define_indexes')()
-        self.__hide_all()
         self.__super_method('define_form_utils')
         self.__define_authform_utils()
         self.setup()

@@ -58,7 +58,7 @@ class Stuff(Model):
         "a": {'presence': True}
     }
 
-    form_rw = {
+    fields_rw = {
         "invisible": False
     }
 

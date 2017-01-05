@@ -21,7 +21,7 @@ from ..serializers import _custom_json, xml
 from .adapters import patch_adapter
 from .objects import Table, Field, Set, Row, Rows
 from .helpers import TimingHandler
-from .models import MetaModel
+from .models import MetaModel, Model
 
 
 class DatabasePipe(Pipe):
@@ -105,6 +105,7 @@ class Database(_pyDAL):
         super(Database, self).__init__(
             self.config.uri, pool_size, folder, **kwargs)
         patch_adapter(self._adapter)
+        Model._init_inheritable_dicts_()
 
     @property
     def pipe(self):
