@@ -18,12 +18,18 @@ Next
 - Added support for float variable rules in routes
 - Added support for multiple paths in routes
 - Enhanced wsgi request handling performance
+- Added `handle_static` boolean option to `App.config`
 - Enhanced language recognition from Accept-Language header
 - Optimized translator initialization
 - Added `now` attribute and global method which returns `request.now` or
   `datetime.now` when request context is missing
 - Added access to computed values within insert and update callbaks
 - Deprecated `Model.form_rw` in favor of `Model.fields_rw`
+- Optimized json and xml serializers, added optional `json_safe` serializer
+  for old behavior
+- Added `__json__` and `__xml__` methods handling in serializers for custom
+  objects serialization
+- Added `headers` attribute to `Request`
 
 
 Version 0.8
