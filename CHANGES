@@ -23,6 +23,7 @@ Next
 - Added `now` attribute and global method which returns `request.now` or
   `datetime.now` when request context is missing
 - Added access to computed values within insert and update callbaks
+- Deprecated `Model.form_rw` in favor of `Model.fields_rw`
 
 
 Version 0.8
