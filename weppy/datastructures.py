@@ -234,10 +234,7 @@ class EnvironHeaders(Mapping):
         return len(list(iter(self)))
 
     def get(self, key, default=None, cast=None):
-        try:
-            rv = self.__getitem__(key, _get_mode=True)
-        except KeyError:
-            return default
+        rv = self.environ.get(self._key_to_headername(key), default)
         if cast is None:
             return rv
         try:
