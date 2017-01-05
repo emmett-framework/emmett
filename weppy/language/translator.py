@@ -131,6 +131,9 @@ class TElement(object):
             return TElement(self)
         return TElement(self.T, self.m, symbols, self.M)
 
+    def __json__(self):
+        return str(self)
+
 
 #: A language for the translator.
 class TLanguage(object):

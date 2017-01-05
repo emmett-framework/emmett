@@ -12,7 +12,7 @@
 from .._internal import warn_of_deprecation
 from ..globals import response
 from ..pipeline import Pipe
-from ..serializers import json, xml
+from ..serializers import Serializers
 
 
 class ServicePipe(Pipe):
@@ -23,16 +23,18 @@ class ServicePipe(Pipe):
                 procedure
             )
         self.procedure = getattr(self, procedure)
+        self.json_encoder = Serializers.get_for('json')
+        self.xml_encoder = Serializers.get_for('xml')
 
     def json(self, f, **kwargs):
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         data = f(**kwargs)
-        return json(data)
+        return self.json_encoder(data)
 
     def xml(self, f, **kwargs):
         response.headers['Content-Type'] = 'text/xml'
         data = f(**kwargs)
-        return xml(data)
+        return self.xml_encoder(data)
 
     def pipe(self, next_pipe, **kwargs):
         return self.procedure(next_pipe, **kwargs)

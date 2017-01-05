@@ -17,6 +17,8 @@ from pydal.objects import Table as _Table, Field as _Field, Set as _Set, \
 from .._compat import implements_iterator, iterkeys, iteritems
 from ..datastructures import sdict
 from ..globals import current
+from ..serializers import xml_encode
+from ..tags import tag
 from ..utils import cachedprop
 from ..validators import ValidateFromDict
 from .helpers import JoinedIDReference, RelationBuilder, wrap_scope_on_set
@@ -661,6 +663,12 @@ class Row(_Row):
     def __getstate__(self):
         return self.as_dict()
 
+    def __json__(self):
+        return self.as_dict()
+
+    def __xml__(self, key=None, quote=True):
+        return xml_encode(self.as_dict(), key or 'row', quote)
+
 
 class Rows(_Rows):
     def __init__(
@@ -717,6 +725,13 @@ class Rows(_Rows):
 
     def render(self, *args, **kwargs):
         raise NotImplementedError
+
+    def __json__(self):
+        return self.as_list()
+
+    def __xml__(self, key=None, quote=True):
+        key = key or 'rows'
+        return tag[key](*[item.__xml__(quote=quote) for item in self])
 
 
 @implements_iterator

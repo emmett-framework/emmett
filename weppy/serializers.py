@@ -9,65 +9,92 @@
 
 import datetime
 import decimal
-import json as json_parser
+import json as _json
 import udatetime
-from ._compat import PY2, integer_types
-from .language.translator import TElement
-from .tags import TAG, tag, htmlescape
-from .datastructures import sdict
+from ._compat import PY2, integer_types, itervalues
+from .tags import tag, htmlescape
 
 
-def _custom_json(o):
-    if hasattr(o, 'custom_json') and callable(o.custom_json):
-        return o.custom_json()
-    if isinstance(o, datetime.datetime):
-        return udatetime.to_string(o)
-    elif isinstance(o, (datetime.date, datetime.time)):
-        return o.isoformat()
-    elif isinstance(o, integer_types):
-        return int(o)
-    elif isinstance(o, decimal.Decimal):
-        return str(o)
-    elif isinstance(o, TElement):
-        return str(o)
-    elif isinstance(o, TAG):
-        return str(o)
-    elif hasattr(o, 'as_list') and callable(o.as_list):
-        return o.as_list()
-    elif hasattr(o, 'as_dict') and callable(o.as_dict):
-        return o.as_dict()
-    else:
-        raise TypeError(repr(o) + " is not JSON serializable")
+_json_safe_table = {
+    'u2028': [r'\u2028', '\\u2028'],
+    'u2029': [r'\u2029', '\\u2029']
+}
+
+if PY2:
+    _json_safe_table['u2028'][0] = \
+        _json_safe_table['u2028'][0].decode('raw_unicode_escape')
+    _json_safe_table['u2029'][0] = \
+        _json_safe_table['u2029'][0].decode('raw_unicode_escape')
 
 
-def json(value, default=_custom_json):
-    rep28 = r'\u2028'
-    rep29 = r'\2029'
-    if PY2:
-        rep28 = rep28.decode('raw_unicode_escape')
-        rep29 = rep29.decode('raw_unicode_escape')
-    return json_parser.dumps(
-        value, default=default
-    ).replace(rep28, '\\u2028').replace(rep29, '\\u2029')
+class Serializers(object):
+    _registry_ = {}
+
+    @classmethod
+    def register_for(cls, target):
+        def wrap(f):
+            cls._registry_[target] = f
+            return f
+        return wrap
+
+    @classmethod
+    def get_for(cls, target):
+        return cls._registry_[target]
 
 
-def _xml_rec(value, key, quote=True):
-    if hasattr(value, 'custom_xml') and callable(value.custom_xml):
-        return value.custom_xml()
-    elif isinstance(value, (dict, sdict)):
-        return tag[key](*[tag[k](_xml_rec(v, '', quote))
-                          for k, v in value.items()])
-    elif isinstance(value, list):
-        return tag[key](*[tag[item](_xml_rec(item, '', quote))
-                        for item in value])
-    elif hasattr(value, 'as_list') and callable(value.as_list):
-        return str(_xml_rec(value.as_list(), '', quote))
-    elif hasattr(value, 'as_dict') and callable(value.as_dict):
-        return str(_xml_rec(value.as_dict(), '', quote))
-    else:
-        return htmlescape(value, quote)
+class JSONEncoder(_json.JSONEncoder):
+    def default(self, o):
+        if hasattr(o, '__json__'):
+            return o.__json__()
+        if isinstance(o, datetime.datetime):
+            return udatetime.to_string(o)
+        if isinstance(o, (datetime.date, datetime.time)):
+            return o.isoformat()
+        if isinstance(o, integer_types):
+            return int(o)
+        if isinstance(o, decimal.Decimal):
+            return str(o)
+        return _json.JSONEncoder.default(self, o)
 
 
+def _pydal_json_encode(o):
+    if hasattr(o, '__json__'):
+        return o.__json__()
+    raise TypeError(repr(o) + " is not JSON serializable")
+
+
+@Serializers.register_for('json')
+def json(value):
+    return _json.dumps(value, cls=JSONEncoder)
+
+
+def json_safe(value):
+    rv = json(value)
+    for val, rep in itervalues(_json_safe_table):
+        rv.replace(val, rep)
+    return rv
+
+
+def xml_encode(value, key=None, quote=True):
+    if hasattr(value, '__xml__'):
+        return value.__xml__(key, quote)
+    if isinstance(value, dict):
+        return tag[key](
+            *[
+                tag[k](xml_encode(v, None, quote))
+                for k, v in value.items()
+            ])
+    if isinstance(value, list):
+        return tag[key](
+            *[
+                tag[item](xml_encode(item, None, quote))
+                for item in value
+            ])
+    return htmlescape(value, quote)
+
+
+@Serializers.register_for('xml')
 def xml(value, encoding='UTF-8', key='document', quote=True):
-    return ('<?xml version="1.0" encoding="%s"?>' % encoding) + \
-        str(_xml_rec(value, key, quote))
+    rv = ('<?xml version="1.0" encoding="%s"?>' % encoding) + \
+        str(xml_encode(value, key, quote))
+    return rv

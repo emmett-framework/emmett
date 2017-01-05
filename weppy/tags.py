@@ -186,6 +186,9 @@ class TAG(object):
             co = u''.join(htmlescape(v) for v in self.components)
             return u'<%s%s>%s</%s>' % (name, ca, co, name)
 
+    def __json__(self):
+        return str(self)
+
 
 class METATAG(object):
     def __getattr__(self, name):

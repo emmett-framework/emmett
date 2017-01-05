@@ -17,7 +17,7 @@ from .._internal import warn_of_deprecation
 from ..datastructures import sdict
 from ..pipeline import Pipe
 from ..security import uuid as _uuid
-from ..serializers import _custom_json, xml
+from ..serializers import _pydal_json_encode, xml
 from .adapters import patch_adapter
 from .objects import Table, Field, Set, Row, Rows
 from .helpers import TimingHandler
@@ -42,7 +42,7 @@ class DatabasePipe(Pipe):
 
 
 class Database(_pyDAL):
-    serializers = {'json': _custom_json, 'xml': xml}
+    serializers = {'json': _pydal_json_encode, 'xml': xml}
     logger = None
     uuid = lambda x: _uuid()
 
