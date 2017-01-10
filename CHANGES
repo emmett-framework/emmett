@@ -33,6 +33,10 @@ Next
 - Replaced udatetime dependency with pendulum
 - `weppy.globals.now`, `isDatetime` validator and date route variables are now
   parsed as `Pendulum` objects
+- Added support for additional separators apart from '/' between route
+  variables in `url`
+- Removed `extension` parameter in `url`
+- Added `anchor` parameter in `url`
 
 
 Version 0.8
