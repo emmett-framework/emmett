@@ -447,11 +447,6 @@ class RouteUrl(object):
             self.components.append('/{}')
         return self.components.pop(0).format(value)
 
-    # def add_extension(self, args, extension):
-    #     if extension:
-    #         self.components.insert(0, '.{}')
-    #         args.insert(0, extension)
-
     def add_static_versioning(self, args):
         if self.path[0:7] == '/static' and Expose.static_versioning():
             self.components.insert(1, "/_{}")
@@ -481,19 +476,27 @@ class RouteUrl(object):
             )
         return ''
 
-    def url(self, scheme, host, language, args, params):
-        # self.add_extension(args, extension)
+    def anchor(self, anchor):
+        rv = ''
+        if anchor:
+            if not isinstance(anchor, (list, tuple)):
+                anchor = [anchor]
+            for element in anchor:
+                rv += '#{}'.format(element)
+        return rv
+
+    def url(self, scheme, host, language, args, params, anchor):
         args = self._args + args
         self.add_static_versioning(args)
         self.add_language(args, language)
-        return "{}{}{}".format(
+        return "{}{}{}{}".format(
             self.path_prefix(scheme, host), self.args(args),
-            self.params(params))
+            self.params(params), self.anchor(anchor))
 
 
 def url(
-    path, args=[], params={}, extension=None, sign=None, scheme=None,
-    host=None, language=None
+    path, args=[], params={}, anchor=None, sign=None, scheme=None, host=None,
+    language=None
 ):
     if not isinstance(args, (list, tuple)):
         args = [args]
@@ -567,4 +570,4 @@ def url(
                     'cannot build url("%s",...) without current request' % path
                 )
             host = current.request.hostname
-    return builder.url(scheme, host, lang, args, params)
+    return builder.url(scheme, host, lang, args, params, anchor)
