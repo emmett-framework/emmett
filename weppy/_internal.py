@@ -13,6 +13,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import datetime
 import os
 import pkgutil
 import sys
@@ -408,3 +409,40 @@ def create_missing_app_folders(app):
                 os.mkdir(path)
     except:
         pass
+
+
+#: monkey patches
+class IsoformatJSONMixin(object):
+    def __json__(self):
+        return self.isoformat()
+
+
+class Date(datetime.date, IsoformatJSONMixin):
+    pass
+
+
+class Time(datetime.time, IsoformatJSONMixin):
+    pass
+
+
+class DateTime(datetime.datetime):
+    def date(self):
+        d = super(DateTime, self).date()
+        return Date(d.year, d.month, d.day)
+
+    def time(self):
+        t = super(DateTime, self).time()
+        return Time(t.hour, t.minute, t.second, t.microsecond, t.tzinfo)
+
+    def __json__(self):
+        return self.strftime('%Y-%m-%dT%H:%M:%S.%f%_z')
+
+
+def _pendulum_to_json(obj):
+    return obj.strftime('%Y-%m-%dT%H:%M:%S.%f%_z')
+
+
+# datetime.date = Date
+# datetime.time = Time
+# datetime.datetime = DateTime
+# pendulum.Pendulum.__json__ = _pendulum_to_json

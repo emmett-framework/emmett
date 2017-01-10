@@ -10,7 +10,6 @@
 import datetime
 import decimal
 import json as _json
-import udatetime
 from ._compat import PY2, integer_types, itervalues
 from .tags import tag, htmlescape
 
@@ -47,7 +46,7 @@ class JSONEncoder(_json.JSONEncoder):
         if hasattr(o, '__json__'):
             return o.__json__()
         if isinstance(o, datetime.datetime):
-            return udatetime.to_string(o)
+            return o.strftime('%Y-%m-%dT%H:%M:%S.%f%_z')
         if isinstance(o, (datetime.date, datetime.time)):
             return o.isoformat()
         if isinstance(o, integer_types):

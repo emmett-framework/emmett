@@ -13,9 +13,9 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import datetime
 import cgi
 import sys
+from datetime import datetime
 from io import BytesIO
 from .._compat import text_type, iteritems, itervalues
 from ..datastructures import sdict
@@ -318,9 +318,7 @@ class EnvironBuilder(object):
             'wsgi.input': input_stream,
             'wsgi.errors': self.errors_stream,
             'wpp.application': 'test_application_name',
-            'wpp.appnow': 'utc',
-            'wpp.now.utc': datetime.datetime.utcnow(),
-            'wpp.now.local': datetime.datetime.now(),
+            'wpp.now': datetime.utcnow()
         })
         for key, value in self.headers.to_wsgi_list():
             result['HTTP_%s' % key.upper().replace('-', '_')] = value

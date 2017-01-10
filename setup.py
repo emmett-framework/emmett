@@ -45,10 +45,10 @@ setup(
     platforms='any',
     install_requires=[
         'click>=0.6',
+        'pendulum~=0.8',
         'pyaes',
         'pyDAL==16.12.dev0',
-        'pyyaml',
-        'udatetime~=0.0.9'
+        'pyyaml'
     ],
     dependency_links=[
         'https://github.com/web2py/pydal/tarball/e49dd9b#egg=pydal-16.12.dev0',

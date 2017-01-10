@@ -25,8 +25,6 @@ def dynamic_handler(app, environ, start_response):
     try:
         #: init current
         environ["wpp.application"] = app.name
-        environ["wpp.apppath"] = app.root_path
-        environ["wpp.appnow"] = app.now_reference
         current.initialize(environ)
         #: dispatch request
         response = current.response
@@ -96,8 +94,7 @@ def _nolang_static_handler(app, path_info):
 
 
 def error_handler(app, environ, start_response):
-    environ['wpp.now.utc'] = datetime.utcnow()
-    environ['wpp.now.local'] = datetime.now()
+    environ['wpp.now'] = datetime.utcnow()
     try:
         return app.common_static_handler(app, environ, start_response)
     except Exception:

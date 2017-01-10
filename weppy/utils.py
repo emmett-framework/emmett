@@ -11,6 +11,9 @@
 
 import re
 import socket
+from datetime import datetime
+from pendulum.parser import Parser as PendulumParser
+from .datastructures import sdict
 
 
 class cachedprop(object):
@@ -25,6 +28,22 @@ class cachedprop(object):
             return self
         obj.__dict__[self.__name__] = result = self.fget(obj)
         return result
+
+
+class DTParser(PendulumParser):
+    def parse(self, text):
+        try:
+            parsed = self.normalize(self.parse_common(text))
+            return self._create_pendulum_object(parsed)
+        except:
+            raise ValueError('Invalid date string: {}'.format(text))
+
+
+dt_parser = DTParser(now=datetime.utcnow())
+
+
+def parse_datetime(text):
+    return dt_parser.parse(text)
 
 
 def is_valid_ip_address(address):
@@ -79,13 +98,9 @@ def write_file(filename, value, mode='w'):
 
 
 def dict_to_sdict(obj):
-    # convert dict and nested dicts to odict
-    from .datastructures import sdict
-    # if we have a dict, iterate over keys
+    #: convert dict and nested dicts to sdict
     if isinstance(obj, dict) and not isinstance(obj, sdict):
         for k in obj:
             obj[k] = dict_to_sdict(obj[k])
-        # convert the dict to convenient sdict object
         return sdict(obj)
-    # return other objects without modifications
     return obj

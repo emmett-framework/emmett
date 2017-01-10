@@ -13,6 +13,7 @@
 import cgi
 import copy
 import json
+import pendulum
 import re
 import threading
 from datetime import datetime
@@ -35,22 +36,25 @@ _regex_accept = re.compile(r'''
 
 class Request(object):
     def __init__(self, environ):
+        self.name = None
         self.environ = environ
         self.scheme = 'https' if \
             environ.get('wsgi.url_scheme', '').lower() == 'https' or \
             environ.get('HTTP_X_FORWARDED_PROTO', '').lower() == 'https' or \
             environ.get('HTTPS', '') == 'on' else 'http'
-        self.name = '<module>.<func>'
         self.hostname = environ.get('HTTP_HOST') or '%s:%s' % \
             (environ.get('SERVER_NAME', ''), environ.get('SERVER_PORT', ''))
         self.method = environ.get('REQUEST_METHOD', 'GET').lower()
         self.path_info = environ.get('PATH_INFO') or \
-            environ.get('REQUEST_URI').split('?')[0]
-        self.input = environ.get('wsgi.input')
-        self._now_ref = environ['wpp.appnow']
-        self.nowutc = environ['wpp.now.utc']
-        self.nowloc = environ['wpp.now.local']
-        self.application = environ['wpp.application']
+            environ.get('REQUEST_URI', '').split('?')[0]
+
+    @property
+    def appname(self):
+        return self.environ['wpp.application']
+
+    @cachedprop
+    def input(self):
+        return self.environ.get('wsgi.input')
 
     def __parse_json_params(self):
         content_length = self.environ.get('CONTENT_LENGTH')
@@ -84,9 +88,11 @@ class Request(object):
 
     @cachedprop
     def now(self):
-        if self._now_ref == "utc":
-            return self.nowutc
-        return self.nowloc
+        return pendulum.instance(self.environ['wpp.now'], 'UTC')
+
+    @cachedprop
+    def now_local(self):
+        return self.now.in_timezone(pendulum.local_timezone())
 
     @cachedprop
     def query_params(self):
@@ -105,8 +111,10 @@ class Request(object):
             json_params = self.__parse_json_params()
             params.update(json_params)
             return params
-        if self.input and self.environ.get('REQUEST_METHOD') in \
-                ('POST', 'PUT', 'DELETE', 'BOTH'):
+        if (
+            self.input and self.environ.get('REQUEST_METHOD') in
+            ('POST', 'PUT', 'DELETE', 'BOTH')
+        ):
             dpost = cgi.FieldStorage(fp=self.input, environ=self.environ,
                                      keep_blank_values=1)
             try:
@@ -241,7 +249,7 @@ class Current(threading.local):
         return self._get_lang()
 
     def _sys_now(self):
-        return datetime.utcnow()
+        return pendulum.instance(datetime.utcnow(), 'UTC')
 
     def _req_now(self):
         return self.request.now

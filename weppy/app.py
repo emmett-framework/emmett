@@ -64,8 +64,6 @@ class App(object):
         #: init logger
         self._logger = None
         self.logger_name = self.import_name
-        #: set request.now reference
-        self.now_reference = "utc"
         #: init languages
         self.languages = []
         self.language_default = None
