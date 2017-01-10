@@ -117,4 +117,6 @@ def test_module_url(app):
     link = url('test_route3', [2, 'bar', 'json'])
     assert link == '/it/test3/2/foo/bar.json'
     link = url('test_route3', [2, 'bar', 'json'], {'foo': 'bar', 'bar': 'foo'})
-    assert link == '/it/test3/2/foo/bar.json?foo=bar&bar=foo'
+    lsplit = link.split('?')
+    assert lsplit[0] == '/it/test3/2/foo/bar.json'
+    assert lsplit[1] in ['foo=bar&bar=foo', 'bar=foo&foo=bar']
