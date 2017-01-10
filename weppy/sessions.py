@@ -26,7 +26,7 @@ class SessionCookieManager(Pipe):
         self.domain = domain
 
     def open(self):
-        self.cookie_data_name = 'wpp_session_data_%s' % request.application
+        self.cookie_data_name = 'wpp_session_data_%s' % request.appname
         if self.cookie_data_name in request.cookies:
             cookie_data = request.cookies[self.cookie_data_name].value
             current.session = SessionData(secure_loads(
@@ -116,7 +116,7 @@ class SessionFSManager(Pipe):
             pass
 
     def open(self):
-        self.cookie_data_name = 'wpp_session_data_%s' % request.application
+        self.cookie_data_name = 'wpp_session_data_%s' % request.appname
         if self.cookie_data_name in request.cookies:
             sid = request.cookies[self.cookie_data_name].value
             data = self._load(sid)
@@ -161,7 +161,7 @@ class SessionRedisManager(Pipe):
         self.domain = domain
 
     def open(self):
-        self.cookie_data_name = 'wpp_session_data_%s' % request.application
+        self.cookie_data_name = 'wpp_session_data_%s' % request.appname
         if self.cookie_data_name in request.cookies:
             sid = request.cookies[self.cookie_data_name].value
             #: load from redis

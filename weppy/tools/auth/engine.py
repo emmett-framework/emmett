@@ -393,7 +393,7 @@ class Auth(object):
             if callable(basic_auth_realm):
                 basic_auth_realm = basic_auth_realm()
             elif basic_auth_realm is True:
-                basic_realm = u'' + request.application
+                basic_realm = u'' + request.appname
             basic_realm = to_unicode(basic_realm)
             http_401 = HTTP(
                 401, u'Not Authorized',
