@@ -132,26 +132,21 @@ class Expose(with_metaclass(MetaExpose)):
             return path[:-1]
         return path
 
-    @staticmethod
-    def override_midargs(path):
-        args = path.split("//")
-        if len(args) > 1:
-            path = "/{{:arg:}}/".join(args)
-        return path
-
     @classmethod
-    def remove_decoration(cls, path):
-        """
-        converts somehing like "/junk/test_args/<str:a>(/<int:b>)?"
-        into something like    "/junk/test_args" for reverse routing
-        """
-        while True:
-            new_path = cls.REGEX_DECORATION.sub('', path)
-            new_path = cls.remove_trailslash(new_path)
-            new_path = cls.override_midargs(new_path)
-            if new_path == path:
-                return path
-            path = new_path
+    def build_route_components(cls, path):
+        rule = re.compile("(\()?([^<\w]+)?<(\w+)\:(\w+)>(\)\?)?")
+        components = []
+        params = []
+        for match in rule.findall(path):
+            params.append(match[1] + "{}")
+        statics = re.compile(rule).sub("{}", path).split("{}")
+        if not params:
+            components = statics
+        else:
+            components.append(statics[0])
+            for idx, el in enumerate(params):
+                components.append(params[idx] + statics[idx + 1])
+        return components
 
     @classmethod
     def add_route(cls, route):
@@ -162,7 +157,7 @@ class Expose(with_metaclass(MetaExpose)):
         cls.routes_in[host][route[1].name] = route
         cls.routes_out[route[1].name] = {
             'host': route[1].hostname,
-            'path': cls.remove_decoration(route[1].path)}
+            'path': cls.build_route_components(route[1].path)}
 
     def __call__(self, f):
         self.f_name = f.__name__
@@ -434,6 +429,68 @@ class ResponsePipe(Pipe):
             response.output = str(output)
 
 
+class RouteUrl(object):
+    def __init__(self, components=[]):
+        if not components:
+            self.components = ['/{}']
+            self._args = ['']
+        else:
+            self.components = ['{}'] + components[1:]
+            self._args = [components[0]]
+
+    @property
+    def path(self):
+        return self._args[0]
+
+    def arg(self, value):
+        if not self.components:
+            self.components.append('/{}')
+        return self.components.pop(0).format(value)
+
+    # def add_extension(self, args, extension):
+    #     if extension:
+    #         self.components.insert(0, '.{}')
+    #         args.insert(0, extension)
+
+    def add_static_versioning(self, args):
+        if self.path[0:7] == '/static' and Expose.static_versioning():
+            self.components.insert(1, "/_{}")
+            args.insert(1, str(Expose.static_versioning()))
+
+    def add_language(self, args, language):
+        if language:
+            self.components.insert(0, '/{}')
+            args.insert(0, language)
+
+    def path_prefix(self, scheme, host):
+        if scheme and host:
+            return '{}://{}'.format(scheme, host)
+        return ''
+
+    def args(self, args):
+        rv = ''
+        for arg in args:
+            rv += self.arg(arg)
+        return rv
+
+    def params(self, params):
+        if params:
+            return '?' + '&'.join(
+                '%s=%s' % (uquote(str(k)), uquote(str(v)))
+                for k, v in iteritems(params)
+            )
+        return ''
+
+    def url(self, scheme, host, language, args, params):
+        # self.add_extension(args, extension)
+        args = self._args + args
+        self.add_static_versioning(args)
+        self.add_language(args, language)
+        return "{}{}{}".format(
+            self.path_prefix(scheme, host), self.args(args),
+            self.params(params))
+
+
 def url(
     path, args=[], params={}, extension=None, sign=None, scheme=None,
     host=None, language=None
@@ -460,27 +517,13 @@ def url(
             path = module + path
         # find correct route
         try:
-            url = Expose.routes_out[path]['path']
+            url_components = Expose.routes_out[path]['path']
             url_host = Expose.routes_out[path]['host']
-            # try to rebuild url if midargs found
-            midargs = url.split("{{:arg:}}")
-            if len(midargs) > 1:
-                u = ""
-                if len(args) >= len(midargs) - 1:
-                    for i in range(0, len(midargs) - 1):
-                        u += midargs[i] + uquote(str(args[i]))
-                    u += midargs[-1]
-                    url = u
-                    args = args[len(midargs) - 1:]
-                else:
-                    raise RuntimeError(
-                        'invalid url("%s",...): needs args for params' % path
-                    )
+            builder = RouteUrl(url_components)
             # try to use the correct hostname
             if url_host is not None:
                 try:
                     if current.request.hostname != url_host:
-                        #url = current.request.scheme+"://"+url_host+url
                         scheme = current.request.scheme
                         host = url_host
                 except:
@@ -489,42 +532,26 @@ def url(
             raise RuntimeError('invalid url("%s",...)' % path)
     # handle classic urls
     else:
-        url = path
-    # add static versioning
-    if url[0:7] == '/static':
-        if Expose.static_versioning():
-            url = url[0:7] + "/_" + str(Expose.static_versioning()) + url[7:]
-    # language
+        builder = RouteUrl([path])
+    # add language
+    lang = None
     if Expose.application.language_force_on_url:
-        if url.startswith("/"):
+        if language:
+            #: use the given language if is enabled in application
+            if language in Expose.application.languages:
+                lang = language
+        else:
+            #: try to use the request language if context exists
+            if hasattr(current, 'request'):
+                lang = current.request.language
+        if lang == Expose.application.language_default:
             lang = None
-            if language:
-                #: use the given language if is enabled in application
-                if language in Expose.application.languages:
-                    lang = language
-            else:
-                #: try to use the request language if context exists
-                if hasattr(current, 'request'):
-                    lang = current.request.language
-            if lang and lang != Expose.application.language_default:
-                url = '/' + lang + url
-    # add extension (useless??)
-    if extension:
-        url = url + '.' + extension
-    # add args
-    if args:
-        if not isinstance(args, (list, tuple)):
-            args = (args,)
-        url = url + '/' + '/'.join(uquote(str(a)) for a in args)
+    # # add extension (useless??)
+    # if extension:
+    #     url = url + '.' + extension
     # add signature
     if sign:
         params['_signature'] = sign(url)
-    # add params
-    if params:
-        url = url + '?' + '&'.join(
-            '%s=%s' % (
-                uquote(str(k)), uquote(str(v))) for k, v in iteritems(params)
-        )
     # scheme=True means to use current scheme
     if scheme is True:
         if not hasattr(current, 'request'):
@@ -540,5 +567,4 @@ def url(
                     'cannot build url("%s",...) without current request' % path
                 )
             host = current.request.hostname
-        url = '%s://%s%s' % (scheme, host, url)
-    return url
+    return builder.url(scheme, host, lang, args, params)
