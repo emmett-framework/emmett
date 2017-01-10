@@ -30,6 +30,9 @@ Next
 - Added `__json__` and `__xml__` methods handling in serializers for custom
   objects serialization
 - Added `headers` attribute to `Request`
+- Replaced udatetime dependency with pendulum
+- `weppy.globals.now`, `isDatetime` validator and date route variables are now
+  parsed as `Pendulum` objects
 
 
 Version 0.8
