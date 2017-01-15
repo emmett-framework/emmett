@@ -56,6 +56,7 @@ class App(object):
         self.config.handle_static = True
         self.config.url_default_namespace = None
         self.config.templates_auto_reload = False
+        self.config.templates_escape = 'common'
         #: try to create needed folders
         create_missing_app_folders(self)
         #: init expose module

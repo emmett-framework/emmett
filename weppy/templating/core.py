@@ -17,6 +17,7 @@ from .._compat import StringIO, reduce, string_types, text_type, to_native, \
 from ..tags import asis
 from ..helpers import load_component
 from ..datastructures import sdict
+from ..utils import cachedprop
 from .parser import TemplateParser
 from .cache import TemplaterCache
 from .helpers import TemplateMissingError, TemplateReference
@@ -28,7 +29,7 @@ class DummyResponse():
 
     @staticmethod
     def _to_html(data):
-        return to_bytes(data, 'ascii', 'xmlcharrefreplace')
+        return cgi.escape(data, True).replace(u"'", u"&#x27;")
 
     @staticmethod
     def _to_native(data):
@@ -51,27 +52,39 @@ class DummyResponse():
                 except:
                     pass
             if body is None:
-                body = self._to_native(
-                    self._to_html(
-                        cgi.escape(
-                            self._to_unicode(data), True
-                        ).replace(u"'", u"&#x27;")))
+                body = self._to_native(self._to_html(self._to_unicode(data)))
         else:
             body = self._to_native(data)
         self.body.write(body)
 
 
+class DummyResponseEscapeAll(DummyResponse):
+    @staticmethod
+    def _to_html(data):
+        return to_bytes(
+            DummyResponse._to_html(data), 'ascii', 'xmlcharrefreplace')
+
+
 class Templater(object):
+    _resp_cls = {'common': DummyResponse, 'all': DummyResponseEscapeAll}
+
     def __init__(self, application):
+        self.config = application.config
         self.loaders = application.template_preloaders
         self.renders = application.template_extensions
         self.lexers = application.template_lexers
         self.cache = TemplaterCache(application, self)
 
+    @cachedprop
+    def response_cls(self):
+        return self._resp_cls.get(
+            self.config.templates_escape, self._resp_cls['common'])
+
     def preload(self, path, name):
         fext = os.path.splitext(name)[1]
-        return reduce(lambda s, e: e.preload(s[0], s[1]),
-                      self.loaders.get(fext, []), (path, name))
+        return reduce(
+            lambda s, e: e.preload(s[0], s[1]),
+            self.loaders.get(fext, []), (path, name))
 
     def load(self, path, filename):
         # return source as unicode str
@@ -109,7 +122,7 @@ class Templater(object):
         context['asis'] = context.get('asis', asis)
         context['load_component'] = context.get(
             'load_component', load_component)
-        context['_DummyResponse_'] = DummyResponse()
+        context['_DummyResponse_'] = self.response_cls()
         code, parserdata = self.parse(path, filename, source, context)
         self.inject(context)
         try:
@@ -120,8 +133,8 @@ class Templater(object):
             try:
                 parserdata.path = path
                 parserdata.name = filename
-                template_ref = TemplateReference(parserdata, code, exc_info[0],
-                                                 exc_info[1], exc_info[2])
+                template_ref = TemplateReference(
+                    parserdata, code, exc_info[0], exc_info[1], exc_info[2])
             except:
                 template_ref = None
             context['__weppy_template__'] = template_ref

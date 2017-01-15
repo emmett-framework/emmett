@@ -17,6 +17,7 @@ from weppy.globals import current
 @pytest.fixture(scope='module')
 def app():
     app = App(__name__)
+    app.config.templates_escape = 'all'
     return app
 
 
