@@ -96,7 +96,7 @@ the users table and authorization system, and the `Model` class for the other
 tables:
 
 ```python
-from weppy import request, session
+from weppy import session, now
 from weppy.orm import Model, Field, belongs_to, has_many
 from weppy.tools.auth import AuthUser
 
@@ -115,7 +115,7 @@ class Post(Model):
 
     default_values = {
         'user': lambda: session.auth.user.id,
-        'date': lambda: request.now
+        'date': lambda: now
     }
     validation = {
         'title': {'presence': True},
@@ -135,7 +135,7 @@ class Comment(Model):
 
     default_values = {
         'user': lambda: session.auth.user.id,
-        'date': lambda: request.now
+        'date': lambda: now
     }
     validation = {
         'text': {'presence': True}
@@ -158,6 +158,8 @@ Moreover, we have set some *default* values (like the dates and the authors) and
 
 We've also added some validation, so we can prevent users from sending empty
 posts or comments.
+
+> **Note:** as you can see we imported the `now` method for the deault values of the datetime fields. This method can be quite useful since it will return alternatively the time of the request or the system current time, depending on the context. You can safely use it in your application whenever you need the actual time and you have no ensurance a request context is available.
 
 Initialize the database and the auth module
 -------------------------------------

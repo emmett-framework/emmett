@@ -78,7 +78,7 @@ and you should update the old methods with new ones (the usage is still the same
 | on\_failure | on\_pipe\_success |
 | on\_end | close |
 
-Moreover, if you customized the old `wrap_call` method in handlers, you should now use the `pipe` one, which doesn't require to wrap the input method into something else. For example, this code:
+Moreover, if you customized the old `wrap_call` method in handlers, you should now use the `pipe` one, which doesn't require to wrap the input method into something else. In fact, with the `pipe` method, the code you write is already the wrapper for the next method in the pipeline. For example, this code:
 
 ```python
 class MyHandler(Handler):
@@ -98,7 +98,7 @@ class MyPipe(Pipe):
         return next_pipe(**kwargs)
 ```
 
-More information about the pipeline are available in the [relevant chapter](./request#pipeline) of the documentation.
+Learn more about the pipeline in the [relevant chapter](./request#pipeline) of the documentation.
 
 ### DAL deprecation in favour of the orm package
 
@@ -198,6 +198,7 @@ weppy 1.0 introduces some new features you may take advantage of:
 - Application [modules](./app_and_modules#application-modules) now allow nesting and inheritance
 - The float type is now available in [route variables](./routing#path)
 - *int*, *float* and *date* route variable types are now automatically casted to the relevant objects
+- [Multiple paths](./routing#multiple-paths) can be specified for a single route
 - A `now` method is now available in weppy that returns `request.now` or `datetime.utcnow` values depending on the context
 - Computed fields values are now accesible within insert and update callbacks
 - A `headers` attribute is now available on the request object to easily access the headers sent by the client

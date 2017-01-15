@@ -176,6 +176,19 @@ The above URLs `a`, `b`, `c` and `d` will be respectively converted to:
 Basically, you just need to call `url()` with the name of your function, 
 and the arguments needed by the function.
 
+Here is the complete list of `url` accepted parameters:
+
+| parameter | description |
+| --- | --- |
+| path | name of the route or absolute path |
+| args | list of route variables (single string argument accepted) |
+| params | dictionary of query parameters |
+| anchor | anchor(s) for the url |
+| sign | a callable method that should produce a signature for the url |
+| scheme | scheme for the url (can be http or https) |
+| host | host for the url |
+| language | specify a language of the application to localize the url |
+
 ### URLs with application modules
 As we seen in the [Application modules](./app_and_modules#application-modules)
 chapter, above, the `name` parameter of the `AppModule` object is used by weppy for
@@ -232,3 +245,33 @@ then a call to `url('static', 'myfile.js')` will produce the URL
 */static/1.0.0/myfile.js* automatically. When you release a new version 
 of your application with changed static files, you just need to update 
 the `static_version` string.
+
+
+Multiple paths
+--------------
+
+*New in version 1.0*
+
+Sometimes you might need to route several paths to the same exposed method. Whenever you need this, you can specify a list of paths for the involved route.
+
+Let's say, for example, you need to route a method that expose the comments of your blog, and you want to use the same method both in case the client needs all the comments, or just the ones referred to a specific post. Then you can write:
+
+```python
+@app.route(['/comments', '/post/<int:pid>/comments'])
+def comments(pid=None):
+    if pid:
+        # code to fetch the post comments
+    else:
+        # code to fetch all the comments
+```
+
+> **Note:** mind that both the paths will have the same routing pipeline.
+
+Under the default behavior, weppy will use the first path for building urls, while the other ones are accessible with a dot notation and the array position. For instance, for the example route we just defined above, you can build these urls:
+
+```python
+>>> url('comments')
+/comments
+>>> url('comments.1', 12)
+/post/12/comments
+```

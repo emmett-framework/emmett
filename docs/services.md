@@ -90,3 +90,21 @@ ServicePipe('json')
 # providing an XML service pipe
 ServicePipe('xml')
 ```
+
+Multiple services
+-----------------
+
+Sometimes you may want to expose several services for a single endpoint, for example a list of items both in JSON and XML format.
+
+You can easily achieve this decorating your route multiple times, using different pipelines:
+
+```python
+from weppy.tools import ServicePipe
+
+@app.route('/elements.json', pipeline=[ServicePipe('json')])
+@app.route('/elements.xml', pipeline=[ServicePipe('xml')])
+def elements():
+    return [{"foo": "bar"}, {"bar": "foo"}]
+```
+
+With this notation, you can serve different services using the same exposed method.
