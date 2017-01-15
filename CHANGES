@@ -16,6 +16,7 @@ Next
 - Improved caching techniques on selected records relations
 - Added automatic casting of route variables
 - Added support for float variable rules in routes
+- Deprecated `dal` module in favour of `orm`
 - Added support for multiple paths in routes
 - Enhanced wsgi request handling performance
 - Added `handle_static` boolean option to `App.config`
@@ -24,7 +25,7 @@ Next
 - Added `now` attribute and global method which returns `request.now` or
   `datetime.now` when request context is missing
 - Added access to computed values within insert and update callbaks
-- Deprecated `Model.form_rw` in favor of `Model.fields_rw`
+- Deprecated `Model.form_rw` in favour of `Model.fields_rw`
 - Optimized json and xml serializers, added optional `json_safe` serializer
   for old behavior
 - Added `__json__` and `__xml__` methods handling in serializers for custom
@@ -32,11 +33,13 @@ Next
 - Added `headers` attribute to `Request`
 - Replaced udatetime dependency with pendulum
 - `weppy.globals.now`, `isDatetime` validator and date route variables are now
-  parsed as `Pendulum` objects
+  `Pendulum` objects
 - Added support for additional separators apart from '/' between route
-  variables in `url`
+  variables route definitions
 - Removed `extension` parameter in `url`
 - Added `anchor` parameter in `url`
+- Deprecated `tags` module in favour of `html`
+- Optimized escaping code for html components
 
 
 Version 0.8
