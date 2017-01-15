@@ -121,7 +121,7 @@ class Post(Model):
         'title': {'presence': True},
         'text': {'presence': True}
     }
-    form_rw = {
+    fields_rw = {
         'user': False,
         'date': False
     }
@@ -140,7 +140,7 @@ class Comment(Model):
     validation = {
         'text': {'presence': True}
     }
-    form_rw = {
+    fields_rw = {
         'user': False,
         'post': False,
         'date': False
@@ -154,10 +154,7 @@ which will be a relationships between the tables, so we have these conditions:
 * a comment always have one author and always refers to one post,
 and a post can have many comments
 
-Moreover, we have set some *default* values (like the dates and the authors) and
-we have hidden some fields in forms to the users: it would be pointless to have
-an *user* field if the user could set this value to whatever he or she wanted.
-Accordingly, we're telling to weppy to auto-set those values to the right ones.
+Moreover, we have set some *default* values (like the dates and the authors) and we have hidden some fields in forms to the users using the `fields_rw` attribute: it would be pointless to have an *user* field if the user could set this value to whatever he or she wanted. Accordingly, we're telling to weppy to auto-set those values to the right ones.
 
 We've also added some validation, so we can prevent users from sending empty
 posts or comments.

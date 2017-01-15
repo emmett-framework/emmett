@@ -30,7 +30,7 @@ class Post(Model):
         'title': {'presence': True},
         'text': {'presence': True}
     }
-    form_rw = {
+    fields_rw = {
         'user': False,
         'date': False
     }
@@ -49,7 +49,7 @@ class Comment(Model):
     validation = {
         'text': {'presence': True}
     }
-    form_rw = {
+    fields_rw = {
         'user': False,
         'post': False,
         'date': False

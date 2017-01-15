@@ -40,6 +40,12 @@ Since weppy 1.0 all the imports from `weppy.dal` should be moved to `weppy.orm`,
 
 The old package and class are still available, but we suggest you to change the relevant code in your application since in the next versions of weppy these won't be available.
 
+### form\_rw deprecation in favour of fields\_rw in Model
+
+We changed the attribute for the fields accessibility in the `Model` class from `form_rw` to the proper `fields_rw` one.
+
+While the old attribute still works in weppy 1.0, we suggest you to upgrade your models to the new attribute.
+
 ### Breaking changes
 
 #### Removed the bind\_to\_model option from virtual decorators
