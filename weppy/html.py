@@ -9,9 +9,9 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import cgi
 import re
 import threading
-
 from ._compat import (
     iteritems, text_type, implements_to_string, implements_bool, to_unicode,
     to_native)
@@ -47,17 +47,24 @@ def asis(obj):
     return obj
 
 
+#: cgi module seems faster
+# def htmlescape(obj):
+#     if hasattr(obj, '__html__'):
+#         return obj.__html__()
+#     return (
+#         asis(obj)
+#         .replace('&', '&amp;')
+#         .replace('>', '&gt;')
+#         .replace('<', '&lt;')
+#         .replace("'", '&#39;')
+#         .replace('"', '&#34;')
+#     )
+
+
 def htmlescape(obj):
     if hasattr(obj, '__html__'):
         return obj.__html__()
-    return (
-        asis(obj)
-        .replace('&', '&amp;')
-        .replace('>', '&gt;')
-        .replace('<', '&lt;')
-        .replace("'", '&#39;')
-        .replace('"', '&#34;')
-    )
+    return cgi.escape(asis(obj), True).replace(u"'", u"&#39;")
 
 
 @implements_to_string

@@ -10,13 +10,12 @@
 """
 
 import os
-import cgi
 import sys
 from .._compat import StringIO, reduce, string_types, text_type, to_native, \
     to_unicode, to_bytes
 from ..datastructures import sdict
 from ..helpers import load_component
-from ..html import asis
+from ..html import asis, htmlescape
 from ..utils import cachedprop
 from .parser import TemplateParser
 from .cache import TemplaterCache
@@ -29,7 +28,7 @@ class DummyResponse():
 
     @staticmethod
     def _to_html(data):
-        return cgi.escape(data, True).replace(u"'", u"&#x27;")
+        return htmlescape(data)
 
     @staticmethod
     def _to_native(data):
