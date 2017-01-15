@@ -28,7 +28,77 @@ Next paragraphs describe all these relevant changes.
 
 ### Handlers deprecation in favour of pipeline
 
-*section in development*
+weppy 1.0 introduces the [pipeline](./request#pipeline), a revisited and better implementation of the old handlers.
+
+While everything from the old implementation still works, we really suggest to update your code to the new implementation.
+
+We changed the application and modules attributes and the `route` parameters as follows:
+
+| old attribute or parameter | new name |
+| --- | --- |
+| common_handlers | pipeline |
+| common_helpers | injectors |
+| handlers | pipeline |
+| helpers | injectors |
+
+We also renamed the old handlers on database and auth instances, so you have to change this code:
+
+```python
+app.common_handlers = [db.handler, auth.handler]
+```
+
+to:
+
+```python
+app.pipeline = [db.pipe, auth.pipe]
+```
+
+In the case you wrote your own handlers with previous versions of weppy, you should now use the `Pipe` class instead of the `Handler` one:
+
+```python
+# old code
+from weppy.handlers import Handler
+
+class MyHandler(Handler):
+    # some code
+
+# new code
+from weppy.pipeline import Pipe
+
+class MyPipe(Pipe):
+    # some code
+```
+
+and you should update the old methods with new ones (the usage is still the same):
+
+| old method | new method |
+| --- | --- |
+| on\_start | open |
+| on\_success | on\_pipe\_success |
+| on\_failure | on\_pipe\_success |
+| on\_end | close |
+
+Moreover, if you customized the old `wrap_call` method in handlers, you should now use the `pipe` one, which doesn't require to wrap the input method into something else. For example, this code:
+
+```python
+class MyHandler(Handler):
+    def wrap_call(self, f):
+        def wrapped(**kwargs):
+            kwargs['foo'] = 'bar'
+            return f(**kwargs)
+        return wrapped
+```
+
+should now be written:
+
+```python
+class MyPipe(Pipe):
+    def pipe(self, next_pipe, **kwargs):
+        kwargs['foo'] = 'bar'
+        return next_pipe(**kwargs)
+```
+
+More information about the pipeline are available in the [relevant chapter](./request#pipeline) of the documentation.
 
 ### DAL deprecation in favour of the orm package
 
@@ -125,11 +195,13 @@ This would produce errors in weppy 1.0 since the `d` argument is already a `date
 
 weppy 1.0 introduces some new features you may take advantage of:
 
-- Application [modules](./app_and_modules#application-modules) nesting and inheritance
+- Application [modules](./app_and_modules#application-modules) now allow nesting and inheritance
 - The float type is now available in [route variables](./routing#path)
 - *int*, *float* and *date* route variable types are now automatically casted to the relevant objects
 - A `now` method is now available in weppy that returns `request.now` or `datetime.utcnow` values depending on the context
 - Computed fields values are now accesible within insert and update callbacks
+- A `headers` attribute is now available on the request object to easily access the headers sent by the client
+- An `anchor` parameter is now available in the `url` method
 
 
 Version 0.8

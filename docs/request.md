@@ -20,9 +20,10 @@ It contains useful information about the current processing request, in particul
 | scheme | could be *http* or *https*|
 | method | the request HTTP method |
 | now | a Python datetime object created with request|
-| client | the IP Address of the client doing the request (if available) |
+| headers | the headers of the request |
 | cookies | the cookies passed with the request |
-| env | contains environment variables like HTTP headers and WSGI parameters |
+| client | the IP Address of the client doing the request (if available) |
+| environ | contains raw environment variables of the request |
 | isajax | boolean which states if the request was made in AJAX (check for *xmlhttprequest* presence in headers) |
 
 Please keep in mind that the `now` attribute uses the UTC timezone, by default.
