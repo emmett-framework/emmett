@@ -5,7 +5,7 @@
 
     Provides the templating parser.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
 
     Based on the web2py's templating system (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>

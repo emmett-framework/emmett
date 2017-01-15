@@ -6,7 +6,7 @@
     Provide routing for application, as well as internal url creation.
     The expose module is responsible of dispatching the app dynamic requests.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -552,9 +552,6 @@ def url(
     # # add extension (useless??)
     # if extension:
     #     url = url + '.' + extension
-    # add signature
-    if sign:
-        params['_signature'] = sign(url)
     # scheme=True means to use current scheme
     if scheme is True:
         if not hasattr(current, 'request'):
@@ -570,4 +567,8 @@ def url(
                     'cannot build url("%s",...) without current request' % path
                 )
             host = current.request.hostname
+    # add signature
+    if sign:
+        params['_signature'] = sign(
+            path, args, params, anchor, scheme, host, language)
     return builder.url(scheme, host, lang, args, params, anchor)

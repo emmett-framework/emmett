@@ -4,7 +4,7 @@
 
     Javascript helpers for the weppy project.
 
-    :copyright: (c) 2014-2016 by Marco Stagni
+    :copyright: (c) 2014-2017 by Marco Stagni
     :license: BSD, see LICENSE for more details.
 */
 (function($,undefined) {
