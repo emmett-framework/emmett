@@ -49,6 +49,7 @@ class App(object):
         self.cli = click.Group(self)
         #: init the configuration
         self.config = ConfigData()
+        self.config.modules_class = AppModule
         self.config.hostname_default = None
         self.config.static_version = None
         self.config.static_version_urls = None
@@ -273,10 +274,11 @@ class App(object):
 
     def module(
         self, import_name, name, template_folder=None, template_path=None,
-        url_prefix=None, hostname=None, root_path=None
+        url_prefix=None, hostname=None, root_path=None, module_class=None
     ):
-        return AppModule(
-            self, name, import_name, template_folder, template_path,
+        module_class = module_class or self.config.modules_class
+        return module_class.from_app(
+            self, import_name, name, template_folder, template_path,
             url_prefix, hostname, root_path
         )
 
@@ -315,9 +317,10 @@ class AppModule(object):
 
     def module(
         self, import_name, name, template_folder=None, template_path=None,
-        url_prefix=None, hostname=None, root_path=None
+        url_prefix=None, hostname=None, root_path=None, module_class=None
     ):
-        return self.from_module(
+        module_class = module_class or self.__class__
+        return module_class.from_module(
             self, import_name, name, template_folder, template_path,
             url_prefix, hostname, root_path
         )
