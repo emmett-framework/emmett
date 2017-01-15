@@ -8,11 +8,11 @@ from .forms import Form
 from .globals import request, response, session, now
 from .handlers import Handler, Helper
 from .helpers import abort, stream_file
+from .html import asis
 from .http import redirect
 from .language import T
 from .orm import Field
 from .pipeline import Pipe, Injector
-from .tags import tag, cat, safe, asis
 
 
 # deprecated since 1.0

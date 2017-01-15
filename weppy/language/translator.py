@@ -114,9 +114,6 @@ class TElement(object):
     def __bool__(self):
         return len(self.m) > 0
 
-    # def to_html(self):
-    #     return str(self) if self.M else escape(str(self))
-
     def encode(self, *a, **b):
         return str(self).encode(*a, **b)
 

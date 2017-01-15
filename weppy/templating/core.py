@@ -46,9 +46,9 @@ class DummyResponse():
     def write(self, data, escape=True):
         body = None
         if escape:
-            if hasattr(data, 'to_html'):
+            if hasattr(data, '__html__'):
                 try:
-                    body = to_native(data.to_html())
+                    body = to_native(data.__html__())
                 except:
                     pass
             if body is None:

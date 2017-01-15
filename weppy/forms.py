@@ -15,15 +15,15 @@ from ._internal import warn_of_deprecation
 from .datastructures import sdict
 from .expose import Expose
 from .globals import current, request, session
+from .html import HtmlTag, tag, cat, asis
 from .orm import Field, Model
 from .security import CSRFStorage
-from .tags import TAG, tag, cat, asis
 from .utils import cachedprop
 
 __all__ = ['Form', 'ModelForm']
 
 
-class Form(TAG):
+class Form(HtmlTag):
     default_attrs = {
         '_action': '', '_method': 'POST', '_enctype': 'multipart/form-data',
         'submit': 'Submit', 'csrf': 'auto', 'keepvalues': False,
@@ -201,12 +201,12 @@ class Form(TAG):
             hidden.append(
                 tag.input(_name=key, _type='hidden', _value=value))
         # provides end attribute
-        end = '%s</form>' % hidden.to_html()
+        end = '%s</form>' % hidden.__html__()
         custom.end = asis(end)
         return custom
 
-    def to_html(self):
-        return self._render().to_html()
+    def __html__(self):
+        return self._render().__html__()
 
 
 class ModelForm(Form):

@@ -56,8 +56,7 @@ class SuperNode(Node):
     def __str__(self):
         if self.value:
             return to_unicode(self.value)
-        else:
-            return u''
+        return u''
 
     def __repr__(self):
         return "%s->%s" % (self.name, self.value)
