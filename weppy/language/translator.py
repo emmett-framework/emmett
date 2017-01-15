@@ -20,7 +20,7 @@ from .._compat import (
     to_unicode
 )
 from ..globals import current
-from ..tags import asis, htmlescape
+from ..html import asis, htmlescape
 from ..utils import cachedprop
 from .helpers import (
     regex_backslash, regex_plural, regex_plural_dict, regex_plural_tuple,

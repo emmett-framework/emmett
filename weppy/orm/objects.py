@@ -17,8 +17,8 @@ from pydal.objects import Table as _Table, Field as _Field, Set as _Set, \
 from .._compat import implements_iterator, iterkeys, iteritems
 from ..datastructures import sdict
 from ..globals import current
+from ..html import tag
 from ..serializers import xml_encode
-from ..tags import tag
 from ..utils import cachedprop
 from ..validators import ValidateFromDict
 from .helpers import JoinedIDReference, RelationBuilder, wrap_scope_on_set

@@ -23,7 +23,7 @@ from .datastructures import sdict, Accept, EnvironHeaders
 from .helpers import get_flashed_messages
 from .language import T, _instance as _translator_instance
 from .language.helpers import LanguageAccept
-from .tags import htmlescape
+from .html import htmlescape
 from .utils import cachedprop
 from .libs.contenttype import contenttype
 

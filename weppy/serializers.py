@@ -11,7 +11,7 @@ import datetime
 import decimal
 import json as _json
 from ._compat import PY2, integer_types, itervalues
-from .tags import tag, htmlescape
+from .html import tag, htmlescape
 
 
 _json_safe_table = {

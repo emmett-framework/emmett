@@ -14,9 +14,9 @@ import cgi
 import sys
 from .._compat import StringIO, reduce, string_types, text_type, to_native, \
     to_unicode, to_bytes
-from ..tags import asis
-from ..helpers import load_component
 from ..datastructures import sdict
+from ..helpers import load_component
+from ..html import asis
 from ..utils import cachedprop
 from .parser import TemplateParser
 from .cache import TemplaterCache

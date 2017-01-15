@@ -91,7 +91,7 @@ def get_flashed_messages(with_categories=False, category_filter=[]):
 
 
 def load_component(url, target=None, content='loading...'):
-    from .tags import tag
+    from .html import tag
     attr = {}
     if target:
         attr['_id'] = target
