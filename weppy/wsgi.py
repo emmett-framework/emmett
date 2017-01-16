@@ -48,10 +48,6 @@ def dynamic_handler(app, environ, start_response):
     return http.to(environ, start_response)
 
 
-def skip_static_handler(app, environ, start_response):
-    return dynamic_handler(app, environ, start_response)
-
-
 def static_handler(app, environ, start_response):
     path_info = environ['PATH_INFO']
     #: handle weppy assets (helpers)

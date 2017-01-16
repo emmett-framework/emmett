@@ -24,7 +24,7 @@ from .globals import current
 from .templating.core import Templater
 from .utils import dict_to_sdict, cachedprop, read_file
 from .wsgi import (
-    error_handler, static_handler, skip_static_handler,
+    error_handler, static_handler, dynamic_handler,
     _nolang_static_handler, _lang_static_handler
 )
 
@@ -259,7 +259,7 @@ class App(object):
     def common_static_handler(self):
         if self.config.handle_static:
             return static_handler
-        return skip_static_handler
+        return dynamic_handler
 
     @cachedprop
     def static_handler(self):
