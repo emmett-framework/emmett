@@ -79,41 +79,62 @@ class Templater(object):
         return self._resp_cls.get(
             self.config.templates_escape, self._resp_cls['common'])
 
-    def preload(self, path, name):
+    def _preload(self, path, name):
         fext = os.path.splitext(name)[1]
         return reduce(
             lambda s, e: e.preload(s[0], s[1]),
             self.loaders.get(fext, []), (path, name))
 
-    def load(self, path, filename):
-        # return source as unicode str
-        try:
-            file_obj = open(os.path.join(path, filename), 'r')
-            source = to_unicode(file_obj.read())
-            file_obj.close()
-        except IOError:
-            raise TemplateMissingError(path, filename)
+    def preload(self, path, name):
+        rv = self.cache.preload.get(path, name)
+        if not rv:
+            rv = self._preload(path, name)
+            self.cache.preload.set(path, name, rv)
+        return rv
+
+    def _load(self, file_path):
+        file_obj = open(file_path, 'r')
+        source = to_unicode(file_obj.read())
+        file_obj.close()
         return source
 
+    def load(self, path, filename):
+        file_path = os.path.join(path, filename)
+        rv = self.cache.load.get(file_path)
+        if not rv:
+            try:
+                rv = self._load(file_path)
+            except:
+                raise TemplateMissingError(path, filename)
+            self.cache.load.set(file_path, rv)
+        return rv
+
+    def _prerender(self, source, filename):
+        return reduce(
+            lambda s, e: e.preprocess(s, filename), self.renders, source)
+
     def prerender(self, source, filename):
-        return reduce(lambda s, e: e.preprocess(s, filename),
-                      self.renders, source)
+        rv = self.cache.prerender.get(filename, source)
+        if not rv:
+            rv = self._prerender(source, filename)
+            self.cache.prerender.set(filename, source)
+        return rv
+
+    def parse(self, path, filename, source, context):
+        code, parserdata = self.cache.parse.get(filename, source)
+        if not code:
+            parser = TemplateParser(
+                self, source, name=filename, context=context, path=path)
+            code = compile(str(parser), filename, 'exec')
+            parserdata = sdict(
+                content=parser.content, blocks=parser.content.blocks)
+            self.cache.parse.set(
+                filename, source, code, parserdata, parser.included_templates)
+        return code, parserdata
 
     def inject(self, context):
         for extension in self.renders:
             extension.inject(context)
-
-    def parse(self, path, filename, source, context):
-        code, parserdata = self.cache.get(filename, source)
-        if not code:
-            parser = TemplateParser(self, source, name=filename,
-                                    context=context, path=path)
-            code = compile(str(parser), filename, 'exec')
-            parserdata = sdict(content=parser.content,
-                               blocks=parser.content.blocks)
-            self.cache.set(
-                filename, source, code, parserdata, parser.included_templates)
-        return code, parserdata
 
     def _render(self, source='', path=None, filename=None, context={}):
         if isinstance(context, sdict):
