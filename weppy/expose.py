@@ -128,7 +128,7 @@ class Expose(with_metaclass(MetaExpose)):
 
     @staticmethod
     def remove_trailslash(path):
-        if path.endswith("/") and len(path) > 1:
+        if path[-1] == '/' and path[1:]:
             return path[:-1]
         return path
 

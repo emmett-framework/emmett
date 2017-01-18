@@ -38,15 +38,18 @@ class Request(object):
     def __init__(self, environ):
         self.name = None
         self.environ = environ
-        self.scheme = 'https' if \
-            environ.get('wsgi.url_scheme', '').lower() == 'https' or \
-            environ.get('HTTP_X_FORWARDED_PROTO', '').lower() == 'https' or \
-            environ.get('HTTPS', '') == 'on' else 'http'
-        self.hostname = environ.get('HTTP_HOST') or '%s:%s' % \
-            (environ.get('SERVER_NAME', ''), environ.get('SERVER_PORT', ''))
-        self.method = environ.get('REQUEST_METHOD', 'GET').lower()
-        self.path_info = environ.get('PATH_INFO') or \
-            environ.get('REQUEST_URI', '').split('?')[0]
+        self.scheme = environ['wsgi.url_scheme']
+        self.hostname = self._get_hostname_(environ)
+        self.method = environ['REQUEST_METHOD']
+        self.path_info = environ['PATH_INFO'] or '/'
+
+    @staticmethod
+    def _get_hostname_(environ):
+        try:
+            host = environ['HTTP_HOST']
+        except KeyError:
+            host = environ['SERVER_NAME']
+        return host
 
     @property
     def appname(self):
@@ -111,10 +114,7 @@ class Request(object):
             json_params = self.__parse_json_params()
             params.update(json_params)
             return params
-        if (
-            self.input and self.environ.get('REQUEST_METHOD') in
-            ('POST', 'PUT', 'DELETE', 'BOTH')
-        ):
+        if self.input and self.method in ('POST', 'PUT', 'DELETE', 'BOTH'):
             dpost = cgi.FieldStorage(fp=self.input, environ=self.environ,
                                      keep_blank_values=1)
             try:
