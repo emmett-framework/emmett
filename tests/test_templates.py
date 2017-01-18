@@ -10,6 +10,7 @@
 """
 
 import pytest
+from datetime import datetime
 from weppy import App
 from weppy.globals import current
 
@@ -53,8 +54,13 @@ def test_helpers(app):
 
 def test_meta(app):
     current.initialize({
-        'PATH_INFO': '/', 'wpp.appnow': '', 'wpp.now.utc': '',
-        'wpp.now.local': '', 'wpp.application': ''})
+        'PATH_INFO': '/',
+        'REQUEST_METHOD': 'GET',
+        'HTTP_HOST': 'localhost',
+        'wsgi.url_scheme': 'http',
+        'wpp.now': datetime.utcnow(),
+        'wpp.application': 'test'
+    })
     current.response.meta.foo = "bar"
     current.response.meta_prop.foo = "bar"
     templater = app.templater

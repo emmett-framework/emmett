@@ -120,7 +120,7 @@ class Expose(with_metaclass(MetaExpose)):
         path = cls.REGEX_DATE.sub('(?P<\g<1>>\d{4}-\d{2}-\d{2})', path)
         path = cls.REGEX_FLOAT.sub('(?P<\g<1>>\d+\.\d+)', path)
         re_schemes = ('|'.join(schemes)).lower()
-        re_methods = ('|'.join(methods)).lower()
+        re_methods = ('|'.join(methods)).upper()
         re_hostname = re.escape(hostname) if hostname else '[^/]*'
         expr = '^(%s) (%s)\://(%s)(%s)$' % \
             (re_methods, re_schemes, re_hostname, path)
@@ -189,8 +189,8 @@ class Expose(with_metaclass(MetaExpose)):
             route = (re.compile(routeobj.regex), routeobj)
             self.add_route(route)
             self._routes_str[routeobj.name] = "%s %s://%s%s -> %s" % (
-                "|".join(s.upper() for s in self.methods),
-                "|".join(s for s in self.schemes),
+                "|".join(self.methods).upper(),
+                "|".join(self.schemes),
                 self.hostname or "<any>",
                 routeobj.path,
                 self.name
