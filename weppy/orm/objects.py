@@ -727,7 +727,7 @@ class Rows(_Rows):
         raise NotImplementedError
 
     def __json__(self):
-        return self.as_list()
+        return [item.__json__() for item in self]
 
     def __xml__(self, key=None, quote=True):
         key = key or 'rows'
