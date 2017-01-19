@@ -30,7 +30,9 @@ class listen_signal(object):
 
 
 class MetaExtension(type):
-    _signals_ = ['before_routes', 'before_database', 'after_database']
+    _signals_ = [
+        'before_routes', 'before_database', 'after_database',
+        'before_route', 'after_route']
 
     def __new__(cls, name, bases, attrs):
         new_class = type.__new__(cls, name, bases, attrs)

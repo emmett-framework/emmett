@@ -46,7 +46,6 @@ class Expose(with_metaclass(MetaExpose)):
     routes_out = {}
     _pipeline = []
     _injectors = []
-    processors = []
     REGEX_INT = re.compile('<int\:(\w+)>')
     REGEX_STR = re.compile('<str\:(\w+)>')
     REGEX_ANY = re.compile('<any\:(\w+)>')
@@ -160,6 +159,7 @@ class Expose(with_metaclass(MetaExpose)):
             'path': cls.build_route_components(route[1].path)}
 
     def __call__(self, f):
+        self.application.send_signal('before_route', route=self, f=f)
         self.f_name = f.__name__
         self.filename = os.path.realpath(f.__code__.co_filename)
         self.hostname = self.hostname or \
@@ -195,8 +195,7 @@ class Expose(with_metaclass(MetaExpose)):
                 routeobj.path,
                 self.name
             )
-        for proc_handler in self.processors:
-            proc_handler(self)
+        self.application.send_signal('after_route', route=self)
         self._routing_stack.pop()
         return f
 

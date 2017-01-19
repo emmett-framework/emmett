@@ -139,10 +139,6 @@ class App(object):
         self.injectors = helpers
     #/
 
-    @property
-    def routing_processors(self):
-        return self.route.processors
-
     def on_error(self, code):
         def decorator(f):
             self.error_handlers[code] = f
