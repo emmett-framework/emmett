@@ -51,7 +51,7 @@ setup(
         'pyyaml'
     ],
     dependency_links=[
-        'https://github.com/web2py/pydal/tarball/e49dd9b#egg=pydal-16.12.dev0',
+        'https://github.com/web2py/pydal/tarball/20610c0#egg=pydal-16.12.dev0',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

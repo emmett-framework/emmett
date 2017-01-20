@@ -384,7 +384,7 @@ class AppModule(object):
         self.injectors = helpers
     #/
 
-    def route(self, path=None, name=None, template=None, **kwargs):
+    def route(self, paths=None, name=None, template=None, **kwargs):
         if name is not None and "." in name:
             raise RuntimeError(
                 "App modules' route names should not contains dots"
@@ -409,6 +409,6 @@ class AppModule(object):
             injectors = self.injectors + injectors
         kwargs['injectors'] = injectors
         return self.app.route(
-            path=path, name=name, template=template, prefix=self.url_prefix,
+            paths=paths, name=name, template=template, prefix=self.url_prefix,
             template_folder=self.template_folder,
             template_path=self.template_path, hostname=self.hostname, **kwargs)
