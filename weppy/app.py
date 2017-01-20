@@ -303,7 +303,7 @@ class AppModule(object):
         name = appmod.name + '.' + name
         if url_prefix and not url_prefix.startswith('/'):
             url_prefix = '/' + url_prefix
-        module_url_prefix = (appmod.url_prefix + url_prefix) \
+        module_url_prefix = (appmod.url_prefix + (url_prefix or '')) \
             if appmod.url_prefix else url_prefix
         hostname = hostname or appmod.hostname
         return cls(
