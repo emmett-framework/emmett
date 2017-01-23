@@ -11,7 +11,7 @@
 
 import copy
 import types
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from pydal.objects import Table as _Table, Field as _Field, Set as _Set, \
     Row as _Row, Rows as _Rows, IterRows as _IterRows, Query, Expression
 from .._compat import implements_iterator, iterkeys, iteritems
@@ -564,12 +564,6 @@ class JoinableSet(Set):
             rv[rel_type].append((jname, jtable))
         return rv['belongs'], rv['one'], rv['many']
 
-    def _build_merged_row(self, row, inclusions, many_joins):
-        inclusions[row.id] = {}
-        for jname, jtable in many_joins:
-            inclusions[row.id][jname] = OrderedDict()
-        return row
-
     def _build_records_from_joined(self, rowmap, inclusions, joins, colnames):
         for rid, many_data in iteritems(inclusions):
             for jname, included in iteritems(many_data):
@@ -589,18 +583,17 @@ class JoinSet(JoinableSet):
         return rv
 
     def select(self, *fields, **options):
+        belongs_joins, one_joins, many_joins = self._split_joins(self._joins_)
         #: use iterselect for performance
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
         rowmap = OrderedDict()
+        inclusions = defaultdict(
+            lambda: {jname: OrderedDict() for jname, jtable in many_joins})
         inclusions = {}
-        belongs_joins, one_joins, many_joins = self._split_joins(self._joins_)
         for row in rows:
             rid = row[self._stable_].id
-            rowmap[rid] = rowmap.get(
-                rid, self._build_merged_row(
-                    row[self._stable_], inclusions, many_joins)
-            )
+            rowmap[rid] = rowmap.get(rid, row[self._stable_])
             for jname, jtable in belongs_joins:
                 rowmap[rid][jname] = JoinedIDReference._from_record(
                     row[jtable], self.db[jtable])
@@ -636,13 +629,11 @@ class LeftJoinSet(JoinableSet):
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
         rowmap = OrderedDict()
-        inclusions = {}
+        inclusions = defaultdict(
+            lambda: {jname: OrderedDict() for jname, jtable in jtypes['many']})
         for row in rows:
             rid = row[self._stable_].id
-            rowmap[rid] = rowmap.get(
-                rid, self._build_merged_row(
-                    row[self._stable_], inclusions, jtypes['many'])
-            )
+            rowmap[rid] = rowmap.get(rid, row[self._stable_])
             for jname, jtable in jtypes['belongs']:
                 if row[jtable].id:
                     rowmap[rid][jname] = JoinedIDReference._from_record(
