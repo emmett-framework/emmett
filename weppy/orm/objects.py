@@ -265,7 +265,7 @@ class Set(_Set):
             else:
                 ret = self.db._adapter.update(
                     table, self.query, row.op_values())
-                ret and [f(self, new_fields) for f in table._after_update]
+                ret and [f(self, row) for f in table._after_update]
             response.updated = ret
         return response
 
