@@ -286,14 +286,11 @@ class Route(object):
             "{}.{}".format(self.exposer.name, idx)
         self.schemes = self.exposer.schemes
         self.methods = self.exposer.methods
-        self.pipeline = self.exposer.pipeline
-        self.f = self.exposer.f
         if not self.path.startswith('/'):
             self.path = '/' + self.path
-        if self.exposer.prefix:
-            self.path = (
-                (self.path != '/' and self.prefix + self.path) or
-                self.exposer.prefix)
+        if self.prefix:
+            self.path = \
+                (self.path != '/' and self.prefix + self.path) or self.prefix
         self.regex = self.exposer.build_regex(
             self.schemes, self.hostname, self.methods, self.path)
         self.build_argparser()
@@ -305,6 +302,22 @@ class Route(object):
     @property
     def prefix(self):
         return self.exposer.prefix
+
+    @property
+    def pipeline(self):
+        return self.exposer.pipeline
+
+    @pipeline.setter
+    def pipeline(self, pipeline):
+        self.exposer.pipeline = pipeline
+
+    @property
+    def f(self):
+        return self.exposer.f
+
+    @f.setter
+    def f(self, f):
+        self.exposer.f = f
 
     def build_argparser(self):
         parsers = {
