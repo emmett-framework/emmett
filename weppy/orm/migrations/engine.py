@@ -76,7 +76,7 @@ class Engine(MetaEngine):
         self._log_and_exec(sql)
 
     def drop_table(self, name):
-        adapt_v = sdict(sqlsafe=self.dialect.quote(name))
+        adapt_v = sdict(_rname=self.dialect.quote(name))
         sql_list = self.dialect.drop_table(adapt_v, 'cascade')
         for sql in sql_list:
             self._log_and_exec(sql)
@@ -96,7 +96,7 @@ class Engine(MetaEngine):
             self._log_and_exec(sql)
 
     def create_index(self, name, table_name, fields, expr, unique, **kw):
-        adapt_t = sdict(sqlsafe=self.dialect.quote(table_name))
+        adapt_t = sdict(_rname=self.dialect.quote(table_name))
         components = [self.dialect.quote(field) for field in fields]
         components += expr
         sql = self.dialect.create_index(
@@ -104,7 +104,7 @@ class Engine(MetaEngine):
         self._log_and_exec(sql)
 
     def drop_index(self, name, table_name):
-        adapt_t = sdict(sqlsafe=self.dialect.quote(table_name))
+        adapt_t = sdict(_rname=self.dialect.quote(table_name))
         sql = self.dialect.drop_index(name, adapt_t)
         self._log_and_exec(sql)
 

@@ -47,11 +47,8 @@ setup(
         'click>=0.6',
         'pendulum~=0.8',
         'pyaes',
-        'pyDAL==16.12.dev0',
+        'pyDAL==17.1',
         'pyyaml'
-    ],
-    dependency_links=[
-        'https://github.com/web2py/pydal/tarball/461a854#egg=pydal-16.12.dev0',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
