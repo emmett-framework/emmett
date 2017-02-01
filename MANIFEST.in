@@ -1,5 +1,5 @@
 include CHANGES LICENSE
-include weppy/dal/migrations/migration.tmpl
+include weppy/orm/migrations/migration.tmpl
 recursive-include weppy/assets *
 recursive-include docs *
 recursive-include tests *
