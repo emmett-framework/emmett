@@ -52,7 +52,7 @@ def _to_unicode(obj):
 #     if hasattr(obj, '__html__'):
 #         return obj.__html__()
 #     return (
-#         asis(obj)
+#         _to_unicode(obj)
 #         .replace('&', '&amp;')
 #         .replace('>', '&gt;')
 #         .replace('<', '&lt;')
@@ -64,7 +64,7 @@ def _to_unicode(obj):
 def htmlescape(obj):
     if hasattr(obj, '__html__'):
         return obj.__html__()
-    return cgi.escape(asis(obj), True).replace(u"'", u"&#39;")
+    return cgi.escape(_to_unicode(obj), True).replace(u"'", u"&#39;")
 
 
 @implements_to_string
@@ -243,7 +243,7 @@ class asis(HtmlTag):
     def __init__(self, text):
         self.text = text
 
-    def __html__(self, text):
+    def __html__(self):
         return _to_unicode(self.text)
 
 
