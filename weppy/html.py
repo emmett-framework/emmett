@@ -41,7 +41,7 @@ class TagStack(threading.local):
 _stack = TagStack()
 
 
-def asis(obj):
+def _to_unicode(obj):
     if not isinstance(obj, text_type):
         return to_unicode(obj)
     return obj
@@ -239,7 +239,15 @@ class cat(HtmlTag):
         return u''.join(htmlescape(v) for v in self.components)
 
 
-class safe(HtmlTag):
+class asis(HtmlTag):
+    def __init__(self, text):
+        self.text = text
+
+    def __html__(self, text):
+        return _to_unicode(self.text)
+
+
+class safe(asis):
     default_allowed_tags = {
         'a': ['href', 'title', 'target'], 'b': [], 'blockquote': ['type'],
         'br': [], 'i': [], 'li': [], 'ol': [], 'ul': [], 'p': [], 'cite': [],
@@ -249,7 +257,7 @@ class safe(HtmlTag):
     }
 
     def __init__(self, text, sanitize=False, allowed_tags=None):
-        self.text = text
+        super(safe, self).__init__(text)
         self.sanitize = sanitize
         self.allowed_tags = allowed_tags or safe.default_allowed_tags
 
@@ -259,7 +267,7 @@ class safe(HtmlTag):
                 to_native(self.text),
                 self.allowed_tags.keys(),
                 self.allowed_tags)
-        return asis(self.text)
+        return super(safe, self).__html__()
 
 
 tag = MetaHtmlTag()
