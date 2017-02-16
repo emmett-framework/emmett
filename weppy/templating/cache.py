@@ -62,7 +62,10 @@ class LoaderCache(InnerCache, ReloadableMixin):
         self.mtimes = {}
 
     def reloader_get(self, file_path):
-        mtime = os.stat(file_path).st_mtime
+        try:
+            mtime = os.stat(file_path).st_mtime
+        except:
+            return None
         old_time = self.mtimes.get(file_path, 0)
         if mtime > old_time:
             return None
@@ -106,8 +109,7 @@ class ParserCache(HashableCache):
         self.pdata = {}
         self.dependencies = {}
 
-    def _fetch_dependency_source(self, filename):
-        tpath, tname = self.cache.templater.preload(self.tpath, filename)
+    def _fetch_dependency_source(self, tpath, tname):
         tsource = self.cache.templater.load(tpath, tname)
         return self.cache.templater.prerender(tsource, tname)
 
@@ -115,8 +117,8 @@ class ParserCache(HashableCache):
         hashed = make_md5(source)
         if self.hashes.get(filename) != hashed:
             return None, None
-        for iname, ihash in iteritems(self.dependencies[filename]):
-            hashed = make_md5(self._fetch_dependency_source(iname))
+        for iname, (ipath, ihash) in iteritems(self.dependencies[filename]):
+            hashed = make_md5(self._fetch_dependency_source(ipath, iname))
             if ihash != hashed:
                 return None, None
         return self.cached_get(filename, source)
@@ -130,5 +132,5 @@ class ParserCache(HashableCache):
         if self.cache.changes:
             self.hashes[filename] = make_md5(source)
             self.dependencies[filename] = {}
-            for iname, isource in included:
-                self.dependencies[filename][iname] = make_md5(isource)
+            for ipath, iname, isource in included:
+                self.dependencies[filename][iname] = (ipath, make_md5(isource))

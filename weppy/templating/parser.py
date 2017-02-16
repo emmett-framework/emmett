@@ -256,7 +256,7 @@ class TemplateParser(object):
                                 self.name, 1)
         tsource = self.templater.prerender(tsource, tname)
 
-        self.included_templates.append((tname, tsource))
+        self.included_templates.append((tpath, tname, tsource))
 
         return tsource, tname
 
