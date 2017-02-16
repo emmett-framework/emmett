@@ -80,6 +80,8 @@ class App(object):
         self.template_lexers = {}
         #: init templater
         self.templater = Templater(self)
+        #: init debug var
+        self.debug = os.environ.get('WEPPY_RUN_ENV') == "true"
 
     @cachedprop
     def name(self):

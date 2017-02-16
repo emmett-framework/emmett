@@ -201,6 +201,15 @@ class WeppyGroup(click.Group):
             self.add_command(shell_command)
             self.add_command(routes_command)
 
+    def list_commands(self, ctx):
+        rv = super(WeppyGroup, self).list_commands(ctx)
+        info = ctx.ensure_object(ScriptInfo)
+        try:
+            rv = rv + info.load_app().cli.list_commands(ctx)
+        except:
+            pass
+        return rv
+
     def get_command(self, ctx, name):
         # We load built-in commands first as these should always be the
         # same no matter what the app does.  If the app does want to
@@ -239,6 +248,7 @@ class WeppyGroup(click.Group):
 @click.option('--debug', type=(bool), default=True, help='Runs in debug mode.')
 @pass_script_info
 def run_command(info, host, port, reloader, debug):
+    os.environ["WEPPY_RUN_ENV"] = 'true'
     app = info.load_app()
     app.debug = debug
     if os.environ.get('WEPPY_RUN_MAIN') != 'true':
