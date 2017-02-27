@@ -115,9 +115,9 @@ class Request(object):
             params.update(json_params)
             return params
         if self.input and self.method in ('POST', 'PUT', 'DELETE', 'BOTH'):
-            dpost = cgi.FieldStorage(fp=self.input, environ=self.environ,
-                                     keep_blank_values=1)
             try:
+                dpost = cgi.FieldStorage(
+                    fp=self.input, environ=self.environ, keep_blank_values=1)
                 keys = sorted(dpost)
             except:
                 keys = []
@@ -125,8 +125,8 @@ class Request(object):
                 dpk = dpost[key]
                 if not isinstance(dpk, list):
                     dpk = [dpk]
-                dpk = [item.value if not item.filename else item
-                       for item in dpk]
+                dpk = [
+                    item.value if not item.filename else item for item in dpk]
                 params[key] = dpk
             for key, value in list(params.items()):
                 if isinstance(value, list) and len(value) == 1:
