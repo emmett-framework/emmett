@@ -19,7 +19,8 @@ import re
 import struct
 from datetime import date, time, datetime, timedelta
 from time import strptime
-from .._compat import PY2, basestring
+from .._compat import PY2, basestring, string_types
+from ..serializers import Serializers
 from ..utils import parse_datetime
 from .basic import Validator, ParentValidator, _is, Matches
 from .helpers import translate, _UTC, url_split_regex, official_url_schemes, \
@@ -248,18 +249,20 @@ class isJSON(_is):
     JSONErrors = (NameError, TypeError, ValueError, AttributeError,
                   KeyError)
 
-    def __init__(self, load=True, message=None):
-        _is.__init__(self, message)
-        self.native = not load
-
     def check(self, value):
+        if isinstance(value, string_types):
+            try:
+                v = json.loads(value)
+                return v, None
+            except self.JSONErrors:
+                return value, translate(self.message)
+        if not isinstance(value, (dict, list)):
+            return value, translate(self.message)
         try:
-            v = json.loads(value)
-            if self.native:
-                return value, None
-            return v, None
+            Serializers.get_for('json')(value)
         except self.JSONErrors:
             return value, translate(self.message)
+        return value, None
 
     def formatter(self, value):
         if value is None:
