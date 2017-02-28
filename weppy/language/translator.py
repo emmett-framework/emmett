@@ -61,6 +61,16 @@ class TElement(object):
             self.language = language
             self.is_copy = False
 
+    def __getstate__(self):
+        return {'m': self.m, 's': self.s, 'language': self.language}
+
+    def __setstate__(self, state):
+        from . import _instance
+        self.T = _instance._t
+        self.m = state['m']
+        self.s = state['s']
+        self.language = state['language']
+
     def __repr__(self):
         return "<Tstr %s>" % repr(self.m)
 
