@@ -10,18 +10,22 @@
 """
 
 import copy
+import decimal
 import types
 from collections import OrderedDict, defaultdict
-from pydal.objects import Table as _Table, Field as _Field, Set as _Set, \
-    Row as _Row, Rows as _Rows, IterRows as _IterRows, Query, Expression
-from .._compat import implements_iterator, iterkeys, iteritems
+from pydal.objects import (
+    Table as _Table, Field as _Field, Set as _Set,
+    Row as _Row, Rows as _Rows, IterRows as _IterRows, Query, Expression)
+from .._compat import (
+    string_types, integer_types, implements_iterator, iterkeys, iteritems)
 from ..datastructures import sdict
 from ..globals import current
 from ..html import tag
 from ..serializers import xml_encode
 from ..utils import cachedprop
 from ..validators import ValidateFromDict
-from .helpers import JoinedIDReference, RelationBuilder, wrap_scope_on_set
+from .helpers import (
+    _IDReference, JoinedIDReference, RelationBuilder, wrap_scope_on_set)
 
 
 class Table(_Table):
@@ -651,6 +655,25 @@ class LeftJoinSet(JoinableSet):
 
 
 class Row(_Row):
+    _as_dict_types_ = tuple(
+        [float, bool, list, dict] + list(string_types) + list(integer_types))
+
+    def as_dict(self, datetime_to_str=False, custom_types=None):
+        rv = dict(self)
+        for key in list(rv):
+            val = rv[key]
+            if val is None:
+                continue
+            elif isinstance(val, Row):
+                rv[key] = val.as_dict()
+            elif isinstance(val, _IDReference):
+                rv[key] = integer_types[-1](val)
+            elif isinstance(val, decimal.Decimal):
+                rv[key] = float(val)
+            elif not isinstance(val, self._as_dict_types_):
+                del rv[key]
+        return rv
+
     def __getstate__(self):
         return self.as_dict()
 
