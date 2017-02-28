@@ -29,7 +29,7 @@ class Thing(Model):
 def db():
     app = App(__name__)
     db = Database(app, config=sdict(uri='sqlite:memory'))
-    auth = Auth(app, db, usermodel=User)
+    auth = Auth(app, db, user_model=User)
     db.define_models(Thing)
     return db
 
@@ -49,24 +49,24 @@ def test_models(db):
     )
     db.auth_memberships.insert(
         user=user.id,
-        authgroup=group
+        auth_group=group
     )
     db.auth_permissions.insert(
-        authgroup=group
+        auth_group=group
     )
     user = db.users[1]
-    assert len(user.authmemberships()) == 1
-    assert user.authmemberships()[0].user == 1
-    assert len(user.authgroups()) == 1
-    assert user.authgroups()[0].role == "admin"
-    assert len(user.authpermissions()) == 1
-    assert user.authpermissions()[0].authgroup.role == "admin"
-    assert len(group.authmemberships()) == 1
-    assert group.authmemberships()[0].authgroup == 1
+    assert len(user.auth_memberships()) == 1
+    assert user.auth_memberships()[0].user == 1
+    assert len(user.auth_groups()) == 1
+    assert user.auth_groups()[0].role == "admin"
+    assert len(user.auth_permissions()) == 1
+    assert user.auth_permissions()[0].auth_group.role == "admin"
+    assert len(group.auth_memberships()) == 1
+    assert group.auth_memberships()[0].auth_group == 1
     assert len(group.users()) == 1
     assert group.users()[0].email == "walter@massivedynamics.com"
-    assert len(group.authpermissions()) == 1
-    user.authgroups.add(group2)
-    assert len(user.authgroups(db.auth_groups.id)) == 2
-    assert user.authgroups(db.auth_groups.role)[1].role == "moderator"
+    assert len(group.auth_permissions()) == 1
+    user.auth_groups.add(group2)
+    assert len(user.auth_groups(db.auth_groups.id)) == 2
+    assert user.auth_groups(db.auth_groups.role)[1].role == "moderator"
     assert len(user.things()) == 0

@@ -3,447 +3,456 @@
     weppy.tools.auth.exposer
     ------------------------
 
-    Provides the exposed functions and logics for the authorization system.
+    Provides the routes layer for the authorization system.
 
     :copyright: (c) 2014-2017 by Giovanni Barillari
-
-    Based on the web2py's auth module (http://www.web2py.com)
-    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
-
-    :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
+    :license: BSD, see LICENSE for more details.
 """
 
-import time
-from ...forms import Form, ModelForm
+from ...app import AppModule
+from ...expose import url
 from ...globals import request, session
-from ...helpers import flash, abort
+from ...helpers import flash, stream_dbfile
 from ...http import redirect
-from ...orm import Field
-from .helpers import callback, replace_id, get_vars_next
-from .pipes import DefaultLoginHandler
+from ...pipeline import RequirePipe
 
 
-class Exposer(object):
-    def __init__(self, auth):
-        self.auth = auth
-        self.settings = auth.settings
-        self.messages = auth.messages
-        self.form_data = {}
-        self._build_register_form_()
-        self._build_retrieve_username_form_()
-        self._build_reset_password_form_()
-        self._build_request_reset_password_form_()
-        self._build_change_password_form_()
+class AuthModule(AppModule):
+    def __init__(
+        self, app, name, import_name, template_folder=None, template_path=None,
+        url_prefix=None, hostname=None, root_path=None, pipeline=[],
+        injectors=[]
+    ):
+        super(AuthModule, self).__init__(
+            app, name, import_name, template_folder, template_path, url_prefix,
+            hostname, root_path, pipeline, injectors)
+        self.init()
 
-    def _build_register_form_(self):
-        if not self.settings.register_fields:
-            self.settings.register_fields = {'writable': [
-                field.name for field in self.auth.table_user
-                if field.type != 'id' and field.writable
-            ]}
-        all_fieldkeys = [
-            field.name for field in self.auth.table_user if field.name
-            in self.settings.register_fields['writable']
-        ]
-        for i, fieldname in enumerate(all_fieldkeys):
-            if fieldname == 'password':
-                all_fieldkeys.insert(i + 1, 'password2')
-                break
-        form_fields = {}
-        for i, fieldname in enumerate(all_fieldkeys):
-            if fieldname != 'password2':
-                form_fields[fieldname] = \
-                    self.auth.table_user[fieldname].clone()
-            else:
-                form_fields[fieldname] = Field(
-                    'password', label=self.messages.verify_password
-                )
-            form_fields[fieldname]._inst_count_ = i
-        self.form_data['register'] = form_fields
-
-    def _build_retrieve_username_form_(self):
-        form_fields = {
-            'email': Field(
-                validation={'is': 'email', 'presence': True},
-                label='E-mail'
-            )
+    def init(self):
+        self.ext = self.app.ext.AuthExtension
+        self.auth = self.ext.auth
+        self.config = self.ext.config
+        self._callbacks = {
+            'after_login': self._after_login,
+            'after_logout': self._after_logout,
+            'after_registration': self._after_registration,
+            'after_profile': self._after_profile,
+            'after_email_verification': self._after_email_verification,
+            'after_password_retrieval': self._after_password_retrieval,
+            'after_password_reset': self._after_password_reset,
+            'after_password_change': self._after_password_change
         }
-        self.form_data['retrieve_username'] = form_fields
-
-    def _build_reset_password_form_(self):
-        form_fields = {
-            'password': self.auth.table_user['password'].clone(),
-            'password2': Field(
-                'password', label=self.messages.verify_password
-            )
+        auth_pipe = [] if self.config.inject_pipe else [self.auth.pipe]
+        requires_login = [
+            RequirePipe(
+                lambda: self.auth.is_logged_in(),
+                lambda: redirect(self.url('login')))]
+        self._methods_pipelines = {
+            'login': [],
+            'logout': auth_pipe + requires_login,
+            'registration': [],
+            'profile': auth_pipe + requires_login,
+            'email_verification': [],
+            'password_retrieval': [],
+            'password_reset': [],
+            'password_change': auth_pipe + requires_login,
+            'download': []
+            # 'not_authorized': []
         }
-        self.form_data['reset_password'] = form_fields
-
-    def _build_request_reset_password_form_(self):
-        userfield = self.settings.login_userfield
-        if userfield == 'email':
-            loginfield = Field(
-                validation={'is': 'email', 'presence': True}
-            )
+        self.enabled_routes = list(self.config.enabled_routes)
+        for method_name in self.config.disabled_routes:
+            self.enabled_routes.remove(method_name)
+        for key in self.enabled_routes:
+            wrapper = getattr(self, key)
+            f = getattr(self, "_" + key)
+            wrapper()(f)
+        #: configure message flashing
+        if self.config.flash_messages:
+            self.flash = self._flash
         else:
-            v = {'presence': True}
-            if self.settings.username_case_sensitive:
-                v['lower'] = True
-            loginfield = Field(validation=v)
-        form_fields = {
-            userfield: loginfield
-        }
-        self.form_data['request_reset_password'] = form_fields
+            self.flash = lambda *args, **kwargs: None
+        #: register exposer to extensions
+        self.ext.bind_exposer(self)
 
-    def _build_change_password_form_(self):
-        form_fields = {
-            'old_password': self.auth.table_user['password'].clone(),
-            'new_password': self.auth.table_user['password'].clone(),
-            'new_password2': Field(
-                'password', label=self.messages.verify_password
-            )
-        }
-        form_fields['old_password'].label = self.messages.old_password
-        form_fields['new_password'].lable = self.messages.new_password
-        self.form_data['change_password'] = form_fields
+    def _template_for(self, key):
+        return 'auth.html' if self.config.single_template \
+            else "{}.html".format(key)
 
-    def login(self):
-        return self.auth._login_with_handler(DefaultLoginHandler)
+    def url(self, path, *args, **kwargs):
+        path = "{}.{}".format(self.name, path)
+        return url(path, *args, **kwargs)
 
-    def logout(self):
-        nextv = (get_vars_next() or self.settings.logout_next or
-                 self.auth.url('login'))
-        onlogout = self.settings.logout_onlogout
-        if onlogout:
-            onlogout(self.auth.user)
-        log = self.messages['logout_log']
-        if self.auth.user:
-            self.auth.log_event(log, self.auth.user)
-        if self.settings.login_form != self.auth:
-            cas = self.settings.login_form
-            cas_user = cas.get_user()
-            if cas_user:
-                nextv = cas.logout_url(nextv)
+    def _flash(self, message):
+        return flash(message, 'auth')
+
+    #: routes
+    def _login(self):
+        def _validate_form(form):
+            row = self.config.models['user'].get(email=form.params.email)
+            if row:
+                #: verify password
+                if form.params.password == row.password:
+                    res['user'] = row
+                    return
+            form.errors.email = self.config.messages['login_invalid']
+
+        rv = {'message': None}
+        res = {}
+        rv['form'] = self.ext.forms.login(onvalidation=_validate_form)
+        if rv['form'].accepted:
+            messages = self.config.messages
+            if res['user'].registration_key == 'pending':
+                rv['message'] = messages['approval_pending']
+            elif res['user'].registration_key in ('disabled', 'blocked'):
+                rv['message'] = messages['login_disabled']
+            elif (
+                res['user'].registration_key is not None and
+                res['user'].registration_key.strip()
+            ):
+                rv['message'] = messages['verification_pending']
+            if rv['message']:
+                self.flash(rv['message'])
+            else:
+                self.ext.login_user(
+                    res['user'], rv['form'].params.get('remember', False))
+                self.ext.log_event(
+                    self.config.messages['login_log'], {'id': res['user'].id})
+                redirect_after = request.body_params._after
+                if redirect_after:
+                    redirect(redirect_after)
+                self._callbacks['after_login'](rv['form'])
+        return rv
+
+    def _logout(self):
+        self.ext.log_event(
+            self.config.messages['logout_log'], {'id': self.auth.user.id})
         session.auth = None
-        flash(self.messages.logged_out)
-        if nextv is not None:
-            redirect(nextv)
+        self.flash(self.config.messages['logged_out'])
+        redirect_after = request.query_params._after
+        if redirect_after:
+            redirect(redirect_after)
+        self._callbacks['after_logout']()
 
-    def register(self):
-        def process_form(form):
+    def _registration(self):
+        def _validate_form(form):
             if form.params.password.password != form.params.password2.password:
                 form.errors.password = "password mismatch"
                 form.errors.password2 = "password mismatch"
                 return
-            for validation in onvalidation:
-                validation(form)
+            del form.params.password2
+            res['id'] = self.config.models['user'].table.insert(
+                **form.params)
 
-        if self.auth.is_logged_in():
-            redirect(self.settings.url_logged or self.auth.url('profile'))
-        nextv = get_vars_next() or self.settings.register_next
-        onvalidation = self.settings.register_onvalidation
-        onaccept = self.settings.register_onaccept
-        log = self.messages['register_log']
-        username = self.settings.login_userfield
-        form = Form(
-            self.form_data['register'],
-            hidden=dict(_next=nextv),
-            submit=self.messages.register_button,
-            onvalidation=process_form,
-            keepvalues=True
-        )
-        if form.accepted:
-            del form.params['password2']
-            # insert user
-            form.params.id = self.auth.table_user.insert(**form.params)
-            row = self.auth.table_user(id=form.params.id)
-            description = self.messages.group_description % form.params
-            if self.settings.create_user_groups:
-                group_id = self.auth.add_group(
-                    self.settings.create_user_groups % form.params,
-                    description)
-                self.add_membership(group_id, form.params.id)
-            if self.settings.everybody_group_id:
-                self.auth.add_membership(
-                    self.settings.everybody_group_id, form.params.id)
-            if self.settings.registration_requires_verification:
-                link = self.auth.url(
-                    ['verify_email', row['registration_key']], scheme=True
-                )
-                d = dict(request.params)
-                d.update(dict(key=row['registration_key'], link=link,
-                         username=form.params[username]))
-                if not (self.settings.mailer and self.settings.mailer.send(
-                        to=form.params.email,
-                        subject=self.messages.verify_email_subject,
-                        message=self.messages.verify_email % d)):
-                    self.auth.db.rollback()
-                    flash(self.messages.unable_send_email)
-                    return form
-                flash(self.messages.email_sent)
-            if self.settings.registration_requires_approval and \
-               not self.settings.registration_requires_verification:
-                row.update_record(registration_key='pending')
-                flash(self.messages.registration_pending)
-            elif (not self.settings.registration_requires_verification or
-                    self.settings.login_after_registration):
-                flash(self.messages.registration_successful)
-                self.auth.login_user(row)
-                flash(self.messages.logged_in)
-            self.auth.log_event(log, form.params)
-            callback(onaccept, form)
-            if not nextv:
-                nextv = self.auth.url('login')
+        rv = {'message': None}
+        res = {}
+        rv['form'] = self.ext.forms.registration(onvalidation=_validate_form)
+        if rv['form'].accepted:
+            logged_in = False
+            row = self.config.models['user'].get(res['id'])
+            if self.config.registration_verification:
+                email_data = {
+                    'link': self.url(
+                        'email_verification', row.registration_key,
+                        scheme=True)}
+                if not self.ext.mails['registration'](row, email_data):
+                    rv['message'] = self.config.messages['mail_failure']
+                    self.ext.db.rollback()
+                    self.flash(rv['message'])
+                    return rv
+                rv['message'] = self.config.messages['mail_success']
+                self.flash(rv['message'])
+            elif self.config.registration_approval:
+                rv['message'] = self.config.messages['approval_pending']
+                self.flash(rv['message'])
             else:
-                nextv = replace_id(nextv, form)
-            redirect(nextv)
-        return form
+                rv['message'] = self.config.messages['registration_success']
+                self.flash(rv['message'])
+                self.ext.login_user(row)
+                logged_in = True
+                self.ext.log_event(
+                    self.config.messages['registration_log'],
+                    {'id': res['id']})
+            redirect_after = request.body_params._after
+            if redirect_after:
+                redirect(redirect_after)
+            self._callbacks['after_registration'](rv['form'], row, logged_in)
+        return rv
 
-    def verify_email(self, key):
-        user = self.auth.table_user(registration_key=key)
+    def _profile(self):
+        rv = {'message': None, 'form': self.ext.forms.profile()}
+        if rv['form'].accepted:
+            self.auth.user.update(
+                self.config.models['user'].table._filter_fields(
+                    rv['form'].params))
+            rv['message'] = self.config.messages['profile_updated']
+            self.flash(rv['message'])
+            self.ext.log_event(
+                self.config.messages['profile_log'], {'id': self.auth.user.id})
+            redirect_after = request.body_params._after
+            if redirect_after:
+                redirect(redirect_after)
+            self._callbacks['after_profile'](rv['form'])
+        return rv
+
+    def _email_verification(self, key):
+        rv = {'message': None}
+        user = self.config.models['user'].get(registration_key=key)
         if not user:
-            redirect(self.settings.login_url or self.auth.url('login'))
-        if self.settings.registration_requires_approval:
+            redirect(self.url('login'))
+        if self.config.registration_approval:
             user.update_record(registration_key='pending')
-            flash(self.messages.registration_pending)
+            rv['message'] = self.config.messages['approval_pending']
+            self.flash(rv['message'])
         else:
             user.update_record(registration_key='')
-            flash(self.messages.email_verified)
-        # make sure session has same user.registration_key as db record
+            rv['message'] = self.config.messages['verification_success']
+            self.flash(rv['message'])
+        #: make sure session has same user.registration_key as db record
         if self.auth.user:
             self.auth.user.registration_key = user.registration_key
-        log = self.messages['verify_email_log']
-        nextv = self.settings.verify_email_next or self.auth.url('login')
-        onaccept = self.settings.verify_email_onaccept
-        self.auth.log_event(log, user)
-        callback(onaccept, user)
-        redirect(nextv)
+        self.ext.log_event(
+            self.config.messages['email_verification_log'], {'id': user.id})
+        redirect_after = request.query_params._after
+        if redirect_after:
+            redirect(redirect_after)
+        self._callbacks['after_email_verification'](user)
+        return rv
 
-    def retrieve_username(self):
-        if 'username' not in self.auth.table_user.fields:
-            raise abort(404)
-        if not self.settings.mailer:
-            flash(self.messages.function_disabled)
-            return ''
-        nextv = get_vars_next() or self.settings.retrieve_username_next
-        onvalidation = self.settings.retrieve_username_onvalidation
-        onaccept = self.settings.retrieve_username_onaccept
-        log = self.messages['retrieve_username_log']
-        form = Form(
-            self.form_data['retrieve_username'],
-            hidden=dict(_next=nextv),
-            sumbit=self.messages.submit_button,
-            onvalidation=onvalidation
-        )
-        if form.accepted:
-            users = self.auth.db(
-                self.auth.table_user.email == form.params.email).select()
-            if not users:
-                flash(self.messages.invalid_email)
-                redirect(self.auth.url('retrieve_username'))
-            username = ', '.join(u.username for u in users)
-            self.settings.mailer.send(
-                to=form.params.email,
-                subject=self.messages.retrieve_username_subject,
-                message=self.messages.retrieve_username % dict(
-                    username=username))
-            flash(self.messages.email_sent)
-            for user in users:
-                self.auth.log_event(log, user)
-            callback(onaccept, form)
-            if not nextv:
-                nextv = self.auth.url('retrieve_username')
-            else:
-                nextv = replace_id(nextv, form)
-            redirect(nextv)
-        return form
+    def _password_retrieval(self):
+        def _validate_form(form):
+            messages = self.config.messages
+            row = self.config.models['user'].get(email=form.params.email)
+            if not row:
+                form.errors.email = "invalid email"
+                return
+            if row.registration_key == 'pending':
+                form.errors.email = messages['approval_pending']
+                return
+            if row.registration_key in ('disabled', 'blocked'):
+                form.errors.email = messages['login_disabled']
+                return
+            res['user'] = user
 
-    def reset_password(self):
-        def process_form(form):
+        rv = {'message': None}
+        res = {}
+        rv['form'] = self.ext.forms.password_retrieval(
+            onvalidation=_validate_form)
+        if rv['form'].accepted:
+            user = res['user']
+            reset_key = self.ext.generate_reset_key(user)
+            email_data = {
+                'link': self.url(
+                    'password_reset', reset_key, scheme=True)}
+            if not self.ext.mails['reset_password'](user, email_data):
+                rv['message'] = self.config.messages['mail_failure']
+            rv['message'] = self.config.message['mail_success']
+            self.flash(rv['message'])
+            self.ext.log_event(
+                self.config.messages['password_retrieval_log'],
+                {'id': user.id},
+                user=user)
+            redirect_after = request.body_params._after
+            if redirect_after:
+                redirect(redirect_after)
+            self._callbacks['after_password_retrieval'](user)
+        return rv
+
+    def _password_reset(self, key):
+        def _validate_form(form):
             if form.params.password.password != form.params.password2.password:
-                form.errors.password = self.messages.mismatched_password
-                form.errors.password2 = self.messages.mismatched_password
+                form.errors.password = "password mismatch"
+                form.errors.password2 = "password mismatch"
 
-        nextv = get_vars_next() or self.settings.reset_password_next
-        try:
-            key = request.params.key
-            t0 = int(key.split('-')[0])
-            if time.time() - t0 > 60 * 60 * 24:
-                raise Exception
-            user = self.auth.table_user(reset_password_key=key)
-            if not user:
-                raise Exception
-        except Exception:
-            flash(self.messages.invalid_reset_password)
-            redirect(nextv)
-        form = Form(
-            self.form_data['reset_password'],
-            onvalidation=process_form,
-            submit=self.messages.password_reset_button,
-            hidden=dict(_next=nextv),
-        )
-        if form.accepted:
+        rv = {'message': None}
+        redirect_after = request.query_params._after
+        user = self.ext.get_user_by_reset_key(key)
+        if not user:
+            rv['message'] = self.config.messages['reset_key_invalid']
+            self.flash(rv['message'])
+            if redirect_after:
+                redirect(redirect_after)
+            self._callbacks['after_password_reset'](user)
+            return rv
+        rv['form'] = self.ext.forms.password_reset(onvalidation=_validate_form)
+        if rv['form'].accepted:
             user.update_record(
-                password=str(form.params.new_password),
+                password=str(rv['form'].params.password),
                 registration_key='',
                 reset_password_key=''
             )
-            flash(self.messages.password_changed)
-            if self.settings.login_after_password_change:
-                self.auth.login_user(user)
-            redirect(nextv)
-        return form
+            rv['message'] = self.config.messages['password_changed']
+            flash(rv['message'])
+            self.ext.log_event(
+                self.config.messages['password_reset_log'],
+                {'id': user.id},
+                user=user)
+            if redirect_after:
+                redirect(redirect_after)
+            self._callbacks['after_password_reset'](user)
+        return rv
 
-    def request_reset_password(self):
-        def process_form(form, rows):
-            field = self.settings.login_userfield
-            user = self.auth.table_user(**{field: form.params.email})
-            rows['user'] = user
-            if not user:
-                form.errors[field] = self.messages['invalid_%s' % field]
-                return
-            for validation in onvalidation:
-                validation(form)
-
-        nextv = get_vars_next() or self.settings.request_reset_password_next
-        if not self.settings.mailer:
-            flash(self.messages.function_disabled)
-            return ''
-        onvalidation = self.settings.reset_password_onvalidation
-        onaccept = self.settings.reset_password_onaccept
-        log = self.messages['reset_password_log']
-        rows = {}
-        form = Form(
-            self.form_data['request_reset_password'],
-            hidden=dict(_next=nextv),
-            submit=self.messages.password_reset_button,
-            onvalidation=lambda form, rows=rows: process_form(form, rows)
-        )
-        if form.accepted:
-            user = rows['user']
-            if user.registration_key == 'pending':
-                flash(self.auth.messages.registration_pending)
-                redirect(self.auth.url('request_reset_password'))
-            elif user.registration_key == 'blocked':
-                flash(self.auth.messages.login_disabled)
-                redirect(self.auth.url('login'))
-            if self.auth.email_reset_password(user):
-                flash(self.messages.email_sent)
-            else:
-                flash(self.messages.unable_to_send_email)
-            self.auth.log_event(log, user)
-            callback(onaccept, form)
-            if not nextv:
-                redirect(self.auth.url('request_reset_password'))
-            else:
-                nextv = replace_id(nextv, form)
-            redirect(nextv)
-        return form
-
-    def retrieve_password(self):
-        return self.request_reset_password()
-
-    def change_password(self):
-        def process_form(form):
+    def _password_change(self):
+        def _validate_form(form):
+            messages = self.config.messages
             if form.params.old_password != row.password:
-                form.errors.old_password = self.messages.invalid_password
+                form.errors.old_password = messages['invalid_password']
                 return
-            if (
-                form.params.new_password.password !=
-                form.params.new_password2.password
-            ):
-                form.errors.new_password = self.messages.mismatched_password
-                form.errors.new_password2 = self.messages.mismatched_password
-                return
-            for validation in onvalidation:
-                validation(form)
+            if form.params.password.password != form.params.password2.password:
+                form.errors.new_password = "password mismatch"
+                form.errors.new_password2 = "password mismatch"
 
-        if not self.auth.is_logged_in():
-            redirect(self.settings.login_url or self.auth.url('login'))
-        row = self.auth.table_user[self.auth.user.id]
-        nextv = get_vars_next() or self.settings.change_password_next
-        onvalidation = self.settings.change_password_onvalidation
-        onaccept = self.settings.change_password_onaccept
-        log = self.messages['change_password_log']
-        form = Form(
-            self.form_data['change_password'],
-            onvalidation=process_form,
-            submit=self.messages.password_change_button,
-            hidden=dict(_next=nextv)
-        )
-        if form.accepted:
-            row.update(password=str(form.params.new_password))
-            flash(self.messages.password_changed)
-            self.auth.log_event(log, self.auth.user)
-            callback(onaccept, form)
-            if not nextv:
-                nextv = self.auth.url('change_password')
-            else:
-                nextv = replace_id(nextv, form)
-            redirect(nextv)
-        return form
+        rv = {'message': None}
+        row = self.config.models['user'].get(self.auth.user.id)
+        rv['form'] = self.ext.forms.password_change(
+            onvalidation=_validate_form)
+        if rv['form'].accepted:
+            row.update(password=str(rv['form'].params.new_password))
+            rv['message'] = self.config.messages['password_changed']
+            flash(rv['message'])
+            self.ext.log_event(
+                self.config.messages['password_change_log'],
+                {'id': row.id})
+            redirect_after = request.query_params._after
+            if redirect_after:
+                redirect(redirect_after)
+            self._callbacks['after_password_change']()
+        return rv
 
-    def profile(self):
-        if not self.auth.is_logged_in():
-            redirect(self.settings.login_url)
-        #passfield = self.settings.password_field
-        nextv = get_vars_next() or self.settings.profile_next
-        onvalidation = self.settings.profile_onvalidation
-        onaccept = self.settings.profile_onaccept
-        log = self.messages['profile_log']
-        if not self.settings.profile_fields:
-            profile_fields = [
-                field.name for field in self.auth.table_user
-                if field.type != 'password' and field.writable]
-            self.settings.profile_fields = {
-                'readable': profile_fields, 'writable': profile_fields}
-        form = ModelForm(
-            self.auth.table_user,
-            record_id=self.auth.user.id,
-            fields=self.settings.profile_fields,
-            hidden=dict(_next=nextv),
-            submit=self.messages.profile_save_button,
-            upload=self.settings.download_url,
-            onvalidation=onvalidation
-        )
-        if form.accepted:
-            self.auth.user.update(
-                self.auth.table_user._filter_fields(form.params))
-            flash(self.messages.profile_updated)
-            self.auth.log_event(log, self.auth.user)
-            callback(onaccept, form)
-            # TODO: update this
-            #if form.deleted:
-            #   return self.logout()
-            if not nextv:
-                nextv = self.auth.url('profile')
-            else:
-                nextv = replace_id(nextv, form)
-            redirect(nextv)
-        return form
+    def _download(self, file_name):
+        stream_dbfile(self.ext.db, file_name)
 
-    """
-    ## REMOVED in 0.4
-    def groups(self):
-        #: displays the groups and their roles for the logged in user
-        if not self.is_logged_in():
-            redirect(self.settings.login_url)
-        memberships = self.db(
-            self.table_membership.user_id == self.user.id).select()
-        table = tag.table()
-        for membership in memberships:
-            groups = self.db(
-                self.table_group.id == membership.group_id).select()
-            if groups:
-                group = groups[0]
-                table.append(tag.tr(tag.h3(group.role, '(%s)' % group.id)))
-                table.append(tag.tr(tag.p(group.description)))
-        if not memberships:
-            return None
-        return table
-    """
+    #: routes decorators
+    def login(self, template=None, pipeline=[], injectors=None):
+        pipeline = self._methods_pipelines['login'] + pipeline
+        return self.route(
+            '/login', name='login',
+            template=template or self._template_for('login'),
+            pipeline=pipeline, injectors=injectors)
 
-    def not_authorized(self):
-        if request.isajax:
-            abort(403, 'ACCESS DENIED')
-        return 'ACCESS DENIED'
+    def logout(self, template=None, pipeline=[], injectors=None):
+        pipeline = self._methods_pipelines['logout'] + pipeline
+        return self.route(
+            '/logout', name='logout',
+            template=template or self._template_for('logout'),
+            pipeline=pipeline, injectors=injectors, methods='get')
+
+    def registration(self, template=None, pipeline=[], injectors=None):
+        pipeline = self._methods_pipelines['registration'] + pipeline
+        return self.route(
+            '/registration', name='registration',
+            template=template or self._template_for('registration'),
+            pipeline=pipeline, injectors=injectors)
+
+    def profile(self, template=None, pipeline=[], injectors=None):
+        pipeline = self._methods_pipelines['profile'] + pipeline
+        return self.route(
+            '/profile', name='profile',
+            template=template or self._template_for('profile'),
+            pipeline=pipeline, injectors=injectors)
+
+    def email_verification(self, template=None, pipeline=[], injectors=None):
+        pipeline = self._methods_pipelines['email_verification'] + pipeline
+        return self.route(
+            '/email_verification/<str:key>', name='email_verification',
+            template=template or self._template_for('email_verification'),
+            pipeline=pipeline, injectors=injectors, methods='get')
+
+    def password_retrieval(self, template=None, pipeline=[], injectors=None):
+        pipeline = self._methods_pipelines['password_retrieval'] + pipeline
+        return self.route(
+            '/password_retrieval', name='password_retrieval',
+            template=template or self._template_for('password_retrieval'),
+            pipeline=pipeline, injectors=injectors)
+
+    def password_reset(self, template=None, pipeline=[], injectors=None):
+        pipeline = self._methods_pipelines['password_reset'] + pipeline
+        return self.route(
+            '/password_reset/<str:key>', name='password_reset',
+            template=template or self._template_for('password_reset'),
+            pipeline=pipeline, injectors=injectors)
+
+    def password_change(self, template=None, pipeline=[], injectors=None):
+        pipeline = self._methods_pipelines['password_change'] + pipeline
+        return self.route(
+            '/password_change', name='password_change',
+            template=template or self._template_for('password_change'),
+            pipeline=pipeline, injectors=injectors)
+
+    def download(self, template=None, pipeline=[], injectors=None):
+        pipeline = self._methods_pipelines['download'] + pipeline
+        return self.route(
+            '/download/<str:file_name>', name='download',
+            pipeline=pipeline, injectors=injectors, methods='get')
+
+    #: callbacks
+    def _after_login(self, form):
+        redirect(self.url("profile"))
+
+    def _after_logout(self):
+        redirect(self.url("login"))
+
+    def _after_registration(self, form, user, logged_in):
+        if logged_in:
+            redirect(self.url("profile"))
+        redirect(self.url("login"))
+
+    def _after_profile(self, form, user):
+        redirect(self.url("profile"))
+
+    def _after_email_verification(self, user):
+        redirect(self.url("login"))
+
+    def _after_password_retrieval(self, user):
+        redirect(self.url("password_retrieval"))
+
+    def _after_password_reset(self, user):
+        redirect(self.url("login"))
+
+    def _after_password_change(self):
+        redirect(self.url("profile"))
+
+    #: callbacks decorators
+    def after_login(self, f):
+        self._callbacks['after_login'] = f
+        return f
+
+    def after_logout(self, f):
+        self._callbacks['after_logout'] = f
+        return f
+
+    def after_registration(self, f):
+        self._callbacks['after_registration'] = f
+        return f
+
+    def after_profile(self, f):
+        self._callbacks['after_profile'] = f
+        return f
+
+    def after_email_verification(self, f):
+        self._callbacks['after_email_verification'] = f
+        return f
+
+    def after_password_retrieval(self, f):
+        self._callbacks['after_password_retrieval'] = f
+        return f
+
+    def after_password_reset(self, f):
+        self._callbacks['after_password_reset'] = f
+        return f
+
+    def after_password_change(self, f):
+        self._callbacks['after_password_change'] = f
+        return f
+
+    #: emails
+    # def _registration_email(self, user, data):
+    #     link = self.auth.url(
+    #         ['verify_email', row.registration_key], scheme=True
+    #     )
+    #     d = dict(request.params)
+    #     d.update(dict(key=row.registration_key, link=link,
+    #              username=form.params[username]))
+    #     return self.settings.mailer.send(
+    #             to=form.params.email,
+    #             subject=self.messages.verify_email_subject,
+    #             message=self.messages.verify_email % d)

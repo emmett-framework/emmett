@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from weppy import App, session, now, url, redirect, abort
 from weppy.orm import Database, Model, Field, belongs_to, has_many
 from weppy.tools import requires
@@ -6,6 +8,9 @@ from weppy.sessions import SessionCookieManager
 
 
 app = App(__name__)
+app.config.auth.single_template = True
+app.config.auth.registration_validation = False
+app.config.auth.hmac_key = "b161fc8e-af1d-4738-b05e-c4153e3b8ff7"
 
 
 #: define models
@@ -58,7 +63,7 @@ class Comment(Model):
 
 #: init db and auth
 db = Database(app)
-auth = Auth(app, db, usermodel=User)
+auth = Auth(app, db, user_model=User)
 db.define_models(Post, Comment)
 
 
@@ -72,7 +77,7 @@ def setup_admin():
         password="pocketuniverse"
     )
     # create an admin group
-    admins = auth.add_group("admin")
+    admins = auth.create_group("admin")
     # add user to admins group
     auth.add_membership(admins, user.id)
     db.commit()
@@ -122,7 +127,4 @@ def new_post():
     return dict(form=form)
 
 
-@app.route('/account(/<str:f>)?(/<str:k>)?')
-def account(f, k):
-    form = auth(f, k)
-    return dict(form=form)
+auth_routes = auth.module(__name__)
