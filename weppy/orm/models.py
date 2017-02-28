@@ -20,8 +20,8 @@ from .apis import (
     has_many
 )
 from .helpers import (
-    Callback, ReferenceData, make_tablename, wrap_scope_on_model,
-    wrap_virtual_on_model
+    Callback, ReferenceData, make_tablename, camelize, decamelize,
+    wrap_scope_on_model, wrap_virtual_on_model
 )
 from .objects import Field, Row
 from .wrappers import HasOneWrap, HasManyWrap, HasManyViaWrap
@@ -247,11 +247,11 @@ class Model(with_metaclass(MetaModel)):
                 rv.model = self.__class__.__name__
         else:
             rv.name = item
-            rv.model = item.capitalize()
+            rv.model = camelize(item)
         return rv
 
     def __build_relation_modelname(self, name, relation, singularize):
-        relation.model = name.capitalize()
+        relation.model = camelize(name)
         if singularize:
             relation.model = relation.model[:-1]
 
@@ -261,7 +261,7 @@ class Model(with_metaclass(MetaModel)):
         if len(splitted) > 1:
             relation.field = splitted[1]
         else:
-            relation.field = self.__class__.__name__.lower()
+            relation.field = decamelize(self.__class__.__name__)
 
     def __parse_relation_dict(self, rel, singularize):
         if 'scope' in rel.model:
@@ -285,7 +285,7 @@ class Model(with_metaclass(MetaModel)):
             if isinstance(rv.model, dict):
                 if 'method' in rv.model:
                     rv.field = rv.model.get(
-                        'field', self.__class__.__name__.lower())
+                        'field', decamelize(self.__class__.__name__))
                     rv.method = rv.model['method']
                     del rv.model
                 else:

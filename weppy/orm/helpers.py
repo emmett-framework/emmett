@@ -209,10 +209,16 @@ class TimingHandler(ExecutionHandler):
         self.timings.append((command, dt))
 
 
+def decamelize(name):
+    return "_".join(re.findall('[A-Z][^A-Z]*', name)).lower()
+
+
+def camelize(name):
+    return "".join(w.capitalize() for w in name.split("_"))
+
+
 def make_tablename(classname):
-    words = re.findall('[A-Z][^A-Z]*', classname)
-    tablename = '_'.join(words)
-    return tablename.lower() + "s"
+    return decamelize(classname) + "s"
 
 
 def wrap_scope_on_set(dbset, model_instance, scope):
