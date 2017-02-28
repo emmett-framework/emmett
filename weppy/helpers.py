@@ -77,6 +77,8 @@ def get_flashed_messages(with_categories=False, category_filter=[]):
     #  is set to `True`, the return value will be a list of tuples in the
     #  form `(category, message)` instead.
     from .globals import session
+    if not isinstance(category_filter, list):
+        category_filter = [category_filter]
     try:
         flashes = list(session._flashes or [])
         if category_filter:
