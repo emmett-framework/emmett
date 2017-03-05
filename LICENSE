@@ -40,8 +40,6 @@ distributed under LGPLv3 license, in particular:
 
     * weppy/language
     * weppy/security.py
-    * weppy/tools/auth
-    * weppy/tools/mail.py
     * weppy/validators
 
 Other derived components are distributed under BSD license, in particular:

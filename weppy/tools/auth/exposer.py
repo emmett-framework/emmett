@@ -443,16 +443,3 @@ class AuthModule(AppModule):
     def after_password_change(self, f):
         self._callbacks['after_password_change'] = f
         return f
-
-    #: emails
-    # def _registration_email(self, user, data):
-    #     link = self.auth.url(
-    #         ['verify_email', row.registration_key], scheme=True
-    #     )
-    #     d = dict(request.params)
-    #     d.update(dict(key=row.registration_key, link=link,
-    #              username=form.params[username]))
-    #     return self.settings.mailer.send(
-    #             to=form.params.email,
-    #             subject=self.messages.verify_email_subject,
-    #             message=self.messages.verify_email % d)

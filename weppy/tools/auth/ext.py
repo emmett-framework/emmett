@@ -18,6 +18,7 @@ from ...extensions import Extension
 from ...globals import session, now
 from ...language import T
 from ...language.translator import TElement
+from ...orm.helpers import decamelize
 from ...security import uuid
 from .forms import AuthForms
 from .models import (
@@ -132,7 +133,7 @@ class AuthExtension(Extension):
             if self.config.models[m] == self.default_config['models'][m]:
                 rv[m] = def_names[m]
             else:
-                rv[m] = self.config.models[m].__name__.lower()
+                rv[m] = decamelize(self.config.models[m].__name__)
         return rv
 
     def on_load(self):
@@ -145,7 +146,7 @@ class AuthExtension(Extension):
                 "> weppy -a {your_app_name} auth generate_key")
             self.config.hmac_key = uuid()
         self._hmac_key = self.config.hmac_alg + ':' + self.config.hmac_key
-        if 'mailer' not in self.app.config:
+        if 'MailExtension' not in self.app.ext:
             self.app.log.warn(
                 "No mailer seems to be configured. The auth features "
                 "requiring mailer won't work.")
@@ -301,12 +302,16 @@ class AuthExtension(Extension):
         return user
 
     def _registration_email(self, user, data):
-        # TODO implement real code
-        return False
+        return self.app.ext.mailer.send_mail(
+            recipients=user.email,
+            subject=self.config.messages['registration_email_subject'],
+            body=self.config.messages['registration_email_text'] % data)
 
     def _reset_password_email(self, user, data):
-        # TODO implement real code
-        return False
+        return self.app.ext.mailer.send_mail(
+            recipients=user.email,
+            subject=self.config.messages['reset_password_email_subject'],
+            body=self.config.messages['reset_password_email_text'] % data)
 
 
 def _wrap_form(f, fields, auth):
