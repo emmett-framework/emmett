@@ -100,12 +100,6 @@ class MailServer(object):
         return host
 
     def send(self, message):
-        assert message.all_recipients, "No recipients have been added"
-        assert message.sender, "The message does not specify a sender"
-        if message.has_bad_headers():
-            raise RuntimeError("Bad headers in message")
-        if message.date is None:
-            message.date = time.time()
         self.host.sendmail(
             sanitize_address(message.sender),
             list(sanitize_addresses(message.all_recipients)),
@@ -117,8 +111,11 @@ class MailServer(object):
 
 class Attachment(object):
     def __init__(
-        self, filename, data, content_type=None, disposition=None, headers=None
+        self, filename=None, data=None, content_type=None, disposition=None,
+        headers=None
     ):
+        if not content_type and filename:
+            content_type = contenttype(filename).split(";")[0]
         self.filename = filename
         self.content_type = content_type or contenttype(filename).split(";")[0]
         self.data = data
@@ -136,6 +133,7 @@ class Mail(object):
         sender = sender or ext.config.sender
         if isinstance(sender, tuple):
             sender = "%s <%s>" % sender
+        self.ext = ext
         self.recipients = recipients or []
         self.subject = subject
         self.sender = sender
@@ -250,14 +248,15 @@ class Mail(object):
     def __str__(self):
         return self.message.as_string()
 
-    def send(self, server):
-        return server.send(self)
+    def send(self):
+        return self.ext.send(self)
 
     def add_recipient(self, recipient):
         self.recipients.append(recipient)
 
     def attach(
-        self, filename, data, content_type=None, disposition=None, headers=None
+        self, filename=None, data=None, content_type=None, disposition=None,
+        headers=None
     ):
         self.attachments.append(
             Attachment(filename, data, content_type, disposition, headers))
@@ -284,12 +283,18 @@ class MailExtension(Extension):
 
     def _send(self, message):
         with self.server() as server:
-            return message.send(server)
+            return server.send(message)
 
     def mail(self, *args, **kwargs):
         return Mail(self, *args, **kwargs)
 
     def send(self, message):
+        assert message.all_recipients, "No recipients have been added"
+        assert message.sender, "The message does not specify a sender"
+        if message.has_bad_headers():
+            raise RuntimeError("Bad headers in message")
+        if message.date is None:
+            message.date = time.time()
         if not self.config.suppress:
             rv = self.dispatch(message)
         else:
