@@ -224,6 +224,13 @@ class ValidateFromDict(object):
         if 'message' in data:
             for validator in validators:
                 validator.message = data['message']
+        #: parse 'custom'
+        if 'custom' in data:
+            if isinstance(data['custom'], list):
+                for element in data['custom']:
+                    validators.append(element)
+            else:
+                validators.append(data['custom'])
         #: parse 'any'
         if 'any' in data:
             validators.append(Any(self(field, data['any'])))

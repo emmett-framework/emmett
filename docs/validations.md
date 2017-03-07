@@ -482,3 +482,24 @@ class FloatValidator(Validator):
             val += '0' * (2 - len(val.split('.')[1]))
         return val
 ```
+
+
+### Combining custom validators with standard ones
+
+*New in version 1.0*
+
+You can also use custom validators we just saw in combination with the standard ones provided by weppy. Just use the `custom` helper:
+
+```python
+class OddValidator(Validator):
+    message = "value has to be odd"
+
+    def __call__(self, value):
+        if value % 2:
+            return value, self.message
+        return value, None
+
+mynumber = Field(validation={'gte': 0, 'lt': 20, 'custom': OddValidator()})
+```
+
+> **Note:** you can also pass a list of custom validators to the `custom` helper.
