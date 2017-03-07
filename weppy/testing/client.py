@@ -25,9 +25,10 @@ from .urls import get_host, url_parse, url_unparse
 
 class ClientContext(object):
     def __init__(self):
-        from ..globals import current, Request
-        self.request = Request(copy.deepcopy(current.request.environ))
-        self.response = copy.deepcopy(current.response)
+        from ..globals import current, Request, Response
+        self.request = Request(current.request.environ)
+        self.response = Response(current.request.environ)
+        self.response.__dict__.update(current.response.__dict__)
         self.session = copy.deepcopy(current.session)
         self.T = current.T
 
