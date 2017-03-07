@@ -40,6 +40,12 @@ Next
 - Added `anchor` parameter in `url`
 - Deprecated `tags` module in favour of `html`
 - Optimized escaping code for html components
+- Optimized templates caching
+- Lightened the request flow
+- Added signals to extensions
+- Load application's defined commands in cli help listing
+- Enhanced the json validator
+- Refactored the mailer module
 
 
 Version 0.8
