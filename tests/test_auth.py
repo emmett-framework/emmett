@@ -145,10 +145,11 @@ def test_registration(mailer, db, client):
         assert "Account verification completed" in req.data
 
 
-def test_login(mailer, db, client):
+def test_login(db, client):
     page = client.get('/auth/login').data
     assert 'Email' in page
     assert 'Password' in page
+    assert 'Sign in' in page
     with client.get('/auth/login').context as ctx:
         req = client.post('/auth/login', data={
             'email': 'william@massivedynamics.com',
@@ -157,3 +158,65 @@ def test_login(mailer, db, client):
         }, follow_redirects=True)
         assert 'William' in req.data
         assert 'Bell' in req.data
+        assert 'Save' in req.data
+
+
+def test_password_change(db, client):
+    with client.get('/auth/login').context as ctx:
+        with client.post('/auth/login', data={
+            'email': 'william@massivedynamics.com',
+            'password': 'imtheceo',
+            '_csrf_token': list(ctx.session._csrf)[-1]
+        }, follow_redirects=True):
+            page = client.get('/auth/password_change').data
+            assert 'Current password' in page
+            assert 'New password' in page
+            assert 'Confirm password' in page
+            with client.get('/auth/password_change').context as ctx2:
+                with client.post('/auth/password_change', data={
+                    'old_password': 'imtheceo',
+                    'new_password': 'imthebigceo',
+                    'new_password2': 'imthebigceo',
+                    '_csrf_token': list(ctx2.session._csrf)[-1]
+                }, follow_redirects=True) as req:
+                    assert 'Password changed successfully' in req.data
+                    assert 'William' in req.data
+                    assert 'Save' in req.data
+
+
+def test_password_retrieval(mailer, db, client):
+    page = client.get('/auth/password_retrieval').data
+    assert 'Email' in page
+    assert 'Retrieve password' in page
+    with mailer.store_mails() as mailbox:
+        with client.get('/auth/password_retrieval').context as ctx:
+            with client.post('/auth/password_retrieval', data={
+                'email': 'william@massivedynamics.com',
+                '_csrf_token': list(ctx.session._csrf)[-1]
+            }, follow_redirects=True) as req:
+                assert 'We sent you an email, check your inbox' in req.data
+            assert len(mailbox) == 1
+        mail = mailbox[0]
+        assert mail.recipients == ["william@massivedynamics.com"]
+        assert mail.subject == 'Password reset requested'
+        mail_as_str = str(mail)
+        assert 'A password reset was requested for your account' in mail_as_str
+        reset_code = mail_as_str.split(
+            "http://localhost/auth/password_reset/")[1].split(" ")[0]
+        with client.get(
+            '/auth/password_reset/{}'.format(reset_code),
+            follow_redirects=True
+        ) as req:
+            assert 'New password' in req.data
+            assert 'Confirm password' in req.data
+            assert 'Reset password' in req.data
+            with client.post(
+                '/auth/password_reset/{}'.format(reset_code),
+                data={
+                    'password': 'imtheceo',
+                    'password2': 'imtheceo',
+                    '_csrf_token': list(req.context.session._csrf)[-1]},
+                follow_redirects=True
+            ) as req2:
+                assert 'Password changed successfully' in req2.data
+                assert 'Sign in' in req2.data

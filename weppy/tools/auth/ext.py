@@ -296,9 +296,9 @@ class AuthExtension(Extension):
         try:
             generated_at = int(key.split('-')[0])
             if time.time() - generated_at > 60 * 60 * 24:
-                raise Exception
-            user = self.models['user'].get(reset_password_key=key)
-        except:
+                raise ValueError
+            user = self.config.models['user'].get(reset_password_key=key)
+        except ValueError:
             user = None
         return user
 

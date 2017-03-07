@@ -87,8 +87,11 @@ def password_retrieval_fields(auth):
 
 
 def password_reset_fields(auth):
+    password_field = auth.ext.config.models['user'].password
     rv = {
-        'password': auth.models['user'].password.clone(),
+        'password': Field(
+            'password', validation=password_field._requires,
+            label=auth.ext.config.messages['new_password']),
         'password2': Field(
             'password', label=auth.ext.config.messages['verify_password'])
     }
@@ -96,14 +99,17 @@ def password_reset_fields(auth):
 
 
 def password_change_fields(auth):
+    password_validation = auth.ext.config.models['user'].password._requires
     rv = {
-        'old_password': auth.models['user'].password.clone(),
-        'new_password': auth.models['user'].password.clone(),
-        'mew_password2': Field(
+        'old_password': Field(
+            'password', validation=password_validation,
+            label=auth.ext.config.messages['old_password']),
+        'new_password': Field(
+            'password', validation=password_validation,
+            label=auth.ext.config.messages['new_password']),
+        'new_password2': Field(
             'password', label=auth.ext.config.messages['verify_password'])
     }
-    rv['old_password'].label = auth.ext.config.messages['old_password']
-    rv['new_password'].label = auth.ext.config.messages['new_password']
     return rv
 
 

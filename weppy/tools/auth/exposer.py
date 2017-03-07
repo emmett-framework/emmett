@@ -42,7 +42,7 @@ class AuthModule(AppModule):
             'after_password_reset': self._after_password_reset,
             'after_password_change': self._after_password_change
         }
-        auth_pipe = [] if self.config.inject_pipe else [self.auth.pipe]
+        auth_pipe = [] if not self.config.inject_pipe else [self.auth.pipe]
         requires_login = [
             RequirePipe(
                 lambda: self.auth.is_logged(),
@@ -232,7 +232,7 @@ class AuthModule(AppModule):
             if row.registration_key in ('disabled', 'blocked'):
                 form.errors.email = messages['login_disabled']
                 return
-            res['user'] = user
+            res['user'] = row
 
         rv = {'message': None}
         res = {}
@@ -246,7 +246,7 @@ class AuthModule(AppModule):
                     'password_reset', reset_key, scheme=True)}
             if not self.ext.mails['reset_password'](user, email_data):
                 rv['message'] = self.config.messages['mail_failure']
-            rv['message'] = self.config.message['mail_success']
+            rv['message'] = self.config.messages['mail_success']
             self.flash(rv['message'])
             self.ext.log_event(
                 self.config.messages['password_retrieval_log'],
@@ -282,7 +282,7 @@ class AuthModule(AppModule):
                 reset_password_key=''
             )
             rv['message'] = self.config.messages['password_changed']
-            flash(rv['message'])
+            self.flash(rv['message'])
             self.ext.log_event(
                 self.config.messages['password_reset_log'],
                 {'id': user.id},
@@ -298,7 +298,10 @@ class AuthModule(AppModule):
             if form.params.old_password != row.password:
                 form.errors.old_password = messages['invalid_password']
                 return
-            if form.params.password.password != form.params.password2.password:
+            if (
+                form.params.new_password.password !=
+                form.params.new_password2.password
+            ):
                 form.errors.new_password = "password mismatch"
                 form.errors.new_password2 = "password mismatch"
 
@@ -309,7 +312,7 @@ class AuthModule(AppModule):
         if rv['form'].accepted:
             row.update(password=str(rv['form'].params.new_password))
             rv['message'] = self.config.messages['password_changed']
-            flash(rv['message'])
+            self.flash(rv['message'])
             self.ext.log_event(
                 self.config.messages['password_change_log'],
                 {'id': row.id})
