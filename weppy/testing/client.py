@@ -218,8 +218,9 @@ class WeppyTestClient(object):
                 break
             new_location = response[2]['location']
             if new_location.startswith('/'):
-                new_location = \
-                    environ['wsgi.url_scheme'] + "://" + environ['HTTP_HOST']
+                new_location = (
+                    environ['wsgi.url_scheme'] + "://" +
+                    environ['HTTP_HOST'] + new_location)
             new_redirect_entry = (new_location, status_code)
             if new_redirect_entry in redirect_chain:
                 raise Exception('loop detected')
