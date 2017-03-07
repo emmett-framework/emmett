@@ -45,7 +45,7 @@ class AuthModule(AppModule):
         auth_pipe = [] if self.config.inject_pipe else [self.auth.pipe]
         requires_login = [
             RequirePipe(
-                lambda: self.auth.is_logged_in(),
+                lambda: self.auth.is_logged(),
                 lambda: redirect(self.url('login')))]
         self._methods_pipelines = {
             'login': [],
@@ -151,6 +151,7 @@ class AuthModule(AppModule):
             row = self.config.models['user'].get(res['id'])
             if self.config.registration_verification:
                 email_data = {
+                    'email': row.email,
                     'link': self.url(
                         'email_verification', row.registration_key,
                         scheme=True)}

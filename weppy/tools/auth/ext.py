@@ -96,6 +96,7 @@ class AuthExtension(Extension):
     def __init__(self, app, env, config):
         super(AuthExtension, self).__init__(app, env, config)
         self.__init_messages()
+        self.__init_mails()
         AuthModel._init_inheritable_dicts_()
         AuthModel.auth = self
 
@@ -302,16 +303,16 @@ class AuthExtension(Extension):
         return user
 
     def _registration_email(self, user, data):
-        return self.app.ext.mailer.send_mail(
+        return self.app.ext.MailExtension.send_mail(
             recipients=user.email,
             subject=self.config.messages['registration_email_subject'],
-            body=self.config.messages['registration_email_text'] % data)
+            body=str(self.config.messages['registration_email_text'] % data))
 
     def _reset_password_email(self, user, data):
-        return self.app.ext.mailer.send_mail(
+        return self.app.ext.MailExtension.send_mail(
             recipients=user.email,
             subject=self.config.messages['reset_password_email_subject'],
-            body=self.config.messages['reset_password_email_text'] % data)
+            body=str(self.config.messages['reset_password_email_text'] % data))
 
 
 def _wrap_form(f, fields, auth):

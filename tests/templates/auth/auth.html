@@ -1,0 +1,5 @@
+{{for flash in current.response.alerts(category_filter='auth'):}}
+    <div class="flash_message">{{=flash}}</div>
+{{pass}}
+
+{{=form}}
