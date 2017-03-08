@@ -1,103 +1,83 @@
 The Authorization System
 ========================
 
-weppy includes an useful authorization system, based on the one available 
-in *web2py*. With a few lines of code, weppy will create any required 
-database tables and generate forms for access control in your application.
+Since authorizations and authentications are a very important part of almost every application, weppy includes an useful module to deal with them. With a few lines of code, you will be able to create any required database tables and generate forms for access control in your application.
 
 So, how do you use it? Let's find out with an example:
 
 ```python
 from weppy import App
 from weppy.orm import Database
-from weppy.tools import Auth
+from weppy.tools.auth import Auth, AuthUser
 from weppy.sessions import SessionCookieManager
 
 app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
+app.config.auth.hmac_key = "mysupersecretkey"
+
+class User(AuthUser):
+    pass
 
 db = Database(app)
-auth = Auth(app, db)
+auth = Auth(app, db, user_model=User)
 
-app.common_handlers = [
+app.pipeline = [
     SessionCookieManager('myverysecretkey'),
-    db.handler,
-    auth.handler
+    db.pipe,
+    auth.pipe
 ]
 
-@app.route('/account(/<str:f>)?(/<str:k>)?')
-def account(f, k):
-    form = auth(f, k)
-    return dict(form=form)
+auth_routes = auth.module(__name__)
 ```
 
 That's it.
 
 Write a template page for the account function, including the returned form,
-and open [http://127.0.0.1:8000/account](http://127.0.0.1:8000/account)
-in your browser. weppy should redirect you to the login page and show you
-the related form.
+and open [http://127.0.0.1:8000/auth/login](http://127.0.0.1:8000/auth/login)
+in your browser. weppy should show you a login page with the appropriate form.
 
-> **Note:** weppy's `Auth` module requires session handling and a Database instance activated on your application to work properly.
+> **Note:** weppy's `Auth` module requires session handling and a Database instance activated on your application in order to work properly.
 
-As you've figured out, the exposed `account` function will be responsible for
+As you've figured out, the `auth_routes` module will be responsible for
 your app's authorization flow. With the default settings, the `Auth` module 
 of weppy exposes the following:
 
 * http://.../{baseurl}/login
 * http://.../{baseurl}/logout
-* http://.../{baseurl}/register
-* http://.../{baseurl}/verify_email
-* http://.../{baseurl}/retrieve_username
-* http://.../{baseurl}/retrieve_password
-* http://.../{baseurl}/reset_password
-* http://.../{baseurl}/request\_reset\_password
-* http://.../{baseurl}/change_password
+* http://.../{baseurl}/registration
 * http://.../{baseurl}/profile
+* http://.../{baseurl}/email_verification
+* http://.../{baseurl}/password_retrieval
+* http://.../{baseurl}/password\_reset/{reset\_key}
+* http://.../{baseurl}/password_change
 
 and it creates all the necessary database tables, from users to groups and memberships.
 
-You can change the routing URL for the authorization function:
+You can obviously change the routing URL prefix as any other application module:
 
 ```python
-@app.route('/myurl(/<str:f>)?(/<str:k>)?')
-def account(f, k):
-    # code
+auth_routes = auth.module(__name__, url_prefix='account')
 ```
 
-and even change the name of the exposed function. However, if you do that,
-you must tell the `Auth` module to use it to generate the URLs:
-
-```python
-auth = Auth(app, db, base_url='mycontrol')
-
-@app.route('/myurl(/<str:f>)?(/<str:k>)?')
-def mycontrol(f, k):
-    form = auth(f, k)
-    return dict(form=form)
-```
-
-###Disable specific actions
+### Disable specific routes
 You may want to disable some actions exposed by the authorization module.
-Let's say you don't want the `retrieve_username` functionality. To do that,
+Let's say you don't want the `password_retrieval` functionality. To do that,
 just edit your application configuration:
 
 ```python
-app.config.auth.actions_disabled = ["retrieve_username"]
+app.config.auth.disabled_routes = ["password_retrieval"]
 ```
 
-###Add custom actions
-You can also define custom actions to be routed by your application. Let's say 
-you want to route "/account/facebook" on your "/account" exposed function:
+### Add custom routes
+You can also define custom actions to be routed by the auth module. Let's say 
+you want to route a method for the facebook authentication on the */account/facebook* path:
 
 ```python
-def myfbfunction():
-    # code
-
-auth.register_action("facebook", myfbfunction)
+@auth_routes.route("/facebook")
+def facebook_auth():
+    # some code
 ```
 
-and that's it.
 
 Access control with "requires"
 ------------------------------
@@ -113,8 +93,8 @@ you can do that with one line of code:
 from weppy.tools import requires
 
 @app.route()
-@requires(auth.is_logged_in, url('unauthorized_page'))
-def myprotected_page():
+@requires(auth.is_logged, url('unauthorized_page'))
+def my_protected_page():
     #some code
 ```
 
@@ -129,7 +109,7 @@ def not_auth():
     abort(403)
 
 @app.route()
-@requires(lambda: auth.has_membership('administrator'), not_auth)
+@requires(lambda: auth.has_membership('admins'), not_auth)
 def admin():
     # code
 ```
@@ -146,11 +126,11 @@ In that case, you can write:
 ```python
 from weppy.tools import service
 
-def not_auth():
+def not_authorized():
     return dict(error="Not authorized")
 
 @app.route()
-@requires(auth.is_logged_in, not_auth)
+@requires(auth.is_logged_in, not_authorized)
 @service.json
 def protected():
     return dict(data="Some data here")
@@ -168,7 +148,7 @@ of your module:
 from weppy import AppModule
 from weppy.pipeline import RequirePipe
 
-mymodule = AppModule(app, "mymodule", __name__)
+mymodule = app.module(__name__, "mymodule")
 mymodule.pipeline = [RequirePipe(some_condition, otherwise)]
 ```
 
@@ -178,7 +158,7 @@ exposed function, otherwise your user won't be able to login.
 Authorization models
 --------------------
 
-*New in version 0.4*
+*Changed in version 1.0*
 
 The `Auth` module defines five models (and the five related database tables)
 under default behavior:
@@ -189,13 +169,12 @@ under default behavior:
 - `AuthPermission`
 - `AuthEvent`
 
-Now, you can customize the models by creating subclasses, and the thing you'll
-want to model most often is probably going to be a user. Your base class will 
-be `AuthUser` and from there you can add your fields, like an avatar.
+Now, you can customize the models by creating subclasses, and the thing you'll want to model most often is probably going to be a user. As we saw from the previous example, your base class will be `AuthUser` and from there you can add your fields, like an avatar.
+
 You could define your `User` model like so:
 
 ```python
-from weppy import Field
+from weppy.orm import Field
 from weppy.tools.auth import AuthUser
 
 class User(AuthUser):
@@ -210,7 +189,7 @@ and pass it to the `Auth` instance:
 
 ```python
 from weppy.tools import Auth
-auth = Auth(app, db, usermodel=User)
+auth = Auth(app, db, user_model=User)
 ```
 
 As you can see, defining your user model by subclassing `AuthUser` is essentially 
@@ -247,13 +226,13 @@ relations on the `AuthUser` model (and any model subclassing it):
 ```python
 user = db.AuthUser(id=1)
 # referring membership records
-user.authmemberships()
+user.auth_memberships()
 # referring group records
-user.authgroups()
+user.auth_groups()
 # referring permission records
-user.authpermissions()
+user.auth_permissions()
 # referring event records
-user.authevents()
+user.auth_events()
 ```
 
 The `AuthGroup` model has these `has_many` relations:
@@ -263,7 +242,7 @@ group = db.AuthGroup(id=1)
 # referring user records
 group.users()
 # referring permission records
-group.authpermissions()
+group.auth_permissions()
 ```
 
 Consequentially, `AuthMembership`, `AuthPermission` and `AuthEvent` have the
@@ -274,11 +253,11 @@ membership = db.AuthMembership(id=1)
 # referred user record
 membership.user
 # referred group record
-membership.authgroup
+membership.auth_group
 
 permission = db.AuthPermission(id=1)
 # referred group record
-permission.authgroup
+permission.auth_group
 
 event = db.AuthEvent(id=1)
 # referred user record
@@ -311,7 +290,7 @@ auth.add_membership('administrators', admin)
 # 3rd way:
 admins.users.add(admin)
 # 4th way:
-admin.authgroups.add(admins)
+admin.auth_groups.add(admins)
 ```
 
 Once you have added groups and memberships, you can use the `has_membership` helper
@@ -321,13 +300,13 @@ of the `Auth` model that we saw previously, in the *requires* paragraph:
 # on the logged user:
 auth.has_membership('administrators')
 # specifying a user:
-auth.has_membership('administrator', user)
+auth.has_membership('administrators', user)
 ```
 
 and you can obviously get all the groups a user is a member of by using relation:
 
 ```python
-user.authgroups()
+user.auth_groups()
 ```
 
 Nonetheless, weppy's `Auth` module also have a finer management for users,
@@ -353,9 +332,9 @@ weppy's `Auth` permissions also support more details, like a model name and a re
 
 ```python
 maintenance = db.Preference(name='maintenance').first()
-auth.add_permission(admins, 'write', 'Setting', maintenance.id)
+auth.add_permission(admins, 'write', 'Preference', maintenance.id)
 # then you will check
-auth.has_permission('write', 'Setting', maintenance.id)
+auth.has_permission('write', 'Preference', maintenance.id)
 ```
 
 ### Blocking users
