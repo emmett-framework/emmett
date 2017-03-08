@@ -400,7 +400,7 @@ class AuthModule(AppModule):
             redirect(self.url("profile"))
         redirect(self.url("login"))
 
-    def _after_profile(self, form, user):
+    def _after_profile(self, form):
         redirect(self.url("profile"))
 
     def _after_email_verification(self, user):

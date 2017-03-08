@@ -14,6 +14,7 @@ from weppy.sessions import SessionCookieManager
 app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
 app.config.auth.hmac_key = "mysupersecretkey"
+app.config.auth.single_template = False
 
 class User(AuthUser):
     pass
@@ -32,11 +33,9 @@ auth_routes = auth.module(__name__)
 
 That's it.
 
-Write a template page for the account function, including the returned form,
-and open [http://127.0.0.1:8000/auth/login](http://127.0.0.1:8000/auth/login)
-in your browser. weppy should show you a login page with the appropriate form.
+Write a template page for the auth module (that should be placed in *templates/auth/auth.html*) to render the `form` variable returned by the module, and open [http://127.0.0.1:8000/auth/login](http://127.0.0.1:8000/auth/login) in your browser. weppy should show you a login page with the appropriate form.
 
-> **Note:** weppy's `Auth` module requires session handling and a Database instance activated on your application in order to work properly.
+> **Note:** weppy's `Auth` module requires session handling and a `Database` instance activated on your application in order to work properly.
 
 As you've figured out, the `auth_routes` module will be responsible for
 your app's authorization flow. With the default settings, the `Auth` module 
@@ -59,25 +58,79 @@ You can obviously change the routing URL prefix as any other application module:
 auth_routes = auth.module(__name__, url_prefix='account')
 ```
 
+Auth module configuration
+-------------------------
+
+The auth module have quite a few options that can be configured. We already saw the `hmac_key` parameter, which is used to crypt passwords in the database, or the `single_template` option we used in the *bloggy* example and above.
+
+Here is the complete list of parameters that you can change:
+
+| parameter | default value | description |
+| --- | --- | --- |
+| hmac\_key | `None` | the key (required) that will be used to crypt users' passwords |
+| hmac\_alg | pbkdf2(2000,20,sha512) | the algorithm that will be used to crypt users' password |
+| inject\_pipe | `False` | configure the module to automatically inject its pipe on the application |
+| log\_events | `True` | store in the module events table events regarding auth |
+| flash\_messages | `True` | use the weppy flashing system to display messages |
+| csrf | `True` | use CSRF protection logic on forms |
+| single\_template | `False` | decide if every route exposed by the module should use a single template |
+| password\_min\_length | 6 | minimum length for users password |
+| remember\_option | `True` | add a *remember me* checkbox in login form to have long-living sessions |
+| session\_expiration | 3600 | inactivity time (seconds) after which the session will expire |
+| session\_long\_expiration | 3600 * 24 * 30 | inactivity time (seconds) after which a long living session will expire |
+| registration\_verification | `True` | decide if the user's email should be validated on registration |
+| registration\_approval | `False` | decide if registered users should be approved manually |
+
+As an example, if you leave the `single_template` option set to `True`, you have to write one template for every routed function of the module that we saw above.
+
+### Messages
+
+*section under development*
+
+### Callbacks
+
+The auth module has an *after* callback for every route exposed by the module. This is useful, for example, if you want to change the default redirects after a certain action has occurred. In fact, under the default behaviour, the user will be redirected to its own profile after the login, while you may want to redirect him/her to a *dashboard* route you defined:
+
+```python
+from weppy import url, redirect
+
+@auth_routes.after_login
+def after_login(form):
+    redirect(url('dashboard'))
+```
+
+Here is the complete list of available callbacks, with the parameters passed to them:
+
+| callback | parameters |
+| --- | --- |
+| after\_login | form |
+| after\_logout | |
+| after\_registration | form, user, logged\_in |
+| after\_profile | form |
+| after\_email\_verification | user |
+| after\_password\_retrieval | user |
+| after\_password\_reset | user |
+| after\_password\_change | |
+
+where `form` is the form the user has filled in. The `user` parameter is present on the routes that don't have a user logged into the system, while the `logged_in` parameter tells you if the user was logged into the system after the registration.
+
 ### Disable specific routes
+
 You may want to disable some actions exposed by the authorization module.
-Let's say you don't want the `password_retrieval` functionality. To do that,
-just edit your application configuration:
+Let's say you don't want the `password_retrieval` functionality. To do that, just edit your application configuration:
 
 ```python
 app.config.auth.disabled_routes = ["password_retrieval"]
 ```
 
 ### Add custom routes
-You can also define custom actions to be routed by the auth module. Let's say 
-you want to route a method for the facebook authentication on the */account/facebook* path:
+You can also define custom actions to be routed by the auth module. Let's say you want to route a method for the facebook authentication on the */account/facebook* path:
 
 ```python
 @auth_routes.route("/facebook")
 def facebook_auth():
     # some code
 ```
-
 
 Access control with "requires"
 ------------------------------
@@ -368,11 +421,6 @@ user.allow()
 ```
 
 The allow methods will simply reset any blocking status on the users.
-
-Auth module configuration
--------------------------
-
-*section in development*
 
 Additional login methods
 ------------------------
