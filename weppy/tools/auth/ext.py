@@ -47,6 +47,7 @@ class AuthExtension(Extension):
             'password_retrieval', 'password_reset', 'password_change',
             'download'],
         'disabled_routes': [],
+        'single_template': False,
         'password_min_length': 6,
         'remember_option': True,
         'session_expiration': 3600,

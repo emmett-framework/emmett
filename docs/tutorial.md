@@ -162,22 +162,30 @@ posts or comments.
 > **Note:** as you can see we imported the `now` method for the deault values of the datetime fields. This method can be quite useful since it will return alternatively the time of the request or the system current time, depending on the context. You can safely use it in your application whenever you need the actual time and you have no ensurance a request context is available.
 
 Initialize the database and the auth module
--------------------------------------
+-------------------------------------------
 
-We've defined our schema, so now it's time to add the database and the
-authorization system to bloggy. It's as simple as writing:
+We've defined our schema, so now it's time to add the database and the authorization system to bloggy. First, let's configure the auth module a bit:
+
+```python
+app.config.auth.single_template = True
+app.config.auth.registration_validation = False
+app.config.auth.hmac_key = "MassiveDynamicRules"
+```
+
+These options allow us to use a single template file for everything regarding the auth, and, since we're writing just a simple application, prevent it to use a mailer system for validating our users. The `hmac_key` will be used to crypt the passwords into our database.
+
+Now, we can write down the code to use the database and the auth. Just the next few lines are enough:
 
 ```python
 from weppy.orm import Database
 from weppy.tools import Auth
 
 db = Database(app)
-auth = Auth(app, db, usermodel=User)
+auth = Auth(app, db, user_model=User)
 db.define_models(Post, Comment)
 ```
 
-But, wait, how do we add an admin user who can write posts? We can write a
-`setup` function which allows us to do that. Let's write:
+But, wait, how do we add an admin user who can write posts? We can write a `setup` function which allows us to do that. Let's write:
 
 ```python
 @app.command('setup')
@@ -196,12 +204,9 @@ def setup():
     db.commit()
 ```
 
-The code is quite self-explanatory: it will add an user who can sign in with the
-"walter@massivedynamics.com" email and "pocketuniverse" as their password,
-then it creates an admin group and adds the *Walter* user to this group.
+The code is quite self-explanatory: it will add an user who can sign in with the *walter@massivedynamics.com* email and *pocketuniverse* password, then it creates an admin group and adds the *Walter* user to this group.
 
-Also, notice that we added the `@app.command` decorator, which allow us to run
-our setup function using the *weppy* command shell:
+Also, notice that we added the `@app.command` decorator, which allow us to run our setup function using the *weppy* command shell:
 
 ```bash
 > weppy --app bloggy.py setup
@@ -209,12 +214,12 @@ our setup function using the *weppy* command shell:
 
 Now that the backend is ready, we can prepare to write and *expose* our functions.
 
-Exposing functions
-------------------
+Exposing routes
+---------------
 
 Before we can start writing the functions that will handle the clients' requests, we need to add the database and authorization **pipes** to our application, so that we can use them with our functions following the request flow.
 
-Moreover, to use the authorization module, we need to add a **sessions manager** to the application's pipeline, too. In this tutorial, cookie support for session will be enough, and we will use "Walternate" as a secret key for encrypting cookies.
+Moreover, to use the authorization module, we need to add a **sessions manager** to the application's pipeline, too. In this tutorial, cookie support for session will be enough, and we will use *Walternate* as a secret key for encrypting cookies.
 
 ```python
 from weppy.sessions import SessionCookieManager
@@ -277,21 +282,17 @@ def new_post():
     return dict(form=form)
 ```
 
-If a user tries to open the "/new" address without being a member of the *admin*
-group, weppy will redirect them to the index page.
+If a user tries to open the "/new" address without being a member of the *admin* group, weppy will redirect them to the index page.
 
-Finally, we should expose an *account* function to let users sign up and sign in
-on bloggy:
+Finally, we should expose the auth module routes, in order to let users sign up and sign in on bloggy. Since the auth module provides a convenient application module, we can just initialize it:
 
 ```python
-@app.route('/account(/<str:f>)?(/<str:k>)?')
-def account(f, k):
-    form = auth(f, k)
-    return dict(form=form)
+auth_routes = auth.module(__name__)
 ```
 
-Now that we have all the main code of our application ready to work, we need the
-templates to render the content to the clients.
+and the auth module will expose everything for us.
+
+Now that we have all the main code of our application ready to work, we need the templates to render the content to the clients.
 
 The templates
 -------------
@@ -315,9 +316,9 @@ under *templates/layout.html*, and we will extend it with the functions' templat
             <a href="/" class="title"><h1>Bloggy</h1></a>
             <div class="nav">
             {{if not current.session.auth:}}
-                <a href="{{=url('account', 'login')}}">log in</a>
+                <a href="{{=url('auth.login')}}">log in</a>
             {{else:}}
-                <a href="{{=url('account', 'logout')}}">log out</a>
+                <a href="{{=url('auth.logout')}}">log out</a>
             {{pass}}
             </div>
             {{block main}}
@@ -362,8 +363,8 @@ Then, the *one.html* template which, is the most complex:
 <hr />
 <h4>Comments</h4>
 {{if current.session.auth:}}
-<h5>Write a comment:</h5>
-{{=form}}
+    <h5>Write a comment:</h5>
+    {{=form}}
 {{pass}}
 <ul class="comments">
 {{for comment in comments:}}
@@ -379,8 +380,7 @@ Then, the *one.html* template which, is the most complex:
 </ul>
 ```
 
-The two remaining templates are simpler and similar, since they will only
-show one form each. So, the first, *new_post.html*, will be just:
+The remaining template for our blogging app is the one for the posts creation, that will show the form. It's the simplest template since we can just write down in *new_post.html* these lines:
 
 ```html
 {{extend 'layout.html'}}
@@ -389,14 +389,21 @@ show one form each. So, the first, *new_post.html*, will be just:
 {{=form}}
 ```
 
-and *account.html* will be:
+We still need a template for the auth module. We should create an *auth* folder inside the templates one, and, since we configured the module to use just one template, we can write down these lines in the *auth.html* file inside it:
 
 ```html
 {{extend 'layout.html'}}
 
 <h1>Account</h1>
+
+{{for flash in current.response.alerts(category_filter='auth'):}}
+    <div class="flash_message">{{=flash}}</div>
+{{pass}}
+
 {{=form}}
 ```
+
+As you can see, the only difference from the template we wrote before to create new posts are the lines to *flash* messages from the auth module. This will be quite handy to display errors or notify the user.
 
 Some styling
 ------------

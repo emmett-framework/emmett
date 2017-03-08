@@ -10,7 +10,7 @@ from weppy.sessions import SessionCookieManager
 app = App(__name__)
 app.config.auth.single_template = True
 app.config.auth.registration_validation = False
-app.config.auth.hmac_key = "b161fc8e-af1d-4738-b05e-c4153e3b8ff7"
+app.config.auth.hmac_key = "MassiveDynamicRules"
 
 
 #: define models

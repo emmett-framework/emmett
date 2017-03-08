@@ -43,7 +43,7 @@ Next
 - Optimized templates caching
 - Lightened the request flow
 - Added signals to extensions
-- Load application's defined commands in cli help listing
+- Added application's defined commands in cli help listing
 - Enhanced the json validator
 - Refactored the mailer module
 
