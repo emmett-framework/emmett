@@ -211,7 +211,8 @@ class Mixed(Model):
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
-    db = Database(app, config=sdict(uri='sqlite://validators.db'))
+    db = Database(
+        app, config=sdict(uri='sqlite://validators.db', auto_connect=True))
     db.define_models([
         A, AA, AAA, B, Consist, Len, Inside, Num, Eq, Match, Anyone, Proc,
         Person, Thing, Allowed, Mixed

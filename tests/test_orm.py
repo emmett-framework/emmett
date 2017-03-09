@@ -288,7 +288,7 @@ class Subscription(Model):
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
-    db = Database(app, config=sdict(uri='sqlite://dal.db'))
+    db = Database(app, config=sdict(uri='sqlite://dal.db', auto_connect=True))
     db.define_models([
         Stuff, Person, Thing, Feature, Price, Doctor, Patient, Appointment,
         User, Organization, Membership, House, Mouse, NeedSplit, Zoo, Animal,

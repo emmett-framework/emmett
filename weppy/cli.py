@@ -119,7 +119,7 @@ class ScriptInfo(object):
     def __init__(self, app_import_path=None, debug=None):
         #: The application import path
         self.app_import_path = app_import_path
-        #: The debug flag.  If this is not None, the application will
+        #: The debug flag. If this is not None, the application will
         #: automatically have it's debug flag overridden with this value.
         self.debug = debug
         #: A dictionary with arbitrary data that can be associated with
@@ -128,6 +128,8 @@ class ScriptInfo(object):
         self._loaded_ctx = None
         self._loaded_app = None
         self.db_var_name = None
+        #: Set environment flag
+        os.environ['WEPPY_CLI_ENV'] = 'true'
 
     def load_appctx(self):
         if self._loaded_ctx is not None:

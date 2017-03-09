@@ -10,6 +10,8 @@
 """
 
 import os
+from contextlib import contextmanager
+from functools import wraps
 from pydal import DAL as _pyDAL
 from pydal._globals import THREAD_LOCAL
 from .._compat import copyreg
@@ -81,17 +83,24 @@ class Database(_pyDAL):
         if not config.uri:
             config.uri = self.uri_from_config(config)
         self.config = config
+        self._auto_migrate = self.config.auto_migrate or \
+            kwargs.get('auto_migrate', True)
+        self._auto_connect = self.config.get(
+            'auto_connect', kwargs.get('auto_connect'))
         #: load config data
         kwargs['check_reserved'] = self.config.check_reserved or \
             kwargs.get('check_reserved', None)
-        kwargs['migrate'] = self.config.auto_migrate or \
-            kwargs.get('auto_migrate', True)
+        kwargs['migrate'] = self._auto_migrate
         kwargs['driver_args'] = self.config.driver_args or \
             kwargs.get('driver_args', None)
         kwargs['adapter_args'] = self.config.adapter_args or \
             kwargs.get('adapter_args', None)
         if kwargs.get('auto_migrate') is not None:
             del kwargs['auto_migrate']
+        if self._auto_connect is not None:
+            kwargs['do_connect'] = self._auto_connect
+        else:
+            kwargs['do_connect'] = os.environ.get('WEPPY_CLI_ENV') == 'true'
         #: set directory
         folder = folder or 'databases'
         folder = os.path.join(app.root_path, folder)
@@ -122,9 +131,26 @@ class Database(_pyDAL):
     def execution_timings(self):
         return getattr(THREAD_LOCAL, '_weppydal_timings_', [])
 
+    def connection_open(self):
+        self._adapter.reconnect()
+
+    def connection_close(self):
+        self._adapter.close()
+
+    @contextmanager
+    def connection(self, close_after=True):
+        self.connection_open()
+        try:
+            yield
+        finally:
+            if close_after:
+                self.connection_close()
+
     def define_models(self, *models):
         if len(models) == 1 and isinstance(models[0], (list, tuple)):
             models = models[0]
+        if self._auto_migrate and not self._do_connect:
+            self.connection_open()
         for model in models:
             if not hasattr(self, model.__name__):
                 # store db instance inside model
@@ -149,6 +175,8 @@ class Database(_pyDAL):
                 obj._define_()
                 # set reference in db for model name
                 self.__setattr__(model.__name__, obj.table)
+        if self._auto_migrate and not self._do_connect:
+            self.connection_close()
 
     def where(self, query=None, ignore_common_filters=None, model=None):
         q = None
@@ -167,6 +195,13 @@ class Database(_pyDAL):
                 q = query
         return Set(
             self, q, ignore_common_filters=ignore_common_filters, model=model)
+
+    def with_connection(self, f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            with self.connection():
+                f(*args, **kwargs)
+        return wrapped
 
 
 def _Database_unpickler(db_uid):
