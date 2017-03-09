@@ -131,9 +131,7 @@ on which HTTP schemes the function should answer. By default, both *HTTP* and
 *HTTPS* methods are allowed. If you need to bind the exposed function to
 a specific host, you can use the `hostname` parameter.
 
-The `prefix`, `template_path`, and `template_folder` parameters are specific to
-[AppModules](./app_and_modules#application-modules), and there's no specific
-need to use them directly in the `app.route()` function.
+The `prefix`, `template_path`, and `template_folder` parameters are specific to [application modules](./app_and_modules#application-modules), and there's no specific need to use them directly in the `app.route()` function.
 
 The url() function
 ------------------

@@ -1,8 +1,7 @@
 Applications and modules
 ========================
 
-weppy applications are based on the `App` core class. Let's focus on this 
-fundamental component and on the convenient `AppModule`.
+weppy applications are based on the `App` core class. Let's focus on this fundamental component and on the convenient application modules.
 
 The App object
 --------------
@@ -141,7 +140,7 @@ A part from the prefix, you can use several parameters when creating modules. He
 
 As you can see, we can bind the module to a specific host with the `hostname` parameter, instead of using `url_prefix`. Considering our blog example, we can bind it to *blog.ourhost.tld*.
 
-We mentioned that the `name` parameter of `AppModule` object is instead used by weppy for the URLs *namespacing*. To completely understand this 
+We mentioned that the `name` parameter of the application modules is instead used by weppy for the URLs *namespacing*. To completely understand this 
 and to dive into subsequent considerations, you can read the 
 [Routing](./routing) chapter.
 

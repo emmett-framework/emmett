@@ -249,7 +249,7 @@ weppy 1.0 introduces some new features you may take advantage of:
 - Computed fields values are now accesible within insert and update callbacks
 - A `headers` attribute is now available on the request object to easily access the headers sent by the client
 - An `anchor` parameter is now available in the `url` method
-- Signal binding is now available for extensions
+- Signal [bindings](./extensions#building-extensions) is now available for extensions
 
 
 Version 0.8

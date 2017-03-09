@@ -244,7 +244,6 @@ You can use the `RequirePipe` instead of decorating any function
 of your module:
 
 ```python
-from weppy import AppModule
 from weppy.pipeline import RequirePipe
 
 mymodule = app.module(__name__, "mymodule")

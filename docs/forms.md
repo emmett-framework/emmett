@@ -39,7 +39,7 @@ except that you call it directly from your model:
 
 ```python
 # create a form for Post model
-@app.route('/dalform')
+@app.route('/postform')
 def b():
     form = Post.form()
     if form.accepted:
