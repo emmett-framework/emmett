@@ -46,7 +46,7 @@ setup(
         'click>=0.6',
         'pendulum>=1.0.0',
         'pyaes',
-        'pyDAL==17.1',
+        'pyDAL==17.3',
         'pyyaml'
     ],
     classifiers=[
