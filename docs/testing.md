@@ -171,11 +171,13 @@ Due to this, if you need to run database operations, you should manually
 re-establish the connection of the adapter:
 
 ```python
-db._adapter.reconnect()
+with db.connection():
+    # your code
 ```
 
 and you also need to remember to commit or rollback changes:
 
 ```python
 db.commit()
+db.rollback()
 ```

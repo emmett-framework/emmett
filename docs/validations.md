@@ -501,7 +501,8 @@ class OddValidator(Validator):
             return value, self.message
         return value, None
 
-mynumber = Field(validation={'gte': 0, 'lt': 20, 'custom': OddValidator()})
+mynumber = Field('int', validation={
+    'gte': 0, 'lt': 20, 'custom': OddValidator()})
 ```
 
 > **Note:** you can also pass a list of custom validators to the `custom` helper.

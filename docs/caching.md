@@ -3,7 +3,7 @@ Caching
 
 When you code a dynamic application, you will soon face its trade-off:
 **it is** dynamic. Each time a user does a request, your server makes all sorts
-of calculations&mdash;database queries, template rendering and so on&mdash;to
+of calculations – database queries, template rendering and so on – to
 create the final response. For most web applications, this is not a big deal,
 but when your application starts becoming big and highly visited you will want
 to limit the overhead on your machines.
@@ -28,7 +28,7 @@ you have a blog and a certain function that exposes the last ten posts:
 ```python
 @app.route("/last")
 def last():
-    rows = db(db.Post.id > 0).select(orderby=~db.Post.date, limitby=(0, 10))
+    rows = Post.all().select(orderby=~Post.date, limitby=(0, 10))
     return dict(posts=rows)
 ``` 
 
@@ -43,7 +43,7 @@ cache = Cache()
 @app.route("/last")
 def last():
     def _get():
-        return db(db.Post.id > 0).select(orderby=~db.Post.date, limitby=(0, 10))
+        return Post.all().select(orderby=~Post.date, limitby=(0, 10))
     return dict(posts=cache('last_posts', _get, 30))
 ```
 

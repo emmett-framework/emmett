@@ -16,7 +16,7 @@ allowed me to write that *little magic* every developer does behind the scenes
 in a handy way. And I finally chose Python. Ruby was on the list (and it seems
 quite popular for web development nowadays), but I've found its syntax, in some
 situation, less immediate; moreover, python is somewhat more *solid* than 
-Ruby&mdash;maybe even too much solid. I think even Python would be advantaged by
+Ruby – maybe even too much solid. I think even Python would be advantaged by
 a more dynamic community: just think about Python 3's adoption status (Ed.).
 
 I really enjoyed writing code in Python, and after gaining some confidence,
@@ -61,8 +61,8 @@ I'd like to reply to this doubt with a definition of *tool* I really love:
 > **tool:** *something* intended to make a task easier.
 
 So a framework, which is a tool, has to let you write your application **easier**
-than without it. Now, I've found many frameworks&mdash;and I'm sure you can easily
-find them, too&mdash;where you have to deal with learning *a lot* of "how to do
+than without it. Now, I've found many frameworks – and I'm sure you can easily
+find them, too – where you have to deal with learning *a lot* of "how to do
 that" with the framework itself instead of focusing on the application.
 
 This is the first principle I've based *weppy* on: **it's easy to use and learn,
@@ -76,7 +76,7 @@ is not necessarily one which hides a lot of his flow.
 
 As developers, we have to admit that when we use frameworks or libraries for our
 project, many times it is hard to do something out of the ready-made scheme. I
-can think about several frameworks&mdash;even the famous *Ruby on Rails*&mdash;that,
+can think about several frameworks – even the famous *Ruby on Rails* – that,
 from time to time, force you to use a lot of formalism even when it's not really
 necessary. You find yourself writing code while following useless rules you don't like.   
 

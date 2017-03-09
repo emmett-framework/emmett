@@ -237,7 +237,7 @@ and not the old cached ones. weppy solves the problem for you,
 allowing you to configure your application with a `static_version`:
 
 ```python
-app.config.static\_version\_urls = True
+app.config.static_version_urls = True
 app.config.static_version = "1.0.0"
 ```
 
