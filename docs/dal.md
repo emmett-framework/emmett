@@ -4,34 +4,34 @@ Using databases
 > – OK, what if I need to use a database in my application?   
 > – *you can use the included ORM*
 
-weppy comes with an integrated ORM based on [pyDAL](https://github.com/web2py/pydal),
-which gives you the ability to use a database in your application writing simple
-Python code without worrying about queries and specific syntax of the database
-engine you want to use.   
+weppy comes with an integrated ORM based on [pyDAL](https://github.com/web2py/pydal), which gives you the ability to use a database in your application writing simple Python code without worrying about queries and specific syntax of the database engine you want to use.
 
-Thanks to this database layer, you can write the same code and use the same syntax
-independently of which of the available adapters you want to use during development
-or when you're deploying your app to the world.
+Thanks to this database layer, you can write the same code and use the same syntax independently of which of the available adapters you want to use during development or when you're deploying your app to the world.
 
-This is the list of the supported database engines, where we included the appropriate
-driver(s) you need to install, separately from weppy (just use pip):
+This is the list of the supported database engines, where we included the name used by weppy for the connection configuration and the appropriate driver you need to install, separately from weppy (just use pip):
 
-| Supported DBMS | python driver(s) |
-| --- | --- |
-| SQLite | sqlite3, pysqlite2, zxjdbc |
-| PostgreSQL | psycopg2, pg8000, zxjdbc |
-| MySQL | pymysql, mysqldb |
-| Oracle | cxoracle |
-| MSSQL | pyodbc |
-| FireBird | kinterbasdb, fdb, pyodbc |
-| DB2 | pyodbc |
-| Informix | informixdb |
-| Ingres | ingresdbi |
-| Cubrid | cubridb |
-| Sybase | Sybase |
-| Teradata | pyodbc |
-| SAPDB | sapdb |
-| MongoDB | pymongo |
+| Supported DBMS | adapter name | python driver |
+| --- | --- | --- |
+| SQLite | sqlite | |
+| PostgreSQL | postgres | psycopg2, pg8000, zxjdbc |
+| MySQL | mysql | pymysql, mysqldb |
+| MSSQL | mssql | pyodbc |
+| MongoDB | mongo | pymongo |
+
+The next database engines are included in weppy but are targeted with *experimental* support, as they're not officially supported by the weppy development:
+
+| Experimental support | adapter name | python driver(s) |
+| --- | --- | --- |
+| CouchDB | couchdb | couchdb |
+| Oracle | oracle | cxoracle |
+| FireBird | firebird | kinterbasdb, fdb, pyodbc |
+| DB2 | db2 | pyodbc |
+| Informix | informix | informixdb |
+| Ingres | ingres | ingresdbi |
+| Cubrid | cubrid | cubridb |
+| Sybase | sybase | Sybase |
+| Teradata | teradata | pyodbc |
+| SAPDB | sapdb | sapdb |
 
 > **Note:**   
 > This list may change, and depends on the engine support of pyDAL. For any
