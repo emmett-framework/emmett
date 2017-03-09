@@ -87,7 +87,7 @@ As an example, if you leave the `single_template` option set to `True`, you have
 
 > **Warning:** if you change the `hmac_key` and/or `hmac_alg` afterwards, the users registered to your application won't be able to login unless they reset their passwords.
 
-> **Note:** the `registration_verification` option requires a mailer is configured on the application in order to work properly.
+> **Note:** the `registration_verification` option requires a [mailer](./mailer) is configured on the application in order to work properly.
 
 The auth module is also pre-configured with quite a few standard messages that will be used by the system for a wide case of scenarios, from labels to error messages. You can inspect all the messages you can customize printing the dictionary in the standard configuration of the module under the `messages` key:
 
@@ -176,7 +176,7 @@ def registration_mail(user, data):
 
 The functions you decorate with both decorators should accept the `user` and `data` parameters. The `data` parameter is a dictionary and will contains just the `link` item.
 
-> **Note:** in order to use mail features you need a mailer configured with your application.
+> **Note:** in order to use mail features you need a [mailer](./mailer) configured with your application.
 
 Access control with "requires"
 ------------------------------
