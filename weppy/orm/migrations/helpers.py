@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.helpers
+    weppy.orm.migrations.helpers
     ----------------------------
 
     Provides helpers for migrations.

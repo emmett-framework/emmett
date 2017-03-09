@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.revisions
+    weppy.orm.migrations.revisions
     ------------------------------
 
     Provides revisions logic for migrations.

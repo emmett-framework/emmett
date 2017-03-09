@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.apis
+    weppy.orm.apis
     --------------
 
     Provides apis for dal.

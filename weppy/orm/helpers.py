@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.helpers
+    weppy.orm.helpers
     -----------------
 
     Provides helpers for dal.

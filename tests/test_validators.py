@@ -212,7 +212,9 @@ class Mixed(Model):
 def db():
     app = App(__name__)
     db = Database(
-        app, config=sdict(uri='sqlite://validators.db', auto_connect=True))
+        app, config=sdict(
+            uri='sqlite://validators.db', auto_connect=True,
+            auto_migrate=True))
     db.define_models([
         A, AA, AAA, B, Consist, Len, Inside, Num, Eq, Match, Anyone, Proc,
         Person, Thing, Allowed, Mixed

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.adapters
+    weppy.orm.adapters
     ------------------
 
     Provides adapters facilities for dal.

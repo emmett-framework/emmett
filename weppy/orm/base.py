@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.base
+    weppy.orm.base
     --------------
 
     Provides base pyDAL implementation for weppy.
@@ -83,8 +83,8 @@ class Database(_pyDAL):
         if not config.uri:
             config.uri = self.uri_from_config(config)
         self.config = config
-        self._auto_migrate = self.config.auto_migrate or \
-            kwargs.get('auto_migrate', True)
+        self._auto_migrate = self.config.get(
+            'auto_migrate', kwargs.get('auto_migrate', False))
         self._auto_connect = self.config.get(
             'auto_connect', kwargs.get('auto_connect'))
         #: load config data
@@ -95,7 +95,7 @@ class Database(_pyDAL):
             kwargs.get('driver_args', None)
         kwargs['adapter_args'] = self.config.adapter_args or \
             kwargs.get('adapter_args', None)
-        if kwargs.get('auto_migrate') is not None:
+        if 'auto_migrate' in kwargs:
             del kwargs['auto_migrate']
         if self._auto_connect is not None:
             kwargs['do_connect'] = self._auto_connect

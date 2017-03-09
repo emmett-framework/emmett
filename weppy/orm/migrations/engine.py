@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.engine
+    weppy.orm.migrations.engine
     ---------------------------
 
     Provides migration engine for pyDAL.

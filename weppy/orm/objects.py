@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.objects
+    weppy.orm.objects
     -----------------
 
     Provides pyDAL objects implementation for weppy.

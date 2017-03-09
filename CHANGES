@@ -49,6 +49,7 @@ Next
 - Refactored the `tools.auth` module
 - The `Database` instance now performs auto connection using the
   `auto_connection` parameter or just in the cli environment if missing
+- Automatic migrations on the database are now turned off by default
 
 
 Version 0.8

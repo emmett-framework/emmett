@@ -54,7 +54,7 @@ def _db(app):
         shutil.rmtree(os.path.join(app.root_path, 'databases'))
     except:
         pass
-    db = Database(app)
+    db = Database(app, auto_migrate=True)
     app.pipeline.append(db.pipe)
     return db
 

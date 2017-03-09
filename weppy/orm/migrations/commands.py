@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.commands
+    weppy.orm.migrations.commands
     -----------------------------
 
     Provides command interfaces for migrations.

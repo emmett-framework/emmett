@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.wrappers
+    weppy.orm.wrappers
     ------------------
 
     Provides wrappers utilities for dal.

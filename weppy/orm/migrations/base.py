@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.base
+    weppy.orm.migrations.base
     -------------------------
 
     Provides base migrations objects.

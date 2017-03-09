@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.models
+    weppy.orm.models
     ----------------
 
     Provides model layer for weppy's dal.

@@ -180,10 +180,12 @@ Now, we can write down the code to use the database and the auth. Just the next 
 from weppy.orm import Database
 from weppy.tools import Auth
 
-db = Database(app)
+db = Database(app, auto_migrate=True)
 auth = Auth(app, db, user_model=User)
 db.define_models(Post, Comment)
 ```
+
+As you can see we configured the database to peform automatic migration of the schema – otherwise we need to [generate a migration](./dal/migrations) – and passed our `User` model to the auth module.
 
 But, wait, how do we add an admin user who can write posts? We can write a `setup` function which allows us to do that. Let's write:
 

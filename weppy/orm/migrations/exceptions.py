@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.exceptions
+    weppy.orm.migrations.exceptions
     -------------------------------
 
     Provides exceptions for migration operations.

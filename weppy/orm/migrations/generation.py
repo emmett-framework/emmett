@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.generation
+    weppy.orm.migrations.generation
     -------------------------------
 
     Provides generation utils for migrations.

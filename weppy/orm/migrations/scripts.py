@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.scripts
+    weppy.orm.migrations.scripts
     ----------------------------
 
     Provides scripts interface for migrations.

@@ -94,7 +94,8 @@ db2 = Database(app, app.config.db2)
 | parameter | default | description |
 | --- | --- | --- |
 | pool_size | 0 | the pool size to use when connecting to the database |
-| auto_migrate | `True` | turns on or off the automatic migration |
+| auto_connect | `None` | automatically connects to the DBMS on init |
+| auto_migrate | `False` | turns on or off the automatic migration |
 | folder | `databases` | the folder relative to your application path where to store the database (when using sqlite) and/or support data |
 | adapter_args | `{}` | specific options for the pyDAL adapter |
 | driver_args | `{}` | specific options for the driver |

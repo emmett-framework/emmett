@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.operations
+    weppy.orm.migrations.operations
     -------------------------------
 
     Provides operations handlers for migrations.

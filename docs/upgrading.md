@@ -118,6 +118,14 @@ While the old attribute still works in weppy 1.0, we suggest you to upgrade your
 
 ### Breaking changes
 
+#### Automatic migrations disabled by default
+
+In weppy 1.0 the `auto_migrate` parameter of the `Database` class has changed its default value from `True` to `False`. If your application relies on automatic migrations, please change the initialization of the database passing the new value for the parameter:
+
+```python
+db = Database(app, auto_migrate=True)
+```
+
 #### Auth module and mailer refactoring
 
 In weppy 1.0 the auth system and the mailer available under the *tools* module have been completely rewritten from scratch.
