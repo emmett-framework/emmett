@@ -100,15 +100,15 @@ class MyPipe(Pipe):
 
 Learn more about the pipeline in the [relevant chapter](./request#pipeline) of the documentation.
 
-### DAL deprecation in favour of the orm package
+### DAL deprecation in favour of the orm module
 
-Since the first version, the package relevant to database utilities was named *dal* in weppy. So it was for the class responsible of creating database instance, where *DAL* was an acronym for *Database Absraction Layer*.
+Since the first version, the module relevant to database utilities was named *dal* in weppy. So it was for the class responsible of creating database instance, where *DAL* was an acronym for *Database Absraction Layer*.
 
 We think this nomenclature wasn't immediate at all; moreover, during releases weppy built a real orm above pyDAL, and we felt the old name had to be changed.
 
 Since weppy 1.0 all the imports from `weppy.dal` should be moved to `weppy.orm`, and the `DAL` class is now the more convenient `Database` class.
 
-The old package and class are still available, but we suggest you to change the relevant code in your application since in the next versions of weppy these won't be available.
+The old module and class are still available, but we suggest you to change the relevant code in your application since in the next versions of weppy these won't be available.
 
 ### form\_rw deprecation in favour of fields\_rw in Model
 
@@ -117,6 +117,44 @@ We changed the attribute for the fields accessibility in the `Model` class from 
 While the old attribute still works in weppy 1.0, we suggest you to upgrade your models to the new attribute.
 
 ### Breaking changes
+
+#### Auth module and mailer refactoring
+
+In weppy 1.0 the auth system and the mailer available under the *tools* module have been completely rewritten from scratch.
+
+While quite a lot of APIs can be used in the same way of the old modules, there are some big differences that breaks the compatibility with applications written with previous weppy versions.
+
+The first breaking change regards the columns' names in the auth tables, that should be migrated before the upgrade as follows:
+
+| table | old column name | new column name |
+| --- | --- | --- |
+| auth\_memberships | authgroup | auth\_group |
+| auth\_permissions | authgroup | auth\_group |
+
+This means also the many relations in the models has changed:
+
+| old name | new name |
+| --- | --- |
+| authgroups | auth\_groups |
+| memberships | auth\_memberships |
+| permissions | auth\_permissions |
+| events | auth\_events |
+
+The other two major breaking changes are the parameter name for the user model when you instantiate the module, changed from `usermodel` to `user_model`:
+
+```python
+auth = Auth(app, db, user_model=User)
+```
+
+And the way of exposing routes, that now uses a module. Please, inspect the [appropriate chapter](./auth) of the documentation to better understand this and other changes.
+
+Now the documentation offers also a [dedicated chapter](./mailer) for the mailing system, check it out to learn how it works in the new version.
+
+#### Renamed tags module into html
+
+Prior to weppy 1.0 all the code to generate html components from weppy was under the debatable `tags` module. Since the naming led to ambiguities, we changed the name to the more correct `html` one.
+
+Please update your code accordingly.
 
 #### Removed the bind\_to\_model option from virtual decorators
 
@@ -189,7 +227,7 @@ def dateroute(d):
     # code
 ```
 
-This would produce errors in weppy 1.0 since the `d` argument is already a `datetime` object. Just be sure to remove the parsing from your code.
+This would produce errors in weppy 1.0 since the `d` argument is already a `Pendulum` object. Just be sure to remove the parsing from your code.
 
 ### New features
 
@@ -199,10 +237,11 @@ weppy 1.0 introduces some new features you may take advantage of:
 - The float type is now available in [route variables](./routing#path)
 - *int*, *float* and *date* route variable types are now automatically casted to the relevant objects
 - [Multiple paths](./routing#multiple-paths) can be specified for a single route
-- A `now` method is now available in weppy that returns `request.now` or `datetime.utcnow` values depending on the context
+- A `now` method is now available in weppy that returns `request.now` or `Pendulum.utcnow` values depending on the context
 - Computed fields values are now accesible within insert and update callbacks
 - A `headers` attribute is now available on the request object to easily access the headers sent by the client
 - An `anchor` parameter is now available in the `url` method
+- Signal binding is now available for extensions
 
 
 Version 0.8
