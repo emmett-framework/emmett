@@ -11,6 +11,8 @@
 
 from functools import wraps
 from pydal.adapters import adapters
+from pydal.adapters.mssql import (
+    MSSQL1, MSSQL3, MSSQL4, MSSQL1N, MSSQL3N, MSSQL4N)
 from pydal.adapters.postgres import (
     Postgre, PostgrePsyco, PostgrePG8000,
     PostgreNew, PostgrePsycoNew, PostgrePG8000New,
@@ -21,6 +23,12 @@ from .objects import Field
 
 
 adapters._registry_.update({
+    'mssql': MSSQL4,
+    'mssql2': MSSQL1,
+    'mssql3': MSSQL3,
+    'mssqln': MSSQL4N,
+    'mssqln2': MSSQL1N,
+    'mssqln3': MSSQL3N,
     'postgres': PostgreBoolean,
     'postgres:psycopg2': PostgrePsycoBoolean,
     'postgres:pg8000': PostgrePG8000Boolean,
