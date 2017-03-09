@@ -47,6 +47,8 @@ Next
 - Enhanced the json validator
 - Refactored the `tools.mailer` module
 - Refactored the `tools.auth` module
+- The `Database` instance now performs auto connection using the
+  `auto_connection` parameter or just in the cli environment if missing
 
 
 Version 0.8
