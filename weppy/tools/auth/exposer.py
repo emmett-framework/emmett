@@ -228,7 +228,7 @@ class AuthModule(AppModule):
             if row.registration_key == 'pending':
                 form.errors.email = messages['approval_pending']
                 return
-            if row.registration_key in ('disabled', 'blocked'):
+            if row.registration_key == 'blocked':
                 form.errors.email = messages['login_disabled']
                 return
             res['user'] = row
