@@ -186,7 +186,7 @@ class isDatetime(isDate):
         return datetime(y, m, d, hh, mm, ss)
 
     def _parse_pendulum(self, value):
-        return parse_datetime(value)
+        return parse_datetime(value).in_timezone('UTC')
 
     def _check_instance(self, value):
         return isinstance(value, datetime)

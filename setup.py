@@ -1,6 +1,5 @@
 """
 weppy is a full-stack python web framework designed with simplicity in mind.
-It takes some components from *web2py* and has a syntax inspired to *Flask*.
 
 
 Links
@@ -45,7 +44,7 @@ setup(
     platforms='any',
     install_requires=[
         'click>=0.6',
-        'pendulum~=0.8',
+        'pendulum>=1.0.0',
         'pyaes',
         'pyDAL==17.1',
         'pyyaml'
