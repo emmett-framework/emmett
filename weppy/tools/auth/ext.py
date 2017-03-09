@@ -51,7 +51,7 @@ class AuthExtension(Extension):
         'password_min_length': 6,
         'remember_option': True,
         'session_expiration': 3600,
-        'session_long_expiration': 3600 * 30 * 24,
+        'session_long_expiration': 3600 * 24 * 30,
         'registration_verification': True,
         'registration_approval': False
     }
@@ -304,12 +304,14 @@ class AuthExtension(Extension):
         return user
 
     def _registration_email(self, user, data):
+        data['email'] = user.email
         return self.app.ext.MailExtension.send_mail(
             recipients=user.email,
             subject=self.config.messages['registration_email_subject'],
             body=str(self.config.messages['registration_email_text'] % data))
 
     def _reset_password_email(self, user, data):
+        data['email'] = user.email
         return self.app.ext.MailExtension.send_mail(
             recipients=user.email,
             subject=self.config.messages['reset_password_email_subject'],

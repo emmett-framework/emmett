@@ -41,18 +41,18 @@ As you've figured out, the `auth_routes` module will be responsible for
 your app's authorization flow. With the default settings, the `Auth` module 
 of weppy exposes the following:
 
-* http://.../{baseurl}/login
-* http://.../{baseurl}/logout
-* http://.../{baseurl}/registration
-* http://.../{baseurl}/profile
-* http://.../{baseurl}/email_verification
-* http://.../{baseurl}/password_retrieval
-* http://.../{baseurl}/password\_reset/{reset\_key}
-* http://.../{baseurl}/password_change
+* http://.../{url\_prefix}/login
+* http://.../{url\_prefix}/logout
+* http://.../{url\_prefix}/registration
+* http://.../{url\_prefix}/profile
+* http://.../{url\_prefix}/email_verification
+* http://.../{url\_prefix}/password_retrieval
+* http://.../{url\_prefix}/password\_reset/{reset\_key}
+* http://.../{url\_prefix}/password_change
 
 and it creates all the necessary database tables, from users to groups and memberships.
 
-You can obviously change the routing URL prefix as any other application module:
+You can obviously change the routing URL prefix (default set to *auth*) as any other application module:
 
 ```python
 auth_routes = auth.module(__name__, url_prefix='account')
@@ -60,6 +60,8 @@ auth_routes = auth.module(__name__, url_prefix='account')
 
 Auth module configuration
 -------------------------
+
+*Changed in version 1.0*
 
 The auth module have quite a few options that can be configured. We already saw the `hmac_key` parameter, which is used to crypt passwords in the database, or the `single_template` option we used in the *bloggy* example and above.
 
@@ -83,9 +85,32 @@ Here is the complete list of parameters that you can change:
 
 As an example, if you leave the `single_template` option set to `True`, you have to write one template for every routed function of the module that we saw above.
 
-### Messages
+> **Warning:** if you change the `hmac_key` and/or `hmac_alg` afterwards, the users registered to your application won't be able to login unless they reset their passwords.
 
-*section under development*
+> **Note:** the `registration_verification` option requires a mailer is configured on the application in order to work properly.
+
+The auth module is also pre-configured with quite a few standard messages that will be used by the system for a wide case of scenarios, from labels to error messages. You can inspect all the messages you can customize printing the dictionary in the standard configuration of the module under the `messages` key:
+
+```python
+>>> auth.ext.config.messages
+```
+
+and you can obviously configure them with the application configuration:
+
+```python
+from weppy import T
+
+app.config.auth.messages.profile_button = T("Update profile")
+```
+
+### Disable specific routes
+
+You may want to disable some actions exposed by the authorization module.
+Let's say you don't want the `password_retrieval` functionality. To do that, just edit your application configuration:
+
+```python
+app.config.auth.disabled_routes = ["password_retrieval"]
+```
 
 ### Callbacks
 
@@ -114,15 +139,6 @@ Here is the complete list of available callbacks, with the parameters passed to 
 
 where `form` is the form the user has filled in. The `user` parameter is present on the routes that don't have a user logged into the system, while the `logged_in` parameter tells you if the user was logged into the system after the registration.
 
-### Disable specific routes
-
-You may want to disable some actions exposed by the authorization module.
-Let's say you don't want the `password_retrieval` functionality. To do that, just edit your application configuration:
-
-```python
-app.config.auth.disabled_routes = ["password_retrieval"]
-```
-
 ### Add custom routes
 You can also define custom actions to be routed by the auth module. Let's say you want to route a method for the facebook authentication on the */account/facebook* path:
 
@@ -131,6 +147,36 @@ You can also define custom actions to be routed by the auth module. Let's say yo
 def facebook_auth():
     # some code
 ```
+
+### Mails
+
+The auth module is pre-configured to send two different mails:
+
+- to verify the email for the registration process
+- to reset the password in case the user forgot it
+
+You can customize these mails using the appropriate decorators:
+
+- `@auth.registration_mail`
+- `@auth.reset_password_mail`
+
+For example, you may want to customize the registration email like this:
+
+```python
+@auth.registration_mail
+def registration_mail(user, data):
+    subject = "Welcome to Massive Dynamic!"
+    body = (
+        "Hi, welcome to Massive Dynamic. "
+        "Please let Nina know you're from this universe and "
+        "click on the link %(link)s to verify your email.")
+    mailer.send_mail(
+        recipients=user.email, subject=subject, body=body % data)
+```
+
+The functions you decorate with both decorators should accept the `user` and `data` parameters. The `data` parameter is a dictionary and will contains just the `link` item.
+
+> **Note:** in order to use mail features you need a mailer configured with your application.
 
 Access control with "requires"
 ------------------------------

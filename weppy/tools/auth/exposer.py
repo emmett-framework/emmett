@@ -151,7 +151,6 @@ class AuthModule(AppModule):
             row = self.config.models['user'].get(res['id'])
             if self.config.registration_verification:
                 email_data = {
-                    'email': row.email,
                     'link': self.url(
                         'email_verification', row.registration_key,
                         scheme=True)}
