@@ -69,6 +69,8 @@ So, basically, if we try to open the URL for the `double` function of the last
 example with a string, like '/double/foo', it won't match and weppy will 
 return a 404 error.
 
+> **Note:** the *int*, *float* and *date* variables are casted to the relevant objects, so the parameters passed to your function will be of tipe `int`, `float` and `Pendulum`.
+
 Sometimes you also need your variable rules to be conditional, and accept
 requests on the same function with, for example, */profile/123432* and */profile*. 
 weppy allows you to do that using conditional regex notation:

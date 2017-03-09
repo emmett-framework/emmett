@@ -290,15 +290,9 @@ from weppy.tools import Auth
 auth = Auth(app, db, user_model=User)
 ```
 
-As you can see, defining your user model by subclassing `AuthUser` is essentially 
-the same as subclassing `Model`, but there are some differences. Firstly, 
-the fields you define will be the additional fields you will want to add to
-the user table. Secondly, you'll use `form_profile_rw` and `form_registration_rw`, 
-instead of the `form_rw` attribute, to treat the field differently for accesses 
-during user registration and during user edits after registration. The default
-visibility is set to `False` for any extra fields you define, so the above example
-allows the client to upload an avatar for their account only with the profile function,
-not during the registration.
+As you can see, defining your user model by subclassing `AuthUser` is essentially the same as subclassing `Model`, but there are some differences.
+
+Firstly, the fields you define will be the additional fields you will want to add to the user table. Secondly, you'll use `form_profile_rw` and `form_registration_rw`, instead of the `fields_rw` attribute, to treat the field differently for accesses during user registration and during user edits after registration. The default visibility is set to `False` for any extra fields you define, so the above example allows the client to upload an avatar for their account only with the profile function, not during the registration.
 
 The default fields included in the `AuthUser` model are:
 

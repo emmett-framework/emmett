@@ -284,7 +284,7 @@ some of them:
 | --- | --- |
 | scheme | could be *http* or *https* |
 | method | the request HTTP method |
-| now | a Python datetime object created with request |
+| now | a Pendulum (datetime) object created with request |
 | params | an object containing URL params |
 
 Let's focus on the `request.params` object, and understand it with an example:
