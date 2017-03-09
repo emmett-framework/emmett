@@ -14,7 +14,7 @@ from functools import wraps
 from ..._compat import itervalues, iteritems
 from ...cli import pass_script_info
 from ...datastructures import sdict
-from ...extensions import Extension
+from ...extensions import Extension, listen_signal
 from ...globals import session, now
 from ...language import T
 from ...language.translator import TElement
@@ -159,6 +159,11 @@ class AuthExtension(Extension):
 
     def bind_exposer(self, exposer):
         self.exposer = exposer
+
+    @listen_signal('before_routes')
+    def _inject_pipe(self):
+        if self.config.inject_pipe:
+            self.app.pipeline.append(self.auth.pipe)
 
     def use_database(self, db, user_model=None):
         self.db = db
