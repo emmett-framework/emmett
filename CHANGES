@@ -1,10 +1,10 @@
 weppy changelog
 ===============
 
-Next
-----
+Version 1.0
+-----------
 
-(Release date to be announced, codename to be selected)
+Released on March 10th 2017, codename Izar
 
 - Several bugfixes
 - Moved routing handlers and helpers to pipeline logic
