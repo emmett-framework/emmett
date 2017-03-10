@@ -50,11 +50,10 @@ def test_expose_not_found_route(app):
     def test_route():
         return 'Test Router'
 
-    try:
+    with pytest.raises(HTTP) as excinfo:
         app.route.dispatch()
-    except HTTP as exc:
-        assert exc.status_code == 404
-        assert exc.body == [b'Invalid action\n']
+    assert excinfo.value.status_code == 404
+    assert excinfo.value.body == [b'Resource not found\n']
 
 
 def test_expose_exception_route(app):
@@ -64,13 +63,12 @@ def test_expose_exception_route(app):
 
     @app.route()
     def test_route():
-        raise HTTP(404, 'Not found')
+        raise HTTP(404, 'Not found, dude')
 
-    try:
+    with pytest.raises(HTTP) as excinfo:
         app.route.dispatch()
-    except HTTP as exc:
-        assert exc.status_code == 404
-        assert exc.body == [b'Not found']
+    assert excinfo.value.status_code == 404
+    assert excinfo.value.body == [b'Not found, dude']
 
 
 def test_static_url(app):
