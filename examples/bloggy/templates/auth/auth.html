@@ -1,0 +1,9 @@
+{{extend 'layout.html'}}
+
+<h1>Account</h1>
+
+{{for flash in current.response.alerts(category_filter='auth'):}}
+    <div class="flash_message">{{=flash}}</div>
+{{pass}}
+
+{{=form}}

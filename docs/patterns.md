@@ -118,15 +118,11 @@ app.run()
 ```
 
 > **A note regarding circular imports:**   
-> Every Python developer hates them, and yet we just added some of them: *views.py* depends on *\__init\__.py* while *\__init\__.py* imports *views.py*. In general, this is a bad idea, but it is actually fine here because we are not actually using the views in *\__init\__.py*. We are ensuring that the module is imported to expose the functions; also, we are doing that at the bottom of the file.
+> Every Python developer hates them, and yet we just added some of them: *views.py* depends on *\_\_init\_\_.py* while *\_\_init\_\_.py* imports *views.py*. In general, this is a bad idea, but it is actually fine here because we are not actually using the views in *\_\_init\_\_.py*. We are ensuring that the module is imported to expose the functions; also, we are doing that at the bottom of the file.
 
 MVC pattern
 -----------
-The **MVC** (Model-View-Controller) pattern, used widely in web applications,
-is well structured and becomes handy when you have big applications. 
-weppy does not provide controllers, but you can implement an MVC pattern using 
-`AppModule` objects. An MVC structure for a weppy application can look something
-like this:
+The **MVC** (Model-View-Controller) pattern, used widely in web applications, is well structured and becomes handy when you have big applications. weppy does not provide controllers, but you can implement an MVC pattern using application modules. An MVC structure for a weppy application can look something like this:
 
 ```
 /myapp
@@ -147,22 +143,24 @@ like this:
 ```
 
 As you can see, it's an extension of the *package pattern*, where we added the 
-two sub-packages *controllers* and *models*, each with an empty *\__init__.py* file.
+two sub-packages *controllers* and *models*, each with an empty *\_\_init\_\_.py* file.
 
-With this structure, your application's *\__init__.py* would look like this:
+With this structure, your application's *\_\_init\_\_.py* would look like this:
 
 ```python
-from weppy import app, DAL
+from weppy import App
+from weppy.orm import Database
 
 app = App(__name__)
 app.url_default_namespace = "main"
 
-db = DAL()
-from models.user import User
-form models.article import Post
-db.define_models([User, Post])
+db = Database()
 
-from controllers import main, api
+from .models.user import User
+form .models.article import Post
+db.define_models(User, Post)
+
+from .controllers import main, api
 ```
 
 We told weppy to use the *main.py* controller as default for urls, so we can just
@@ -181,10 +179,9 @@ def index():
 and the *api.py* controller can look like this:
 
 ```python
-from weppy import AppModule
 from myapp import app
 
-api = AppModule(app, 'api', __name__, url_prefix='api')
+api = app.module(__name__, 'api', url_prefix='api')
 
 @api.route()
 def a():

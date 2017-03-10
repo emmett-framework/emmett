@@ -38,7 +38,7 @@ db(Post.state == Post.STATES['published']).where(...)
 And since this can be quite annoying, you can write a scope in your model:
 
 ```python
-from weppy.dal import scope
+from weppy.orm import scope
 
 class Post(Model):
     @scope('published')

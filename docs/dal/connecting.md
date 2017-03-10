@@ -1,27 +1,27 @@
 Connections and transactions
 ============================
 
-In order to start using a database in weppy, you have to initialize an instance of the `DAL` class:
+In order to start using a database in weppy, you have to initialize an instance of the `Database` class:
 
 ```python
-from weppy import DAL
+from weppy.orm import Database
 
-db = DAL(app)
+db = Database(app)
 ```
 
-As you will learn in the next chapters, this `DAL` instance will be fundamental to perform operations on your database, as it will be the access point to the data you store.
+As you will learn in the next chapters, this `Database` instance will be fundamental to perform operations on your database, as it will be the access point to the data you store.
 
 Connections
 -----------
 
-As we seen in the [first example](./), the `DAL` instance gives you a handler to register into your application:
+As we seen in the [first example](./), the `Database` instance gives you a pipe to be registered into your application pipeline:
 
 ```python
-app.common_handlers = [db.handler]
+app.pipeline = [db.pipe]
 ```
 
-This handler will ensure the connection to the database during the request flow and the disconnection when the response is ready. As a consequence, you don't need to bother about connecting/disconnecting in your application flow, unless you're explicit working without a request context.    
-Even in that case, you won't have troubles in connecting to the database, since the `DAL` instance will automatically open up a connection after initialization. This means that, even if you import your `DAL` instance from the console, you will have the connection opened with your database.
+This pipe will ensure the connection to the database during the request flow and the disconnection when the response is ready. As a consequence, you don't need to bother about connecting/disconnecting in your application flow, unless you're explicit working without a request context.    
+Even in that case, you won't have troubles in connecting to the database, since the `Database` instance will automatically open up a connection after initialization. This means that, even if you import your `Database` instance from the console, you will have the connection opened with your database.
 
 If somehow you need to manually open and close the connection with your database, you can use the adapter methods:
 
@@ -36,7 +36,7 @@ db._adapter.close()
 Configuration
 -------------
 
-As you've seen from the example above, `DAL` class needs your application object as the first parameter, and reads the configuration from its `config` object.
+As you've seen from the example above, `Database` class needs your application object as the first parameter, and reads the configuration from its `config` object.
 
 The minimal configuration needed is the database address to connect to, and you can pass it directly as uri, for example:
 
@@ -75,26 +75,27 @@ app.config_from_yaml('db.yml', 'db')
 
 where the first parameter is the filename and the second is the attribute to be set in the application config.
 
-### Passing explicit config to DAL
+### Passing explicit config to Database
 
-`DAL` class also accepts a specific config object that become particularly handy in situations where you have multiple databases in your application:
+`Database` class also accepts a specific config object that become particularly handy in situations where you have multiple databases in your application:
 
 ```python
 app.config.db.uri = "postgres://localhost/mydb"
 app.config.db2.uri = "mongodb://localhost/mydb"
 
-db = DAL(app)
-db2 = DAL(app, app.config.db2)
+db = Database(app)
+db2 = Database(app, app.config.db2)
 ```
 
 ### Additional configuration parameters
 
-`DAL` class accepts several configuration parameters, here we list them in detail:
+`Database` class accepts several configuration parameters, here we list them in detail:
 
 | parameter | default | description |
 | --- | --- | --- |
 | pool_size | 0 | the pool size to use when connecting to the database |
-| auto_migrate | `True` | turns on or off the automatic migration |
+| auto_connect | `None` | automatically connects to the DBMS on init |
+| auto_migrate | `False` | turns on or off the automatic migration |
 | folder | `databases` | the folder relative to your application path where to store the database (when using sqlite) and/or support data |
 | adapter_args | `{}` | specific options for the pyDAL adapter |
 | driver_args | `{}` | specific options for the driver |
@@ -106,10 +107,10 @@ Also, when the `auto_migrate` option is set to `False`, weppy won't migrate your
 Transactions
 ------------
 
-As we seen above, the handler of your `DAL` instance will ensure the connection to the database during the request flow; but it's also responsible of the transactions during this flow.    
-In fact, the handler treats the request as a single database transaction, ensuring the commit of the changes if the request had success. Otherwise, in the case of un-catched exceptions (resulting in a 500 HTTP error response), the handler will perform a rollback on the database data.
+As we seen above, the pipe of your `Database` instance will ensure the connection to the database during the request flow; but it's also responsible of the transactions during this flow.    
+In fact, the pipe treats the request as a single database transaction, ensuring the commit of the changes if the request had success. Otherwise, in the case of un-catched exceptions (resulting in a 500 HTTP error response), the pipe will perform a rollback on the database data.
 
-Since the handler is used only in a request context, every time you work without it you should commit or rollback your changes (also when you're working in the console), using the available methods of the `DAL` instance:
+Since the pipe is used only in a request context, every time you work without it you should commit or rollback your changes (also when you're working in the console), using the available methods of the `Database` instance:
 
 ```python
 # commit all the changes

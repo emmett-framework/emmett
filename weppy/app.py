@@ -5,7 +5,7 @@
 
     Provides the central application object.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -14,40 +14,50 @@ import os
 import click
 from yaml import load as ymlload
 from ._compat import basestring
-from ._internal import get_root_path, create_missing_app_folders
+from ._internal import (
+    get_root_path, create_missing_app_folders, warn_of_deprecation
+)
 from .datastructures import sdict, ConfigData
 from .expose import Expose, url
 from .extensions import Extension, TemplateExtension
 from .globals import current
 from .templating.core import Templater
 from .utils import dict_to_sdict, cachedprop, read_file
-from .wsgi import error_handler
+from .wsgi import (
+    error_handler, static_handler, dynamic_handler,
+    _nolang_static_handler, _lang_static_handler
+)
 
 
 class App(object):
     debug = None
     test_client_class = None
 
-    def __init__(self, import_name, root_path=None,
-                 template_folder='templates', config_folder='config'):
+    def __init__(
+        self, import_name, root_path=None, template_folder='templates',
+        config_folder='config'
+    ):
         self.import_name = import_name
-        #: Set paths for the application
+        #: set paths for the application
         if root_path is None:
             root_path = get_root_path(self.import_name)
         self.root_path = root_path
         self.static_path = os.path.join(self.root_path, "static")
         self.template_path = os.path.join(self.root_path, template_folder)
         self.config_path = os.path.join(self.root_path, config_folder)
-        #: The click command line context for this application.
+        #: the click command line context for this application
         self.cli = click.Group(self)
-        #: Init the configuration
+        #: init the configuration
         self.config = ConfigData()
+        self.config.modules_class = AppModule
         self.config.hostname_default = None
         self.config.static_version = None
         self.config.static_version_urls = None
+        self.config.handle_static = True
         self.config.url_default_namespace = None
         self.config.templates_auto_reload = False
-        #: Trying to create needed folders
+        self.config.templates_escape = 'common'
+        #: try to create needed folders
         create_missing_app_folders(self)
         #: init expose module
         Expose.application = self
@@ -56,8 +66,6 @@ class App(object):
         #: init logger
         self._logger = None
         self.logger_name = self.import_name
-        #: set request.now reference
-        self.now_reference = "utc"
         #: init languages
         self.languages = []
         self.language_default = None
@@ -66,10 +74,14 @@ class App(object):
         #: init extensions
         self.ext = sdict()
         self._extensions_env = sdict()
+        self._extensions_listeners = {key: [] for key in Extension._signals_}
         self.template_extensions = []
         self.template_preloaders = {}
         self.template_lexers = {}
+        #: init templater
         self.templater = Templater(self)
+        #: init debug var
+        self.debug = os.environ.get('WEPPY_RUN_ENV') == "true"
 
     @cachedprop
     def name(self):
@@ -92,24 +104,42 @@ class App(object):
         return Expose
 
     @property
+    def pipeline(self):
+        return self.route._pipeline
+
+    @pipeline.setter
+    def pipeline(self, pipes):
+        self.route._pipeline = pipes
+
+    @property
+    def injectors(self):
+        return self.route._injectors
+
+    @injectors.setter
+    def injectors(self, injectors):
+        self.route._injectors = injectors
+
+    #: 1.0 deprecations
+    @property
     def common_handlers(self):
-        return self.route.common_handlers
+        warn_of_deprecation('common_handlers', 'pipeline', 'App', 3)
+        return self.pipeline
 
     @common_handlers.setter
     def common_handlers(self, handlers):
-        self.route.common_handlers = handlers
+        warn_of_deprecation('common_handlers', 'pipeline', 'App', 3)
+        self.pipeline = handlers
 
     @property
     def common_helpers(self):
-        return self.route.common_helpers
+        warn_of_deprecation('common_helpers', 'injectors', 'App', 3)
+        return self.injectors
 
     @common_helpers.setter
     def common_helpers(self, helpers):
-        self.route.common_helpers = helpers
-
-    @property
-    def routing_processors(self):
-        return self.route.processors
+        warn_of_deprecation('common_helpers', 'injectors', 'App', 3)
+        self.injectors = helpers
+    #/
 
     def on_error(self, code):
         def decorator(f):
@@ -152,6 +182,11 @@ class App(object):
             self._extensions_env[ext.namespace] = sdict()
         return self._extensions_env[ext.namespace], self.config[ext.namespace]
 
+    #: Register extension listeners
+    def __register_extension_listeners(self, ext):
+        for signal, listener in ext._listeners_:
+            self._extensions_listeners[signal].append(listener)
+
     #: Add an extension to application
     def use_extension(self, ext):
         if not issubclass(ext, Extension):
@@ -159,6 +194,7 @@ class App(object):
                                ext.__name__)
         ext_env, ext_config = self.__init_extension(ext)
         self.ext[ext.__name__] = ext(self, ext_env, ext_config)
+        self.__register_extension_listeners(self.ext[ext.__name__])
         self.ext[ext.__name__].on_load()
 
     #: Add a template extension to application
@@ -176,6 +212,10 @@ class App(object):
         lexers = self.template_extensions[-1].lexers
         for name, lexer in lexers.items():
             self.template_lexers[name] = lexer(self.template_extensions[-1])
+
+    def send_signal(self, signal, *args, **kwargs):
+        for listener in self._extensions_listeners[signal]:
+            listener(*args, **kwargs)
 
     def make_shell_context(self, context={}):
         """Returns the shell context for an interactive shell for this
@@ -213,17 +253,82 @@ class App(object):
             tclass = WeppyTestClient
         return tclass(self, use_cookies=use_cookies, **kwargs)
 
+    @cachedprop
+    def common_static_handler(self):
+        if self.config.handle_static:
+            return static_handler
+        return dynamic_handler
+
+    @cachedprop
+    def static_handler(self):
+        if self.language_force_on_url:
+            return _lang_static_handler
+        return _nolang_static_handler
+
     def wsgi_handler(self, environ, start_request):
         return error_handler(self, environ, start_request)
 
     def __call__(self, environ, start_request):
         return self.wsgi_handler(environ, start_request)
 
+    def module(
+        self, import_name, name, template_folder=None, template_path=None,
+        url_prefix=None, hostname=None, root_path=None, module_class=None
+    ):
+        module_class = module_class or self.config.modules_class
+        return module_class.from_app(
+            self, import_name, name, template_folder, template_path,
+            url_prefix, hostname, root_path
+        )
+
 
 class AppModule(object):
-    def __init__(self, app, name, import_name, template_folder=None,
-                 template_path=None, url_prefix=None, hostname=None,
-                 root_path=None):
+    @classmethod
+    def from_app(
+        cls, app, import_name, name, template_folder, template_path,
+        url_prefix, hostname, root_path
+    ):
+        return cls(
+            app, name, import_name, template_folder, template_path, url_prefix,
+            hostname, root_path
+        )
+
+    @classmethod
+    def from_module(
+        cls, appmod, import_name, name, template_folder, template_path,
+        url_prefix, hostname, root_path
+    ):
+        if '.' in name:
+            raise RuntimeError(
+                "Nested app modules' names should not contains dots"
+            )
+        name = appmod.name + '.' + name
+        if url_prefix and not url_prefix.startswith('/'):
+            url_prefix = '/' + url_prefix
+        module_url_prefix = (appmod.url_prefix + (url_prefix or '')) \
+            if appmod.url_prefix else url_prefix
+        hostname = hostname or appmod.hostname
+        return cls(
+            appmod.app, name, import_name, template_folder, template_path,
+            module_url_prefix, hostname, root_path, pipeline=appmod.pipeline,
+            injectors=appmod.injectors
+        )
+
+    def module(
+        self, import_name, name, template_folder=None, template_path=None,
+        url_prefix=None, hostname=None, root_path=None, module_class=None
+    ):
+        module_class = module_class or self.__class__
+        return module_class.from_module(
+            self, import_name, name, template_folder, template_path,
+            url_prefix, hostname, root_path
+        )
+
+    def __init__(
+        self, app, name, import_name, template_folder=None, template_path=None,
+        url_prefix=None, hostname=None, root_path=None, pipeline=[],
+        injectors=[]
+    ):
         self.app = app
         self.name = name
         self.import_name = import_name
@@ -236,32 +341,76 @@ class AppModule(object):
         if template_path and not template_path.startswith("/"):
             template_path = self.root_path + template_path
         self.template_path = template_path
-        # how to route static?
-        # and.. do we want this?? I think not..
-        #if static_folder:
-        #    self.static_folder = self.root_path+"/"+static_folder
-        #if static_prefix:
-        #    self.static_folder = self.app.static_folder+"/"+static_prefix
         self.url_prefix = url_prefix
         self.hostname = hostname
-        self.common_handlers = []
-        self.common_helpers = []
+        self._super_pipeline = pipeline
+        self._super_injectors = injectors
+        self.pipeline = []
+        self.injectors = []
 
-    def route(self, path=None, name=None, template=None, **kwargs):
+    @property
+    def pipeline(self):
+        return self._pipeline
+
+    @pipeline.setter
+    def pipeline(self, pipeline):
+        self._pipeline = self._super_pipeline + pipeline
+
+    @property
+    def injectors(self):
+        return self._injectors
+
+    @injectors.setter
+    def injectors(self, injectors):
+        self._injectors = self._super_injectors + injectors
+
+    #: 1.0 deprecations
+    @property
+    def common_handlers(self):
+        warn_of_deprecation('common_handlers', 'pipeline', 'AppModule', 3)
+        return self.pipeline
+
+    @common_handlers.setter
+    def common_handlers(self, handlers):
+        warn_of_deprecation('common_handlers', 'pipeline', 'AppModule', 3)
+        self.pipeline = handlers
+
+    @property
+    def common_helpers(self):
+        warn_of_deprecation('common_helpers', 'injectors', 'AppModule', 3)
+        return self.injectors
+
+    @common_helpers.setter
+    def common_helpers(self, helpers):
+        warn_of_deprecation('common_helpers', 'injectors', 'AppModule', 3)
+        self.injectors = helpers
+    #/
+
+    def route(self, paths=None, name=None, template=None, **kwargs):
         if name is not None and "." in name:
             raise RuntimeError(
                 "App modules' route names should not contains dots"
             )
         name = self.name + "." + (name or "")
-        handlers = kwargs.get('handlers', [])
-        helpers = kwargs.get('helpers', [])
-        if self.common_handlers:
-            handlers = self.common_handlers + handlers
-        kwargs['handlers'] = handlers
-        if self.common_helpers:
-            helpers = self.common_helpers + helpers
-        kwargs['helpers'] = helpers
+        #: 1.0 deprecations
+        if 'handlers' in kwargs:
+            warn_of_deprecation('handlers', 'pipeline', 'route', 3)
+            kwargs['pipeline'] = kwargs['handlers']
+            del kwargs['handlers']
+        if 'helpers' in kwargs:
+            warn_of_deprecation('helpers', 'injectors', 'route', 3)
+            kwargs['injectors'] = kwargs['helpers']
+            del kwargs['helpers']
+        #/
+        pipeline = kwargs.get('pipeline', [])
+        injectors = kwargs.get('injectors', [])
+        if self.pipeline:
+            pipeline = self.pipeline + pipeline
+        kwargs['pipeline'] = pipeline
+        if self.injectors:
+            injectors = self.injectors + injectors
+        kwargs['injectors'] = injectors
         return self.app.route(
-            path=path, name=name, template=template, prefix=self.url_prefix,
+            paths=paths, name=name, template=template, prefix=self.url_prefix,
             template_folder=self.template_folder,
             template_path=self.template_path, hostname=self.hostname, **kwargs)

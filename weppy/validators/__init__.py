@@ -5,7 +5,7 @@
 
     Implements validators for pyDAL.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -224,6 +224,13 @@ class ValidateFromDict(object):
         if 'message' in data:
             for validator in validators:
                 validator.message = data['message']
+        #: parse 'custom'
+        if 'custom' in data:
+            if isinstance(data['custom'], list):
+                for element in data['custom']:
+                    validators.append(element)
+            else:
+                validators.append(data['custom'])
         #: parse 'any'
         if 'any' in data:
             validators.append(Any(self(field, data['any'])))

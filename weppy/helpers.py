@@ -5,7 +5,7 @@
 
     Provides helping methods for applications.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 from ._compat import string_types
@@ -77,6 +77,8 @@ def get_flashed_messages(with_categories=False, category_filter=[]):
     #  is set to `True`, the return value will be a list of tuples in the
     #  form `(category, message)` instead.
     from .globals import session
+    if not isinstance(category_filter, list):
+        category_filter = [category_filter]
     try:
         flashes = list(session._flashes or [])
         if category_filter:
@@ -91,7 +93,7 @@ def get_flashed_messages(with_categories=False, category_filter=[]):
 
 
 def load_component(url, target=None, content='loading...'):
-    from .tags import tag
+    from .html import tag
     attr = {}
     if target:
         attr['_id'] = target

@@ -85,36 +85,51 @@ def awesome_route():
     return {'message': 'Awesome!'}
 ```
 
-or add a custom handler:
+### Using signals
+
+*New in version 1.0*
+
+Whenever you need to perform more specific actions depending on the status of the application, and the `on_load` method is not enough, you can use signals. weppy provides these signal for extensions:
+
+| signal name | parameters | description |
+| --- | --- | --- |
+| before\_routes | | triggered before the first route is defined in the application |
+| before\_database | | triggered before the database is defined in the application |
+| after\_database | database | triggered after the database has been defined in the application |
+| before\_route | route, f | triggered before a single route is defined |
+| after\_route | route | triggered after a single route is defined |
+
+Note that the `after_database` pass the database instance as parameter, the `before_route` the route instance and the decorated method, and the `after_route` just the route instance.
+
+> **Note:** all the signals are referred to the application load, none of them will be triggered during the requests flow.
+
+All these signals can be quite handy for specific operations. For example, let's say your extension wants to add a pipe into the application pipeline. Doing this within the `on_load` won't be safe, since you don't know if the developer will change the pipeline after the load of your extension on the application. It's, instead, more appropriate using the `before_routes` signal for this: 
 
 ```python
-class AwesomeHandler(Handler):
+from weppy.pipeline import Pipe
+from weppy.extensions import Extension, listen_signal
+
+class AwesomePipe(Pipe):
     # some code
     
 class Awesomeness(Extension):
-    def on_load(self):
-        self.app.common_handlers.append(
-            AwesomeHandler()
+    @listen_signal('before_routes')
+    def inject_pipe(self):
+        self.app.pipeline.append(
+            AwesomePipe()
         )
 ```
 
-> – dude, what if I need to access the database?  
-> – *ask to the developer to add it to the extension configuration*   
-
-In fact, if you state you need the database in the extension documentation, the developer can just write:
-
-```python
-app.config.Awesomeness.db = db
-```
-
-Then you can write a check inside your load method in order to ensure the database presence:
+And if you need the database, you can use the `after_database` method:
 
 ```python
 class Awesomeness(Extension):
-    def on_load(self):
-        if not self.config.db:
-            raise RuntimeError('Awesomeness extension needs the database')
+    @listen_signal('after_database')
+    def bind_database(self, database):
+        self.db = database
 ```
+
+> **Warning:** the `listen_signal` decorator is usable only on methods of an `Extension` subclass.
 
 ### Template extensions
 

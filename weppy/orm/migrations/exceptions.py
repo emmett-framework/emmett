@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.exceptions
+    weppy.orm.migrations.exceptions
     -------------------------------
 
     Provides exceptions for migration operations.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 

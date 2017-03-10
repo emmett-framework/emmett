@@ -1,28 +1,41 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.models
+    weppy.orm.models
     ----------------
 
     Provides model layer for weppy's dal.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
+import types
 from collections import OrderedDict
-from pydal.objects import Row
 from .._compat import iteritems, itervalues, with_metaclass
-from .apis import compute, rowattr, rowmethod, scope
-from .base import Field, _Field, sdict
-from .helpers import HasOneWrap, HasManyWrap, HasManyViaWrap, \
-    VirtualWrap, ScopeWrap, Callback, ReferenceData, make_tablename
+from .._internal import warn_of_deprecation
+from ..datastructures import sdict
+from ..utils import cachedprop
+from .apis import (
+    compute, rowattr, rowmethod, scope, belongs_to, refers_to, has_one,
+    has_many
+)
+from .helpers import (
+    Callback, ReferenceData, make_tablename, camelize, decamelize,
+    wrap_scope_on_model, wrap_virtual_on_model
+)
+from .objects import Field, Row
+from .wrappers import HasOneWrap, HasManyWrap, HasManyViaWrap
 
 
 class MetaModel(type):
+    _inheritable_dict_attrs_ = [
+        'indexes', 'validation', ('fields_rw', {'id': False}),
+        'default_values', 'update_values', 'repr_values',
+        'form_labels', 'form_info', 'form_widgets'
+    ]
+
     def __new__(cls, name, bases, attrs):
         new_class = type.__new__(cls, name, bases, attrs)
-        if bases == (object,):
-            return new_class
         #: collect declared attributes
         tablename = attrs.get('tablename')
         fields = []
@@ -49,7 +62,6 @@ class MetaModel(type):
             belongs=OrderedDict(), refers=OrderedDict(),
             hasone=OrderedDict(), hasmany=OrderedDict()
         )
-        from .apis import belongs_to, refers_to, has_one, has_many
         for ref in belongs_to._references_.values():
             for item in ref.reference:
                 rkey = list(item)[0] if isinstance(item, dict) else item
@@ -143,22 +155,22 @@ class Model(with_metaclass(MetaModel)):
     #sign_table = False
     auto_validation = True
 
-    validation = {}
-    default_values = {}
-    update_values = {}
-    indexes = {}
-    repr_values = {}
-    form_labels = {}
-    form_info = {}
-    form_rw = {'id': False}
-    form_widgets = {}
-
-    @property
-    def config(self):
-        return self.db.config
+    @classmethod
+    def _init_inheritable_dicts_(cls):
+        if cls.__bases__ != (object,):
+            return
+        for attr in cls._inheritable_dict_attrs_:
+            if isinstance(attr, tuple):
+                attr_name, default = attr
+            else:
+                attr_name, default = attr, {}
+            if not isinstance(default, dict):
+                raise SyntaxError(
+                    "{} is not a dictionary".format(attr_name))
+            setattr(cls, attr_name, default)
 
     @classmethod
-    def __getsuperprops(cls):
+    def __getsuperattrs(cls):
         superattr = "_supermodels" + cls.__name__
         if hasattr(cls, superattr):
             return
@@ -166,7 +178,7 @@ class Model(with_metaclass(MetaModel)):
         superattr_val = []
         for supermodel in supermodels:
             try:
-                supermodel.__getsuperprops()
+                supermodel.__getsuperattrs()
                 superattr_val.append(supermodel)
             except:
                 pass
@@ -174,25 +186,36 @@ class Model(with_metaclass(MetaModel)):
         sup = getattr(cls, superattr)
         if not sup:
             return
-        #: get super model fields' properties
-        proplist = [
-            'validation', 'default_values', 'update_values', 'indexes',
-            'repr_values', 'form_labels', 'form_info', 'form_rw',
-            'form_widgets']
-        for prop in proplist:
-            props = {}
+        #: get super model inheritable dicts
+        for attr in cls._inheritable_dict_attrs_:
+            if isinstance(attr, tuple):
+                attr_name = attr[0]
+            else:
+                attr_name = attr
+            attrs = {}
             for model in sup:
-                superprops = getattr(model, prop)
-                for k, v in superprops.items():
-                    props[k] = v
-            for k, v in getattr(cls, prop).items():
-                props[k] = v
-            setattr(cls, prop, props)
+                superattrs = getattr(model, attr_name)
+                for k, v in superattrs.items():
+                    attrs[k] = v
+            for k, v in getattr(cls, attr_name).items():
+                attrs[k] = v
+            setattr(cls, attr_name, attrs)
+        # deprecated since 1.0
+        if hasattr(cls, 'form_rw'):
+            warn_of_deprecation('form_rw', 'fields_rw', 'Model', stack=5)
+            attrs = {}
+            for model in sup:
+                superattrs = getattr(model, 'fields_rw', {})
+                for k, v in superattrs.items():
+                    attrs[k] = v
+            for k, v in getattr(cls, 'form_rw').items():
+                attrs[k] = v
+            setattr(cls, 'fields_rw', attrs)
 
     def __new__(cls):
         if cls._declared_tablename_ is None:
             cls.tablename = make_tablename(cls.__name__)
-        cls.__getsuperprops()
+        cls.__getsuperattrs()
         return super(Model, cls).__new__(cls)
 
     def __init__(self):
@@ -200,6 +223,10 @@ class Model(with_metaclass(MetaModel)):
             self.migrate = self.config.get('migrate', self.db._migrate)
         if not hasattr(self, 'format'):
             self.format = None
+
+    @property
+    def config(self):
+        return self.db.config
 
     def __parse_relation_via(self, via):
         if via is None:
@@ -220,11 +247,11 @@ class Model(with_metaclass(MetaModel)):
                 rv.model = self.__class__.__name__
         else:
             rv.name = item
-            rv.model = item.capitalize()
+            rv.model = camelize(item)
         return rv
 
     def __build_relation_modelname(self, name, relation, singularize):
-        relation.model = name.capitalize()
+        relation.model = camelize(name)
         if singularize:
             relation.model = relation.model[:-1]
 
@@ -234,7 +261,7 @@ class Model(with_metaclass(MetaModel)):
         if len(splitted) > 1:
             relation.field = splitted[1]
         else:
-            relation.field = self.__class__.__name__.lower()
+            relation.field = decamelize(self.__class__.__name__)
 
     def __parse_relation_dict(self, rel, singularize):
         if 'scope' in rel.model:
@@ -258,7 +285,7 @@ class Model(with_metaclass(MetaModel)):
             if isinstance(rv.model, dict):
                 if 'method' in rv.model:
                     rv.field = rv.model.get(
-                        'field', self.__class__.__name__.lower())
+                        'field', decamelize(self.__class__.__name__))
                     rv.method = rv.model['method']
                     del rv.model
                 else:
@@ -276,6 +303,9 @@ class Model(with_metaclass(MetaModel)):
     def _define_props_(self):
         #: create pydal's Field elements
         self.fields = []
+        idfield = Field('id')._make_field('id', self)
+        setattr(self.__class__, 'id', idfield)
+        self.fields.append(idfield)
         for name, obj in iteritems(self._all_fields_):
             if obj.modelname is not None:
                 obj = Field(obj._type, *obj._args, **obj._kwargs)
@@ -350,38 +380,51 @@ class Model(with_metaclass(MetaModel)):
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
 
     def _define_virtuals_(self):
-        err = 'rowattr or rowmethod cannot have the name of an' + \
+        self._all_rowattrs_ = {}
+        self._all_rowmethods_ = {}
+        err = 'rowattr or rowmethod cannot have the name of an ' + \
             'existent field!'
         field_names = [field.name for field in self.fields]
         for attr in ['_virtual_relations_', '_all_virtuals_']:
             for name, obj in iteritems(getattr(self, attr, {})):
                 if obj.field_name in field_names:
                     raise RuntimeError(err)
+                wrapped = wrap_virtual_on_model(self, obj.f)
                 if isinstance(obj, rowmethod):
-                    f = _Field.Method(obj.field_name, VirtualWrap(self, obj))
+                    self._all_rowmethods_[obj.field_name] = wrapped
+                    f = Field.Method(obj.field_name, wrapped)
                 else:
-                    f = _Field.Virtual(obj.field_name, VirtualWrap(self, obj))
+                    self._all_rowattrs_[obj.field_name] = wrapped
+                    f = Field.Virtual(obj.field_name, wrapped)
                 self.fields.append(f)
+
+    def _build_rowclass_(self):
+        clsname = self.__class__.__name__ + "Row"
+        attrs = {k: cachedprop(v) for k, v in iteritems(self._all_rowattrs_)}
+        attrs.update(self._all_rowmethods_)
+        self._rowclass_ = type(clsname, (Row,), attrs)
+        globals()[clsname] = self._rowclass_
 
     def _define_(self):
         #if self.sign_table:
         #    from .tools import Auth
         #    fakeauth = Auth(DAL(None))
         #    self.fields.extend([fakeauth.signature])
+        self.__define_indexes()
         self.__define_validation()
+        self.__define_access()
         self.__define_defaults()
         self.__define_updates()
         self.__define_representation()
         self.__define_computations()
         self.__define_callbacks()
         self.__define_scopes()
-        self.__define_indexes()
         self.__define_form_utils()
         self.setup()
 
     def __define_validation(self):
         for field in self.fields:
-            if isinstance(field, (_Field.Method, _Field.Virtual)):
+            if isinstance(field, (Field.Method, Field.Virtual)):
                 continue
             validation = self.validation.get(field.name, {})
             if isinstance(validation, dict):
@@ -392,6 +435,16 @@ class Model(with_metaclass(MetaModel)):
             else:
                 field._custom_requires.append(validation)
             field._parse_validation()
+
+    def __define_access(self):
+        for field, value in self.fields_rw.items():
+            if isinstance(value, (tuple, list)):
+                readable, writable = value
+            else:
+                writable = value
+                readable = value
+            self.table[field].writable = writable
+            self.table[field].readable = readable
 
     def __define_defaults(self):
         for field, value in self.default_values.items():
@@ -434,7 +487,8 @@ class Model(with_metaclass(MetaModel)):
             if not hasattr(self.__class__, obj.name):
                 setattr(
                     self.__class__, obj.name,
-                    ScopeWrap(self.__class__.db, self, obj.f))
+                    classmethod(wrap_scope_on_model(obj.f))
+                )
 
     def __prepend_table_on_index_name(self, name):
         return '%s_widx__%s' % (self.tablename, name)
@@ -495,20 +549,6 @@ class Model(with_metaclass(MetaModel)):
         #: info
         for field, value in self.form_info.items():
             self.table[field].comment = value
-        #: rw
-        try:
-            self.table.is_active.writable = self.table.is_active.readable = \
-                False
-        except:
-            pass
-        for field, value in self.form_rw.items():
-            if isinstance(value, (tuple, list)):
-                readable, writable = value
-            else:
-                writable = value
-                readable = value
-            self.table[field].writable = writable
-            self.table[field].readable = readable
         #: widgets
         for field, value in self.form_widgets.items():
             self.table[field].widget = value
@@ -517,30 +557,17 @@ class Model(with_metaclass(MetaModel)):
         pass
 
     @classmethod
-    def _inject_virtuals_on_row(cls, row):
-        virtualrow = sdict({cls.tablename: row})
-        for virtual in cls.table._virtual_fields:
-            try:
-                row[virtual.name] = virtual.f(virtualrow)
-            except (AttributeError, KeyError):
-                pass
-        for virtualmethod in cls.table._virtual_methods:
-            try:
-                row[virtualmethod.name] = virtualmethod.handler(
-                    virtualmethod.f, virtualrow)
-            except (AttributeError, KeyError):
-                pass
-        return row
+    def _instance_(cls):
+        return cls.table._model_
 
     @classmethod
     def new(cls, **attributes):
-        row = Row()
+        row = cls._instance_()._rowclass_()
         for field in cls.table.fields:
             val = attributes.get(field, cls.table[field].default)
             if callable(val):
                 val = val()
             row[field] = val
-        cls._inject_virtuals_on_row(row)
         return row
 
     @classmethod
@@ -579,13 +606,13 @@ class Model(with_metaclass(MetaModel)):
 
     @classmethod
     def where(cls, cond):
-        if not callable(cond):
-            raise SyntaxError('Model.where expects a function as parameter.')
-        return cls.db.where(cond(cls), model=cls.table._model_)
+        if not isinstance(cond, types.LambdaType):
+            raise ValueError("Model.where expects a lambda as parameter")
+        return cls.db.where(cond(cls), model=cls)
 
     @classmethod
     def all(cls):
-        return cls.db(cls.table)
+        return cls.db.where(cls.table, model=cls)
 
     @classmethod
     def first(cls):
@@ -600,11 +627,6 @@ class Model(with_metaclass(MetaModel)):
         if len(args) == 1:
             return cls.table[args[0]]
         return cls.table(**kwargs)
-
-    @classmethod
-    def form(cls, record=None, **kwargs):
-        from ..forms import DALForm
-        return DALForm(cls.table, record, **kwargs)
 
     @rowmethod('update_record')
     def _update_record(self, row, **fields):

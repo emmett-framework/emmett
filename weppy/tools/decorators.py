@@ -14,12 +14,12 @@ from ..expose import Expose
 
 
 class Decorator(object):
-    def handler(self):
+    def build_pipe(self):
         pass
 
     def __call__(self, func):
         obj = Expose.exposing()
-        obj.handlers.append(self.handler())
+        obj.pipeline.append(self.build_pipe())
         return func
 
 
@@ -36,9 +36,9 @@ class requires(Decorator):
         self.condition = condition
         self.otherwise = otherwise
 
-    def handler(self):
-        from ..handlers import RequireHandler
-        return RequireHandler(self.condition, self.otherwise)
+    def build_pipe(self):
+        from ..pipeline import RequirePipe
+        return RequirePipe(self.condition, self.otherwise)
 
 
 class service(Decorator):
@@ -53,6 +53,6 @@ class service(Decorator):
     def xml(f):
         return service('xml')(f)
 
-    def handler(self):
-        from .service import ServiceHandler
-        return ServiceHandler(self.procedure)
+    def build_pipe(self):
+        from .service import ServicePipe
+        return ServicePipe(self.procedure)

@@ -16,7 +16,7 @@ The `before_insert` decorator is called just before the insertion of a new recor
 Here is a quick example:
 
 ```python
-from weppy.dal import Model, before_insert
+from weppy.orm import Model, before_insert
 class Thing(Model):
     name = Field()
 
@@ -39,7 +39,7 @@ The `after_insert` decorator is called just after the insertion of a new record 
 Here is a quick example:
 
 ```python
-from weppy.dal import Model, after_insert
+from weppy.orm import Model, after_insert
 class Thing(Model):
     name = Field()
 
@@ -79,7 +79,7 @@ As the `before_insert` callbacks is called just before a record insertion, the `
 Here is a quick example:
 
 ```python
-from weppy.dal import Model, before_update
+from weppy.orm import Model, before_update
 class Thing(Model):
     name = Field()
 
@@ -104,7 +104,7 @@ The `after_update` decorator is called just after the update of the set of recor
 Here is a quick example:
 
 ```python
-from weppy.dal import Model, after_update
+from weppy.orm import Model, after_update
 class Thing(Model):
     name = Field()
 
@@ -127,7 +127,7 @@ The `before_delete` decorator is called just before the deletion of a set of rec
 Here is a quick example:
 
 ```python
-from weppy.dal import Model, before_delete
+from weppy.orm import Model, before_delete
 class Thing(Model):
     name = Field()
 
@@ -150,7 +150,7 @@ The `after_delete` decorator is called just after the deletion of a set of recor
 Here is a quick example:
 
 ```python
-from weppy.dal import Model, after_delete
+from weppy.orm import Model, after_delete
 class Thing(Model):
     name = Field()
 

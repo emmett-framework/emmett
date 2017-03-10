@@ -15,10 +15,12 @@ import pkgutil
 import re
 
 from .._compat import PY2, to_unicode, to_bytes
-from .cache import clear_cache, getcfs
+from ..datastructures import Accept
 from ..libs.portalocker import read_locked, LockedFile
+from .cache import clear_cache, getcfs
 
 
+regex_locale_delim = re.compile(r'[_-]')
 regex_backslash = re.compile(r"\\([\\{}%])")
 regex_langfile = re.compile('^[a-z]{2}(-[a-z]{2})?\.py$')
 regex_plural = re.compile('%({.+?})')
@@ -28,8 +30,6 @@ regex_plural_dict = re.compile(
 # %%{word[index]} or %%{word}
 regex_plural_tuple = re.compile('^{(?P<w>[^[\]()]+)(?:\[(?P<i>\d+)\])?}$')
 regex_plural_file = re.compile('^plural-[a-zA-Z]{2}(-[a-zA-Z]{2})?\.py$')
-regex_language = re.compile(
-    '([a-z]{2,3}(?:\-[a-z]{2})?(?:\-[a-z]{2})?)(?:[,;]|$)')
 
 
 DEFAULT_LANGUAGE = 'en'
@@ -71,7 +71,15 @@ def read_possible_plural_rules():
         pass
     return plurals
 
+
 PLURAL_RULES = read_possible_plural_rules()
+
+
+class LanguageAccept(Accept):
+    def _value_matches(self, value, item):
+        def _normalize(language):
+            return regex_locale_delim.split(language.lower())
+        return item == '*' or _normalize(value) == _normalize(item)
 
 
 def read_plural_dict_aux(filename):

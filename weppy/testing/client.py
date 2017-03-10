@@ -5,7 +5,7 @@
 
     Provides base classes for testing suite.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
 
     Several parts of this code comes from Werkzeug.
     :copyright: (c) 2015 by Armin Ronacher.
@@ -25,9 +25,10 @@ from .urls import get_host, url_parse, url_unparse
 
 class ClientContext(object):
     def __init__(self):
-        from ..globals import current, Request
-        self.request = Request(copy.deepcopy(current.request.environ))
-        self.response = copy.deepcopy(current.response)
+        from ..globals import current, Request, Response
+        self.request = Request(current.request.environ)
+        self.response = Response(current.request.environ)
+        self.response.__dict__.update(current.response.__dict__)
         self.session = copy.deepcopy(current.session)
         self.T = current.T
 
@@ -218,8 +219,9 @@ class WeppyTestClient(object):
                 break
             new_location = response[2]['location']
             if new_location.startswith('/'):
-                new_location = \
-                    environ['wsgi.url_scheme'] + "://" + environ['HTTP_HOST']
+                new_location = (
+                    environ['wsgi.url_scheme'] + "://" +
+                    environ['HTTP_HOST'] + new_location)
             new_redirect_entry = (new_location, status_code)
             if new_redirect_entry in redirect_chain:
                 raise Exception('loop detected')

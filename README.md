@@ -4,33 +4,50 @@
 [![build status](https://img.shields.io/travis/gi0baro/weppy.svg?style=flat)](https://travis-ci.org/gi0baro/weppy)
 
 weppy is a full-stack python web framework designed with simplicity in mind.
-It takes some components from *web2py* and has a syntax inspired by *Flask*.
 
 The aim of weppy is to be clearly understandable, easy to be learned and to be 
 used, so you can focus completely on your product's features:
 
 ```python
-from weppy import request, response
+from weppy import App, request, response
+from weppy.orm import Database, Model, Field
 from weppy.tools import service, requires
-from myapp import app, auth
 
-@app.route()
-@service.json
-@requires(auth.is_logged_in, otherwise=not_authorized)
-def todos():
-    page = request.params.page or 1
-    return {'todos': auth.user.todos.select(paginate=page)}
+class Task(Model):
+    name = Field('string')
+    is_completed = Field('bool', default=False)
 
+app = App(__name__)
+app.config.db.uri = "postgres://user:password@localhost/foo"
+db = Database(app)
+db.define_models(Task)
+app.pipeline = [db.pipe]
+
+def is_authenticated():
+    return request.headers["Api-Key"] == "foobar"
+    
 def not_authorized():
     response.status = 401
     return {'error': 'not authorized'}
+
+@app.route(methods='get')
+@service.json
+@requires(is_authenticated, otherwise=not_authorized)
+def todo():
+    page = request.query_params.page or 1
+    tasks = Task.where(
+        lambda t: t.is_completed == False
+    ).select(paginate=(page, 20))
+    return {'tasks': tasks}
 ```
 
 ## Installation
 
 You can install weppy using pip:
 
-    pip install weppy
+```
+$ pip install weppy
+```
 
 ## Documentation
 
@@ -61,14 +78,11 @@ This is an extract from the results for a simple JSON serialization:
 
 ## Status of the project
 
-weppy is currently released in beta stage.
-*What does that mean?*
+Since version 1.0 weppy can be considered stable. Is compatible with Python 2.7, 3.3, 3.4, 3.5 and 3.6.
 
-* That the code may contain *noteworthy* bugs
-* That you can use it on production, but cannot blame the developers if 
-something goes wrong
+weppy is currently used in production by:
 
-weppy provides support for Python 2.7, 3.3, 3.4 and 3.5.
+- [Sellf](https://github.com/Sellf)
 
 ## How can I help?
 

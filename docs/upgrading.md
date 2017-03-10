@@ -19,6 +19,239 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 1.0
+-----------
+
+weppy 1.0 introduces some deprecations and breaking changes you should be aware of, and some new features you might been interested into.
+
+Next paragraphs describe all these relevant changes.
+
+### Handlers deprecation in favour of pipeline
+
+weppy 1.0 introduces the [pipeline](./request#pipeline), a revisited and better implementation of the old handlers.
+
+While everything from the old implementation still works, we really suggest to update your code to the new implementation.
+
+We changed the application and modules attributes and the `route` parameters as follows:
+
+| old attribute or parameter | new name |
+| --- | --- |
+| common_handlers | pipeline |
+| common_helpers | injectors |
+| handlers | pipeline |
+| helpers | injectors |
+
+We also renamed the old handlers on database and auth instances, so you have to change this code:
+
+```python
+app.common_handlers = [db.handler, auth.handler]
+```
+
+to:
+
+```python
+app.pipeline = [db.pipe, auth.pipe]
+```
+
+In the case you wrote your own handlers with previous versions of weppy, you should now use the `Pipe` class instead of the `Handler` one:
+
+```python
+# old code
+from weppy.handlers import Handler
+
+class MyHandler(Handler):
+    # some code
+
+# new code
+from weppy.pipeline import Pipe
+
+class MyPipe(Pipe):
+    # some code
+```
+
+and you should update the old methods with new ones (the usage is still the same):
+
+| old method | new method |
+| --- | --- |
+| on\_start | open |
+| on\_success | on\_pipe\_success |
+| on\_failure | on\_pipe\_success |
+| on\_end | close |
+
+Moreover, if you customized the old `wrap_call` method in handlers, you should now use the `pipe` one, which doesn't require to wrap the input method into something else. In fact, with the `pipe` method, the code you write is already the wrapper for the next method in the pipeline. For example, this code:
+
+```python
+class MyHandler(Handler):
+    def wrap_call(self, f):
+        def wrapped(**kwargs):
+            kwargs['foo'] = 'bar'
+            return f(**kwargs)
+        return wrapped
+```
+
+should now be written:
+
+```python
+class MyPipe(Pipe):
+    def pipe(self, next_pipe, **kwargs):
+        kwargs['foo'] = 'bar'
+        return next_pipe(**kwargs)
+```
+
+Learn more about the pipeline in the [relevant chapter](./request#pipeline) of the documentation.
+
+### DAL deprecation in favour of the orm module
+
+Since the first version, the module relevant to database utilities was named *dal* in weppy. So it was for the class responsible of creating database instance, where *DAL* was an acronym for *Database Absraction Layer*.
+
+We think this nomenclature wasn't immediate at all; moreover, during releases weppy built a real orm above pyDAL, and we felt the old name had to be changed.
+
+Since weppy 1.0 all the imports from `weppy.dal` should be moved to `weppy.orm`, and the `DAL` class is now the more convenient `Database` class.
+
+The old module and class are still available, but we suggest you to change the relevant code in your application since in the next versions of weppy these won't be available.
+
+### form\_rw deprecation in favour of fields\_rw in Model
+
+We changed the attribute for the fields accessibility in the `Model` class from `form_rw` to the proper `fields_rw` one.
+
+While the old attribute still works in weppy 1.0, we suggest you to upgrade your models to the new attribute.
+
+### Breaking changes
+
+#### Automatic migrations disabled by default
+
+In weppy 1.0 the `auto_migrate` parameter of the `Database` class has changed its default value from `True` to `False`. If your application relies on automatic migrations, please change the initialization of the database passing the new value for the parameter:
+
+```python
+db = Database(app, auto_migrate=True)
+```
+
+#### Auth module and mailer refactoring
+
+In weppy 1.0 the auth system and the mailer available under the *tools* module have been completely rewritten from scratch.
+
+While quite a lot of APIs can be used in the same way of the old modules, there are some big differences that breaks the compatibility with applications written with previous weppy versions.
+
+The first breaking change regards the columns' names in the auth tables, that should be migrated before the upgrade as follows:
+
+| table | old column name | new column name |
+| --- | --- | --- |
+| auth\_memberships | authgroup | auth\_group |
+| auth\_permissions | authgroup | auth\_group |
+
+This means also the many relations in the models has changed:
+
+| old name | new name |
+| --- | --- |
+| authgroups | auth\_groups |
+| memberships | auth\_memberships |
+| permissions | auth\_permissions |
+| events | auth\_events |
+
+The other two major breaking changes are the parameter name for the user model when you instantiate the module, changed from `usermodel` to `user_model`:
+
+```python
+auth = Auth(app, db, user_model=User)
+```
+
+And the way of exposing routes, that now uses a module. Please, inspect the [appropriate chapter](./auth) of the documentation to better understand this and other changes.
+
+Now the documentation offers also a [dedicated chapter](./mailer) for the mailing system, check it out to learn how it works in the new version.
+
+#### Renamed tags module into html
+
+Prior to weppy 1.0 all the code to generate html components from weppy was under the debatable `tags` module. Since the naming led to ambiguities, we changed the name to the more correct `html` one.
+
+Please update your code accordingly.
+
+#### Removed the bind\_to\_model option from virtual decorators
+
+Prior to weppy 1.0 you had the option to not bind the virtual attributes to the model namespace on selections:
+
+```python
+@rowattr('name', bind_to_model=False)
+def eval_name(self, row):
+    return row.users.first_name * row.users.last_name
+```
+
+In weppy 1.0 we removed this option since the real use-case scenario for this option was too limited. Moreover, this change allowed several optimizations on the injection of these attributes over the rows, increasing the general performance of the select operations.
+
+If you used anywhere in your code this option, please update it accordingly.
+
+#### Preserving the attributes types for relations on joined selects
+
+Prior to weppy 1.0 you had different type for the relation attributes on the records depending on the use of `join` or `including` options during selection:
+
+```python
+>>> type(User.first().posts)
+<class 'weppy.dal.objects.HasManySet'>
+>>> type(User.all().select(including='posts').first().posts)
+<class 'pydal.objects.Rows'>
+```
+
+Although this was a *design decision* in weppy, to easily locate where the code was using joined references or not, we considered the best thing overall is to have consistency over the ORM types.
+
+In weppy 1.0 the type is always kept the same, independently on how you selected records:
+
+```python
+>>> type(User.first().posts)
+<class 'weppy.orm.objects.HasManySet'>
+>>> type(User.all().select(including='posts').first().posts)
+<class 'weppy.orm.objects.HasManySet'>
+>>> type(User.first().posts())
+<class 'weppy.orm.objects.Rows'>
+>>> type(User.all().select(including='posts').first().posts())
+<class 'weppy.orm.objects.Rows'>
+```
+
+Please update your code to the new design. The most common scenario is to change something like this:
+
+```python
+for user in User.all().select(including='posts'):
+    print(user.name)
+    for post in user.posts:
+        print(post.name)
+```
+
+to add the parenthesis:
+
+```python
+for user in User.all().select(including='posts'):
+    print(user.name)
+    for post in user.posts():
+        print(post.name)
+```
+
+#### Automatic casting of route variables
+
+In weppy 1.0 the route variables of *int* and *date* types are automatically casted to the relevant objects.
+
+While for the *int* variables this won't break your code, you should check wheter you expected a string object in routes for dates:
+
+```python
+@app.route('/dateroute/<date:d>')
+def dateroute(d):
+    d = datetime.strptime(d, "%Y-%m-%d")
+    # code
+```
+
+This would produce errors in weppy 1.0 since the `d` argument is already a `Pendulum` object. Just be sure to remove the parsing from your code.
+
+### New features
+
+weppy 1.0 introduces some new features you may take advantage of:
+
+- Application [modules](./app_and_modules#application-modules) now allow nesting and inheritance
+- The float type is now available in [route variables](./routing#path)
+- *int*, *float* and *date* route variable types are now automatically casted to the relevant objects
+- [Multiple paths](./routing#multiple-paths) can be specified for a single route
+- A `now` method is now available in weppy that returns `request.now` or `Pendulum.utcnow` values depending on the context
+- Computed fields values are now accesible within insert and update callbacks
+- A `headers` attribute is now available on the request object to easily access the headers sent by the client
+- An `anchor` parameter is now available in the `url` method
+- Signal [bindings](./extensions#building-extensions) is now available for extensions
+
+
 Version 0.8
 -----------
 
@@ -132,7 +365,7 @@ Version 0.6
 
 weppy 0.6 introduces some deprecations and changes you should be aware of, and some new features you might been interested into.
 
-Next paragraphs describe all this relevant changes.
+Next paragraphs describe all these relevant changes.
 
 ### Deprecation of expose
 

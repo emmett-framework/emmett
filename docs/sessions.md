@@ -13,18 +13,18 @@ def count():
 ```
 
 The above code is quite simple: the app increments the counter every time the user visit the page and return this number to the user.   
-Basically, you can use `session` object to store and retrieve data, but before you can do that, you should add a *SessionManager* to your application handlers. These managers allows you to store sessions' data on different storage systems, depending on your needs. Let's see them.
+Basically, you can use `session` object to store and retrieve data, but before you can do that, you should add a *SessionManager* to your application pipeline. These managers allows you to store sessions' data on different storage systems, depending on your needs. Let's see them.
 
 Storing sessions in cookies
 ---------------------------
-You can store session contents directly in the cookies of the client using the weppy's `SessionCookieManager` handler:
+You can store session contents directly in the cookies of the client using the weppy's `SessionCookieManager` pipe:
 
 ```python
 from weppy import App, session
 from weppy.sessions import SessionCookieManager
 
 app = App(__name__)
-app.common_handlers = [SessionCookieManager('myverysecretkey')]
+app.pipeline = [SessionCookieManager('myverysecretkey')]
 
 @app.route("/counter")
 # previous code
@@ -41,14 +41,14 @@ Storing sessions on filesystem
 ------------------------------
 *New in version 0.2*
 
-You can store session contents on the server's filesystem using the weppy's `SessionFSManager` handler:
+You can store session contents on the server's filesystem using the weppy's `SessionFSManager` pipe:
 
 ```python
 from weppy import App, session
 from weppy.sessions import SessionFSManager
 
 app = App(__name__)
-app.common_handlers = [SessionFSManager()]
+app.pipeline = [SessionFSManager()]
 
 @app.route("/counter")
 # previous code
@@ -65,7 +65,7 @@ As you can see, `SessionFSManager` doesn't require specific parameters, but it a
 
 Storing sessions using redis
 ----------------------------
-You can store session contents using *redis* – you obviously need the redis package for python – with the weppy's `SessionRedisManager` handler:
+You can store session contents using *redis* – you obviously need the redis package for python – with the weppy's `SessionRedisManager` pipe:
 
 ```python
 from redis import Redis
@@ -74,7 +74,7 @@ from weppy.sessions import SessionRedisManager
 
 app = App(__name__)
 red = Redis(host='127.0.0.1', port=6379)
-app.common_handlers = [SessionRedisManager(red)]
+app.pipeline = [SessionRedisManager(red)]
 
 @app.route("/counter")
 # previous code

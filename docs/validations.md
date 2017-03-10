@@ -112,6 +112,8 @@ validation, the input values will also be converted to the right type: an input
 which should be `'int'` that comes as a string from the form will be converted
 to an `int` object for all the other validators, or for your post-validation code.
 
+> **Note:** the datetime validator returns a [Pendulum](https://pendulum.eustace.io/) object, which is a subclass of the standard Python datetime class.
+
 Here are some examples of `'is'` validation helper:
 
 ```
@@ -482,3 +484,25 @@ class FloatValidator(Validator):
             val += '0' * (2 - len(val.split('.')[1]))
         return val
 ```
+
+
+### Combining custom validators with standard ones
+
+*New in version 1.0*
+
+You can also use custom validators we just saw in combination with the standard ones provided by weppy. Just use the `custom` helper:
+
+```python
+class OddValidator(Validator):
+    message = "value has to be odd"
+
+    def __call__(self, value):
+        if value % 2:
+            return value, self.message
+        return value, None
+
+mynumber = Field('int', validation={
+    'gte': 0, 'lt': 20, 'custom': OddValidator()})
+```
+
+> **Note:** you can also pass a list of custom validators to the `custom` helper.

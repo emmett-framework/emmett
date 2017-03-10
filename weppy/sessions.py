@@ -3,9 +3,9 @@
     weppy.sessions
     --------------
 
-    Provides session handlers for weppy applications.
+    Provides session managers for weppy applications.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -14,19 +14,19 @@ import time
 import tempfile
 from ._compat import pickle, to_native
 from .security import secure_loads, secure_dumps, uuid
-from .handlers import Handler
+from .pipeline import Pipe
 from .globals import current, request, response
 from .datastructures import sdict, SessionData
 
 
-class SessionCookieManager(Handler):
+class SessionCookieManager(Pipe):
     def __init__(self, key, secure=False, domain=None):
         self.key = key
         self.secure = secure
         self.domain = domain
 
-    def on_start(self):
-        self.cookie_data_name = 'wpp_session_data_%s' % request.application
+    def open(self):
+        self.cookie_data_name = 'wpp_session_data_%s' % request.appname
         if self.cookie_data_name in request.cookies:
             cookie_data = request.cookies[self.cookie_data_name].value
             current.session = SessionData(secure_loads(
@@ -34,7 +34,7 @@ class SessionCookieManager(Handler):
         if not current.session:
             current.session = SessionData(expires=3600)
 
-    def on_end(self):
+    def close(self):
         data = secure_dumps(sdict(current.session), self.key)
         response.cookies[self.cookie_data_name] = data
         response.cookies[self.cookie_data_name]['path'] = "/"
@@ -52,7 +52,7 @@ class SessionCookieManager(Handler):
             % (self.__class__.__name__, 'secure'))
 
 
-class SessionFSManager(Handler):
+class SessionFSManager(Pipe):
     _fs_transaction_suffix = '.__wp_sess'
     _fs_mode = 0o600
 
@@ -115,8 +115,8 @@ class SessionFSManager(Handler):
         except OSError:
             pass
 
-    def on_start(self):
-        self.cookie_data_name = 'wpp_session_data_%s' % request.application
+    def open(self):
+        self.cookie_data_name = 'wpp_session_data_%s' % request.appname
         if self.cookie_data_name in request.cookies:
             sid = request.cookies[self.cookie_data_name].value
             data = self._load(sid)
@@ -126,7 +126,7 @@ class SessionFSManager(Handler):
             sid = uuid()
             current.session = SessionData(sid=sid)
 
-    def on_end(self):
+    def close(self):
         if not current.session:
             self._delete(current.session)
             if current.session._modified:
@@ -151,7 +151,7 @@ class SessionFSManager(Handler):
             os.unlink(os.path.join(self._path, element))
 
 
-class SessionRedisManager(Handler):
+class SessionRedisManager(Pipe):
     def __init__(self, redis, prefix="wppsess:", expire=3600, secure=False,
                  domain=None):
         self.redis = redis
@@ -160,8 +160,8 @@ class SessionRedisManager(Handler):
         self.secure = secure
         self.domain = domain
 
-    def on_start(self):
-        self.cookie_data_name = 'wpp_session_data_%s' % request.application
+    def open(self):
+        self.cookie_data_name = 'wpp_session_data_%s' % request.appname
         if self.cookie_data_name in request.cookies:
             sid = request.cookies[self.cookie_data_name].value
             #: load from redis
@@ -172,7 +172,7 @@ class SessionRedisManager(Handler):
             sid = uuid()
             current.session = SessionData(sid=sid)
 
-    def on_end(self):
+    def close(self):
         if not current.session:
             self.redis.delete(self.prefix + current.session._sid)
             if current.session._modified:

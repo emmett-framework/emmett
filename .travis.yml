@@ -12,6 +12,7 @@ python:
   - "3.3"
   - "3.4"
   - "3.5"
+  - "3.6"
   # - "pypy3"
 
 install:
@@ -21,7 +22,7 @@ before_script:
   - flake8 weppy --exit-zero
 
 script:
-  - tox -e $(echo py$TRAVIS_PYTHON_VERSION | tr -d . | sed -e 's/pypypy/pypy/')
+  - tox -e $(echo py$TRAVIS_PYTHON_VERSION | tr -d . | tr -d "\-dev" | sed -e 's/pypypy/pypy/')
 
 after_success:
   - pip install coveralls

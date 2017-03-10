@@ -6,11 +6,12 @@
     Provides the default lexers for templating parsing
     (using the same logic applied for extensions).
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 from .._compat import to_unicode
+from ..expose import url
 from ..extensions import TemplateLexer
 from .contents import SuperNode, BlockNode
 
@@ -110,7 +111,6 @@ class StaticLexer(WeppyLexer):
     evaluate_value = True
 
     def process(self, value):
-        from ..expose import url
         file_name = value.split("?")[0]
         surl = to_unicode(url('static', file_name))
         file_ext = file_name.rsplit(".", 1)[-1]

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.base
+    weppy.orm.migrations.base
     -------------------------
 
     Provides base migrations objects.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 

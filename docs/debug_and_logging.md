@@ -1,16 +1,7 @@
 Debug and logging
 =================
 
-*Errare humanum est*, said Seneca, a long time ago. As humans, sometimes we fail,
-and, sooner or later, we will see an exception on our applications. Even if the
-code is 100% correct, we can still get exceptions from time to time. And why? 
-Well, *shit happens*, not only as a consequence of the Finagle's Law&mdash;even
-if he was damn right, wasn't he?&mdash;but also because the process
-of deploying web applications forces us to deal with a long list of involved
-technologies, everyone of which could fail. Just think about it: 
-the client may fail during the request, your database can be overloaded, 
-a hard-drive on your machine can crash, a library you're using can contain errors, 
-and this goes on and on.
+*Errare humanum est*, said Seneca, a long time ago. As humans, sometimes we fail, and, sooner or later, we will see an exception on our applications. Even if the code is 100% correct, we can still get exceptions from time to time. And why? Well, *shit happens*, not only as a consequence of the Finagle's Law – even if he was damn right, wasn't he? – but also because the process of deploying web applications forces us to deal with a long list of involved technologies, everyone of which could fail. Just think about it: the client may fail during the request, your database can be overloaded, a hard-drive on your machine can crash, a library you're using can contain errors, and this goes on and on.
 
 So, what can we do to face all this necessary complexity?   
 
@@ -35,7 +26,7 @@ The debug page contains three sections:
 
 The difference between the two tracebacks is straightforward: the first is
 filtered only on your application code, while the second contains 
-the complete trace of what happened&mdash;including the framework components,
+the complete trace of what happened – including the framework components,
 libraries, and so on.
 
 The third section of the debugger page is called *frames* and inspecting it can
@@ -43,8 +34,8 @@ tell you a lot about what happened during an exception.
 
 ![debugger](http://weppy.org/static/debug_frames.png)
 
-As you can see, for every step of the full traceback, weppy collects&mdash;
-when is possible&mdash;all the variables' contents and reports them as shown
+As you can see, for every step of the full traceback, weppy collects – 
+when is possible – all the variables' contents and reports them as shown
 in the above screen.
 
 > – OK, dude. What happens when I have an error in a template?   
@@ -59,7 +50,7 @@ that was not *passed*.
 
 Logging application errors
 --------------------------
-When your application runs on production, weppy&mdash;obviously&mdash;
+When your application runs on production, weppy – obviously – 
 won't display the debug page, but will collect the full traceback 
 and store it in logs. In fact, with the default configuration, 
 a file called *production.log* will be created in the *logs* folder 

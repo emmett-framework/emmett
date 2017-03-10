@@ -9,6 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from datetime import datetime
 from weppy.http import HTTP, redirect
 
 
@@ -52,10 +53,11 @@ def test_redirect():
     from weppy.globals import current
     current.initialize({
         'PATH_INFO': '/',
-        'wpp.appnow': 'test',
-        'wpp.now.utc': 'test',
-        'wpp.now.local': 'test',
-        'wpp.application': 'test',
+        'REQUEST_METHOD': 'GET',
+        'HTTP_HOST': 'localhost',
+        'wsgi.url_scheme': 'http',
+        'wpp.now': datetime.utcnow(),
+        'wpp.application': 'test'
     })
 
     try:

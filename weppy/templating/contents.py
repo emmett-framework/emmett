@@ -5,7 +5,7 @@
 
     Provides structures for templating system.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
 
     Based on the web2py's templating system (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
@@ -56,8 +56,7 @@ class SuperNode(Node):
     def __str__(self):
         if self.value:
             return to_unicode(self.value)
-        else:
-            return u''
+        return u''
 
     def __repr__(self):
         return "%s->%s" % (self.name, self.value)

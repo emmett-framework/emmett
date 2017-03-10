@@ -33,10 +33,10 @@ def test_session_cookie(current):
     assert session_cookie.secure is True
     assert session_cookie.domain == 'localhost'
 
-    session_cookie.on_start()
+    session_cookie.open()
     assert current.session._expiration == 3600
 
-    session_cookie.on_end()
+    session_cookie.close()
     cookie = str(current.response.cookies)
     assert 'wpp_session_data_' in cookie
     assert 'Domain=localhost;' in cookie
@@ -44,5 +44,5 @@ def test_session_cookie(current):
     assert 'secure' in cookie.lower()
 
     current.request.cookies = current.response.cookies
-    session_cookie.on_start()
+    session_cookie.open()
     assert current.session._expiration == 3600

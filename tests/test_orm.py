@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    tests.dal
+    tests.orm
     ---------
 
     Test pyDAL implementation over weppy.
@@ -15,7 +15,7 @@ from pydal.objects import Table
 from pydal import Field as _Field
 
 from weppy import App, sdict
-from weppy.dal import DAL, Field, Model, compute, before_insert, \
+from weppy.orm import Database, Field, Model, compute, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
     rowattr, rowmethod, has_one, has_many, belongs_to, scope
 from weppy.validators import isntEmpty, hasLength
@@ -58,7 +58,7 @@ class Stuff(Model):
         "a": {'presence': True}
     }
 
-    form_rw = {
+    fields_rw = {
         "invisible": False
     }
 
@@ -120,14 +120,6 @@ class Stuff(Model):
     @rowmethod('totalm')
     def eval_total_m(self, row):
         return row.price*row.quantity
-
-    @rowattr('totalv2', bind_to_model=False)
-    def eval_total_v2(self, row):
-        return row.stuffs.price*row.stuffs.quantity
-
-    @rowmethod('totalm2', bind_to_model=False)
-    def eval_total_m2(self, row):
-        return row.stuffs.price*row.stuffs.quantity
 
     @classmethod
     def method_test(cls, t):
@@ -296,7 +288,9 @@ class Subscription(Model):
 @pytest.fixture(scope='module')
 def db():
     app = App(__name__)
-    db = DAL(app, config=sdict(uri='sqlite://dal.db'))
+    db = Database(
+        app, config=sdict(
+            uri='sqlite://dal.db', auto_connect=True, auto_migrate=True))
     db.define_models([
         Stuff, Person, Thing, Feature, Price, Doctor, Patient, Appointment,
         User, Organization, Membership, House, Mouse, NeedSplit, Zoo, Animal,
@@ -306,7 +300,7 @@ def db():
 
 
 def test_db_instance(db):
-    assert isinstance(db, DAL)
+    assert isinstance(db, Database)
 
 
 def test_table_definition(db):
@@ -387,13 +381,11 @@ def test_rowattrs(db):
     db.commit()
     row = db(db.Stuff).select().first()
     assert row.totalv == 12.95*3
-    assert row.totalv2 == 12.95*3
 
 
 def test_rowmethods(db):
     row = db(db.Stuff).select().first()
     assert row.totalm() == 12.95*3
-    assert row.totalm2() == 12.95*3
 
 
 def test_modelmethods(db):

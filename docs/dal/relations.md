@@ -548,7 +548,7 @@ will delete the join record in the *memberships* table and keep the organization
 
 ### Joins and N+1 queries
 
-*New in version 0.6*
+*Changed in version 1.0*
 
 Quite often in your application you will need to select multiple records and then access to their relations. Let's say for example, that you have a blog application with users and posts:
 
@@ -582,15 +582,13 @@ To avoid the problem we just exposed, weppy provides a `join` method over the se
 users = User.all().join('posts').select()
 for user in users:
     print("%s posts:" % user.name)
-    for post in user.posts:
+    for post in user.posts():
         print("  %s" % post.name)
 ```
 
 weppy will perform a *JOIN* operation on the database and the posts will be directly available on the users without any additional selects.
 
 As you probably understood, the `join` method accepts one or more relations to join in the select operation, and you can just write down these relations with their names as strings.
-
-Notice also that we changed the line of the second loop to access `user.posts` instead of `user.posts()`. This is due to the fact that whereas in the first case `user.posts` was a `Set` object, when we use a `join` method the relations joined will be objects of type `Rows`. This is a design decision of weppy, aimed to remember yourself that you're working with different objects and different flows: watch out this difference when writing your application code.
 
 The `join` method will load any kind of relation, independently if they are `belongs_to`, `refers_to`, `has_one` and `has_many` (also the ones with `via` options), so you can select, for example, the post matching a certain name and load also their authors:
 
@@ -606,7 +604,7 @@ or load the organizations of the users from the example in the previous sections
 User.all().join('organizations').select()
 ```
 
-> **Note:** when you join `belongs_to` or `refers_to` relations, the `type` of the related object inside the selected rows is just the same of the normal select operation.
+> **Note:** when you perform joins of relations, the `type` of the related object inside the selected rows is just the same of the normal select operation.
 
 Note that, the `join` method will returns only those rows matching the joins, so, going back to the posts example, when you do:
 
@@ -626,7 +624,7 @@ User.all().select(including='posts')
 
 will return all the users in your database with their posts, if any, with the same types of the `join` method. The `including` option accepts a string parameter or a list of strings, which have to be, like on the `join` method, the names of the relations you want to load.
 
-> **Note:** when you includes `belongs_to` or `refers_to` relations, the `type` of the related object inside the selected rows is just the same of the normal select operation.
+> **Note:** when you includes relations, the `type` of the related object inside the selected rows is just the same of the normal select operation.
 
 #### Manual joins
 

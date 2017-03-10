@@ -5,7 +5,7 @@
 
     Provides auto-reloading utilities.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
 
     Adapted from werkzeug code (http://werkzeug.pocoo.org)
     :copyright: (c) 2015 by Armin Ronacher.

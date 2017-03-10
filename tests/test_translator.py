@@ -29,14 +29,14 @@ def _make_translation(language):
 
 
 def test_translation(app):
-    current._language = 'en'
+    current.language = 'en'
     assert _make_translation('it') == 'nuvolosità variabile'
     assert _make_translation('de') == 'teilweise bewölkt'
     assert _make_translation('ru') == 'переменная облачность'
 
 
 def test_write(app):
-    current._language = 'en'
+    current.language = 'en'
     #: get original content
     translated_file = os.path.join(app.root_path, 'languages', 'ru.py')
     with open(translated_file) as f:

@@ -1,6 +1,57 @@
 weppy changelog
 ===============
 
+Version 1.0
+-----------
+
+Released on March 10th 2017, codename Izar
+
+- Several bugfixes
+- Moved routing handlers and helpers to pipeline logic
+- Added support for app modules nesting and inheritance
+- Added lambda notation to `Set.where` when involving just one model
+- Rewritten `rowattr` and `rowmethod` injection logic
+- Removed `bind_to_model` option from `rowattr` and `rowmethod`
+- Optimized rows parsing in ORM adapters
+- Improved caching techniques on selected records relations
+- Added automatic casting of route variables
+- Added support for float variable rules in routes
+- Deprecated `dal` module in favour of `orm`
+- Added support for multiple paths in routes
+- Enhanced wsgi request handling performance
+- Added `handle_static` boolean option to `App.config`
+- Enhanced language recognition from Accept-Language header
+- Optimized translator initialization
+- Added `now` attribute and global method which returns `request.now` or
+  `datetime.now` when request context is missing
+- Added access to computed values within insert and update callbaks
+- Deprecated `Model.form_rw` in favour of `Model.fields_rw`
+- Optimized json and xml serializers, added optional `json_safe` serializer
+  for old behavior
+- Added `__json__` and `__xml__` methods handling in serializers for custom
+  objects serialization
+- Added `headers` attribute to `Request`
+- Replaced udatetime dependency with pendulum
+- `weppy.globals.now`, `isDatetime` validator and date route variables are now
+  `Pendulum` objects
+- Added support for additional separators apart from '/' between route
+  variables route definitions
+- Removed `extension` parameter in `url`
+- Added `anchor` parameter in `url`
+- Deprecated `tags` module in favour of `html`
+- Optimized escaping code for html components
+- Optimized templates caching
+- Lightened the request flow
+- Added signals to extensions
+- Added application's defined commands in cli help listing
+- Enhanced the json validator
+- Refactored the `tools.mailer` module
+- Refactored the `tools.auth` module
+- The `Database` instance now performs auto connection using the
+  `auto_connection` parameter or just in the cli environment if missing
+- Automatic migrations on the database are now turned off by default
+
+
 Version 0.8
 -----------
 

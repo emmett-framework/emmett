@@ -6,7 +6,7 @@ A model is the single, definitive source of information about your data. It cont
 So, how a weppy model looks like? Thinking of a post inside a blog, an example model would be like this:
 
 ```python
-from weppy.dal import Field, Model
+from weppy.orm import Field, Model
 
 class Post(Model):
     author = Field()
@@ -23,15 +23,15 @@ As you can see, we defined three fields for our model, two of type string (is th
 
 As you will see in the next paragraphs, weppy models have some reserved attributes, like `validation` which define some options for the fields inside your models. All the options listed in the next sections are available also as parameters of the `Field` class, and you can choose how to organize your code depending on your needs.
 
-In order to use the model just defined in your application you must register it using the `define_models()` method of the `DAL` class of weppy, as we seen in the [first example](./):
+In order to use the model just defined in your application you must register it using the `define_models()` method of the `Database` class of weppy, as we seen in the [first example](./):
 
 ```python
-from weppy import DAL
-db = DAL(app)
+from weppy.orm import Database
+db = Database(app)
 db.define_models(Post)
 ```
 
-This will create a `Table` object on your `DAL` instance accessible both with model name and table name:
+This will create a `Table` object on your `Database` instance accessible both with model name and table name:
 
 ```python
 db.Post
@@ -179,6 +179,28 @@ started = Field('datetime', update=lambda: request.now)
 
 The values defined in this way will be used on the update of existing records in the database if no other value is given during the operation.
 
+Fields accessibility
+--------------------
+
+*Changed in version 1.0*
+
+The `fields_rw` attribute of `Model` class helps you defining the access rules to the fields. It might be useful, for example, to hide some attributes to users when you create forms:
+
+```python
+fields_rw = {
+    'started': False,
+    'open': (True, False)
+}
+```
+
+Any item of the dictionary can be a `tuple`, where the first value defines if the field should be readable by the user and the second value defines if the field should be writable, or `bool` that will set both values to the one given. By default, all fields are defined with *rw* at `True`.
+
+You may prefer to explicit passing read-writes values to the fields, using `rw` parameter:
+
+```python
+started = Field('datetime', rw=False)
+```
+
 Indexes
 -------
 
@@ -194,7 +216,7 @@ indexes = {
 }
 ```
 
-> **Note:** indexes are available only when using DAL with [migrations](./migrations) enabled.
+> **Note:** indexes are available only when using Database with [migrations](./migrations) enabled.
 
 As you can see, weppy supports different formats for indexes, since we defined:
 
@@ -238,26 +260,6 @@ started = Field('datetime', representation=lambda row, value: prettydate(value))
 Forms helpers
 -------------
 The `Model` attributes listed in this section are intended to be used for forms generation.
-
-###Forms read-writes
-`form_rw` attribute of `Model` class helps you to hide some attributes to users when you create forms:
-
-```python
-form_rw = {
-    'started': False,
-    'open': (True, False)
-}
-```
-Any item of the dictionary can be a `tuple`, where the first value defines if the field should be readable by the user and the second value defines if the field should be writable, or `bool` that will set both values to the one given. By default, all fields are defined with *rw* at `True`.
-
-You may prefer to explicit passing read-writes values to the fields, using `rw` parameter:
-
-```python
-started = Field('datetime', rw=False)
-```
-
-> **Note:**    
-> weppy forms currently show up only writable fields, even if you declare fields as readable. An update to this behavior in order to display also readable fields is planned for the next versions.
 
 ###Form labels
 Labels are useful to produce good titles for your fields in forms:

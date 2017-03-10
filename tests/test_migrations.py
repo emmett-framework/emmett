@@ -11,9 +11,9 @@
 
 import pytest
 from weppy import App
-from weppy.dal import DAL, Model, Field
-from weppy.dal.migrations.engine import MetaEngine, Engine
-from weppy.dal.migrations.generation import MetaData, Comparator
+from weppy.orm import Database, Model, Field
+from weppy.orm.migrations.engine import MetaEngine, Engine
+from weppy.orm.migrations.generation import MetaData, Comparator
 
 
 class FakeEngine(Engine):
@@ -68,7 +68,7 @@ _step_one_sql_drop = 'DROP TABLE "step_one_things";'
 
 
 def test_step_one_create_table(app):
-    db = DAL(app, auto_migrate=False)
+    db = Database(app, auto_migrate=False)
     db.define_models(StepOneThing)
     ops = _make_ops(db)
     diffs = ops.as_diffs()
@@ -79,7 +79,7 @@ def test_step_one_create_table(app):
 
 
 def test_step_one_no_diff_in_migration(app):
-    db = DAL(app, auto_migrate=False)
+    db = Database(app, auto_migrate=False)
     db.define_models(StepOneThing)
     ops = _make_ops(db)
     ops2 = _make_ops(db, ops)
@@ -87,10 +87,10 @@ def test_step_one_no_diff_in_migration(app):
 
 
 def test_step_one_drop_table(app):
-    db = DAL(app, auto_migrate=False)
+    db = Database(app, auto_migrate=False)
     db.define_models(StepOneThing)
     ops = _make_ops(db)
-    db2 = DAL(app, auto_migrate=False)
+    db2 = Database(app, auto_migrate=False)
     db2.define_models()
     ops2 = _make_ops(db2, ops)
     diffs = ops2.as_diffs()
@@ -114,7 +114,7 @@ _step_two_sql = """CREATE TABLE "step_two_things"(
 
 
 def test_step_two_create_table(app):
-    db = DAL(app, auto_migrate=False)
+    db = Database(app, auto_migrate=False)
     db.define_models(StepTwoThing)
     ops = _make_ops(db)
     op = ops.ops[0]
@@ -141,10 +141,10 @@ _step_three_sql_drop = 'ALTER TABLE "step_three_thing_ones" DROP COLUMN "a";'
 
 
 def test_step_three_create_column(app):
-    db = DAL(app, auto_migrate=False)
+    db = Database(app, auto_migrate=False)
     db.define_models(StepThreeThingOne)
     ops = _make_ops(db)
-    db2 = DAL(app, auto_migrate=False)
+    db2 = Database(app, auto_migrate=False)
     db2.define_models(StepThreeThingTwo)
     ops2 = _make_ops(db2, ops)
     op = ops2.ops[0]
@@ -153,10 +153,10 @@ def test_step_three_create_column(app):
 
 
 def test_step_three_drop_column(app):
-    db = DAL(app, auto_migrate=False)
+    db = Database(app, auto_migrate=False)
     db.define_models(StepThreeThingTwo)
     ops = _make_ops(db)
-    db2 = DAL(app, auto_migrate=False)
+    db2 = Database(app, auto_migrate=False)
     db2.define_models(StepThreeThingThree)
     ops2 = _make_ops(db2, ops)
     op = ops2.ops[0]
@@ -184,10 +184,10 @@ ALTER TABLE "step_four_things" ALTER COLUMN "asd" TYPE INTEGER;"""
 
 
 def test_step_four_alter_table(app):
-    db = DAL(app, auto_migrate=False)
+    db = Database(app, auto_migrate=False)
     db.define_models(StepFourThing)
     ops = _make_ops(db)
-    db2 = DAL(app, auto_migrate=False)
+    db2 = Database(app, auto_migrate=False)
     db2.define_models(StepFourThingEdit)
     ops2 = _make_ops(db2, ops)
     sql = []
@@ -230,14 +230,14 @@ _step_five_sql_after = [
 
 
 def test_step_five_indexes(app):
-    db = DAL(app, auto_migrate=False)
+    db = Database(app, auto_migrate=False)
     db.define_models(StepFiveThing)
     ops = _make_ops(db)
     index_ops = ops.ops[1:]
     for op in index_ops:
         sql = _make_sql(db, op)
         assert sql in _step_five_sql_before
-    db2 = DAL(app, auto_migrate=False)
+    db2 = Database(app, auto_migrate=False)
     db2.define_models(StepFiveThingEdit)
     ops2 = _make_ops(db2, ops)
     for op in ops2.ops:

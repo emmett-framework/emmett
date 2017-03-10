@@ -14,7 +14,7 @@ Sometimes you need some field values to be *computed* using other fields' values
 A solution can be to compute the value when you change the price or the quantity of the item and store that value to the database too. In this case you can use the `compute` decorator:
 
 ```python
-from weppy.dal import Model, Field, compute
+from weppy.orm import Model, Field, compute
 
 class Item(Model):
     price = Field('float')
@@ -32,14 +32,14 @@ The function that performs the computation has to accept the row as its first pa
 
 Virtual attributes
 ------------------
-*Changed in version 0.7*
+*Changed in version 1.0*
 
 Virtual attributes are values returned by functions that will be injected to the involved rows every time you select them.
 
 To clarify this concept, we will consider the same example we gave for the *computed* attributes and we will replace them with the `rowattr` decorator instead:
 
 ```python
-from weppy.dal import Model, Field, rowattr
+from weppy.orm import Model, Field, rowattr
 
 class Item(Model):
     price = Field('float')
@@ -63,21 +63,16 @@ You can access the values as the common fields:
 30.0
 ```
 
-> **Warning:**   
-> Virtual attributes are computed and injected every time you select records for the model in which you have defined them. If you write down complex operations in virtual functions, remember that the computing time will be *silently* added to the select operation, and you may encounter performance drops.
-
-The `rowattr` decorator accepts the additional `bind_to_model` parameter, which is set to `True` as default value. The concept behind this parameter is related to the `Rows` objects returned by weppy when you select some records: if you select rows from multiple tables, your `Row` obejct will have, indeed, named keys from the table names. This parameter prevents the row object to have attributes from other tables, so you can access the fields of the current model directly on the object. On the countrary, if you need to perform operations based on other tables that will be present on the rows, you should change this parameter to `False`, and you will need to access the fields using the `tablename.fieldname` notation in your method.
-
 Virtual methods
 ---------------
-*Changed in version 0.7*
+*Changed in version 1.0*
 
 Similarly to virtual attributes, these methods are helpers injected to the rows when you select them. Differently from virtual attributes, however, they will be methods indeed, and you should invoke them to access the value you're looking for.
 
 Let's consider again the same example we saw above, and let's use the `rowmethod` decorator:
 
 ```python
-from weppy.dal import Model, Field, rowmethod
+from weppy.orm import Model, Field, rowmethod
 
 class Item(Model):
     price = Field('float')
@@ -96,8 +91,6 @@ As we said, virtual methods are evaluated *on demand*, which means you have to i
 30.0
 ```
 
-Like the `rowattr` decorator, the `rowmethod` one accepts the `bind_to_model` parameter, which is set to `True` as default.
-
 ### More on virtual methods
 
 Field methods are a great instrument also to run database operations from the current selected object. In fact, since you're inside the model instance, you can access the model itself, the table and the database from within the method you're writing.
@@ -105,7 +98,7 @@ Field methods are a great instrument also to run database operations from the cu
 For example, let's say you have a table of messages referring to some topics and you want to easily get the next message from the current one. You can write down a method for that:
 
 ```python
-from weppy.dal import Model, belongs_to, rowmethod
+from weppy.orm import Model, belongs_to, rowmethod
 
 class Message(Model):
     belongs_to('topic', 'author')

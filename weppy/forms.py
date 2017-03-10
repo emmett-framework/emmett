@@ -5,22 +5,25 @@
 
     Provides classes to create and style forms in weppy.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
+from functools import wraps
 from ._compat import iteritems, iterkeys
-from .dal import Field
+from ._internal import warn_of_deprecation
 from .datastructures import sdict
+from .expose import Expose
 from .globals import current, request, session
+from .html import HtmlTag, tag, cat, asis
+from .orm import Field, Model
 from .security import CSRFStorage
-from .tags import TAG, tag, cat, asis
 from .utils import cachedprop
 
-__all__ = ['Form', 'DALForm']
+__all__ = ['Form', 'ModelForm']
 
 
-class Form(TAG):
+class Form(HtmlTag):
     default_attrs = {
         '_action': '', '_method': 'POST', '_enctype': 'multipart/form-data',
         'submit': 'Submit', 'csrf': 'auto', 'keepvalues': False,
@@ -29,7 +32,6 @@ class Form(TAG):
 
     @staticmethod
     def _get_default_style():
-        from .expose import Expose
         return Expose.application.config.ui.forms_style or FormStyle
 
     def __init__(self, fields={}, **kwargs):
@@ -199,15 +201,15 @@ class Form(TAG):
             hidden.append(
                 tag.input(_name=key, _type='hidden', _value=value))
         # provides end attribute
-        end = '%s</form>' % hidden.to_html()
+        end = '%s</form>' % hidden.__html__()
         custom.end = asis(end)
         return custom
 
-    def to_html(self):
-        return self._render().to_html()
+    def __html__(self):
+        return self._render().__html__()
 
 
-class DALForm(Form):
+class ModelForm(Form):
     def __init__(self, table, record=None, record_id=None, fields=None,
                  exclude_fields=[], **attributes):
         self.table = table
@@ -299,6 +301,13 @@ class DALForm(Form):
                     self.input_params[field.name] = self.record[field.name]
                 self.input_params[field.name] = field.formatter(
                     self.input_params[field.name])
+
+
+class DALForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        warn_of_deprecation(
+            'weppy.forms.DALForm', 'weppy.forms.ModelForm', stack=3)
+        super(DALForm, self).__init__(*args, **kwargs)
 
 
 class FormStyle(object):
@@ -535,3 +544,14 @@ class FormStyle(object):
 
     def render(self):
         return tag.form(self.parent, **self.attr)
+
+
+#: patch Model to add a 'form' method
+def add_forms_on_model(cls):
+    @wraps(cls)
+    def wrapped(model, *args, **kwargs):
+        return cls(model.table, *args, **kwargs)
+    return wrapped
+
+
+setattr(Model, 'form', classmethod(add_forms_on_model(ModelForm)))

@@ -5,47 +5,52 @@
 
     Provides models for the authorization system.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
-from datetime import datetime
-from ..._compat import iterkeys
-from ...dal import Model, Field, before_insert, rowmethod
-from ...globals import current, request
+from ..._compat import iterkeys, iteritems
+from ...globals import current, request, now
+from ...orm import Model, Field, before_insert, rowmethod
 from ...security import uuid
 
 
-def _now():
-    if hasattr(current, 'request'):
-        return request.now
-    return datetime.utcnow()
-
-
 class TimestampedModel(Model):
-    created_at = Field('datetime', default=_now, rw=False)
-    updated_at = Field('datetime', default=_now, update=_now, rw=False)
+    created_at = Field('datetime', default=now, rw=False)
+    updated_at = Field('datetime', default=now, update=now, rw=False)
 
 
 class AuthModel(Model):
+    _additional_inheritable_dict_attrs_ = [
+        'form_registration_rw', 'form_profile_rw']
     auth = None
 
-    form_registration_rw = {}
-    form_profile_rw = {}
+    @classmethod
+    def _init_inheritable_dicts_(cls):
+        for attr in cls._additional_inheritable_dict_attrs_:
+            if isinstance(attr, tuple):
+                attr_name, default = attr
+            else:
+                attr_name, default = attr, {}
+            if not isinstance(default, dict):
+                raise SyntaxError(
+                    "{} is not a dictionary".format(attr_name))
+            setattr(cls, attr_name, default)
 
     def __super_method(self, name):
         return getattr(super(AuthModel, self), '_Model__' + name)
 
     def _define_(self):
+        self.__hide_all()
+        self.__super_method('define_indexes')()
         self.__super_method('define_validation')()
+        self.__super_method('define_access')()
         self.__super_method('define_defaults')()
         self.__super_method('define_updates')()
         self.__super_method('define_representation')()
         self.__super_method('define_computations')()
         self.__super_method('define_callbacks')()
         self.__super_method('define_scopes')()
-        self.__super_method('define_indexes')()
-        self.__hide_all()
         self.__super_method('define_form_utils')
         self.__define_authform_utils()
         self.setup()
@@ -60,43 +65,32 @@ class AuthModel(Model):
                 self.table[field].writable = self.table[field].readable = \
                     False
 
-    def __base_visibility(self, form_type):
-        exclude = []
-        if form_type == 'profile_fields':
-            exclude.append('password')
-            exclude.append('email')
-        return [
-            field.name for field in self.table if
-            field.writable and field.name not in exclude]
+    def __base_visibility(self):
+        rv = {}
+        for field in self.table:
+            rv[field.name] = field.readable, field.writable
+        return rv
 
     def __define_authform_utils(self):
-        settings_map = {
-            'register_fields': 'form_registration_rw',
-            'profile_fields': 'form_profile_rw'
-        }
-        for setting, attr in settings_map.items():
-            rwdata = self.auth.settings[setting] or \
-                self.__base_visibility(setting)
-            if not isinstance(rwdata, dict):
-                rwdata = {'writable': list(rwdata), 'readable': list(rwdata)}
-            for field, value in getattr(self, attr).items():
+        settings = {
+            'form_registration_rw': {'writable': [], 'readable': []},
+            'form_profile_rw': {'writable': [], 'readable': []}}
+        for config_dict in iterkeys(settings):
+            rw_data = self.__base_visibility()
+            rw_data.update(**self.fields_rw)
+            rw_data.update(**getattr(self, config_dict))
+            for key, value in iteritems(rw_data):
                 if isinstance(value, (tuple, list)):
                     readable, writable = value
                 else:
                     readable = writable = value
                 if readable:
-                    rwdata['readable'].append(field)
-                else:
-                    if field in rwdata['readable']:
-                        rwdata['readable'].remove(field)
+                    settings[config_dict]['readable'].append(key)
                 if writable:
-                    rwdata['writable'].append(field)
-                else:
-                    if field in rwdata['writable']:
-                        rwdata['writable'].remove(field)
-            for key in iterkeys(rwdata):
-                rwdata[key] = list(set(rwdata[key]))
-            self.auth.settings[setting] = rwdata
+                    settings[config_dict]['writable'].append(key)
+        setattr(self, '_merged_form_rw_', {
+            'registration': settings['form_registration_rw'],
+            'profile': settings['form_profile_rw']})
 
 
 class AuthUserBasic(AuthModel, TimestampedModel):
@@ -104,10 +98,10 @@ class AuthUserBasic(AuthModel, TimestampedModel):
     format = '%(email)s (%(id)s)'
     #: injected by Auth
     #  has_many(
-    #      {'memberships': 'AuthMembership'},
-    #      {'authevents': 'AuthEvent'},
-    #      {'authgroups': {'via': 'memberships'}},
-    #      {'permissions': {'via': 'authgroups'}},
+    #      {'auth_memberships': 'AuthMembership'},
+    #      {'auth_events': 'AuthEvent'},
+    #      {'auth_groups': {'via': 'auth_memberships'}},
+    #      {'auth_permissions': {'via': 'auth_groups'}},
     #  )
 
     email = Field(length=255, unique=True)
@@ -121,11 +115,18 @@ class AuthUserBasic(AuthModel, TimestampedModel):
         'password': 'Password'
     }
 
+    form_profile_rw = {
+        'email': (True, False),
+        'password': False
+    }
+
     @before_insert
     def set_registration_key(self, fields):
-        if self.auth.settings.registration_requires_verification and not \
+        if self.auth.config.registration_verification and not \
                 fields.get('registration_key'):
             fields['registration_key'] = uuid()
+        elif self.auth.config.registration_approval:
+            fields['registration_key'] = 'pending'
 
     @rowmethod('disable')
     def _set_disabled(self, row):
@@ -156,8 +157,8 @@ class AuthGroup(TimestampedModel):
     format = '%(role)s (%(id)s)'
     #: injected by Auth
     #  has_many(
-    #      {'memberships': 'AuthMembership'},
-    #      {'permissions': 'AuthPermission'},
+    #      {'auth_memberships': 'AuthMembership'},
+    #      {'auth_permissions': 'AuthPermission'},
     #      {'users': {'via': 'memberships'}}
     #  )
 
@@ -172,13 +173,13 @@ class AuthGroup(TimestampedModel):
 
 class AuthMembership(TimestampedModel):
     #: injected by Auth
-    #  belongs_to({'user': 'AuthUser'}, {'authgroup': 'AuthGroup'})
+    #  belongs_to({'user': 'AuthUser'}, {'auth_group': 'AuthGroup'})
     pass
 
 
 class AuthPermission(TimestampedModel):
     #: injected by Auth
-    #  belongs_to({'authgroup': 'AuthGroup'})
+    #  belongs_to({'auth_group': 'AuthGroup'})
 
     name = Field(length=512, default='default', notnull=True)
     table_name = Field(length=512)
@@ -216,15 +217,3 @@ class AuthEvent(TimestampedModel):
         'origin': 'Origin',
         'description': 'Description'
     }
-
-
-"""
-class AuthUserSigned(AuthUser):
-    is_active = Field('bool', default=True, rw=False)
-    created_on = Field('datetime', default=lambda: datetime.utcnow(), rw=False)
-    created_by = Field('reference auth_user', default=auth.user_id, rw=False)
-    modified_on = Field('datetime', default=lambda: datetime.utcnow(),
-                        update=lambda: datetime.utcnow(), rw=False),
-    modified_by = Field('reference auth_user', default=auth.user_id,
-                        update=auth.user_id, rw=False)
-"""

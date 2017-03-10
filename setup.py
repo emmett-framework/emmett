@@ -1,6 +1,5 @@
 """
 weppy is a full-stack python web framework designed with simplicity in mind.
-It takes some components from *web2py* and has a syntax inspired to *Flask*.
 
 
 Links
@@ -32,21 +31,26 @@ setup(
     description='The web framework for humans',
     long_description=__doc__,
     packages=[
-        'weppy', 'weppy.dal', 'weppy.dal.migrations', 'weppy.language',
-        'weppy.language.plurals', 'weppy.templating', 'weppy.testing',
-        'weppy.tools', 'weppy.tools.auth', 'weppy.validators', 'weppy.libs'],
+        'weppy',
+        'weppy.language', 'weppy.language.plurals',
+        'weppy.orm', 'weppy.orm.migrations',
+        'weppy.templating',
+        'weppy.testing',
+        'weppy.tools', 'weppy.tools.auth',
+        'weppy.validators',
+        'weppy.libs'],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
     install_requires=[
         'click>=0.6',
+        'pendulum>=1.0.0',
         'pyaes',
-        'pyDAL==16.9',
-        'pyyaml',
-        'udatetime~=0.0.9'
+        'pyDAL==17.3',
+        'pyyaml'
     ],
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',

@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-    weppy.dal.migrations.commands
+    weppy.orm.migrations.commands
     -----------------------------
 
     Provides command interfaces for migrations.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 from ...utils import cachedprop
 from ...datastructures import sdict
-from ..base import DAL
+from ..base import Database
 from .base import Schema
 from .helpers import make_migration_id, to_tuple
 from .operations import MigrationOp, UpgradeOps, DowngradeOps
@@ -26,7 +26,7 @@ class Command(object):
 
     def load_schema(self, db):
         schema_db_config = sdict(uri=db.config.uri)
-        self.schema_db = DAL(
+        self.schema_db = Database(
             self.app, schema_db_config, migrate=False, migrate_enabled=False)
         self.schema_db.define_models(Schema)
         self._ensure_schema_table_()

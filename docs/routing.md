@@ -8,12 +8,14 @@ using the `route` decorator on your functions.
 Exposing functions
 ------------------
 
+*Changed in 1.0*
+
 The `route` method of the `App` object accepts several parameters,
 as you can see from the source code:
 
 ```python
 def route(
-    self, path=None, name=None, template=None, handlers=None, helpers=None,
+    self, path=None, name=None, template=None, pipeline=None, injectors=None,
     schemes=None, hostname=None, methods=None, prefix=None, 
     template_folder=None, template_path=None):
 ```
@@ -48,7 +50,6 @@ def user(username):
 
 @app.route('/double/<int:number>')
 def double(number):
-    number = int(number)
     return "%d * 2 = %d" % (number, number*2)
 ```
 
@@ -58,6 +59,7 @@ you can use:
 | type | specification |
 |---|---|
 | int | accepts integers |
+| float | accepts floats in dot notation |
 | str | accepts strings |
 | date | accepts date strings in format *YYYY-MM-DD* |
 | alpha | accepts strings containing only literals |
@@ -66,6 +68,8 @@ you can use:
 So, basically, if we try to open the URL for the `double` function of the last
 example with a string, like '/double/foo', it won't match and weppy will 
 return a 404 error.
+
+> **Note:** the *int*, *float* and *date* variables are casted to the relevant objects, so the parameters passed to your function will be of tipe `int`, `float` and `Pendulum`.
 
 Sometimes you also need your variable rules to be conditional, and accept
 requests on the same function with, for example, */profile/123432* and */profile*. 
@@ -86,6 +90,7 @@ your function's parameters will be `None`.
 Now, it's time to see the `methods` parameter of `route()`
 
 ### Methods
+
 HTTP knows different methods for accessing URLs. By default, a weppy route only
 answers to GET and POST requests, but that can be changed easily. Use a list if
 you want to accept more than one kind of list:
@@ -101,6 +106,7 @@ def g():
 ```
 
 ### Template
+
 The `template` parameter allows you to set a specific template for the function 
 you're exposing. By default, weppy searches for a template with the same 
 name as the function:
@@ -119,18 +125,15 @@ folder. When you need to use a different template name, just tell weppy to load 
 ```
 
 ### Other parameters
-weppy provides the *Handler* class to perform operations during requests. The
-`handlers` and `helpers` parameters of `route()` allows you to bind them on the
-exposed function.
+
+weppy provides the *Pipe* class to perform operations during requests. The `pipeline` and `injectors` parameters of `route()` allows you to bind them on the exposed function.
 
 Similar to the `methods` parameter, `schemes` allows you to tell weppy
 on which HTTP schemes the function should answer. By default, both *HTTP* and
 *HTTPS* methods are allowed. If you need to bind the exposed function to
 a specific host, you can use the `hostname` parameter.
 
-The `prefix`, `template_path`, and `template_folder` parameters are specific to
-[AppModules](./app_and_modules#application-modules), and there's no specific
-need to use them directly in the `app.route()` function.
+The `prefix`, `template_path`, and `template_folder` parameters are specific to [application modules](./app_and_modules#application-modules), and there's no specific need to use them directly in the `app.route()` function.
 
 The url() function
 ------------------
@@ -172,6 +175,19 @@ The above URLs `a`, `b`, `c` and `d` will be respectively converted to:
 
 Basically, you just need to call `url()` with the name of your function, 
 and the arguments needed by the function.
+
+Here is the complete list of `url` accepted parameters:
+
+| parameter | description |
+| --- | --- |
+| path | name of the route or absolute path |
+| args | list of route variables (single string argument accepted) |
+| params | dictionary of query parameters |
+| anchor | anchor(s) for the url |
+| sign | a callable method that should produce a signature for the url |
+| scheme | scheme for the url (can be http or https) |
+| host | host for the url |
+| language | specify a language of the application to localize the url |
 
 ### URLs with application modules
 As we seen in the [Application modules](./app_and_modules#application-modules)
@@ -221,7 +237,7 @@ and not the old cached ones. weppy solves the problem for you,
 allowing you to configure your application with a `static_version`:
 
 ```python
-app.config.static\_version\_urls = True
+app.config.static_version_urls = True
 app.config.static_version = "1.0.0"
 ```
 
@@ -229,3 +245,33 @@ then a call to `url('static', 'myfile.js')` will produce the URL
 */static/1.0.0/myfile.js* automatically. When you release a new version 
 of your application with changed static files, you just need to update 
 the `static_version` string.
+
+
+Multiple paths
+--------------
+
+*New in version 1.0*
+
+Sometimes you might need to route several paths to the same exposed method. Whenever you need this, you can specify a list of paths for the involved route.
+
+Let's say, for example, you need to route a method that expose the comments of your blog, and you want to use the same method both in case the client needs all the comments, or just the ones referred to a specific post. Then you can write:
+
+```python
+@app.route(['/comments', '/post/<int:pid>/comments'])
+def comments(pid=None):
+    if pid:
+        # code to fetch the post comments
+    else:
+        # code to fetch all the comments
+```
+
+> **Note:** mind that both the paths will have the same routing pipeline.
+
+Under the default behavior, weppy will use the first path for building urls, while the other ones are accessible with a dot notation and the array position. For instance, for the example route we just defined above, you can build these urls:
+
+```python
+>>> url('comments')
+/comments
+>>> url('comments.1', 12)
+/post/12/comments
+```

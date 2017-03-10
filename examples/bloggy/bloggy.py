@@ -1,11 +1,16 @@
-from weppy import App, request, session, url, redirect, abort
-from weppy.dal import DAL, Field, Model, belongs_to, has_many
+# -*- coding: utf-8 -*-
+
+from weppy import App, session, now, url, redirect, abort
+from weppy.orm import Database, Model, Field, belongs_to, has_many
 from weppy.tools import requires
 from weppy.tools.auth import Auth, AuthUser
 from weppy.sessions import SessionCookieManager
 
 
 app = App(__name__)
+app.config.auth.single_template = True
+app.config.auth.registration_validation = False
+app.config.auth.hmac_key = "MassiveDynamicRules"
 
 
 #: define models
@@ -24,13 +29,13 @@ class Post(Model):
 
     default_values = {
         'user': lambda: session.auth.user.id,
-        'date': lambda: request.now
+        'date': now
     }
     validation = {
         'title': {'presence': True},
         'text': {'presence': True}
     }
-    form_rw = {
+    fields_rw = {
         'user': False,
         'date': False
     }
@@ -44,20 +49,21 @@ class Comment(Model):
 
     default_values = {
         'user': lambda: session.auth.user.id,
-        'date': lambda: request.now
+        'date': now
     }
     validation = {
         'text': {'presence': True}
     }
-    form_rw = {
+    fields_rw = {
         'user': False,
         'post': False,
         'date': False
     }
 
+
 #: init db and auth
-db = DAL(app)
-auth = Auth(app, db, usermodel=User)
+db = Database(app, auto_migrate=True)
+auth = Auth(app, db, user_model=User)
 db.define_models(Post, Comment)
 
 
@@ -71,7 +77,7 @@ def setup_admin():
         password="pocketuniverse"
     )
     # create an admin group
-    admins = auth.add_group("admin")
+    admins = auth.create_group("admin")
     # add user to admins group
     auth.add_membership(admins, user.id)
     db.commit()
@@ -81,10 +87,10 @@ def setup_admin():
 def setup():
     setup_admin()
 
-#: handlers
-app.common_handlers = [
-    SessionCookieManager('Walternate'),
-    db.handler, auth.handler
+
+#: pipeline
+app.pipeline = [
+    SessionCookieManager('Walternate'), db.pipe, auth.pipe
 ]
 
 
@@ -121,7 +127,4 @@ def new_post():
     return dict(form=form)
 
 
-@app.route('/account(/<str:f>)?(/<str:k>)?')
-def account(f, k):
-    form = auth(f, k)
-    return dict(form=form)
+auth_routes = auth.module(__name__)

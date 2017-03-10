@@ -5,11 +5,12 @@
 
     Provides the HTTP interface for weppy.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 from ._compat import text_type, to_bytes
+from .globals import current
 
 
 class HTTP(Exception):
@@ -89,7 +90,6 @@ class HTTP(Exception):
 
     @staticmethod
     def redirect(location, status_code=303):
-        from .globals import current
         current.response.status = status_code
         location = location.replace('\r', '%0D').replace('\n', '%0A')
         raise HTTP(status_code, headers=dict(Location=location))

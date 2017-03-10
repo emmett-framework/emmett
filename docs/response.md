@@ -103,7 +103,7 @@ then, in your template, you can access the flashed messages using `response`:
 
 ```html
 <div class="container">
-    {{for flash in response.alerts():}}
+    {{for flash in current.response.alerts():}}
     <div class="myflashstyle">{{=flash}}</div>
     {{pass}}
 </div>

@@ -22,19 +22,16 @@ The output will be automatically converted using the required service
 
 > – awesome. But, what if I need to expose several function with a service?
 Should I decorate every function?   
-> – *you can use the provided handler, dude*
+> – *you can use the provided pipe, dude*
 
-weppy also provides a `ServiceHandler` object so you can create an `AppModule`
-with all the functions you want to expose with a specific service and add the
-handler to the module:
+weppy also provides a `ServicePipe` object so you can create an application module with all the functions you want to expose with a specific service and add the pipe to the module:
 
 ```python
-from weppy import AppModule
-from weppy.tools import ServiceHandler
+from weppy.tools import ServicePipe
 from myapp import app
 
-api = AppModule(app, 'api', __name__)
-api.common_handlers = [ServiceHandler('json')]
+api = app.module(__name__, 'api')
+api.pipeline = [ServicePipe('json')]
 
 @api.route()
 def a():
@@ -83,13 +80,31 @@ instead:
 @service.xml
 ```
 
-Obviously, the syntax for using `ServiceHandler` is the same as in the 
+Obviously, the syntax for using `ServicePipe` is the same as in the 
 first example:
 
 ```python
-# providing a JSON service handler
-ServiceHandler('json')
+# providing a JSON service pipe
+ServicePipe('json')
 
-# providing an XML service handler
-ServiceHandler('xml')
+# providing an XML service pipe
+ServicePipe('xml')
 ```
+
+Multiple services
+-----------------
+
+Sometimes you may want to expose several services for a single endpoint, for example a list of items both in JSON and XML format.
+
+You can easily achieve this decorating your route multiple times, using different pipelines:
+
+```python
+from weppy.tools import ServicePipe
+
+@app.route('/elements.json', pipeline=[ServicePipe('json')])
+@app.route('/elements.xml', pipeline=[ServicePipe('xml')])
+def elements():
+    return [{"foo": "bar"}, {"bar": "foo"}]
+```
+
+With this notation, you can serve different services using the same exposed method.

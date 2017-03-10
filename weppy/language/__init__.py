@@ -4,7 +4,7 @@
 
     Provides the languages translator system.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -20,6 +20,7 @@ class Instance(object):
 
     def T(self, *args, **kwargs):
         return self._t(*args, **kwargs)
+
 
 # We use a 'proxied' object to the translator to avoid errors
 # when user calls T() outside the request flow.

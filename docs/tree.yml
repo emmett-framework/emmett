@@ -23,6 +23,7 @@
 - validations
 - forms
 - auth
+- mailer
 - caching
 - services
 - testing
