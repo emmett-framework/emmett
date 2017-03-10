@@ -258,7 +258,7 @@ class Expose(with_metaclass(MetaExpose)):
         request = current.request
         route, reqargs = cls.match(request)
         if not route:
-            raise HTTP(404, body="Invalid action\n")
+            raise HTTP(404, body="Resource not found\n")
         request.name = route.name
         cls._before_dispatch(route)
         try:
@@ -432,8 +432,8 @@ class ResponsePipe(Pipe):
             try:
                 output = Expose.application.templater.render(
                     self.route.template_path, self.route.template, output)
-            except TemplateMissingError:
-                raise HTTP(404, body="Invalid view\n")
+            except TemplateMissingError as exc:
+                raise HTTP(404, body="{}\n".format(exc.message))
             response.output = output
         elif isinstance(output, text_type) or hasattr(output, '__iter__'):
             response.output = output
