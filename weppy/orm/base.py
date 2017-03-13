@@ -10,6 +10,7 @@
 """
 
 import os
+import threading
 from contextlib import contextmanager
 from functools import wraps
 from pydal import DAL as _pyDAL
@@ -53,6 +54,8 @@ class Database(_pyDAL):
 
     Rows = Rows
     Row = Row
+
+    _cls_global_lock_ = threading.RLock()
 
     @staticmethod
     def uri_from_config(config=None):
@@ -104,8 +107,10 @@ class Database(_pyDAL):
         #: set directory
         folder = folder or 'databases'
         folder = os.path.join(app.root_path, folder)
-        if not os.path.exists(folder):
-            os.mkdir(folder)
+        if self._auto_migrate:
+            with self._cls_global_lock_:
+                if not os.path.exists(folder):
+                    os.mkdir(folder)
         #: set pool_size
         pool_size = self.config.pool_size or pool_size or 0
         #: add timings storage if requested
