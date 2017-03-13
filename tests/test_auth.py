@@ -183,6 +183,10 @@ def test_password_change(db, client):
                     assert 'Password changed successfully' in req.data
                     assert 'William' in req.data
                     assert 'Save' in req.data
+    with db.connection():
+        assert (
+            db.users(email='william@massivedynamics.com').password ==
+            db.users.password.requires[-1]('imthebigceo')[0])
 
 
 def test_password_retrieval(mailer, db, client):
@@ -221,3 +225,7 @@ def test_password_retrieval(mailer, db, client):
             ) as req2:
                 assert 'Password changed successfully' in req2.data
                 assert 'Sign in' in req2.data
+    with db.connection():
+        assert (
+            db.users(email='william@massivedynamics.com').password ==
+            db.users.password.requires[-1]('imtheceo')[0])
