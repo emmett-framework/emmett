@@ -400,7 +400,9 @@ class Model(with_metaclass(MetaModel)):
 
     def _build_rowclass_(self):
         clsname = self.__class__.__name__ + "Row"
-        attrs = {k: cachedprop(v) for k, v in iteritems(self._all_rowattrs_)}
+        attrs = {
+            k: cachedprop(v, name=k) for k, v in iteritems(self._all_rowattrs_)
+        }
         attrs.update(self._all_rowmethods_)
         self._rowclass_ = type(clsname, (Row,), attrs)
         globals()[clsname] = self._rowclass_

@@ -309,7 +309,7 @@ class AuthModule(AppModule):
         rv['form'] = self.ext.forms.password_change(
             onvalidation=_validate_form)
         if rv['form'].accepted:
-            row.update(password=str(rv['form'].params.new_password))
+            row.update_record(password=str(rv['form'].params.new_password))
             rv['message'] = self.config.messages['password_changed']
             self.flash(rv['message'])
             self.ext.log_event(

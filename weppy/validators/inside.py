@@ -174,19 +174,18 @@ class inDB(DBValidator):
         return None
 
     def _get_rows(self):
-        rv = self.dbset.select(orderby=self.sorting).as_list()
-        return rv
+        return self.dbset.select(orderby=self.sorting)
 
     def options(self, zero=True):
         records = self._get_rows()
         if self.label_field:
-            items = [(r['id'], str(r[self.label_field]))
-                     for (i, r) in enumerate(records)]
+            items = [(r.id, str(r[self.label_field]))
+                     for r in records]
         elif self.db[self.tablename]._format:
-            items = [(r['id'], self.db[self.tablename]._format % r)
-                     for (i, r) in enumerate(records)]
+            items = [(r.id, self.db[self.tablename]._format % r)
+                     for r in records]
         else:
-            items = [(r['id'], r['id']) for (i, r) in enumerate(records)]
+            items = [(r.id, r.id) for r in records]
         #if self.sort:
         #    items.sort(options_sorter)
         #if zero and self.zero is not None and not self.multiple:
@@ -195,12 +194,11 @@ class inDB(DBValidator):
 
     def __call__(self, value):
         if self.multiple:
-            if isinstance(value, list):
-                values = value
-            else:
-                values = [value]
-            records = [i[0] for i in self._get_rows()]
-            if not [v for v in values if v not in records]:
+            values = value if isinstance(value, list) else [value]
+            records = self.dbset.where(
+                self.fields.belongs(values)
+            ).select(self.field, distinct=True).column(self.field)
+            if set(values).issubset(set(records)):
                 return values, None
         else:
             if self.dbset.where(self.field == value).count():

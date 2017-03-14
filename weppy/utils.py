@@ -18,10 +18,10 @@ from .datastructures import sdict
 
 class cachedprop(object):
     #: a read-only @property that is only evaluated once.
-    def __init__(self, fget, doc=None):
+    def __init__(self, fget, doc=None, name=None):
         self.fget = fget
         self.__doc__ = doc or fget.__doc__
-        self.__name__ = fget.__name__
+        self.__name__ = name or fget.__name__
 
     def __get__(self, obj, cls):
         if obj is None:
