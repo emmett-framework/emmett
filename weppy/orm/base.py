@@ -100,6 +100,8 @@ class Database(_pyDAL):
             kwargs.get('adapter_args', None)
         if 'auto_migrate' in kwargs:
             del kwargs['auto_migrate']
+        if 'auto_connect' in kwargs:
+            del kwargs['auto_connect']
         if self._auto_connect is not None:
             kwargs['do_connect'] = self._auto_connect
         else:
