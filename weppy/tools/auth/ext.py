@@ -71,6 +71,7 @@ class AuthExtension(Extension):
         'login_button': 'Sign in',
         'registration_button': 'Register',
         'profile_button': 'Save',
+        'remember_button': 'Remember me',
         'password_retrieval_button': 'Retrieve password',
         'password_reset_button': 'Reset password',
         'password_change_button': 'Change password',
