@@ -594,7 +594,6 @@ class JoinSet(JoinableSet):
         rowmap = OrderedDict()
         inclusions = defaultdict(
             lambda: {jname: OrderedDict() for jname, jtable in many_joins})
-        inclusions = {}
         for row in rows:
             rid = row[self._stable_].id
             rowmap[rid] = rowmap.get(rid, row[self._stable_])

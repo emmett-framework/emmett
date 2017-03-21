@@ -11,7 +11,6 @@
 
 from ..._compat import iterkeys
 from ...forms import Form, ModelForm
-from ...language import T
 from ...orm import Field
 
 
@@ -40,13 +39,19 @@ class AuthForms(object):
 
 
 def login_fields(auth):
-    password_validation = auth.ext.config.models['user'].password._requires
+    model = auth.models['user']
     rv = {
-        'email': Field(validation={'is': 'email', 'presence': True}),
-        'password': Field('password', validation=password_validation)
+        'email': Field(
+            validation={'is': 'email', 'presence': True},
+            label=model.email.label),
+        'password': Field(
+            'password', validation=model.password._requires,
+            label=model.password.label)
     }
     if auth.ext.config.remember_option:
-        rv['remember'] = Field('bool', default=True, label=T('Remember me'))
+        rv['remember'] = Field(
+            'bool', default=True,
+            label=auth.ext.config.messages['remember_button'])
     return rv
 
 
