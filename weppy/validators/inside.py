@@ -106,7 +106,8 @@ class inSet(Validator):
         else:
             values = [value]
         failures = [
-            x for x in values if to_native(to_unicode(x)) not in self.theset]
+            x for x in values
+            if to_native(to_unicode(x or '')) not in self.theset]
         if failures and self.theset:
             if self.multiple and (value is None or value == ''):
                 return ([], None)
