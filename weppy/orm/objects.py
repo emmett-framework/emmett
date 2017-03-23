@@ -10,6 +10,7 @@
 """
 
 import copy
+import datetime
 import decimal
 import types
 from collections import OrderedDict, defaultdict
@@ -17,7 +18,8 @@ from pydal.objects import (
     Table as _Table, Field as _Field, Set as _Set,
     Row as _Row, Rows as _Rows, IterRows as _IterRows, Query, Expression)
 from .._compat import (
-    string_types, integer_types, implements_iterator, iterkeys, iteritems)
+    string_types, integer_types, implements_iterator, implements_to_string,
+    iterkeys, iteritems, to_unicode)
 from ..datastructures import sdict
 from ..globals import current
 from ..html import tag
@@ -653,24 +655,24 @@ class LeftJoinSet(JoinableSet):
             rowmap, inclusions, jtables, rows.colnames)
 
 
+@implements_to_string
 class Row(_Row):
     _as_dict_types_ = tuple(
-        [float, bool, list, dict] + list(string_types) + list(integer_types))
+        [type(None)] + list(integer_types) + [float, bool, list, dict] +
+        list(string_types) + [datetime.datetime, datetime.date, datetime.time])
 
     def as_dict(self, datetime_to_str=False, custom_types=None):
-        rv = dict(self)
-        for key in list(rv):
-            val = rv[key]
-            if val is None:
-                continue
-            elif isinstance(val, Row):
-                rv[key] = val.as_dict()
+        rv = {}
+        for key, val in self.iteritems():
+            if isinstance(val, Row):
+                val = val.as_dict()
             elif isinstance(val, _IDReference):
-                rv[key] = integer_types[-1](val)
+                val = integer_types[-1](val)
             elif isinstance(val, decimal.Decimal):
-                rv[key] = float(val)
+                val = float(val)
             elif not isinstance(val, self._as_dict_types_):
-                del rv[key]
+                continue
+            rv[key] = val
         return rv
 
     def __getstate__(self):
@@ -682,7 +684,14 @@ class Row(_Row):
     def __xml__(self, key=None, quote=True):
         return xml_encode(self.as_dict(), key or 'row', quote)
 
+    def __str__(self):
+        return u'<Row %s>' % to_unicode(self.as_dict())
 
+    def __repr__(self):
+        return str(self)
+
+
+@implements_to_string
 class Rows(_Rows):
     def __init__(
         self, db=None, records=[], colnames=[], compact=True, rawrows=None
@@ -739,12 +748,26 @@ class Rows(_Rows):
     def render(self, *args, **kwargs):
         raise NotImplementedError
 
+    def as_list(self, datetime_to_str=False, custom_types=None):
+        return [item.as_dict(datetime_to_str, custom_types) for item in self]
+
+    def as_dict(self, key='id', datetime_to_str=False, custom_types=None):
+        if '.' in key:
+            splitted_key = key.split('.')
+            keyf = lambda row: row[splitted_key[0]][splitted_key[1]]
+        else:
+            keyf = lambda row: row[key]
+        return {keyf(item): item for item in self.as_list()}
+
     def __json__(self):
         return [item.__json__() for item in self]
 
     def __xml__(self, key=None, quote=True):
         key = key or 'rows'
         return tag[key](*[item.__xml__(quote=quote) for item in self])
+
+    def __str__(self):
+        return to_unicode(self.records)
 
 
 @implements_iterator

@@ -211,8 +211,10 @@ class isEmail(_is):
 
     def check(self, value):
         domain = value.split('@')[1]
-        if (not self.banned or not self.banned.match(domain)) \
-                and (not self.forced or self.forced.match(domain)):
+        if (
+            (not self.banned or not self.banned.match(domain)) and
+            (not self.forced or self.forced.match(domain))
+        ):
             return value, None
         return value, translate(self.message)
 

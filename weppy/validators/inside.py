@@ -13,7 +13,7 @@
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
-from .._compat import integer_types
+from .._compat import integer_types, to_native, to_unicode
 from ..utils import cachedprop
 from .basic import Validator
 from .helpers import options_sorter, translate
@@ -105,7 +105,9 @@ class inSet(Validator):
                 values = [value]
         else:
             values = [value]
-        failures = [x for x in values if str(x) not in self.theset]
+        failures = [
+            x for x in values
+            if (to_native(to_unicode(x)) or '') not in self.theset]
         if failures and self.theset:
             if self.multiple and (value is None or value == ''):
                 return ([], None)

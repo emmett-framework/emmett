@@ -27,7 +27,7 @@ class Cleanup(Validator):
         self.regex = self.rule if regex is None else re.compile(regex)
 
     def __call__(self, value):
-        v = self.regex.sub('', str(value).strip())
+        v = self.regex.sub('', (to_native(to_unicode(value)) or '').strip())
         return v, None
 
 
