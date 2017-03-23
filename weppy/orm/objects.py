@@ -658,7 +658,7 @@ class LeftJoinSet(JoinableSet):
 @implements_to_string
 class Row(_Row):
     _as_dict_types_ = tuple(
-        [types.NoneType] + list(integer_types) + [float, bool, list, dict] +
+        [type(None)] + list(integer_types) + [float, bool, list, dict] +
         list(string_types) + [datetime.datetime, datetime.date, datetime.time])
 
     def as_dict(self, datetime_to_str=False, custom_types=None):
