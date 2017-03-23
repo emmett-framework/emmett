@@ -168,7 +168,7 @@ We've defined our schema, so now it's time to add the database and the authoriza
 
 ```python
 app.config.auth.single_template = True
-app.config.auth.registration_validation = False
+app.config.auth.registration_verification = False
 app.config.auth.hmac_key = "MassiveDynamicRules"
 ```
 
