@@ -57,7 +57,7 @@ class _is(Validator):
         if (
             self.rule is None or (
                 self.rule is not None and
-                self.rule.match(to_native(to_unicode(value or ''))))
+                self.rule.match(to_native(to_unicode(value)) or ''))
         ):
             return self.check(value)
         return value, translate(self.message)
@@ -203,7 +203,7 @@ class Matches(Validator):
         #if self.is_unicode and not isinstance(value, unicode):
         #    match = self.regex.search(str(value).decode('utf8'))
         #else:
-        match = self.regex.search(to_native(to_unicode(value or '')))
+        match = self.regex.search(to_native(to_unicode(value)) or '')
         if match is not None:
             return self.extract and match.group() or value, None
         return value, translate(self.message)
