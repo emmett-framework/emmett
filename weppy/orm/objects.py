@@ -10,6 +10,7 @@
 """
 
 import copy
+import datetime
 import decimal
 import types
 from collections import OrderedDict, defaultdict
@@ -657,21 +658,21 @@ class LeftJoinSet(JoinableSet):
 @implements_to_string
 class Row(_Row):
     _as_dict_types_ = tuple(
-        [float, bool, list, dict] + list(string_types) + list(integer_types))
+        [types.NoneType] + list(integer_types) + [float, bool, list, dict] +
+        list(string_types) + [datetime.datetime, datetime.date, datetime.time])
 
     def as_dict(self, datetime_to_str=False, custom_types=None):
         rv = {}
         for key, val in self.iteritems():
-            if val is None:
-                rv[key] = val
-            elif isinstance(val, Row):
-                rv[key] = val.as_dict()
+            if isinstance(val, Row):
+                val = val.as_dict()
             elif isinstance(val, _IDReference):
-                rv[key] = integer_types[-1](val)
+                val = integer_types[-1](val)
             elif isinstance(val, decimal.Decimal):
-                rv[key] = float(val)
-            elif isinstance(val, self._as_dict_types_):
-                rv[key] = val
+                val = float(val)
+            elif not isinstance(val, self._as_dict_types_):
+                continue
+            rv[key] = val
         return rv
 
     def __getstate__(self):
