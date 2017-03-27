@@ -179,7 +179,7 @@ class AuthExtension(Extension):
         for model in itervalues(self.default_config['models']):
             for supmodel in list(reversed(model.__mro__))[1:]:
                 if not supmodel.__module__.startswith(
-                    'weppy.tools.auth2.models'
+                    'weppy.tools.auth.models'
                 ):
                     continue
                 if not hasattr(supmodel, 'form_labels'):
