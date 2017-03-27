@@ -152,7 +152,7 @@ from weppy import App
 from weppy.orm import Database
 
 app = App(__name__)
-app.url_default_namespace = "main"
+app.config.url_default_namespace = "main"
 
 db = Database()
 
