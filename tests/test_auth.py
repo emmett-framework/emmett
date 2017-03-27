@@ -114,9 +114,9 @@ def test_models(db):
 
 def test_registration(mailer, db, client):
     page = client.get('/auth/registration').data
-    assert 'Email' in page
-    assert 'First Name' in page
-    assert 'Last Name' in page
+    assert 'E-mail' in page
+    assert 'First name' in page
+    assert 'Last name' in page
     assert 'Password' in page
     assert 'Confirm password' in page
     assert 'Register' in page
@@ -148,7 +148,7 @@ def test_registration(mailer, db, client):
 
 def test_login(db, client):
     page = client.get('/auth/login').data
-    assert 'Email' in page
+    assert 'E-mail' in page
     assert 'Password' in page
     assert 'Sign in' in page
     with client.get('/auth/login').context as ctx:
