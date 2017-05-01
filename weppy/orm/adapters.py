@@ -156,6 +156,6 @@ def _create_table_firebird(dialect, tablename, fields):
     rv.extend([
         'create generator %s;' % sequence_name,
         'set generator %s to 0;' % sequence_name,
-        trigger_sql % (trigger_name, tablename, sequence_name)
+        trigger_sql % (trigger_name, dialect.quote(tablename), sequence_name)
     ])
     return rv
