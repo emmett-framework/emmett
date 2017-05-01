@@ -72,8 +72,9 @@ class Engine(MetaEngine):
         for key in ['primary_keys', 'id_col']:
             if kwargs.get(key) is not None:
                 params[key] = kwargs[key]
-        sql = self._new_table_sql(name, columns, **params)
-        self._log_and_exec(sql)
+        sql_list = self._new_table_sql(name, columns, **params)
+        for sql in sql_list:
+            self._log_and_exec(sql)
 
     def drop_table(self, name):
         adapt_v = sdict(_rname=self.dialect.quote(name))
@@ -118,7 +119,7 @@ class Engine(MetaEngine):
         constraint_name = self.dialect.constraint_name(tablename, column.name)
         try:
             rtablename, rfieldname = referenced.split('.')
-        except:
+        except Exception:
             rtablename = referenced
             rfieldname = 'id'
         if not rtablename:
@@ -127,25 +128,28 @@ class Engine(MetaEngine):
             csql = self.adapter.types[column.type[:9]] % \
                 dict(length=column.length)
             if column.fk:
-                fk_name = rtablename + ' (' + rfieldname + ')'
                 csql = csql + self.adapter.types['reference FK'] % dict(
-                    constraint_name=constraint_name,
-                    foreign_key=fk_name,
-                    table_name=tablename,
-                    field_name=column.name,
+                    constraint_name=self.dialect.quote(constraint_name),
+                    foreign_key='%s (%s)' % (
+                        self.dialect.quote(rtablename),
+                        self.dialect.quote(rfieldname)),
+                    table_name=self.dialect.quote(tablename),
+                    field_name=self.dialect.quote(column.name),
                     on_delete_action=column.ondelete)
             if column.tfk:
                 # TODO
                 raise NotImplementedError(
-                    'Migrating tables containing multiple columns references' +
-                    ' is currently not supported.'
+                    'Migrating tables containing multiple columns references '
+                    'is currently not supported.'
                 )
         else:
             csql_info = dict(
                 index_name=self.dialect.quote(column.name + '__idx'),
-                field_name=rfieldname,
+                field_name=self.dialect.quote(rfieldname),
                 constraint_name=self.dialect.quote(constraint_name),
-                foreign_key='%s (%s)' % (rtablename, rfieldname),
+                foreign_key='%s (%s)' % (
+                    self.dialect.quote(rtablename),
+                    self.dialect.quote(rfieldname)),
                 on_delete_action=column.ondelete)
             csql_info['null'] = ' NOT NULL' if column.notnull else \
                 self.dialect.allow_null
@@ -230,18 +234,14 @@ class Engine(MetaEngine):
         for sortable, column in enumerate(columns, start=1):
             csql = self._new_column_sql(tablename, column, tfks)
             fields.append('%s %s' % (self.dialect.quote(column.name), csql))
-        extras = ''
         # backend-specific extensions to fields
         if self.adapter.dbengine == 'mysql':
             if not primary_keys:
                 primary_keys.append(id_col)
-            engine = self.adapter.adapter_args.get('engine', 'InnoDB')
-            extras += ' ENGINE=%s CHARACTER SET utf8' % engine
 
         self._gen_primary_key(fields, primary_keys)
         fields = ',\n    '.join(fields)
-        return "CREATE TABLE %s(\n    %s\n)%s;" % (
-            self.dialect.quote(tablename), fields, extras)
+        return self.dialect.create_table(tablename, fields)
 
     def _add_column_sql(self, tablename, column):
         csql = self._new_column_sql(tablename, column, {})

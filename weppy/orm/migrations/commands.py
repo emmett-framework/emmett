@@ -12,7 +12,7 @@
 from ...utils import cachedprop
 from ...datastructures import sdict
 from ..base import Database
-from .base import Schema
+from .base import Schema, Column
 from .helpers import make_migration_id, to_tuple
 from .operations import MigrationOp, UpgradeOps, DowngradeOps
 from .scripts import ScriptDir
@@ -37,13 +37,24 @@ class Command(object):
         # TODO -> has_table method in adapter, I don't like this "dirtness"
         try:
             self.schema_db(self.schema_db.Schema.id > 0).count()
-        except:
+        except Exception:
             self.schema_db.rollback()
-            q = self.schema_db._adapter.create_table(
-                self.schema_db.Schema, migrate=False
-            )
-            self.schema_db._adapter.execute(q)
+            from .engine import Engine
+            from .operations import CreateTableOp
+            op = CreateTableOp.from_table(self._build_schema_metatable_())
+            op.engine = Engine(self.schema_db)
+            op.run()
             self.schema_db.commit()
+
+    def _build_schema_metatable_(self):
+        from .generation import MetaTable
+        columns = []
+        for field in list(self.schema_db.Schema):
+            columns.append(Column.from_field(field))
+        return MetaTable(
+            self.schema_db.Schema._tablename,
+            columns
+        )
 
     def _load_current_revision_(self):
         revisions = self.schema_db(self.schema_db.Schema.id > 0).select()
@@ -178,7 +189,7 @@ class Command(object):
                     migration.revises, migration.revision)
                 print("> Succesfully upgraded to revision %s: %s" %
                       (revision.revision, revision.doc))
-            except:
+            except Exception:
                 self.db.rollback()
                 print("> [ERROR] failed upgrading to %s" % revision)
                 raise
@@ -199,7 +210,7 @@ class Command(object):
                     migration.revision, migration.revises)
                 print("> Succesfully downgraded from revision %s: %s" %
                       (revision.revision, revision.doc))
-            except:
+            except Exception:
                 self.db.rollback()
                 print("> [ERROR] failed downgrading from %s" % revision)
                 raise

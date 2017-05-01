@@ -200,7 +200,7 @@ def setup():
         password="pocketuniverse"
     )
     # create an admin group
-    admins = auth.add_group("admin")
+    admins = auth.create_group("admin")
     # add user to admins group
     auth.add_membership(admins, user.id)
     db.commit()

@@ -368,7 +368,7 @@ the users in your application easily. Let's say you want to add a **group** of
 administrators:
 
 ```python
-admins = auth.add_group('administrators')
+admins = auth.create_group('administrators')
 ```
 
 then you can add users to the administrators' group easily:

@@ -208,7 +208,7 @@ class WeppyGroup(click.Group):
         info = ctx.ensure_object(ScriptInfo)
         try:
             rv = rv + info.load_app().cli.list_commands(ctx)
-        except:
+        except Exception:
             pass
         return rv
 
@@ -229,7 +229,7 @@ class WeppyGroup(click.Group):
             rv = info.load_app().cli.get_command(ctx, name)
             if rv is not None:
                 return rv
-        except:
+        except Exception:
             pass
 
     def main(self, *args, **kwargs):
@@ -296,15 +296,11 @@ def set_db_value(ctx, param, value):
     ctx.ensure_object(ScriptInfo).db_var_name = value
 
 
-db_option = click.Option(
-    ['--db'],
-    help='The db instance to use',
-    callback=set_db_value, is_eager=True
-)
-
-
 @cli.group('migrations', short_help='Runs migration operations.')
-def migrations_cli():
+@click.option(
+    '--db', help='The db instance to use', callback=set_db_value,
+    is_eager=True)
+def migrations_cli(db):
     pass
 
 

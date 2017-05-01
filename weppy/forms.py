@@ -316,17 +316,8 @@ class FormStyle(object):
 
     @staticmethod
     def _field_options(field):
-        if field.represent:
-            def represent(value):
-                if value and field.represent:
-                    return field.represent(value)
-                return value
-        else:
-            represent = lambda value: value
-
         validator = FormStyle._validation_woptions(field)
-        option_items = [(k, represent(n)) for k, n in validator.options()]
-        return option_items, validator.multiple
+        return validator.options(), validator.multiple
 
     @staticmethod
     def widget_string(attr, field, value, _class='string', _id=None):
@@ -385,12 +376,13 @@ class FormStyle(object):
 
         options, multiple = FormStyle._field_options(field)
         if multiple:
-            return FormStyle.widget_multiple(attr, field, value, options,
-                                             _class=_class, _id=_id)
-        option_items = [tag.option(n, _value=k, _selected=selected(k))
-                        for k, n in options]
-        return tag.select(*option_items, _name=field.name, _class=_class,
-                          _id=_id or field.name)
+            return FormStyle.widget_multiple(
+                attr, field, value, options, _class=_class, _id=_id)
+        option_items = [
+            tag.option(n, _value=k, _selected=selected(k)) for k, n in options]
+        return tag.select(
+            *option_items, _name=field.name, _class=_class,
+            _id=_id or field.name)
 
     @staticmethod
     def widget_multiple(attr, field, values, options, _class='', _id=None):
@@ -398,10 +390,11 @@ class FormStyle(object):
             return 'selected' if str(k) in [str(v) for v in values] else None
 
         values = values or []
-        option_items = [tag.option(n, _value=k, _selected=selected(k))
-                        for k, n in options]
-        return tag.select(*option_items, _name=field.name, _class=_class,
-                          multiple='multiple', _id=_id or field.name)
+        option_items = [
+            tag.option(n, _value=k, _selected=selected(k)) for k, n in options]
+        return tag.select(
+            *option_items, _name=field.name, _class=_class,
+            _multiple='multiple', _id=_id or field.name)
 
     #: TO-DO
     #@staticmethod

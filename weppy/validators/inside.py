@@ -198,7 +198,7 @@ class inDB(DBValidator):
         if self.multiple:
             values = value if isinstance(value, list) else [value]
             records = self.dbset.where(
-                self.fields.belongs(values)
+                self.field.belongs(values)
             ).select(self.field, distinct=True).column(self.field)
             if set(values).issubset(set(records)):
                 return values, None

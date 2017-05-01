@@ -41,7 +41,7 @@ adapters._registry_.update({
 })
 
 
-def _wrap_on_adapter(f, adapter):
+def _wrap_on_obj(f, adapter):
     @wraps(f)
     def wrapped(*args, **kwargs):
         return f(adapter, *args, **kwargs)
@@ -49,10 +49,21 @@ def _wrap_on_adapter(f, adapter):
 
 
 def patch_adapter(adapter):
-    adapter.parse = _wrap_on_adapter(parse, adapter)
-    adapter._parse_expand_colnames = _wrap_on_adapter(
+    adapter.parse = _wrap_on_obj(parse, adapter)
+    adapter._parse_expand_colnames = _wrap_on_obj(
         _parse_expand_colnames, adapter)
-    adapter._parse = _wrap_on_adapter(_parse, adapter)
+    adapter._parse = _wrap_on_obj(_parse, adapter)
+    patch_dialect(adapter.dialect)
+
+
+def patch_dialect(dialect):
+    _create_table_map = {
+        'mysql': _create_table_mysql,
+        'firebird': _create_table_firebird
+    }
+    dialect.create_table = _wrap_on_obj(
+        _create_table_map.get(dialect.adapter.dbengine, _create_table),
+        dialect)
 
 
 def parse(adapter, rows, fields, colnames, blob_decode=True, cacheable=False):
@@ -116,4 +127,35 @@ def _build_newrow_wtables(adapter, tables):
     rv = adapter.db.Row()
     for name, table in iteritems(tables):
         rv[name] = table._model_._rowclass_()
+    return rv
+
+
+def _create_table(dialect, tablename, fields):
+    return [
+        "CREATE TABLE %s(\n    %s\n);" % (dialect.quote(tablename), fields)]
+
+
+def _create_table_mysql(dialect, tablename, fields):
+    return ["CREATE TABLE %s(\n    %s\n) ENGINE=%s CHARACTER SET utf8;" % (
+        dialect.quote(tablename), fields,
+        dialect.adapter.adapter_args.get('engine', 'InnoDB'))]
+
+
+def _create_table_firebird(dialect, tablename, fields):
+    rv = _create_table(dialect, tablename, fields)
+    sequence_name = dialect.sequence_name(tablename)
+    trigger_name = dialect.trigger_name(tablename)
+    trigger_sql = (
+        'create trigger %s for %s active before insert position 0 as\n'
+        'begin\n'
+        'if(new."id" is null) then\n'
+        'begin\n'
+        'new."id" = gen_id(%s, 1);\n'
+        'end\n'
+        'end;')
+    rv.extend([
+        'create generator %s;' % sequence_name,
+        'set generator %s to 0;' % sequence_name,
+        trigger_sql % (trigger_name, dialect.quote(tablename), sequence_name)
+    ])
     return rv
