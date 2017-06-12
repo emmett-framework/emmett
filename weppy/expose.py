@@ -263,7 +263,7 @@ class Expose(with_metaclass(MetaExpose)):
         cls._before_dispatch(route)
         try:
             route.f(**reqargs)
-        except:
+        except Exception:
             cls._after_dispatch(route)
             raise
         cls._after_dispatch(route)
@@ -541,7 +541,7 @@ def url(
                     if current.request.hostname != url_host:
                         scheme = current.request.scheme
                         host = url_host
-                except:
+                except Exception:
                     pass
         except KeyError:
             raise RuntimeError('invalid url("%s",...)' % path)
@@ -581,6 +581,8 @@ def url(
             host = current.request.hostname
     # add signature
     if sign:
+        if '_signature' in params:
+            del params['_signature']
         params['_signature'] = sign(
             path, args, params, anchor, scheme, host, language)
     return builder.url(scheme, host, lang, args, params, anchor)
