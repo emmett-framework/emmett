@@ -65,16 +65,25 @@ Aside from the examples, we encourage you to look at the [starter kit](https://g
 
 ## Benchmarks
 
-weppy was one of several Python 3 frameworks included in some benchmarks
-[published by Kirill Klenov](http://klen.github.io/py-frameworks-bench).
+weppy is one of several Python web frameworks included in [TechEmpower benchmarks](https://www.techempower.com/benchmarks). Here are some snippets from the results (Python 3):
 
-This is an extract from the results for a simple JSON serialization:
+**ORM**
 
-| framework | req/s | ms/req | performance |
-| --- | --- | --- | --- |
-| weppy 0.5.1 | 10853 | 18.46 | 2.5x |
-| flask 0.10.1 | 6831 | 29.38 | 1.6x |
-| django 1.8.6 | 4330 | 46.61 | 1x |
+| framework | req/s | performance gain |
+| --- | --- | --- |
+| weppy 1.0.1 | 40690 | 2.1x |
+| pyramid 1.6.1 | 28342 | 1.5x |
+| django 1.9.4 | 25525 | 1.3x |
+| flask 0.10.1 | 19495 | 1x |
+
+**JSON serialization**
+
+| framework | req/s | performance gain |
+| --- | --- | --- |
+| weppy 1.0.1 | 257196 | 3.1x |
+| pyramid 1.6.1 | 172666 | 2.1x |
+| flask 0.10.1 | 106679 | 1.3x |
+| django 1.9.4 | 83390 | 1x |
 
 ## Status of the project
 

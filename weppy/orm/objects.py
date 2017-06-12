@@ -216,7 +216,7 @@ class Set(_Set):
             model=model)
 
     def select(self, *fields, **options):
-        pagination = options.get('paginate')
+        pagination, including = options.get('paginate'), None
         if pagination:
             if isinstance(pagination, tuple):
                 offset = pagination[0]
@@ -226,10 +226,11 @@ class Set(_Set):
                 limit = 10
             options['limitby'] = ((offset - 1) * limit, offset * limit)
             del options['paginate']
-        including = options.get('including')
+        if 'including' in options:
+            including = options['including']
+            del options['including']
         if including and self._model_ is not None:
             options['left'], jdata = self._parse_left_rjoins(including)
-            del options['including']
             #: add fields to select
             fields = list(fields)
             if not fields:
