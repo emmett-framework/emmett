@@ -1,6 +1,16 @@
 weppy changelog
 ===============
 
+Next
+----
+
+(Release date to be defined, codename to be selected)
+
+- Removed preload cache in templater to enhance extensions behavior
+- Added `routes_paths` configuration in `Auth` module
+- Added form widget for 'decimal' fields
+
+
 Version 1.0
 -----------
 
