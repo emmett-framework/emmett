@@ -464,6 +464,8 @@ class FormStyle(object):
             wtype = 'select'
         elif wtype.startswith('reference'):
             wtype = 'int'
+        elif wtype.startswith('decimal'):
+            wtype = 'float'
         try:
             widget = getattr(self, "widget_" + wtype)(
                 self.attr, field, value, _id=widget_id)
