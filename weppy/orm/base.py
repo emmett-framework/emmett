@@ -16,7 +16,6 @@ from functools import wraps
 from pydal import DAL as _pyDAL
 from pydal._globals import THREAD_LOCAL
 from .._compat import copyreg
-from .._internal import warn_of_deprecation
 from ..datastructures import sdict
 from ..pipeline import Pipe
 from ..security import uuid as _uuid
@@ -128,11 +127,6 @@ class Database(_pyDAL):
     @property
     def pipe(self):
         return DatabasePipe(self)
-
-    @property
-    def handler(self):
-        warn_of_deprecation('handler', 'pipe', 'Database', 3)
-        return self.pipe
 
     @property
     def execution_timings(self):

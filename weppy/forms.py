@@ -11,7 +11,6 @@
 
 from functools import wraps
 from ._compat import iteritems, iterkeys
-from ._internal import warn_of_deprecation
 from .datastructures import sdict
 from .expose import Expose
 from .globals import current, request, session
@@ -301,13 +300,6 @@ class ModelForm(Form):
                     self.input_params[field.name] = self.record[field.name]
                 self.input_params[field.name] = field.formatter(
                     self.input_params[field.name])
-
-
-class DALForm(ModelForm):
-    def __init__(self, *args, **kwargs):
-        warn_of_deprecation(
-            'weppy.forms.DALForm', 'weppy.forms.ModelForm', stack=3)
-        super(DALForm, self).__init__(*args, **kwargs)
 
 
 class FormStyle(object):

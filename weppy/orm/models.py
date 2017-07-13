@@ -12,7 +12,6 @@
 import types
 from collections import OrderedDict
 from .._compat import iteritems, itervalues, with_metaclass
-from .._internal import warn_of_deprecation
 from ..datastructures import sdict
 from ..utils import cachedprop
 from .apis import (
@@ -200,17 +199,6 @@ class Model(with_metaclass(MetaModel)):
             for k, v in getattr(cls, attr_name).items():
                 attrs[k] = v
             setattr(cls, attr_name, attrs)
-        # deprecated since 1.0
-        if hasattr(cls, 'form_rw'):
-            warn_of_deprecation('form_rw', 'fields_rw', 'Model', stack=5)
-            attrs = {}
-            for model in sup:
-                superattrs = getattr(model, 'fields_rw', {})
-                for k, v in superattrs.items():
-                    attrs[k] = v
-            for k, v in getattr(cls, 'form_rw').items():
-                attrs[k] = v
-            setattr(cls, 'fields_rw', attrs)
 
     def __new__(cls):
         if cls._declared_tablename_ is None:

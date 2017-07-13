@@ -9,7 +9,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .._internal import warn_of_deprecation
 from ..globals import response
 from ..pipeline import Pipe
 from ..serializers import Serializers
@@ -38,9 +37,3 @@ class ServicePipe(Pipe):
 
     def pipe(self, next_pipe, **kwargs):
         return self.procedure(next_pipe, **kwargs)
-
-
-class ServiceHandler(ServicePipe):
-    def __init__(self, *args, **kwargs):
-        warn_of_deprecation('ServiceHandler', 'ServicePipe', stack=3)
-        super(ServiceHandler, self).__init__(*args, **kwargs)
