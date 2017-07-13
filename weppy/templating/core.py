@@ -48,7 +48,7 @@ class DummyResponse():
             if hasattr(data, '__html__'):
                 try:
                     body = to_native(data.__html__())
-                except:
+                except Exception:
                     pass
             if body is None:
                 body = self._to_native(self._to_html(self._to_unicode(data)))
@@ -85,12 +85,14 @@ class Templater(object):
             lambda s, e: e.preload(s[0], s[1]),
             self.loaders.get(fext, []), (path, name))
 
-    def preload(self, path, name):
-        rv = self.cache.preload.get(path, name)
-        if not rv:
-            rv = self._preload(path, name)
-            self.cache.preload.set(path, name, rv)
-        return rv
+    def _no_preload(self, path, name):
+        return path, name
+
+    @cachedprop
+    def preload(self):
+        if self.loaders:
+            return self._preload
+        return self._no_preload
 
     def _load(self, file_path):
         file_obj = open(file_path, 'r')
@@ -104,7 +106,7 @@ class Templater(object):
         if not rv:
             try:
                 rv = self._load(file_path)
-            except:
+            except Exception:
                 raise TemplateMissingError(path, filename)
             self.cache.load.set(file_path, rv)
         return rv
@@ -147,7 +149,7 @@ class Templater(object):
         self.inject(context)
         try:
             exec(code, context)
-        except:
+        except Exception:
             from ..debug import make_traceback
             exc_info = sys.exc_info()
             try:
@@ -155,7 +157,7 @@ class Templater(object):
                 parserdata.name = filename
                 template_ref = TemplateReference(
                     parserdata, code, exc_info[0], exc_info[1], exc_info[2])
-            except:
+            except Exception:
                 template_ref = None
             context['__weppy_template__'] = template_ref
             make_traceback(exc_info, template_ref)
