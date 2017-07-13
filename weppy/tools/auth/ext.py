@@ -47,6 +47,17 @@ class AuthExtension(Extension):
             'password_retrieval', 'password_reset', 'password_change',
             'download'],
         'disabled_routes': [],
+        'routes_paths': {
+            'login': '/login',
+            'logout': '/logout',
+            'registration': '/registration',
+            'profile': '/profile',
+            'email_verification': '/email_verification/<str:key>',
+            'password_retrieval': '/password_retrieval',
+            'password_reset': '/password_reset/<str:key>',
+            'password_change': '/password_change',
+            'download': '/download/<str:file_name>'
+        },
         'single_template': False,
         'password_min_length': 6,
         'remember_option': True,
@@ -123,6 +134,14 @@ class AuthExtension(Extension):
         def generate_key(info):
             print(uuid())
 
+    def __ensure_config(self):
+        for key in (
+            set(self.default_config['routes_paths'].keys()) -
+            set(self.config['routes_paths'].keys())
+        ):
+            self.config['routes_paths'][key] = \
+                self.default_config['routes_paths'][key]
+
     def __get_relnames(self):
         rv = {}
         def_names = {
@@ -153,6 +172,7 @@ class AuthExtension(Extension):
             self.app.log.warn(
                 "No mailer seems to be configured. The auth features "
                 "requiring mailer won't work.")
+        self.__ensure_config()
         self.relation_names = self.__get_relnames()
 
     def bind_auth(self, auth):
@@ -268,7 +288,7 @@ class AuthExtension(Extension):
     def login_user(self, user, remember=False):
         try:
             del user.password
-        except:
+        except Exception:
             pass
         expiration = remember and self.config.session_long_expiration or \
             self.config.session_expiration
@@ -285,7 +305,7 @@ class AuthExtension(Extension):
             return
         try:
             user_id = user.id if user else self.auth.user.id
-        except:
+        except Exception:
             user_id = None
         # log messages should not be translated
         if isinstance(description, TElement):

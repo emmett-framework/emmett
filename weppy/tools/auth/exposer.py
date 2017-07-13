@@ -328,63 +328,67 @@ class AuthModule(AppModule):
     def login(self, template=None, pipeline=[], injectors=None):
         pipeline = self._methods_pipelines['login'] + pipeline
         return self.route(
-            '/login', name='login',
+            self.config['routes_paths']['login'], name='login',
             template=template or self._template_for('login'),
             pipeline=pipeline, injectors=injectors)
 
     def logout(self, template=None, pipeline=[], injectors=None):
         pipeline = self._methods_pipelines['logout'] + pipeline
         return self.route(
-            '/logout', name='logout',
+            self.config['routes_paths']['logout'], name='logout',
             template=template or self._template_for('logout'),
             pipeline=pipeline, injectors=injectors, methods='get')
 
     def registration(self, template=None, pipeline=[], injectors=None):
         pipeline = self._methods_pipelines['registration'] + pipeline
         return self.route(
-            '/registration', name='registration',
+            self.config['routes_paths']['registration'], name='registration',
             template=template or self._template_for('registration'),
             pipeline=pipeline, injectors=injectors)
 
     def profile(self, template=None, pipeline=[], injectors=None):
         pipeline = self._methods_pipelines['profile'] + pipeline
         return self.route(
-            '/profile', name='profile',
+            self.config['routes_paths']['profile'], name='profile',
             template=template or self._template_for('profile'),
             pipeline=pipeline, injectors=injectors)
 
     def email_verification(self, template=None, pipeline=[], injectors=None):
         pipeline = self._methods_pipelines['email_verification'] + pipeline
         return self.route(
-            '/email_verification/<str:key>', name='email_verification',
+            self.config['routes_paths']['email_verification'],
+            name='email_verification',
             template=template or self._template_for('email_verification'),
             pipeline=pipeline, injectors=injectors, methods='get')
 
     def password_retrieval(self, template=None, pipeline=[], injectors=None):
         pipeline = self._methods_pipelines['password_retrieval'] + pipeline
         return self.route(
-            '/password_retrieval', name='password_retrieval',
+            self.config['routes_paths']['password_retrieval'],
+            name='password_retrieval',
             template=template or self._template_for('password_retrieval'),
             pipeline=pipeline, injectors=injectors)
 
     def password_reset(self, template=None, pipeline=[], injectors=None):
         pipeline = self._methods_pipelines['password_reset'] + pipeline
         return self.route(
-            '/password_reset/<str:key>', name='password_reset',
+            self.config['routes_paths']['password_reset'],
+            name='password_reset',
             template=template or self._template_for('password_reset'),
             pipeline=pipeline, injectors=injectors)
 
     def password_change(self, template=None, pipeline=[], injectors=None):
         pipeline = self._methods_pipelines['password_change'] + pipeline
         return self.route(
-            '/password_change', name='password_change',
+            self.config['routes_paths']['password_change'],
+            name='password_change',
             template=template or self._template_for('password_change'),
             pipeline=pipeline, injectors=injectors)
 
     def download(self, template=None, pipeline=[], injectors=None):
         pipeline = self._methods_pipelines['download'] + pipeline
         return self.route(
-            '/download/<str:file_name>', name='download',
+            self.config['routes_paths']['download'], name='download',
             pipeline=pipeline, injectors=injectors, methods='get')
 
     #: callbacks
