@@ -8,7 +8,13 @@
     :copyright: (c) 2014-2017 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
+
+import os
+import re
 from ._compat import string_types
+from .libs.contenttype import contenttype
+
+_REGEX_DBSTREAM = re.compile('(?P<table>.*?)\.(?P<field>.*?)\..*')
 
 
 def abort(code, body=''):
@@ -19,7 +25,6 @@ def abort(code, body=''):
 
 
 def stream_file(path):
-    import os
     from .globals import request, response
     from .expose import Expose
     from .stream import streamer
@@ -28,8 +33,7 @@ def stream_file(path):
 
 
 def stream_dbfile(db, name):
-    import re
-    items = re.compile('(?P<table>.*?)\.(?P<field>.*?)\..*').match(name)
+    items = _REGEX_DBSTREAM.match(name)
     if not items:
         abort(404)
     (t, f) = (items.group('table'), items.group('field'))
@@ -53,7 +57,6 @@ def stream_dbfile(db, name):
         raise streamer(request.environ, fullfilename, headers=response.headers)
     else:
         #: handle blob fields
-        from .libs.contenttype import contenttype
         from .http import HTTP
         response.headers['Content-Type'] = contenttype(filename)
         if 'wsgi.file_wrapper' in request.environ:
@@ -87,7 +90,7 @@ def get_flashed_messages(with_categories=False, category_filter=[]):
             session._flashes.remove(el)
         if not with_categories:
             return [x[1] for x in flashes]
-    except:
+    except Exception:
         flashes = []
     return flashes
 

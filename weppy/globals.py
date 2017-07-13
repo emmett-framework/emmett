@@ -63,14 +63,14 @@ class Request(object):
         content_length = self.environ.get('CONTENT_LENGTH')
         try:
             content_length = max(0, int(content_length))
-        except:
+        except Exception:
             content_length = None
         if content_length is None:
             return {}
         try:
             stream = LimitedStream(self.input, content_length)
             params = json.loads(to_native(stream.read())) or {}
-        except:
+        except Exception:
             params = {}
         return params
 
@@ -119,7 +119,7 @@ class Request(object):
                 dpost = cgi.FieldStorage(
                     fp=self.input, environ=self.environ, keep_blank_values=1)
                 keys = sorted(dpost)
-            except:
+            except Exception:
                 keys = []
             for key in keys:
                 dpk = dpost[key]
@@ -198,8 +198,8 @@ class Response(object):
     def __init__(self, environ):
         self.status = 200
         self.cookies = SimpleCookie()
-        self.headers = {'Content-Type':
-                        contenttype(environ['PATH_INFO'], 'text/html')}
+        self.headers = {
+            'Content-Type': contenttype(environ['PATH_INFO'], 'text/html')}
         self.meta = sdict()
         self.meta_prop = sdict()
 
