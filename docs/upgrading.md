@@ -19,6 +19,45 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 1.1
+-----------
+
+weppy 1.1 introduces some minor breaking changes you should be aware of, and some new features you might been interested into.
+
+### Breaking changes
+
+#### Default value for Content-Type header
+
+Before weppy 1.1 the *Content-Type* header value in the response was inflated considering an eventual extension format in the url. Since this operation wasted some time on the request flow, and due to the fact in a typical weppy application url extensions are not common, with this version we removed this functionality. 
+
+Please note that the *Content-Type* header values are still set to the correct values when using templates or the weppy services, so you won't have to change anything.
+
+An edit is required only if you have routes where you used this feature, where you now need to set the content type manually:
+
+```python
+from weppy import response
+
+response.headers['Content-Type'] = 'application/xml'
+```
+
+Mind that you can also re-implement the old behavior manually using the `contenttype` method available in weppy libraries:
+
+```python
+from weppy import request, response
+from weppy.libs.contenttype import contenttype
+
+response.headers['Content-Type'] = contenttype(request.environ['PATH_INFO'])
+```
+
+### New features
+
+With weppy 1.1 we introduced some new features:
+
+- the forms now have a default widget for *decimal* fields
+- auth module now support [custom paths](./auth#change-routes-paths) for its routes
+- the `Field` class now have methods to create fields with specific types: you can use the new syntax instead of using the old string argument
+
+
 Version 1.0
 -----------
 
