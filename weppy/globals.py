@@ -25,7 +25,6 @@ from .language import T, _instance as _translator_instance
 from .language.helpers import LanguageAccept
 from .html import htmlescape
 from .utils import cachedprop
-from .libs.contenttype import contenttype
 
 
 _regex_client = re.compile('[\w\-:]+(\.[\w\-]+)*\.?')
@@ -198,8 +197,7 @@ class Response(object):
     def __init__(self, environ):
         self.status = 200
         self.cookies = SimpleCookie()
-        self.headers = {
-            'Content-Type': contenttype(environ['PATH_INFO'], 'text/html')}
+        self.headers = {'Content-Type': 'text/html'}
         self.meta = sdict()
         self.meta_prop = sdict()
 
