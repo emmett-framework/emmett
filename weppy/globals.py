@@ -197,7 +197,7 @@ class Response(object):
     def __init__(self, environ):
         self.status = 200
         self.cookies = SimpleCookie()
-        self.headers = {'Content-Type': 'text/html'}
+        self.headers = {'Content-Type': 'text/html; charset=utf-8'}
         self.meta = sdict()
         self.meta_prop = sdict()
 
