@@ -23,14 +23,14 @@ class A(Model):
     tablename = "a"
 
     name = Field()
-    val = Field('int')
-    fval = Field('float')
-    text = Field('text')
-    password = Field('password')
-    d = Field('date')
-    t = Field('time')
-    dt = Field('datetime')
-    json = Field('json')
+    val = Field.int()
+    fval = Field.float()
+    text = Field.text()
+    password = Field.password()
+    d = Field.date()
+    t = Field.time()
+    dt = Field.datetime()
+    json = Field.json()
 
 
 class AA(Model):
@@ -61,9 +61,9 @@ class Consist(Model):
     email = Field()
     url = Field()
     ip = Field()
-    image = Field('upload')
-    emails = Field('list:string')
-    emailsplit = Field('list:string')
+    image = Field.upload()
+    emails = Field.string_list()
+    emailsplit = Field.string_list()
 
     validation = {
         'email': {'is': 'email'},
@@ -91,7 +91,7 @@ class Len(Model):
 
 class Inside(Model):
     a = Field()
-    b = Field('int')
+    b = Field.int()
 
     validation = {
         'a': {'in': ['a', 'b']},
@@ -100,9 +100,9 @@ class Inside(Model):
 
 
 class Num(Model):
-    a = Field('int')
-    b = Field('int')
-    c = Field('int')
+    a = Field.int()
+    b = Field.int()
+    c = Field.int()
 
     validation = {
         'a': {'gt': 0},
@@ -116,8 +116,8 @@ class Proc(Model):
     b = Field()
     c = Field()
     d = Field()
-    e = Field('password')
-    f = Field('password')
+    e = Field.password()
+    f = Field.password()
 
     validation = {
         'a': {'lower': True},
@@ -131,8 +131,8 @@ class Proc(Model):
 
 class Eq(Model):
     a = Field()
-    b = Field('int')
-    c = Field('float')
+    b = Field.int()
+    c = Field.float()
 
     validation = {
         'a': {'equals': 'asd'},
@@ -189,13 +189,13 @@ class Allowed(Model):
 class Mixed(Model):
     belongs_to('person')
 
-    date = Field('date')
+    date = Field.date()
     type = Field()
     inside = Field()
-    number = Field('int')
+    number = Field.int()
     dont = Field()
     yep = Field()
-    psw = Field('password')
+    psw = Field.password()
 
     validation = {
         'date': {'format': '%d/%m/%Y', 'gt': lambda: datetime.utcnow().date()},

@@ -47,11 +47,11 @@ def _call_d(set):
 
 
 class Stuff(Model):
-    a = Field('string')
+    a = Field.string()
     b = Field()
-    price = Field('double')
-    quantity = Field('integer')
-    total = Field('double')
+    price = Field.float()
+    quantity = Field.int()
+    total = Field.float()
     invisible = Field()
 
     validation = {
@@ -132,7 +132,7 @@ class Person(Model):
         'subscriptions')
 
     name = Field()
-    age = Field('integer')
+    age = Field.int()
 
 
 class Thing(Model):
@@ -153,7 +153,7 @@ class Feature(Model):
 class Price(Model):
     belongs_to('feature')
 
-    value = Field('integer')
+    value = Field.int()
 
 
 class Doctor(Model):
@@ -168,7 +168,7 @@ class Patient(Model):
 
 class Appointment(Model):
     belongs_to('patient', 'doctor')
-    date = Field('datetime')
+    date = Field.datetime()
 
 
 class User(Model):
@@ -182,7 +182,7 @@ class User(Model):
 
 class Organization(Model):
     name = Field()
-    is_cover = Field('bool', default=False)
+    is_cover = Field.bool(default=False)
 
     @has_many()
     def admin_memberships3(self):
@@ -269,8 +269,8 @@ class Subscription(Model):
     belongs_to('person')
 
     name = Field()
-    status = Field('int')
-    expires_at = Field('datetime')
+    status = Field.int()
+    expires_at = Field.datetime()
 
     STATUS = {'active': 1, 'suspended': 2, 'other': 3}
 
