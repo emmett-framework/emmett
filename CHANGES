@@ -10,6 +10,7 @@ Next
 - Removed preload cache in templater to enhance extensions behavior
 - Added `routes_paths` configuration in `Auth` module
 - Added form widget for 'decimal' fields
+- Avoid to guess 'Content-Type' response header from path extension
 - Allow to use classmethods on `Field` class to specify types instead of
   string arguments
 
