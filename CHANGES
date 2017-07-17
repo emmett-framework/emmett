@@ -1,10 +1,10 @@
 weppy changelog
 ===============
 
-Next
-----
+Version 1.1
+-----------
 
-(Release date to be defined, codename to be selected)
+Released on July 17th 2017, codename Lesath
 
 - Several bugfixes
 - Removed preload cache in templater to enhance extensions behavior
