@@ -11,7 +11,7 @@ from weppy.orm import Field, Model
 class Post(Model):
     author = Field()
     title = Field()
-    body = Field('text')
+    body = Field.text()
     
     validation = {
         "title": {'presence': True},
@@ -62,10 +62,10 @@ Fields
 `Field` objects define your entity's properties, and will map the appropriate columns inside your tables, so in general you would write the name of the property and its type:
 
 ```python
-started = Field('datetime')
+started = Field.datetime()
 ```
 
-Available types for Field definition are:
+Available type methods for Field definition are:
 
 | Field type | mapped to python object |
 | --- | --- |
@@ -85,7 +85,7 @@ Available types for Field definition are:
 | list:int | `list` of `int` |
 | json | `json` |
 
-If you don't specify a type for the `Field` class, it will be set as *string* as default value.
+If you don't specify a type for the `Field` class, and create an instance directly, it will be set as *string* as default value.
 
 Using the right field type ensure the right columns types inside your tables, and allows you to benefit from the default validation implemented by weppy.
 
@@ -95,7 +95,7 @@ To implement a validation mechanism for your fields, you can use the `validation
 
 ```python
 title = Field(validation={'presence': True})
-body = Field('text', validation={'presence': True})
+body = Field.text(validation={'presence': True})
 ```
 
 ```python
@@ -119,8 +119,7 @@ While you can find the complete list of available validators in the [appropriate
 | date | `{'is': 'date'}` | no |
 | time | `{'is': 'time'}` | no |
 | datetime | `{'is': 'datetime'}` | no |
-| list:int | `{'is': 'list:int'}`| no |
-| list:reference *tablename* | `{'presence': True}` | no |
+| int_list | `{'is': 'list:int'}`| no |
 | json | `{'is': 'json'}` | no |
 | password | `{'len': {'gte': 6}, 'crypt': True}}` | no |
 
@@ -156,7 +155,7 @@ default_values = {
 Which is the same of the `default` parameter of `Field` class:
 
 ```python
-started = Field('datetime', default=lambda: request.now)
+started = Field.datetime(default=lambda: request.now)
 ```
 
 The values defined in this way will be used on the insertion of new records in the database if no other value is given during the operation.
@@ -174,7 +173,7 @@ update_values = {
 Or you can use the `update` parameter of `Field` class:
 
 ```python
-started = Field('datetime', update=lambda: request.now)
+started = Field.datetime(update=lambda: request.now)
 ```
 
 The values defined in this way will be used on the update of existing records in the database if no other value is given during the operation.
@@ -198,7 +197,7 @@ Any item of the dictionary can be a `tuple`, where the first value defines if th
 You may prefer to explicit passing read-writes values to the fields, using `rw` parameter:
 
 ```python
-started = Field('datetime', rw=False)
+started = Field.datetime(rw=False)
 ```
 
 Indexes
@@ -254,7 +253,7 @@ MyModel.started.represent(record, record.started)
 And if you may prefer to explicit passing representation rules to the single fields instead of writing down in the model, you can use the `representation` parameter:
 
 ```python
-started = Field('datetime', representation=lambda row, value: prettydate(value))
+started = Field.datetime(representation=lambda row, value: prettydate(value))
 ```
 
 Forms helpers
@@ -274,7 +273,7 @@ Labels will decorate the input fields in your forms. In this example we used the
 You can also use the `label` parameter of `Field` class:
 
 ```python
-started = Field('datetime', label=T("Opening date:"))
+started = Field.datetime(label=T("Opening date:"))
 ```
 
 ###Form info
@@ -289,7 +288,7 @@ form_info = {
 You can also use the `info` parameter of `Field` class:
 
 ```python
-started = Field('datetime', info=T("some description here"))
+started = Field.datetime(info=T("some description here"))
 ```
 
 ### Widgets
@@ -312,7 +311,7 @@ def my_custom_widget(field, value):
 And you can also use the `widget` parameter of `Field` class:
 
 ```python
-started = Field('datetime', widget=my_custom_widget)
+started = Field.datetime(widget=my_custom_widget)
 ```
 
 The setup helper
@@ -350,8 +349,8 @@ Let's say, for example that you want a shortcut in your `Notification` model to 
 ```python
 class Notification(Model):
     user = Field()
-    message = Field('text')
-    read = Field('bool')
+    message = Field.text()
+    read = Field.bool()
     
     @classmethod
     def read_all(cls, user):

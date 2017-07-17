@@ -6,9 +6,12 @@ Next
 
 (Release date to be defined, codename to be selected)
 
+- Several bugfixes
 - Removed preload cache in templater to enhance extensions behavior
 - Added `routes_paths` configuration in `Auth` module
 - Added form widget for 'decimal' fields
+- Allow to use classmethods on `Field` class to specify types instead of
+  string arguments
 
 
 Version 1.0

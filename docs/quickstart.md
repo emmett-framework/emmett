@@ -451,7 +451,7 @@ from weppy import Field, Form
 def a():
     simple_form = Form({
         'name': Field(),
-        'number': Field('int'),
+        'number': Field.int(),
         'type': Field(
             validation={'in': ['type1', 'type2']}
         )

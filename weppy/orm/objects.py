@@ -179,6 +179,70 @@ class Field(_Field):
                                            self._type)
         return super(Field, self).__repr__()
 
+    @classmethod
+    def string(cls, *args, **kwargs):
+        return cls('string', *args, **kwargs)
+
+    @classmethod
+    def int(cls, *args, **kwargs):
+        return cls('int', *args, **kwargs)
+
+    @classmethod
+    def bigint(cls, *args, **kwargs):
+        return cls('bigint', *args, **kwargs)
+
+    @classmethod
+    def float(cls, *args, **kwargs):
+        return cls('float', *args, **kwargs)
+
+    @classmethod
+    def text(cls, *args, **kwargs):
+        return cls('text', *args, **kwargs)
+
+    @classmethod
+    def bool(cls, *args, **kwargs):
+        return cls('bool', *args, **kwargs)
+
+    @classmethod
+    def blob(cls, *args, **kwargs):
+        return cls('blob', *args, **kwargs)
+
+    @classmethod
+    def date(cls, *args, **kwargs):
+        return cls('date', *args, **kwargs)
+
+    @classmethod
+    def time(cls, *args, **kwargs):
+        return cls('time', *args, **kwargs)
+
+    @classmethod
+    def datetime(cls, *args, **kwargs):
+        return cls('datetime', *args, **kwargs)
+
+    @classmethod
+    def decimal(cls, precision, scale, *args, **kwargs):
+        return cls('decimal({},{})'.format(precision, scale), *args, **kwargs)
+
+    @classmethod
+    def json(cls, *args, **kwargs):
+        return cls('json', *args, **kwargs)
+
+    @classmethod
+    def password(cls, *args, **kwargs):
+        return cls('password', *args, **kwargs)
+
+    @classmethod
+    def upload(cls, *args, **kwargs):
+        return cls('upload', *args, **kwargs)
+
+    @classmethod
+    def int_list(cls, *args, **kwargs):
+        return cls('list:int', *args, **kwargs)
+
+    @classmethod
+    def string_list(cls, *args, **kwargs):
+        return cls('list:string', *args, **kwargs)
+
 
 class Set(_Set):
     def __init__(self, db, query, ignore_common_filters=None, model=None):

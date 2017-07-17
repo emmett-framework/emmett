@@ -17,9 +17,9 @@ A solution can be to compute the value when you change the price or the quantity
 from weppy.orm import Model, Field, compute
 
 class Item(Model):
-    price = Field('float')
-    quantity = Field('int')
-    total = Field('float')
+    price = Field.float()
+    quantity = Field.int()
+    total = Field.float()
     
     @compute('total')
     def compute_total(self, row):
@@ -42,8 +42,8 @@ To clarify this concept, we will consider the same example we gave for the *comp
 from weppy.orm import Model, Field, rowattr
 
 class Item(Model):
-    price = Field('float')
-    quantity = Field('int')
+    price = Field.float()
+    quantity = Field.int()
     
     @rowattr('total')
     def total(self, row):
@@ -75,8 +75,8 @@ Let's consider again the same example we saw above, and let's use the `rowmethod
 from weppy.orm import Model, Field, rowmethod
 
 class Item(Model):
-    price = Field('float')
-    quantity = Field('int')
+    price = Field.float()
+    quantity = Field.int()
     
     @rowmethod('total')
     def total(self, row):
@@ -102,8 +102,8 @@ from weppy.orm import Model, belongs_to, rowmethod
 
 class Message(Model):
     belongs_to('topic', 'author')
-    body = Field('text')
-    written_at = Field('datetime')
+    body = Field.text()
+    written_at = Field.datetime()
 
     @rowmethod('next_one')
     def get_next_message(self, row):
