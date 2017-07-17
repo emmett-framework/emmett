@@ -14,9 +14,7 @@ import os
 import click
 from yaml import load as ymlload
 from ._compat import basestring
-from ._internal import (
-    get_root_path, create_missing_app_folders, warn_of_deprecation
-)
+from ._internal import get_root_path, create_missing_app_folders
 from .datastructures import sdict, ConfigData
 from .expose import Expose, url
 from .extensions import Extension, TemplateExtension
@@ -118,28 +116,6 @@ class App(object):
     @injectors.setter
     def injectors(self, injectors):
         self.route._injectors = injectors
-
-    #: 1.0 deprecations
-    @property
-    def common_handlers(self):
-        warn_of_deprecation('common_handlers', 'pipeline', 'App', 3)
-        return self.pipeline
-
-    @common_handlers.setter
-    def common_handlers(self, handlers):
-        warn_of_deprecation('common_handlers', 'pipeline', 'App', 3)
-        self.pipeline = handlers
-
-    @property
-    def common_helpers(self):
-        warn_of_deprecation('common_helpers', 'injectors', 'App', 3)
-        return self.injectors
-
-    @common_helpers.setter
-    def common_helpers(self, helpers):
-        warn_of_deprecation('common_helpers', 'injectors', 'App', 3)
-        self.injectors = helpers
-    #/
 
     def on_error(self, code):
         def decorator(f):
@@ -364,44 +340,12 @@ class AppModule(object):
     def injectors(self, injectors):
         self._injectors = self._super_injectors + injectors
 
-    #: 1.0 deprecations
-    @property
-    def common_handlers(self):
-        warn_of_deprecation('common_handlers', 'pipeline', 'AppModule', 3)
-        return self.pipeline
-
-    @common_handlers.setter
-    def common_handlers(self, handlers):
-        warn_of_deprecation('common_handlers', 'pipeline', 'AppModule', 3)
-        self.pipeline = handlers
-
-    @property
-    def common_helpers(self):
-        warn_of_deprecation('common_helpers', 'injectors', 'AppModule', 3)
-        return self.injectors
-
-    @common_helpers.setter
-    def common_helpers(self, helpers):
-        warn_of_deprecation('common_helpers', 'injectors', 'AppModule', 3)
-        self.injectors = helpers
-    #/
-
     def route(self, paths=None, name=None, template=None, **kwargs):
         if name is not None and "." in name:
             raise RuntimeError(
                 "App modules' route names should not contains dots"
             )
         name = self.name + "." + (name or "")
-        #: 1.0 deprecations
-        if 'handlers' in kwargs:
-            warn_of_deprecation('handlers', 'pipeline', 'route', 3)
-            kwargs['pipeline'] = kwargs['handlers']
-            del kwargs['handlers']
-        if 'helpers' in kwargs:
-            warn_of_deprecation('helpers', 'injectors', 'route', 3)
-            kwargs['injectors'] = kwargs['helpers']
-            del kwargs['helpers']
-        #/
         pipeline = kwargs.get('pipeline', [])
         injectors = kwargs.get('injectors', [])
         if self.pipeline:

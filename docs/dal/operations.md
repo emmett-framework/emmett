@@ -88,8 +88,8 @@ So, how you make queries on your database? Let's say, for example, that you have
 class Event(Model):
     name = Field()
     location = Field()
-    participants = Field('int')
-    happens_at = Field('datetime')
+    participants = Field.int()
+    happens_at = Field.datetime()
 ```
 
 and you want to query all the events for a certain location. You can use your `Database` instance and its `where` method for that:

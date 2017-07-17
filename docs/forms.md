@@ -13,7 +13,7 @@ from weppy import Field, Form
 def a():
     simple_form = Form({
         'name': Field(),
-        'number': Field('int'),
+        'number': Field.int(),
         'type': Field(
             validation={'in': ['type1', 'type2']}
         )
@@ -98,7 +98,7 @@ Let's say you want to handle the upload of avatar images from your user. So,
 in your model/table, you would have an upload field:
 
 ```python
-avatar = Field('upload')
+avatar = Field.upload()
 ```
 
 and the forms produced by weppy will handle uploads for you. How would you
@@ -145,8 +145,8 @@ def myform():
             form.errors.double = "Double is incorrect!"
     
     form = Form(
-        number=Field('int'), 
-        double=Field('int'),
+        number=Field.int(), 
+        double=Field.int(),
         onvalidation=process_form
     )
     return dict(form=form)

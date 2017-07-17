@@ -11,7 +11,6 @@
 
 from functools import wraps
 from ._compat import iteritems, iterkeys
-from ._internal import warn_of_deprecation
 from .datastructures import sdict
 from .expose import Expose
 from .globals import current, request, session
@@ -303,13 +302,6 @@ class ModelForm(Form):
                     self.input_params[field.name])
 
 
-class DALForm(ModelForm):
-    def __init__(self, *args, **kwargs):
-        warn_of_deprecation(
-            'weppy.forms.DALForm', 'weppy.forms.ModelForm', stack=3)
-        super(DALForm, self).__init__(*args, **kwargs)
-
-
 class FormStyle(object):
     _stack = []
     parent = None
@@ -464,6 +456,8 @@ class FormStyle(object):
             wtype = 'select'
         elif wtype.startswith('reference'):
             wtype = 'int'
+        elif wtype.startswith('decimal'):
+            wtype = 'float'
         try:
             widget = getattr(self, "widget_" + wtype)(
                 self.attr, field, value, _id=widget_id)

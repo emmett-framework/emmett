@@ -49,7 +49,7 @@ app.config.db.uri = "sqlite://storage.sqlite"
 class Post(Model):
     author = Field()
     title = Field()
-    body = Field('text')
+    body = Field.text()
 
 db = Database(app)
 db.define_models(Post)

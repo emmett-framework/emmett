@@ -45,7 +45,7 @@ of weppy exposes the following:
 * http://.../{url\_prefix}/logout
 * http://.../{url\_prefix}/registration
 * http://.../{url\_prefix}/profile
-* http://.../{url\_prefix}/email_verification
+* http://.../{url\_prefix}/email_verification/{verification\_key}
 * http://.../{url\_prefix}/password_retrieval
 * http://.../{url\_prefix}/password\_reset/{reset\_key}
 * http://.../{url\_prefix}/password_change
@@ -110,6 +110,19 @@ Let's say you don't want the `password_retrieval` functionality. To do that, jus
 
 ```python
 app.config.auth.disabled_routes = ["password_retrieval"]
+```
+
+### Change routes paths
+
+*New in version 1.1*
+
+You may want to change the default url paths for the auth module routes. You just have to change the value of the `routes_paths` dictionary in the configuration:
+
+```python
+app.config.auth.routes_paths = {
+    'login': '/signin',
+    'logout': '/signout',
+    'registration': '/signup'}
 ```
 
 ### Callbacks

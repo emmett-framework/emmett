@@ -12,7 +12,7 @@ class Doctor(Model):
 
 class Patient(Model):
     name = Field()
-    age = Field('int')
+    age = Field.int()
     belongs_to('doctor')
 ```
 
@@ -59,11 +59,11 @@ The `refers_to` helper, as of the `belongs_to`, allows you to define relations t
 
 ```python
 class Note(Model):
-    body = Field('text')
+    body = Field.text()
 
 class Todo(Model):
     title = Field()
-    done = Field('bool')
+    done = Field.bool()
     refers_to('note')
 ```
 
@@ -297,7 +297,7 @@ class User(Model):
 class Todo(Model):
     belongs_to('user')
     description = Field()
-    is_deleted = Field('bool')
+    is_deleted = Field.bool()
 
     @scope('not_deleted')
     def _not_deleted(self):
@@ -333,7 +333,7 @@ class User(Model):
 class Todo(Model):
     belongs_to('user')
     description = Field()
-    is_deleted = Field('bool')
+    is_deleted = Field.bool()
 ```
 
 As you can see the `where` value must be a `lambda` function accepting just one parameter: the model you're referring to. The condition can be any valid expression in the weppy query language.

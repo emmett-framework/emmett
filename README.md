@@ -14,8 +14,8 @@ from weppy.orm import Database, Model, Field
 from weppy.tools import service, requires
 
 class Task(Model):
-    name = Field('string')
-    is_completed = Field('bool', default=False)
+    name = Field.string()
+    is_completed = Field.bool(default=False)
 
 app = App(__name__)
 app.config.db.uri = "postgres://user:password@localhost/foo"

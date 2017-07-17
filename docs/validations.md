@@ -117,9 +117,9 @@ to an `int` object for all the other validators, or for your post-validation cod
 Here are some examples of `'is'` validation helper:
 
 ```
-price = Field('float', validation={'is': {'float': {'dot': ','}}})
-emails = Field('list:string', validation={'is': {'list:email': {'splitter': ';'}}})
-urls = Field('list:string', validation={'is': 'list:url'})
+price = Field.float(validation={'is': {'float': {'dot': ','}}})
+emails = Field.string_list(validation={'is': {'list:email': {'splitter': ';'}}})
+urls = Field.string_list(validation={'is': 'list:url'})
 ```
 
 Note that, since the `'is'` validator ensures the input is valid for the given
@@ -146,17 +146,17 @@ integer and also allow it to pass the validation if it is blank?
 We can use the `'allow'` validator:
 
 ```python
-maybe_number = Field('int', validation={'allow': 'blank'})
+maybe_number = Field.int(validation={'allow': 'blank'})
 # or
-maybe_number = Field('int', validation={'allow': 'empty'})
+maybe_number = Field.int(validation={'allow': 'empty'})
 ```
 
 In this specific case, we are telling the validator to accept blank/empty
 inputs, but you can also pass specific values to it:
 
 ```python
-maybe_number = Field('int', validation={'allow': None})
-maybe_number = Field('int', validation={'allow': 'nope'})
+maybe_number = Field.int(validation={'allow': None})
+maybe_number = Field.int(validation={'allow': 'nope'})
 ```
 
 Practically speaking, the `'allow'` validator *allows* you to add an exception
@@ -171,7 +171,7 @@ you will do this for a password field, which you may want to be greater than
 a certain a length and/or not too long:
 
 ```python
-password = Field('password', validation={'len': {'gt': 5, 'lt': 25}})
+password = Field.password(validation={'len': {'gt': 5, 'lt': 25}})
 ```
 
 As you can see, the `'len'` validator is just the easier way to do that. It
@@ -201,7 +201,7 @@ myfield = Field(validation={'in': ['a', 'b']})
 If you have an *int* field, you can also use the convenient `'range'` option:
 
 ```python
-number = Field('int', validation={'in': {'range': (1, 10)}})
+number = Field.int(validation={'in': {'range': (1, 10)}})
 ```
 
 The `'in'` validator also accepts some specific options, in particular:
@@ -273,9 +273,9 @@ When you need to ensure some numeric values on *int* fields, you may prefer
 a different approach, using the same notation as `'len'`:
 
 ```python
-num_a = Field('int', validation={'gt': 0})
-num_b = Field('int', validation={'lt': 12})
-num_c = Field('int', validation={'gte': 1, 'lte': 10})
+num_a = Field.int(validation={'gt': 0})
+num_b = Field.int(validation={'lt': 12})
+num_c = Field.int(validation={'gte': 1, 'lte': 10})
 ```
 
 Validate only a specific value
@@ -501,7 +501,7 @@ class OddValidator(Validator):
             return value, self.message
         return value, None
 
-mynumber = Field('int', validation={
+mynumber = Field.int(validation={
     'gte': 0, 'lt': 20, 'custom': OddValidator()})
 ```
 

@@ -177,7 +177,7 @@ Let's see this with an example:
 ```python
 class User(Model):
     email = Field()
-    changed_at = Field('datetime')
+    changed_at = Field.datetime()
     has_one('profile')
 
     @after_update
@@ -192,7 +192,7 @@ class User(Model):
 class Profile(Model):
     belongs_to('user')
     language = Field()
-    changed_at = Field('datetime')
+    changed_at = Field.datetime()
     
     @after_update
     def touch_user(self, dbset, fields):

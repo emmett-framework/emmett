@@ -14,8 +14,8 @@ For instance, if you have a lot of models where you want to store the creation a
 
 ```python
 class TimeStampModel(Model):
-    created_at = Field('datetime')
-    updated_at = Field('datetime')
+    created_at = Field.datetime()
+    updated_at = Field.datetime()
 
     default_values = {
         'created_at': lambda: request.now,
@@ -32,7 +32,7 @@ and then extend it with the other models:
 ```python
 class Post(TimeStampModel):
     title = Field()
-    body = Field('text')
+    body = Field.text()
     status = Field()
 
     default_values = {
@@ -40,7 +40,7 @@ class Post(TimeStampModel):
     }
 
 class Comment(TimeStampModel):
-    text = Field('text')
+    text = Field.text()
 ```
 
 Then if you pass just these models to your `Database` instance:
@@ -86,7 +86,7 @@ You can also use multiple models as base classes for inheritance, and weppy will
 
 ```python
 class Hidden(Model):
-    is_hidden = Field('bool')
+    is_hidden = Field.bool()
 
     default_values = {
         'is_hidden': True
@@ -140,11 +140,11 @@ Another common scenario would be a *polimorphic* relation, where you want to cre
 class Photo(Model):
     url = Field()
     entity_type = Field()
-    entity_id = Field('int')
+    entity_id = Field.int()
     
 class Car(Model):
     name = Field()
-    price = Field('float')
+    price = Field.float()
     
     @has_many(field='entity_id')
     def photos(self):
@@ -152,8 +152,8 @@ class Car(Model):
 
 class Truck(Model):
     name = Field()
-    hp = Field('int')
-    price = Field('float')
+    hp = Field.int()
+    price = Field.float()
     
     @has_many(field='entity_id')
     def photos(self):
@@ -224,7 +224,7 @@ weppy supports expressions on indexes definition, which can be useful when you w
 ```python
 class Post(Model):
     author = Field()
-    is_private = Field('bool')
+    is_private = Field.bool()
     title = Field()
     
     indexes = {
@@ -246,7 +246,7 @@ weppy supports a `where` option on indexes definition, which can be used to defi
 ```python
 class Post(Model):
     author = Field()
-    is_private = Field('bool')
+    is_private = Field.bool()
     
     indexes = {
         'author_and_priv': {

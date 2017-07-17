@@ -11,7 +11,6 @@
 
 from datetime import timedelta
 from ..._compat import string_types, integer_types
-from ..._internal import deprecated
 from ...globals import session, request
 from ...pipeline import Pipe
 from .ext import AuthExtension
@@ -60,10 +59,6 @@ class Auth(object):
     #: helpers
     def is_logged(self):
         return True if self.user else False
-
-    @deprecated('is_logged_in', 'is_logged', 'Auth')
-    def is_logged_in(self):
-        return self.is_logged()
 
     def has_membership(self, group=None, user=None, role=None):
         rv = False

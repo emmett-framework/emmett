@@ -16,7 +16,6 @@ import re
 from collections import OrderedDict
 from functools import wraps
 from ._compat import PY2, with_metaclass, itervalues, iteritems, text_type
-from ._internal import warn_of_deprecation
 from .pipeline import Pipeline, Pipe
 from .templating.helpers import TemplateMissingError
 from .globals import current
@@ -82,12 +81,6 @@ class Expose(with_metaclass(MetaExpose)):
         self.template_folder = template_folder
         self.template_path = template_path
         self.prefix = prefix
-        if 'handlers' in kwargs:
-            warn_of_deprecation('handlers', 'pipeline', 'route', 3)
-            pipeline = kwargs['handlers']
-        if 'helpers' in kwargs:
-            warn_of_deprecation('helpers', 'injectors', 'route', 3)
-            injectors = kwargs['helpers']
         self.pipeline = [ResponsePipe(self)] + self._pipeline + \
             (pipeline or []) + self._injectors + (injectors or [])
         # check pipes are indeed valid pipes

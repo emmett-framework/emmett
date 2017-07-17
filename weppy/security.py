@@ -190,6 +190,8 @@ def _init_urandom():
         packed = bytes([]).join(bytes([x]) for x in ctokens)
     unpacked_ctokens = struct.unpack('=QQ', packed)
     return unpacked_ctokens, have_urandom
+
+
 _UNPACKED_CTOKENS, _HAVE_URANDOM = _init_urandom()
 
 

@@ -24,8 +24,8 @@ class Post(Model):
     has_many('comments')
 
     title = Field()
-    text = Field('text')
-    date = Field('datetime')
+    text = Field.text()
+    date = Field.datetime()
 
     default_values = {
         'user': lambda: session.auth.user.id,
@@ -44,8 +44,8 @@ class Post(Model):
 class Comment(Model):
     belongs_to('user', 'post')
 
-    text = Field('text')
-    date = Field('datetime')
+    text = Field.text()
+    date = Field.datetime()
 
     default_values = {
         'user': lambda: session.auth.user.id,

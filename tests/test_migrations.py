@@ -56,7 +56,7 @@ def _make_sql(db, op):
 
 class StepOneThing(Model):
     name = Field()
-    value = Field('float')
+    value = Field.float()
 
 _step_one_sql = """CREATE TABLE "step_one_things"(
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,8 +102,8 @@ def test_step_one_drop_table(app):
 
 class StepTwoThing(Model):
     name = Field(notnull=True)
-    value = Field('float', default=8.8)
-    available = Field('bool', default=True)
+    value = Field.float(default=8.8)
+    available = Field.bool(default=True)
 
 _step_two_sql = """CREATE TABLE "step_two_things"(
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,17 +166,17 @@ def test_step_three_drop_column(app):
 
 class StepFourThing(Model):
     name = Field(notnull=True)
-    value = Field('float', default=8.8)
-    available = Field('bool', default=True)
+    value = Field.float(default=8.8)
+    available = Field.bool(default=True)
     asd = Field()
 
 
 class StepFourThingEdit(Model):
     tablename = "step_four_things"
     name = Field()
-    value = Field('float')
-    available = Field('bool', default=True)
-    asd = Field('int')
+    value = Field.float()
+    available = Field.bool(default=True)
+    asd = Field.int()
 
 _step_four_sql = """ALTER TABLE "step_four_things" ALTER COLUMN "name" DROP NOT NULL;
 ALTER TABLE "step_four_things" ALTER COLUMN "value" DROP DEFAULT;
@@ -198,8 +198,8 @@ def test_step_four_alter_table(app):
 
 class StepFiveThing(Model):
     name = Field()
-    value = Field('int')
-    created_at = Field('datetime')
+    value = Field.int()
+    created_at = Field.datetime()
 
     indexes = {
         'name': True,

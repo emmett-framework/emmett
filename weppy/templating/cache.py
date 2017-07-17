@@ -24,7 +24,6 @@ class TemplaterCache(object):
         self.app = app
         self.templater = templater
         self.tpath = app.template_path
-        self.preload = PreloaderCache(self)
         self.load = LoaderCache(self)
         self.prerender = PrerenderCache(self)
         self.parse = ParserCache(self)
@@ -38,14 +37,6 @@ class InnerCache(object):
     def __init__(self, cache_interface):
         self.cache = cache_interface
         self.data = {}
-
-
-class PreloaderCache(InnerCache):
-    def get(self, path, name):
-        return self.data.get((path, name))
-
-    def set(self, path, name, val):
-        self.data[(path, name)] = val
 
 
 class ReloadableMixin(object):
@@ -64,7 +55,7 @@ class LoaderCache(InnerCache, ReloadableMixin):
     def reloader_get(self, file_path):
         try:
             mtime = os.stat(file_path).st_mtime
-        except:
+        except Exception:
             return None
         old_time = self.mtimes.get(file_path, 0)
         if mtime > old_time:

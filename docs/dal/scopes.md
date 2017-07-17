@@ -13,10 +13,10 @@ Let's say, for example, that you're writing some blog application, where every p
 ```python
 class Post(Model):
     title = Field()
-    body = Field('text')
-    created_at = Field('datetime')
-    changed_at = Field('datetime')
-    state = Field('int')
+    body = Field.text()
+    created_at = Field.datetime()
+    changed_at = Field.datetime()
+    state = Field.int()
 
     STATES = {'draft': 0, 'published': 1, 'retired': 2}
 
@@ -93,8 +93,8 @@ Using arguments in scopes can be handy also when you want to keep your routed fu
 ```python
 class Todo(Model):
     action = Field()
-    done = Field('bool')
-    overdue_at = Field('datetime')
+    done = Field.bool()
+    overdue_at = Field.datetime()
 ```
 
 we want to make available these states using a *filter* query parameter:
