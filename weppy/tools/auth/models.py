@@ -16,8 +16,8 @@ from ...security import uuid
 
 
 class TimestampedModel(Model):
-    created_at = Field('datetime', default=now, rw=False)
-    updated_at = Field('datetime', default=now, update=now, rw=False)
+    created_at = Field.datetime(default=now, rw=False)
+    updated_at = Field.datetime(default=now, update=now, rw=False)
 
 
 class AuthModel(Model):
@@ -105,7 +105,7 @@ class AuthUserBasic(AuthModel, TimestampedModel):
     #  )
 
     email = Field(length=255, unique=True)
-    password = Field('password', length=512)
+    password = Field.password(length=512)
     registration_key = Field(length=512, rw=False, default='')
     reset_password_key = Field(length=512, rw=False, default='')
     registration_id = Field(length=512, rw=False, default='')
@@ -163,7 +163,7 @@ class AuthGroup(TimestampedModel):
     #  )
 
     role = Field(length=255, default='', unique=True)
-    description = Field('text')
+    description = Field.text()
 
     form_labels = {
         'role': 'Role',
@@ -183,7 +183,7 @@ class AuthPermission(TimestampedModel):
 
     name = Field(length=512, default='default', notnull=True)
     table_name = Field(length=512)
-    record_id = Field('int', default=0)
+    record_id = Field.int(default=0)
 
     validation = {
         'record_id': {'in': {'range': (0, 10**9)}}
@@ -202,7 +202,7 @@ class AuthEvent(TimestampedModel):
 
     client_ip = Field()
     origin = Field(length=512, notnull=True)
-    description = Field('text', notnull=True)
+    description = Field.text(notnull=True)
 
     default_values = {
         'client_ip': lambda:
