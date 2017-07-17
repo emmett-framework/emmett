@@ -52,7 +52,7 @@ class EnvironBuilder(object):
         else:
             if query_string is None:
                 query_string = sdict()
-            elif not isinstance(query_string, sdict):
+            elif not isinstance(query_string, dict):
                 query_string = self._parse_querystring(query_string)
             self.args = query_string
         self.method = method
