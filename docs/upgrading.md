@@ -54,8 +54,8 @@ response.headers['Content-Type'] = contenttype(request.environ['PATH_INFO'])
 With weppy 1.1 we introduced some new features:
 
 - the forms now have a default widget for *decimal* fields
-- auth module now support [custom paths](./auth#change-routes-paths) for its routes
-- the `Field` class now have methods to create fields with specific types: you can use the new syntax instead of using the old string argument
+- auth module now supports [custom paths](./auth#change-routes-paths) for its routes
+- the `Field` class now has methods to create fields with specific types: you can use the new syntax instead of using the old string argument
 
 
 Version 1.0
