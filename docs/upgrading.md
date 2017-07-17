@@ -30,9 +30,9 @@ weppy 1.1 introduces some minor breaking changes you should be aware of, and som
 
 Before weppy 1.1 the *Content-Type* header value in the response was inflated considering an eventual extension format in the url. Since this operation wasted some time on the request flow, and due to the fact in a typical weppy application url extensions are not common, with this version we removed this functionality. 
 
-Please note that the *Content-Type* header values are still set to the correct values when using templates or the weppy services, so you won't have to change anything.
+Please note that the *Content-Type* header values are still set to the correct ones when using templates or the weppy services, so you won't have to change anything.
 
-An edit is required only if you have routes where you used this feature, where you now need to set the content type manually:
+An edit is required only if you have routes where you used this feature. You just need to set the content type manually:
 
 ```python
 from weppy import response
