@@ -16,7 +16,7 @@
 import re
 from cgi import FieldStorage
 from os import SEEK_END, SEEK_SET
-from .._compat import text_type, to_unicode, to_native
+from .._compat import text_type, to_unicode, to_native, reduce
 from .helpers import translate, is_empty
 
 
