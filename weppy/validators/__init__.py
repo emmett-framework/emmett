@@ -84,7 +84,7 @@ class ValidateFromDict(object):
             keyspecs = key.split(':')
             subkey = keyspecs[1].strip()
             assert keyspecs[0].strip() == 'list'
-        except:
+        except Exception:
             subkey = '_missing_'
         validator = self.is_validators.get(subkey)
         return isList(
@@ -123,8 +123,8 @@ class ValidateFromDict(object):
             if isinstance(_len, int):
                 #: allows {'len': 2}
                 validators.append(
-                    hasLength(_len+1, _len, message='Enter %(min)g characters')
-                )
+                    hasLength(
+                        _len + 1, _len, message='Enter %(min)g characters'))
             else:
                 #: allows
                 #  {'len': {'gt': 1, 'gte': 2, 'lt': 5, 'lte' 6}}
@@ -197,7 +197,7 @@ class ValidateFromDict(object):
                         options = {'algorithm': data[key]}
                     else:
                         raise SyntaxError(
-                            key+" validator accepts only dict or True")
+                            key + " validator accepts only dict or True")
                 validators.append(vclass(**options))
         #: parse 'unique'
         _unique = data.get('unique', False)

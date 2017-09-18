@@ -43,10 +43,9 @@ class ParentValidator(Validator):
         self.children = children
 
     def formatter(self, value):
-        for child in self.children:
-            if hasattr(child, 'formatter') and child(value)[1] is not None:
-                return child.formatter(value)
-        return value
+        return reduce(
+            lambda formatted_val, child: child.formatter(formatted_val),
+            self.children, value)
 
 
 class _is(Validator):
@@ -91,9 +90,6 @@ class Allow(ParentValidator):
     def __init__(self, value, children, message=None):
         ParentValidator.__init__(self, children, message)
         self.value = value
-
-    def formatter(self, value):
-        return value
 
     def __call__(self, value):
         val = value
