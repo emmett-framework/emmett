@@ -34,12 +34,15 @@ def options_sorter(x, y):
 
 
 def is_empty(value, empty_regex=None):
-    if isinstance(value, string_types):
+    if value is None:
+        return value, True
+    if isinstance(value, string_types) or isinstance(value, bytes):
         value = value.strip()
         if empty_regex is not None and empty_regex.match(value):
             value = ''
-    if value is None or value == '' or value == []:
-        return value, True
+        return value, len(value) == 0
+    if isinstance(value, list):
+        return value, len(value) == 0
     return value, False
 
 
