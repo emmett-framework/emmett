@@ -98,10 +98,13 @@ class ParserCache(HashableCache):
     def __init__(self, cache_interface):
         super(ParserCache, self).__init__(cache_interface)
         self.cdata = {}
+        self.paths = {}
         self.dependencies = {}
 
-    def _expired_dependency(self, name):
-        if os.stat(name).st_mtime != self.cache.load.mtimes[name]:
+    def _expired_dependency(self, path, name):
+        tpath, tname = self.cache.templater.preload(path, name)
+        file_path = os.path.join(tpath, tname)
+        if os.stat(file_path).st_mtime != self.cache.load.mtimes[file_path]:
             return True
         return False
 
@@ -110,14 +113,15 @@ class ParserCache(HashableCache):
         if self.hashes.get(name) != hashed:
             return None, None
         for dep_name in self.dependencies[name]:
-            if self._expired_dependency(dep_name):
+            if self._expired_dependency(self.paths[name], dep_name):
                 return None, None
         return self.cached_get(name, source)
 
     def cached_get(self, name, source):
         return self.data.get(name), self.cdata.get(name)
 
-    def set(self, name, source, compiled, content, dependencies):
+    def set(self, path, name, source, compiled, content, dependencies):
+        self.paths[name] = path
         self.data[name] = compiled
         self.cdata[name] = content
         if self.cache.changes:

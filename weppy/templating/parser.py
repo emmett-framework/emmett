@@ -143,12 +143,12 @@ class ParsingContext(object):
         return self
 
     def load(self, name, **kwargs):
-        text, tname = self.parser._get_file_text(name)
-        self.state.dependencies.append(tname)
-        kwargs['source'] = tname
+        name, file_path, text = self.parser._get_file_text(name)
+        self.state.dependencies.append(name)
+        kwargs['source'] = file_path
         kwargs['in_python_block'] = False
         return self(
-            name=tname, elements=self.parser._tag_split_text(text), **kwargs)
+            name=name, elements=self.parser._tag_split_text(text), **kwargs)
 
     def end_current_step(self):
         self.state.elements = []
@@ -263,12 +263,12 @@ class TemplateParser(object):
         tpath, tname = self.templater.preload(self.path, filename)
         file_path = os.path.join(tpath, tname)
         try:
-            tsource = self.templater.load(file_path)
+            text = self.templater.load(file_path)
         except Exception:
             raise TemplateError(
                 self.path, 'Unable to open included view file', self.name, 1)
-        tsource = self.templater.prerender(tsource, file_path)
-        return tsource, file_path
+        text = self.templater.prerender(text, file_path)
+        return filename, file_path, text
 
     def parse_html_block(self, ctx, element):
         lines = element.split("\n")

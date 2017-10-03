@@ -106,9 +106,8 @@ class Templater(object):
         return self._no_preload
 
     def _load(self, file_path):
-        file_obj = open(file_path, 'r')
-        source = to_unicode(file_obj.read())
-        file_obj.close()
+        with open(file_path, 'r') as file_obj:
+            source = to_unicode(file_obj.read())
         return source
 
     def load(self, file_path):
@@ -143,7 +142,7 @@ class Templater(object):
                 'exec')
             content = parser.content
             self.cache.parse.set(
-                file_path, source, code, content, parser.dependencies)
+                path, file_path, source, code, content, parser.dependencies)
         return code, content
 
     def inject(self, context):
