@@ -49,15 +49,17 @@ class NodeGroup(Node):
         self.value = value or []
         super(NodeGroup, self).__init__(value, **kwargs)
 
-    def increment_indent(self, increment):
+    def increment_children_indent(self, increment):
         for element in self.value:
             element.increment_indent(increment)
+
+    def increment_indent(self, increment):
+        self.increment_children_indent(increment)
         self.indent += increment
 
     def change_indent(self, indent):
-        indent_diff = indent - self.indent
-        for element in self.value:
-            element.increment_indent(indent_diff)
+        diff = indent - self.indent
+        self.increment_children_indent(diff)
         self.indent = indent
 
     def __render__(self, parser):

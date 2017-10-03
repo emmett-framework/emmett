@@ -55,6 +55,9 @@ class IncludeLexer(WeppyLexer):
         if value:
             with ctx.load(value):
                 ctx.parse()
+                included_id = ctx.state._id
+            ctx.contents_map[included_id].increment_children_indent(
+                ctx.state.indent)
         #: otherwise, inject in the extended node
         else:
             ctx.state.extend_src.swap_block_type()
@@ -106,7 +109,7 @@ class ExtendLexer(WeppyLexer):
     def update_included_indent(self, ctx):
         block_id = ctx.blocks_tree['__include__']
         block = ctx.contents_map[block_id]
-        block.increment_indent(block.indent)
+        block.increment_children_indent(block.indent)
 
 
 class HelpersLexer(WeppyLexer):

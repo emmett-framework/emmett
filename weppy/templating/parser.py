@@ -67,7 +67,7 @@ class ParsingState(object):
         self.blocks = {}
         self.dependencies = []
         self.indent = 0
-        self.new_line = False
+        self.new_line = True
 
     def __call__(
         self, name=None, elements=None, in_python_block=None, parent=None,
