@@ -110,7 +110,7 @@ class ParsingContext(object):
         self.stack = []
         self.scope = scope
         self.state = ParsingState(
-            name, self.parser.r_tag.split(text), source=name,
+            name, self.parser._tag_split_text(text), source=name,
             isolated_pyblockstate=True)
         self.contents_map = {}
         self.blocks_tree = {}
@@ -148,7 +148,7 @@ class ParsingContext(object):
         kwargs['source'] = tname
         kwargs['in_python_block'] = False
         return self(
-            name=tname, elements=self.parser.r_tag.split(text), **kwargs)
+            name=tname, elements=self.parser._tag_split_text(text), **kwargs)
 
     def end_current_step(self):
         self.state.elements = []
@@ -249,6 +249,9 @@ class TemplateParser(object):
             len(self.delimiters[0]), len(self.delimiters[1]))
         #: build content
         self.parse(text)
+
+    def _tag_split_text(self, text):
+        return self.r_tag.split(text.replace('\t', '    '))
 
     def _get_file_text(self, filename):
         if not filename.strip():
