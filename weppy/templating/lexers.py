@@ -91,7 +91,7 @@ class ExtendLexer(WeppyLexer):
             src.indent = original_indent
 
     def replace_extended_blocks(self, ctx):
-        for key in set(ctx.state.blocks.keys()) & (ctx.blocks_tree.keys()):
+        for key in set(ctx.state.blocks.keys()) & set(ctx.blocks_tree.keys()):
             #: get destination and source blocks
             dst = ctx.state.blocks[key]
             src = ctx.blocks_tree[key]
