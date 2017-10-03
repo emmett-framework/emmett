@@ -13,7 +13,6 @@
 from .._compat import to_unicode
 from ..expose import url
 from ..extensions import TemplateLexer
-from .contents import SuperNode, BlockNode
 
 
 class WeppyLexer(TemplateLexer):
@@ -23,66 +22,91 @@ class WeppyLexer(TemplateLexer):
         pass
 
 
-class DefineLexer(WeppyLexer):
-    def process(self, value):
+class VariableLexer(WeppyLexer):
+    def process(self, ctx, value):
         #: insert a variable in the template
-        node = self.parser.create_node(value, self.parser._is_pre_extend)
-        self.top.append(node)
+        ctx.variable(value)
 
 
 class BlockLexer(WeppyLexer):
-    def process(self, value):
-        #: create a new node with name
-        node = self.parser.create_block(
-            value.strip(), self.parser._is_pre_extend)
-        #: append this node to the active one
-        self.top.append(node)
-        #: add the node to the stack so anything after this gets added
-        #  to this node. This allows us to "nest" nodes.
-        self.stack.append(node)
+    def process(self, ctx, value):
+        #: create a new stack element with name
+        with ctx(value):
+            ctx.parse()
 
 
 class EndLexer(WeppyLexer):
-    def process(self, value):
-        #: we are done with this node, let's store the instance
-        self.parser.blocks[self.top.name] = self.top
-        #: and pop it
-        self.stack.pop()
+    def process(self, ctx, value):
+        #: we are done with this node, move up in the stack
+        ctx.end_current_step()
 
 
 class SuperLexer(WeppyLexer):
-    def process(self, value):
-        #: get correct target name, if not provided assume the top block
-        target_node = value if value else self.top.name
-        #: create a SuperNode instance
-        node = SuperNode(name=target_node,
-                         pre_extend=self.parser._is_pre_extend)
-        #: add new node to the super_nodes list
-        self.parser.super_nodes.append(node)
-        #: put the node into the tree
-        self.top.append(node)
+    def process(self, ctx, value):
+        #: create a node for later injection by super block
+        target_block = value if value else ctx.name
+        node = ctx.node_group()
+        ctx.state.injections[target_block] = node
 
 
 class IncludeLexer(WeppyLexer):
-    def process(self, value):
-        #: if we have a value, just call the parser function
+    def process(self, ctx, value):
+        #: if we have a value, just add the new content
         if value:
-            self.parser.include(self.top, value)
-        #: otherwise, make a temporary include node that the child node
-        #  will know to hook into.
+            with ctx.load(value):
+                ctx.parse()
+        #: otherwise, inject in the extended node
         else:
-            include_node = BlockNode(
-                name='__include__' + self.parser.name,
-                pre_extend=self.parser._is_pre_extend,
-                delimiters=self.parser.delimiters)
-            self.top.append(include_node)
+            ctx.state.extend_src.swap_block_type()
+            with ctx(
+                '__include__',
+                ctx.state.extend_src.elements,
+                in_python_block=ctx.state.extend_src.in_python_block,
+                source=ctx.state.extend_src.source,
+                line_start=ctx.state.extend_src.lines.end
+            ):
+                ctx.parse()
+                ctx.state.extend_src.update_lines_count(
+                    ctx.state.lines.end - ctx.state.lines.start)
 
 
 class ExtendLexer(WeppyLexer):
-    def process(self, value):
+    def process(self, ctx, value):
         #: extend the proper template
-        self.parser._needs_extend = value
-        self.parser._is_pre_extend = False
+        with ctx.load(value, extend_src=ctx.state, injections={}):
+            ctx.parse()
+            self.inject_content_in_children(ctx)
+            self.replace_extended_blocks(ctx)
+            self.update_included_indent(ctx)
+
+    def inject_content_in_children(self, ctx):
+        for key, node in ctx.state.injections.items():
+            #: get the content to inject
+            src = ctx.contents_map[ctx.state.blocks[key]]
+            original_indent = src.indent
+            #: align src indent with the destination
+            src.change_indent(node.indent)
+            node.value = list(src.value)
+            #: restore the original indent on the block
+            src.indent = original_indent
+
+    def replace_extended_blocks(self, ctx):
+        for key in set(ctx.state.blocks.keys()) & (ctx.blocks_tree.keys()):
+            #: get destination and source blocks
+            dst = ctx.state.blocks[key]
+            src = ctx.blocks_tree[key]
+            #: update the source indent with the destination one
+            ctx.contents_map[src].change_indent(ctx.contents_map[dst].indent)
+            ctx.contents_map[dst].value = list(ctx.contents_map[src].value)
+            #: cleanup
+            ctx.contents_map[src].value = []
+            del ctx.contents_map[src]
+            del ctx.blocks_tree[key]
+
+    def update_included_indent(self, ctx):
+        block_id = ctx.blocks_tree['__include__']
+        block = ctx.contents_map[block_id]
+        block.increment_indent(block.indent)
 
 
 class HelpersLexer(WeppyLexer):
@@ -92,25 +116,30 @@ class HelpersLexer(WeppyLexer):
         '<script type="text/javascript" ' +
         'src="/__weppy__/helpers.js"></script>']
 
-    def process(self, value):
-        node = self.parser.create_htmlnode(
-            u"\n".join(h for h in self.helpers), self.parser._is_pre_extend)
-        self.top.append(node)
+    def process(self, ctx, value):
+        for helper in self.helpers:
+            ctx.html(helper)
 
 
 class MetaLexer(WeppyLexer):
-    def process(self, value):
-        if not value:
-            value = u'current.response.get_meta()'
-        node = self.parser.create_node(
-            value, self.parser._is_pre_extend, writer_escape=False)
-        self.top.append(node)
+    def process(self, ctx, value):
+        ctx.python_node('for name, value in current.response._meta_tmpl():')
+        ctx.variable(
+            "'<meta name=\"%s\" content=\"%s\" />' % (name, value)",
+            escape=False)
+        ctx.python_node('pass')
+        ctx.python_node(
+            'for name, value in current.response._meta_tmpl_prop():')
+        ctx.variable(
+            "'<meta property=\"%s\" content=\"%s\" />' % (name, value)",
+            escape=False)
+        ctx.python_node('pass')
 
 
 class StaticLexer(WeppyLexer):
     evaluate_value = True
 
-    def process(self, value):
+    def process(self, ctx, value):
         file_name = value.split("?")[0]
         surl = to_unicode(url('static', file_name))
         file_ext = file_name.rsplit(".", 1)[-1]
@@ -121,12 +150,11 @@ class StaticLexer(WeppyLexer):
         else:
             s = None
         if s:
-            node = self.parser.create_htmlnode(s, self.parser._is_pre_extend)
-            self.top.append(node)
+            ctx.html(s)
 
 
 default_lexers = {
-    '=': DefineLexer(),
+    '=': VariableLexer(),
     'block': BlockLexer(),
     'end': EndLexer(),
     'super': SuperLexer(),

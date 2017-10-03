@@ -102,22 +102,13 @@ class TemplateLexer(object):
     def __init__(self, extension):
         self.ext = extension
 
-    def __call__(self, parser, value=None):
-        self.parser = parser
+    def __call__(self, ctx, value=None):
         if self.evaluate_value and value is not None:
-            value = eval(value, self.parser.context)
-        self.process(value)
+            value = eval(value, ctx.scope)
+        self.process(ctx, value)
 
-    @property
-    def stack(self):
-        return self.parser.stack
-
-    @property
-    def top(self):
-        return self.parser.stack[-1]
-
-    def process(self, value):
-        return value
+    def process(self, ctx, value):
+        pass
 
 
 def _wrap_listener(ext, f):

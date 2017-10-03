@@ -6,206 +6,90 @@
     Provides structures for templating system.
 
     :copyright: (c) 2014-2017 by Giovanni Barillari
-
-    Based on the web2py's templating system (http://www.web2py.com)
-    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
-
     :license: BSD, see LICENSE for more details.
 """
 
-from .._compat import implements_to_string, to_unicode
+from .._compat import to_unicode
+from ..datastructures import sdict
 
 
-def _gen_output(node, blocks):
-    if isinstance(node, BlockNode):
-        if node.name in blocks:
-            rv = blocks[node.name].output(blocks)
-        else:
-            rv = node.output(blocks)
-    else:
-        rv = to_unicode(node)
-    return rv
-
-
-@implements_to_string
 class Node(object):
-    """
-    Basic Container Object
-    """
-    def __init__(self, value=None, pre_extend=False, template=None,
-                 lines=None):
+    __slots__ = ('value', 'indent', 'new_line', 'source', 'lines')
+
+    def __init__(
+        self, value=None, indent=0, new_line=False, source=None, lines=None
+    ):
         self.value = value
-        self.pre_extend = pre_extend
-        self.template = template
+        self.indent = indent
+        self.new_line = new_line
+        self.source = source
         self.lines = lines or (None, None)
 
-    def __str__(self):
-        return to_unicode(self.value)
+    def increment_indent(self, increment):
+        self.indent += increment
+
+    def change_indent(self, indent):
+        self.indent = indent
+
+    def render_elements(self, parser):
+        return [u'\n', to_unicode(self.value)]
+
+    def __render__(self, parser):
+        return u''.join(self.render_elements(parser))
+
+    def __reference__(self):
+        return [(self.source, self.lines)]
 
     def _rendered_lines(self):
-        return str(self).split("\n")[1:]
+        return self.__render__(sdict(writer='w')).split(u"\n")[1:]
 
 
-@implements_to_string
-class SuperNode(Node):
-    def __init__(self, name='', pre_extend=False):
-        self.name = name
-        self.value = None
-        self.pre_extend = pre_extend
+class NodeGroup(Node):
+    def __init__(self, value=None, **kwargs):
+        self.value = value or []
+        super(NodeGroup, self).__init__(value, **kwargs)
 
-    def __str__(self):
-        if self.value:
-            return to_unicode(self.value)
-        return u''
+    def increment_indent(self, increment):
+        for element in self.value:
+            element.increment_indent(increment)
+        self.indent += increment
 
-    def __repr__(self):
-        return "%s->%s" % (self.name, self.value)
+    def change_indent(self, indent):
+        indent_diff = indent - self.indent
+        for element in self.value:
+            element.increment_indent(indent_diff)
+        self.indent = indent
 
+    def __render__(self, parser):
+        return u''.join(element.__render__(parser) for element in self.value)
 
-@implements_to_string
-class BlockNode(Node):
-    """
-    Block Container.
-
-    This Node can contain other Nodes and will render in a hierarchical order
-    of when nodes were added.
-
-    ie::
-
-        {{ block test }}
-            This is default block test
-        {{ end }}
-    """
-    def __init__(self, name='', pre_extend=False, delimiters=('{{', '}}')):
-        """
-        name - Name of this Node.
-        """
-        self.nodes = []
-        self.name = name
-        self.pre_extend = pre_extend
-        self.left, self.right = delimiters
-
-    def __repr__(self):
-        lines = ['%sblock %s%s' % (self.left, self.name, self.right)]
-        lines += [str(node) for node in self.nodes]
-        lines.append('%send%s' % (self.left, self.right))
-        return ''.join(lines)
-
-    def __str__(self):
-        """
-        Get this BlockNodes content, not including child Nodes
-        """
-        return u''.join(str(node) for node in self.nodes
-                        if not isinstance(node, BlockNode))
-
-    def append(self, node):
-        """
-        Add an element to the nodes.
-
-        Keyword Arguments
-
-        - node -- Node object or string to append.
-        """
-        if isinstance(node, (str, Node)):
-            self.nodes.append(node)
-        else:
-            raise TypeError("Invalid type; must be instance of ``str`` or " +
-                            "``BlockNode``. %s" % node)
-
-    def extend(self, other):
-        """
-        Extend the list of nodes with another BlockNode class.
-
-        Keyword Arguments
-
-        - other -- BlockNode or Content object to extend from.
-        """
-        if isinstance(other, BlockNode):
-            self.nodes.extend(other.nodes)
-        else:
-            raise TypeError(
-                "Invalid type; must be instance of ``BlockNode``. %s" % other)
-
-    def output(self, blocks):
-        """
-        Merges all nodes into a single string.
-        blocks -- Dictionary of blocks that are extending
-        from this template.
-        """
-        return u''.join(_gen_output(node, blocks) for node in self.nodes)
+    def __reference__(self):
+        rv = []
+        for element in self.value:
+            rv.extend(element.__reference__())
+        return rv
 
 
-@implements_to_string
-class Content(BlockNode):
-    """
-    Parent Container -- Used as the root level BlockNode.
+class WriterNode(Node):
+    _writer_method = 'write'
+    _newline_val = {
+        True: u''.join([u', ', to_unicode(repr('\n'))]), False: u''}
 
-    Contains functions that operate as such.
-    """
-    def __init__(self, name="ContentBlock", pre_extend=False):
-        """
-        Keyword Arguments
+    def render_value(self):
+        return self.value
 
-        name -- Unique name for this BlockNode
-        """
-        self.name = name
-        self.nodes = []
-        self.blocks = {}
-        self.pre_extend = pre_extend
-        self.template = name
+    def __render__(self, parser):
+        return u''.join([
+            u'\n', parser.writer, u'.', self._writer_method, u'(',
+            to_unicode(self.render_value()), u', ',
+            to_unicode(self.new_line and self.indent or 0),
+            self._newline_val[self.new_line], u')'])
 
-    def __repr__(self):
-        return object.__repr__(self)
 
-    def __str__(self):
-        return u''.join(_gen_output(node, self.blocks) for node in self.nodes)
+class EscapeNode(WriterNode):
+    _writer_method = 'escape'
 
-    def _insert(self, other, index=0):
-        """
-        Inserts object at index.
-        """
-        if isinstance(other, (str, Node)):
-            self.nodes.insert(index, other)
-        else:
-            raise TypeError(
-                "Invalid type, must be instance of ``str`` or ``Node``.")
 
-    def insert(self, other, index=0):
-        """
-        Inserts object at index.
-
-        You may pass a list of objects and have them inserted.
-        """
-        if isinstance(other, (list, tuple)):
-            # Must reverse so the order stays the same.
-            other.reverse()
-            for item in other:
-                self._insert(item, index)
-        else:
-            self._insert(other, index)
-
-    def append(self, node):
-        """
-        Adds a node to list. If is a BlockNode then we assign a block for it.
-        """
-        if isinstance(node, (str, Node)):
-            self.nodes.append(node)
-            if isinstance(node, BlockNode):
-                self.blocks[node.name] = node
-        else:
-            raise TypeError("Invalid type, must be instance of ``str`` or " +
-                            "``BlockNode``. %s" % node)
-
-    def extend(self, other):
-        """
-        Extends the objects list of nodes with another objects nodes
-        """
-        if isinstance(other, BlockNode):
-            self.nodes.extend(other.nodes)
-            self.blocks.update(other.blocks)
-        else:
-            raise TypeError(
-                "Invalid type; must be instance of ``BlockNode``. %s" % other)
-
-    def clear_content(self):
-        self.nodes = []
+class HTMLNode(WriterNode):
+    def render_value(self):
+        return repr(self.value)

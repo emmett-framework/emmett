@@ -11,12 +11,12 @@
 
 import os
 import hashlib
-from .._compat import iteritems, to_bytes
+from .._compat import to_bytes
 from ..utils import cachedprop
 
 
-def make_md5(value):
-    return hashlib.md5(to_bytes(value)).hexdigest()[:8]
+def make_hash(value):
+    return hashlib.sha1(to_bytes(value)).hexdigest()[:8]
 
 
 class TemplaterCache(object):
@@ -75,19 +75,19 @@ class HashableCache(InnerCache, ReloadableMixin):
         super(HashableCache, self).__init__(cache_interface)
         self.hashes = {}
 
-    def reloader_get(self, filename, source):
-        hashed = make_md5(source)
-        if self.hashes.get(filename) != hashed:
+    def reloader_get(self, name, source):
+        hashed = make_hash(source)
+        if self.hashes.get(name) != hashed:
             return None
-        return self.cached_get(filename, source)
+        return self.cached_get(name, source)
 
-    def cached_get(self, filename, source):
-        return self.data.get(filename)
+    def cached_get(self, name, source):
+        return self.data.get(name)
 
-    def set(self, filename, source):
-        self.data[filename] = source
+    def set(self, name, source):
+        self.data[name] = source
         if self.cache.changes:
-            self.hashes[filename] = make_md5(source)
+            self.hashes[name] = make_hash(source)
 
 
 class PrerenderCache(HashableCache):
@@ -97,31 +97,29 @@ class PrerenderCache(HashableCache):
 class ParserCache(HashableCache):
     def __init__(self, cache_interface):
         super(ParserCache, self).__init__(cache_interface)
-        self.pdata = {}
+        self.cdata = {}
         self.dependencies = {}
 
-    def _fetch_dependency_source(self, tpath, tname):
-        tsource = self.cache.templater.load(tpath, tname)
-        return self.cache.templater.prerender(tsource, tname)
+    def _expired_dependency(self, name):
+        if os.stat(name).st_mtime != self.cache.load.mtimes[name]:
+            return True
+        return False
 
-    def reloader_get(self, filename, source):
-        hashed = make_md5(source)
-        if self.hashes.get(filename) != hashed:
+    def reloader_get(self, name, source):
+        hashed = make_hash(source)
+        if self.hashes.get(name) != hashed:
             return None, None
-        for iname, (ipath, ihash) in iteritems(self.dependencies[filename]):
-            hashed = make_md5(self._fetch_dependency_source(ipath, iname))
-            if ihash != hashed:
+        for dep_name in self.dependencies[name]:
+            if self._expired_dependency(dep_name):
                 return None, None
-        return self.cached_get(filename, source)
+        return self.cached_get(name, source)
 
-    def cached_get(self, filename, source):
-        return self.data.get(filename), self.pdata.get(filename)
+    def cached_get(self, name, source):
+        return self.data.get(name), self.cdata.get(name)
 
-    def set(self, filename, source, compiled, pdata, included):
-        self.data[filename] = compiled
-        self.pdata[filename] = pdata
+    def set(self, name, source, compiled, content, dependencies):
+        self.data[name] = compiled
+        self.cdata[name] = content
         if self.cache.changes:
-            self.hashes[filename] = make_md5(source)
-            self.dependencies[filename] = {}
-            for ipath, iname, isource in included:
-                self.dependencies[filename][iname] = (ipath, make_md5(isource))
+            self.hashes[name] = make_hash(source)
+            self.dependencies[name] = dependencies

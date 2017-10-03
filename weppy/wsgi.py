@@ -103,7 +103,7 @@ def error_handler(app, environ, start_response):
             custom_handler = app.error_handlers.get(500, lambda: None)
             try:
                 body = custom_handler()
-            except:
+            except Exception:
                 pass
             if not body:
                 body = '<html><body>Internal error</body></html>'
