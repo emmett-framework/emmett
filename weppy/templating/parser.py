@@ -277,6 +277,7 @@ class TemplateParser(object):
         removed_last_line = False
         if not lines[0]:
             lines.pop(0)
+            ctx.state.new_line = True
         if lines and not lines[-1]:
             lines.pop()
             removed_last_line = True

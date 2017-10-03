@@ -111,6 +111,7 @@ rendered_value = """
             <div class="nav">
                 <a href="/">nuvolosit&#224; variabile</a>
             </div>
+
             <ul class="posts">
                 <li>
                     <h2>foo</h2>
@@ -133,7 +134,8 @@ def test_render(app):
             'current': current, 'posts': [{'title': 'foo'}, {'title': 'bar'}]
         }
     )
-    assert rendered_value[1:] == r
+    assert "\n".join([l.rstrip() for l in r.splitlines()]) == \
+        rendered_value[1:]
 
 
 # def test_cache(app):
