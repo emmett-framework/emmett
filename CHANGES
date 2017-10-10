@@ -7,6 +7,8 @@ Next
 (Release date to be defined, codename to be selected)
 
 - Rewritten templates parsing and generation logic
+- Rewritten ORM connection pooling
+- Added support for advanced transaction usage in ORM
 
 
 Version 1.1
