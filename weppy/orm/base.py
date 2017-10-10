@@ -20,10 +20,12 @@ from ..datastructures import sdict
 from ..pipeline import Pipe
 from ..security import uuid as _uuid
 from ..serializers import _pydal_json_encode, xml
-from .adapters import patch_adapter
+from .adapters import _patch_adapter_cls, patch_adapter
+from .connection import _patch_adapter_connection
 from .objects import Table, Field, Set, Row, Rows
 from .helpers import TimingHandler
 from .models import MetaModel, Model
+from .transactions import _atomic, _transaction, _savepoint
 
 
 class DatabasePipe(Pipe):
@@ -77,8 +79,10 @@ class Database(_pyDAL):
         uri = config.uri or Database.uri_from_config(config)
         return super(Database, cls).__new__(cls, uri, *args, **kwargs)
 
-    def __init__(self, app, config=sdict(), pool_size=None, folder=None,
-                 **kwargs):
+    def __init__(
+        self, app, config=sdict(), pool_size=None, keep_alive_timeout=3600,
+        folder=None, **kwargs
+    ):
         app.send_signal('before_database')
         self.logger = app.log
         config = config or app.config.db
@@ -114,6 +118,9 @@ class Database(_pyDAL):
                     os.mkdir(folder)
         #: set pool_size
         pool_size = self.config.pool_size or pool_size or 0
+        self._keep_alive_timeout = (
+            keep_alive_timeout if self.config.keep_alive_timeout is None
+            else self.config.keep_alive_timeout)
         #: add timings storage if requested
         if config.store_execution_timings:
             self.execution_handlers.append(TimingHandler)
@@ -132,15 +139,16 @@ class Database(_pyDAL):
     def execution_timings(self):
         return getattr(THREAD_LOCAL, '_weppydal_timings_', [])
 
-    def connection_open(self):
-        self._adapter.reconnect()
+    def connection_open(self, reuse_if_open=True):
+        self._adapter.reconnect(reuse_if_open=reuse_if_open)
 
     def connection_close(self):
         self._adapter.close()
 
     @contextmanager
-    def connection(self, close_after=True):
-        self.connection_open()
+    def connection(self, reuse_if_open=True):
+        close_after = self._adapter._connection_manager.state.closed
+        self.connection_open(reuse_if_open)
         try:
             yield
         finally:
@@ -204,6 +212,25 @@ class Database(_pyDAL):
                 f(*args, **kwargs)
         return wrapped
 
+    def atomic(self):
+        return _atomic(self._adapter)
+
+    def transaction(self):
+        return _transaction(self._adapter)
+
+    def savepoint(self):
+        return _savepoint(self._adapter)
+
+    def commit(self):
+        txn = self._adapter.top_transaction()
+        if txn:
+            txn.commit()
+
+    def rollback(self):
+        txn = self._adapter.top_transaction()
+        if txn:
+            txn.rollback()
+
 
 def _Database_unpickler(db_uid):
     fake_app_obj = sdict(config=sdict(db=sdict()))
@@ -216,3 +243,5 @@ def _Database_pickler(db):
 
 
 copyreg.pickle(Database, _Database_pickler, _Database_unpickler)
+_patch_adapter_cls()
+_patch_adapter_connection()

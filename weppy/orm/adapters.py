@@ -11,6 +11,7 @@
 
 from functools import wraps
 from pydal.adapters import adapters
+from pydal.adapters.base import BaseAdapter
 from pydal.adapters.mssql import (
     MSSQL1, MSSQL3, MSSQL4, MSSQL1N, MSSQL3N, MSSQL4N)
 from pydal.adapters.postgres import (
@@ -18,7 +19,9 @@ from pydal.adapters.postgres import (
     PostgreNew, PostgrePsycoNew, PostgrePG8000New,
     PostgreBoolean, PostgrePsycoBoolean, PostgrePG8000Boolean
 )
+from pydal.adapters.sqlite import SQLite as _SQLite
 from .._compat import iteritems
+from .connection import ConnectionManager, PooledConnectionManager
 from .objects import Field
 
 
@@ -39,6 +42,17 @@ adapters._registry_.update({
     'postgres3:psycopg2': PostgrePsyco,
     'postgres3:pg8000': PostgrePG8000
 })
+
+
+@adapters.register_for('sqlite', 'sqlite:memory')
+class SQLite(_SQLite):
+    def _initialize_(self, do_connect):
+        super(SQLite, self)._initialize_(do_connect)
+        self.driver_args['isolation_level'] = None
+
+    def begin(self, lock_type=None):
+        statement = 'BEGIN %s;' % lock_type if lock_type else 'BEGIN;'
+        self.execute(statement)
 
 
 def _wrap_on_obj(f, adapter):
@@ -159,3 +173,47 @@ def _create_table_firebird(dialect, tablename, fields):
         trigger_sql % (trigger_name, dialect.quote(tablename), sequence_name)
     ])
     return rv
+
+
+def _initialize(adapter, *args, **kwargs):
+    adapter._find_work_folder()
+    adapter._connection_manager.configure(
+        max_connections=adapter.db._pool_size,
+        stale_timeout=adapter.db._keep_alive_timeout)
+
+
+def _begin(adapter):
+    pass
+
+
+def _in_transaction(adapter):
+    return bool(adapter._connection_manager.state.transactions)
+
+
+def _push_transaction(adapter, transaction):
+    adapter._connection_manager.state.transactions.append(transaction)
+
+
+def _pop_transaction(adapter):
+    adapter._connection_manager.state.transactions.pop()
+
+
+def _transaction_depth(adapter):
+    return len(adapter._connection_manager.state.transactions)
+
+
+def _top_transaction(adapter):
+    if adapter._connection_manager.state.transactions:
+        return adapter._connection_manager.state.transactions[-1]
+
+
+def _patch_adapter_cls():
+    setattr(BaseAdapter, '_initialize_', _initialize)
+    setattr(BaseAdapter, 'in_transaction', _in_transaction)
+    setattr(BaseAdapter, 'push_transaction', _push_transaction)
+    setattr(BaseAdapter, 'pop_transaction', _pop_transaction)
+    setattr(BaseAdapter, 'transaction_depth', _transaction_depth)
+    setattr(BaseAdapter, 'top_transaction', _top_transaction)
+    setattr(BaseAdapter, '_connection_manager_cls', PooledConnectionManager)
+    setattr(BaseAdapter, 'begin', _begin)
+    setattr(SQLite, '_connection_manager_cls', ConnectionManager)
