@@ -140,7 +140,7 @@ class Database(_pyDAL):
         return getattr(THREAD_LOCAL, '_weppydal_timings_', [])
 
     def connection_open(self, reuse_if_open=True):
-        self._adapter.reconnect(reuse_if_open=reuse_if_open)
+        return self._adapter.reconnect(reuse_if_open=reuse_if_open)
 
     def connection_close(self):
         self._adapter.close()

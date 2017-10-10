@@ -69,7 +69,8 @@ def auth(app, _db, mailer):
 
 @pytest.fixture(scope='module')
 def db(_db, auth):
-    _db.define_models(Thing)
+    with _db.connection():
+        _db.define_models(Thing)
     return _db
 
 
