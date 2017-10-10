@@ -147,12 +147,11 @@ class Database(_pyDAL):
 
     @contextmanager
     def connection(self, reuse_if_open=True):
-        close_after = self._adapter._connection_manager.state.closed
-        self.connection_open(reuse_if_open)
+        new_connection = self.connection_open(reuse_if_open)
         try:
             yield
         finally:
-            if close_after:
+            if new_connection:
                 self.connection_close()
 
     def define_models(self, *models):
