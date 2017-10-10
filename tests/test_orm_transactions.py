@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    tests.orm
-    ---------
+    tests.orm_transactions
+    ----------------------
 
-    Test pyDAL implementation over weppy.
+    Test pyDAL transactions implementation over weppy.
 
     :copyright: (c) 2014-2016 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
