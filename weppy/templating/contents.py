@@ -31,11 +31,8 @@ class Node(object):
     def change_indent(self, indent):
         self.indent = indent
 
-    def render_elements(self, parser):
-        return [u'\n', to_unicode(self.value)]
-
     def __render__(self, parser):
-        return u''.join(self.render_elements(parser))
+        return u'\n' + to_unicode(self.value)
 
     def __reference__(self):
         return [(self.source, self.lines)]
@@ -74,8 +71,7 @@ class NodeGroup(Node):
 
 class WriterNode(Node):
     _writer_method = 'write'
-    _newline_val = {
-        True: u''.join([u', ', to_unicode(repr('\n'))]), False: u''}
+    _newline_val = {True: u', ' + to_unicode(repr('\n')), False: u''}
 
     def render_value(self):
         return self.value
