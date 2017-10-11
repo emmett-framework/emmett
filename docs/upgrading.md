@@ -28,7 +28,7 @@ In weppy 1.2 we rewritten the core logic of the templates engine. This won't cha
 
 weppy 1.2 also introduces some new features:
 
-- An additional parameter in ORM configuration to specify [time-based recycling](.dal/connecting) for connections in pools
+- An additional parameter in ORM configuration to specify [time-based recycling](.dal/connecting) for pooled connections
 - [Nested transactions](.dal/connecting#transactions) support in ORM
 
 

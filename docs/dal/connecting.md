@@ -115,8 +115,8 @@ Also, when the `auto_migrate` option is set to `False`, weppy won't migrate your
 Transactions
 ------------
 
-As we seen above, the pipe of your `Database` instance will ensure the connection to the database during the request flow; but it's also responsible of the transactions during this flow.    
-In fact, the pipe treats the request as a single database transaction, ensuring the commit of the changes if the request had success. Otherwise, in the case of un-catched exceptions (resulting in a 500 HTTP error response), the pipe will perform a rollback on the database data.
+As we seen above, the pipe of your `Database` instance will ensure the connection to the database is alive during the request flow; but it's also responsible of the transactions during this flow.    
+In fact, the pipe treats the request as a single database transaction, ensuring changes are committed if the request succeeded. Otherwise, in the case of un-catched exceptions (resulting in a 500 HTTP error response), the pipe will perform a rollback on the database data.
 
 Since the pipe is used only in a request context, every time you work without it you should commit or rollback your changes (also when you're working in the console), using the available methods of the `Database` instance:
 
