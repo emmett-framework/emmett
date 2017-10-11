@@ -19,6 +19,19 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 1.2
+-----------
+
+In weppy 1.2 we rewritten the core logic of the templates engine. This won't change anything if you written an application with weppy, but if you built an extension using templates features, you should check out the [extensions](./extensions#building-extensions) chapter and inspect changes that may have possibly broke your code. Also, if your application uses templates extensions, please check out with the extension maintainer and be sure to upgrade it to the latest version. 
+
+### New features
+
+weppy 1.2 also introduces some new features:
+
+- An additional parameter in ORM configuration to specify [time-based recycling](.dal/connecting) for connections in pools
+- [Nested transactions](.dal/connecting#transactions) support in ORM
+
+
 Version 1.1
 -----------
 
