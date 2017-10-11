@@ -49,7 +49,7 @@ class ConnectionManager(object):
     def connect(self):
         return self.adapter.connector(), True
 
-    def close(self, connection, **kwargs):
+    def close(self, connection, *args, **kwargs):
         connection.close()
 
 
