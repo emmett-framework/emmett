@@ -23,13 +23,20 @@ app.pipeline = [db.pipe]
 This pipe will ensure the connection to the database during the request flow and the disconnection when the response is ready. As a consequence, you don't need to bother about connecting/disconnecting in your application flow, unless you're explicit working without a request context.    
 Even in that case, you won't have troubles in connecting to the database, since the `Database` instance will automatically open up a connection after initialization. This means that, even if you import your `Database` instance from the console, you will have the connection opened with your database.
 
-If somehow you need to manually open and close the connection with your database, you can use the adapter methods:
+In the case you need to manually open and close the connection with your database, for example in test suites, you have two possibilities. You can use a `with` block:
+
+```python
+with db.connection():
+    # some code dealing with database
+```
+
+or the explicit open and close methods:
 
 ```python
 # manually open a connection
-db._adapter.reconnect()
+db.connection_open()
 # manually close the active connection
-db._adapter.close()
+db.connection_close()
 ```
 
 
@@ -94,6 +101,7 @@ db2 = Database(app, app.config.db2)
 | parameter | default | description |
 | --- | --- | --- |
 | pool_size | 0 | the pool size to use when connecting to the database |
+| keep_alive_timeout | 3600 | the maximum interval in seconds a connection can be recycled in the pool |
 | auto_connect | `None` | automatically connects to the DBMS on init |
 | auto_migrate | `False` | turns on or off the automatic migration |
 | folder | `databases` | the folder relative to your application path where to store the database (when using sqlite) and/or support data |
@@ -120,3 +128,38 @@ db.rollback()
 ```
 
 You can obviously use them also in the application code during the request in order to have a better control of what happens with your data. Just remember that when you call `commit()` or `rollback()` you're in fact ending the last transaction and starting a new one.
+
+### Nested transactions
+
+*New in version 1.2*
+
+weppy also supports working with nested transactions. A few methods are available for the purpose, and the most general is `atomic`. These blocks will be run in a transaction or in a savepoint, depending on the nesting level:
+
+```python
+# This code runs in a transaction
+User.create(username='walter')
+with db.atomic():
+    # This block corresponds to a savepoint.
+    User.create(username='olivia')
+    # This will roll back the above create() command.
+    db.rollback()
+User.create(username='william')
+db.commit()
+```
+
+At the last commit, the outer transaction is committed. At that point there will be two users, "walter" and "william".
+
+> **Note:** remember that weppy `Database` class will automatically start a transaction after connection.
+
+In the case you want to explicitly use a transaction or a savepoint, you may also use the specific methods `transaction` and `savepoint`:
+
+```python
+with db.transaction() as txn:
+    # some code
+    with db.savepoint() as sp:
+        # some code
+```
+
+All the code blocks running in `atomic`, `transaction` and `savepoint` will commit changes at the end unless an exception occurs within the block. In that case, the block will issue a rollback and the exception will be raised.
+
+> **Note:** the savepoint support relies on the adapter you configured. Please check your specific DBMS for this feature support.
