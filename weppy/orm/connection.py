@@ -63,29 +63,29 @@ class PooledConnectionManager(ConnectionManager):
 
     def connect(self):
         _opened = False
-        with self._lock:
-            while True:
-                try:
+        while True:
+            try:
+                with self._lock:
                     ts, conn = heapq.heappop(self.connections)
-                    key = id(conn)
-                except IndexError:
-                    ts = conn = None
-                    break
-                else:
-                    if self.stale_timeout and self.is_stale(ts):
-                        super(PooledConnectionManager, self).close(conn)
-                        ts = conn = None
-                    else:
-                        break
-            if conn is None:
-                if self.max_connections and (
-                    len(self.in_use) >= self.max_connections
-                ):
-                    raise RuntimeError('Exceeded maximum connections.')
-                conn, _opened = super(PooledConnectionManager, self).connect()
-                ts = time.time()
                 key = id(conn)
-            self.in_use[key] = ts
+            except IndexError:
+                ts = conn = None
+                break
+            else:
+                if self.stale_timeout and self.is_stale(ts):
+                    super(PooledConnectionManager, self).close(conn)
+                    ts = conn = None
+                else:
+                    break
+        if conn is None:
+            if self.max_connections and (
+                len(self.in_use) >= self.max_connections
+            ):
+                raise RuntimeError('Exceeded maximum connections.')
+            conn, _opened = super(PooledConnectionManager, self).connect()
+            ts = time.time()
+            key = id(conn)
+        self.in_use[key] = ts
         return conn, _opened
 
     def can_reuse(self):
@@ -93,14 +93,14 @@ class PooledConnectionManager(ConnectionManager):
 
     def close(self, connection, close_connection=False):
         key = id(connection)
-        with self._lock:
-            ts = self.in_use.pop(key)
-            if close_connection:
+        ts = self.in_use.pop(key)
+        if close_connection:
+            super(PooledConnectionManager, self).close(connection)
+        else:
+            if self.stale_timeout and self.is_stale(ts):
                 super(PooledConnectionManager, self).close(connection)
-            elif key in self.in_use:
-                if self.stale_timeout and self.is_stale(ts):
-                    super(PooledConnectionManager, self).close(connection)
-                elif self.can_reuse(connection):
+            elif self.can_reuse(connection):
+                with self._lock:
                     heapq.heappush(self.connections, (ts, connection))
 
     def close_all(self):
