@@ -79,9 +79,7 @@ class WriterNode(Node):
     def __render__(self, parser):
         return u''.join([
             u'\n', parser.writer, u'.', self._writer_method, u'(',
-            to_unicode(self.render_value()), u', ',
-            to_unicode(self.new_line and self.indent or 0),
-            self._newline_val[self.new_line], u')'])
+            to_unicode(self.render_value()), u')'])
 
 
 class EscapeNode(WriterNode):
@@ -91,3 +89,24 @@ class EscapeNode(WriterNode):
 class HTMLNode(WriterNode):
     def render_value(self):
         return repr(self.value)
+
+
+class PrettyMixin(object):
+    def __render__(self, parser):
+        return u''.join([
+            u'\n', parser.writer, u'.', self._writer_method, u'(',
+            to_unicode(self.render_value()), u', ',
+            to_unicode(self.new_line and self.indent or 0),
+            self._newline_val[self.new_line], u')'])
+
+
+class PrettyWriterNode(PrettyMixin, WriterNode):
+    pass
+
+
+class PrettyEscapeNode(PrettyMixin, EscapeNode):
+    pass
+
+
+class PrettyHTMLNode(PrettyMixin, HTMLNode):
+    pass

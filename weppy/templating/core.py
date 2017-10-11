@@ -17,18 +17,14 @@ from ..datastructures import sdict
 from ..helpers import load_component
 from ..html import asis, htmlescape
 from ..utils import cachedprop
-from .parser import TemplateParser
+from .parser import TemplateParser, PrettyTemplateParser
 from .cache import TemplaterCache
 from .helpers import TemplateMissingError, TemplateReference
 
 
 class Writer(object):
-    avoid_first_prepend = True
-
     def __init__(self):
         self.body = StringIO()
-        self.write = (
-            self._write_first if self.avoid_first_prepend else self._write)
 
     @staticmethod
     def _to_html(data):
@@ -46,6 +42,32 @@ class Writer(object):
             return text_type(data)
         return to_unicode(data)
 
+    def write(self, data):
+        self.body.write(self._to_native(data))
+
+    def _escape_data(self, data):
+        body = None
+        if hasattr(data, '__html__'):
+            try:
+                body = data.__html__()
+            except Exception:
+                pass
+        if body is None:
+            body = self._to_html(self._to_unicode(data))
+        return body
+
+    def escape(self, data):
+        self.write(self._escape_data(data))
+
+
+class IndentWriter(Writer):
+    avoid_first_prepend = True
+
+    def __init__(self):
+        super(IndentWriter, self).__init__()
+        self.write = (
+            self._write_first if self.avoid_first_prepend else self._write)
+
     def _write_first(self, data, indent=0, prepend=''):
         self.body.write(' ' * indent)
         self.body.write(self._to_native(data))
@@ -57,26 +79,28 @@ class Writer(object):
         self.body.write(self._to_native(data))
 
     def escape(self, data, indent=0, prepend=''):
-        body = None
-        if hasattr(data, '__html__'):
-            try:
-                body = data.__html__()
-            except Exception:
-                pass
-        if body is None:
-            body = self._to_html(self._to_unicode(data))
-        self.write(body, indent, prepend)
+        self.write(self._escape_data(data), indent, prepend)
 
 
-class WriterEscapeAll(Writer):
+class EscapeAll(object):
     @staticmethod
     def _to_html(data):
         return to_bytes(
             Writer._to_html(data), 'ascii', 'xmlcharrefreplace')
 
 
+class EscapeAllWriter(EscapeAll, Writer):
+    pass
+
+
+class EscapeAllIndentWriter(EscapeAll, IndentWriter):
+    pass
+
+
 class Templater(object):
-    _writer_cls = {'common': Writer, 'all': WriterEscapeAll}
+    _writer_cls = {
+        'basic': {'common': Writer, 'all': EscapeAllWriter},
+        'pretty': {'common': IndentWriter, 'all': EscapeAllIndentWriter}}
 
     def __init__(self, application):
         self.config = application.config
@@ -87,8 +111,16 @@ class Templater(object):
 
     @cachedprop
     def response_cls(self):
-        return self._writer_cls.get(
-            self.config.templates_escape, self._writer_cls['common'])
+        _group_key = 'pretty' if self.config.templates_prettify else 'basic'
+        _cls_group = self._writer_cls[_group_key]
+        return _cls_group.get(
+            self.config.templates_escape, _cls_group['common'])
+
+    @cachedprop
+    def parser_cls(self):
+        return (
+            PrettyTemplateParser if self.config.templates_prettify
+            else TemplateParser)
 
     def _preload(self, path, name):
         fext = os.path.splitext(name)[1]
@@ -134,7 +166,7 @@ class Templater(object):
     def parse(self, path, file_path, source, context):
         code, content = self.cache.parse.get(file_path, source)
         if not code:
-            parser = TemplateParser(
+            parser = self.parser_cls(
                 self, source, name=file_path, scope=context, path=path,
                 lexers=self.lexers)
             code = compile(

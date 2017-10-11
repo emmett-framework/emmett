@@ -13,7 +13,9 @@ import os
 import re
 import uuid
 from collections import namedtuple
-from .contents import Node, NodeGroup, WriterNode, EscapeNode, HTMLNode
+from .contents import (
+    Node, NodeGroup, WriterNode, EscapeNode, HTMLNode, PrettyWriterNode,
+    PrettyEscapeNode, PrettyHTMLNode)
 from .helpers import TemplateError
 from .lexers import default_lexers
 
@@ -105,7 +107,10 @@ class ParsingState(object):
 
 
 class ParsingContext(object):
-    def __init__(self, parser, name, text, scope):
+    def __init__(
+        self, parser, name, text, scope, writer_node_cls, escape_node_cls,
+        html_node_cls
+    ):
         self.parser = parser
         self.stack = []
         self.scope = scope
@@ -114,6 +119,9 @@ class ParsingContext(object):
             isolated_pyblockstate=True)
         self.contents_map = {}
         self.blocks_tree = {}
+        self._writer_node_cls = writer_node_cls
+        self._escape_node_cls = escape_node_cls
+        self._html_node_cls = html_node_cls
 
     @property
     def name(self):
@@ -185,7 +193,7 @@ class ParsingContext(object):
         return node
 
     def variable(self, value=None, escape=True):
-        node_cls = EscapeNode if escape else WriterNode
+        node_cls = self._escape_node_cls if escape else self._writer_node_cls
         node = node_cls(
             value, indent=self.state.indent, new_line=self.state.new_line,
             source=self.state.source, lines=self.state.lines)
@@ -199,7 +207,7 @@ class ParsingContext(object):
 
     def html(self, value, indent=None):
         self.content.append(
-            HTMLNode(
+            self._html_node_cls(
                 value, indent=self.state.indent, new_line=self.state.new_line,
                 source=self.state.source, lines=self.state.lines))
 
@@ -214,7 +222,8 @@ class ParsingContext(object):
 
 
 class TemplateParser(object):
-    r_wspace = re.compile("^( *)")
+    _nodes_cls = {'writer': WriterNode, 'escape': EscapeNode, 'html': HTMLNode}
+
     r_multiline = re.compile(r'(""".*?""")|(\'\'\'.*?\'\'\')', re.DOTALL)
 
     #: re-indentation rules
@@ -273,29 +282,13 @@ class TemplateParser(object):
     def parse_html_block(self, ctx, element):
         lines = element.split("\n")
         ctx.update_lines_count(len(lines) - 1)
-        #: remove empty lines if needed
-        removed_last_line = False
-        if not lines[0]:
-            lines.pop(0)
-            ctx.state.new_line = True
-        if lines and not lines[-1]:
-            lines.pop()
-            removed_last_line = True
-        #: process lines
-        line = None
+        new_lines = []
         for line in lines:
-            empty_line = not line
-            indent = len(self.r_wspace.search(line).group(0))
-            line = line[indent:]
-            ctx.state.indent = indent
-            if line or empty_line:
-                ctx.html(line)
-            ctx.state.new_line = True
-        #: set correct `new_line` state depending on last line
-        if line and not removed_last_line:
-            ctx.state.new_line = False
-        else:
-            ctx.state.new_line = True
+            line = line.strip()
+            if line:
+                new_lines.append(line)
+        if new_lines:
+            ctx.html(''.join(new_lines))
 
     def _get_python_block_text(self, element):
         return element[self.delimiters_len[0]:-self.delimiters_len[1]].strip()
@@ -333,8 +326,13 @@ class TemplateParser(object):
         for line in lines:
             self._parse_python_line(ctx, line.strip())
 
+    def _build_ctx(self, text):
+        return ParsingContext(
+            self, self.name, text, self.scope, self._nodes_cls['writer'],
+            self._nodes_cls['escape'], self._nodes_cls['html'])
+
     def parse(self, text):
-        ctx = ParsingContext(self, self.name, text, self.scope)
+        ctx = self._build_ctx(text)
         ctx.parse()
         self.content = ctx.content
         self.dependencies = list(set(ctx.state.dependencies))
@@ -378,6 +376,42 @@ class TemplateParser(object):
 
     def render(self):
         return self.reindent(self.content.render(self))
+
+
+class PrettyTemplateParser(TemplateParser):
+    _nodes_cls = {
+        'writer': PrettyWriterNode,
+        'escape': PrettyEscapeNode,
+        'html': PrettyHTMLNode}
+
+    r_wspace = re.compile("^( *)")
+
+    def parse_html_block(self, ctx, element):
+        lines = element.split("\n")
+        ctx.update_lines_count(len(lines) - 1)
+        #: remove empty lines if needed
+        removed_last_line = False
+        if not lines[0]:
+            lines.pop(0)
+            ctx.state.new_line = True
+        if lines and not lines[-1]:
+            lines.pop()
+            removed_last_line = True
+        #: process lines
+        line = None
+        for line in lines:
+            empty_line = not line
+            indent = len(self.r_wspace.search(line).group(0))
+            line = line[indent:]
+            ctx.state.indent = indent
+            if line or empty_line:
+                ctx.html(line)
+            ctx.state.new_line = True
+        #: set correct `new_line` state depending on last line
+        if line and not removed_last_line:
+            ctx.state.new_line = False
+        else:
+            ctx.state.new_line = True
 
 
 def _escape_newlines(re_val):

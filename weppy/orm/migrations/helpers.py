@@ -61,7 +61,8 @@ def render_template(path, template, ctx):
         template_lexers=[],
         debug=False,
         config=sdict(
-            templates_auto_reload=False
+            templates_auto_reload=False,
+            templates_prettify=True
         )
     )
     templater = Templater(_fakeapp)

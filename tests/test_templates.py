@@ -19,6 +19,7 @@ from weppy.globals import current
 def app():
     app = App(__name__)
     app.config.templates_escape = 'all'
+    app.config.templates_prettify = True
     return app
 
 
