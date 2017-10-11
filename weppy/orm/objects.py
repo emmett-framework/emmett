@@ -114,10 +114,12 @@ class Field(_Field):
     def _default_validation(self):
         rv = {}
         auto_types = [
-            'int', 'float', 'decimal', 'date', 'time', 'datetime', 'json'
+            'int', 'float', 'date', 'time', 'datetime', 'json'
         ]
         if self._type in auto_types:
             rv['is'] = self._type
+        elif self._type.startswith('decimal'):
+            rv['is'] = 'decimal'
         if self._type == 'bigint':
             rv['is'] = 'int'
         if self._type == 'bool':
@@ -129,8 +131,10 @@ class Field(_Field):
             rv['crypt'] = True
         if self._type == 'list:int':
             rv['is'] = 'list:int'
-        if self.notnull or self._type.startswith('reference') or \
-                self._type.startswith('list:reference'):
+        if (
+            self.notnull or self._type.startswith('reference') or
+            self._type.startswith('list:reference')
+        ):
             rv['presence'] = True
         if not self.notnull and self._isrefers is True:
             rv['allow'] = 'empty'
