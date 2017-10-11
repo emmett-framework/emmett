@@ -73,8 +73,10 @@ class PooledConnectionManager(ConnectionManager):
                 break
             else:
                 if self.stale_timeout and self.is_stale(ts):
-                    super(PooledConnectionManager, self).close(conn)
-                    ts = conn = None
+                    try:
+                        super(PooledConnectionManager, self).close(conn)
+                    finally:
+                        ts = conn = None
                 else:
                     break
         if conn is None:
@@ -140,9 +142,8 @@ def _close(self, action='commit', really=True):
         really = not succeeded
     try:
         self._connection_manager.close(self.connection, really)
-    except Exception:
-        pass
-    self.connection = None
+    finally:
+        self.connection = None
     return is_open
 
 
