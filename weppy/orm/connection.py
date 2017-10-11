@@ -88,7 +88,7 @@ class PooledConnectionManager(ConnectionManager):
         self.in_use[key] = ts
         return conn, _opened
 
-    def can_reuse(self):
+    def can_reuse(self, connection):
         return True
 
     def close(self, connection, close_connection=False):
