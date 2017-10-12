@@ -29,7 +29,7 @@ def test_ramcache():
     assert ram_cache._threshold == 500
 
     ram_cache('test', lambda: 2)
-    assert ram_cache.get('test') == 2
+    assert ram_cache('test', lambda: 3, 300) == 2
 
     ram_cache.set('test', 3)
     assert ram_cache.get('test') == 3
@@ -46,7 +46,7 @@ def test_diskcache():
     assert disk_cache._threshold == 500
 
     disk_cache('test', lambda: 2)
-    assert disk_cache.get('test') == 2
+    assert disk_cache('test', lambda: 3, 300) == 2
 
     disk_cache.set('test', 3)
     assert disk_cache.get('test') == 3
