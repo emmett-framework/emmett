@@ -250,12 +250,13 @@ class App(object):
 
     def module(
         self, import_name, name, template_folder=None, template_path=None,
-        url_prefix=None, hostname=None, root_path=None, module_class=None
+        url_prefix=None, hostname=None, cache=None, root_path=None,
+        module_class=None
     ):
         module_class = module_class or self.config.modules_class
         return module_class.from_app(
             self, import_name, name, template_folder, template_path,
-            url_prefix, hostname, root_path
+            url_prefix, hostname, cache, root_path
         )
 
 
@@ -263,17 +264,17 @@ class AppModule(object):
     @classmethod
     def from_app(
         cls, app, import_name, name, template_folder, template_path,
-        url_prefix, hostname, root_path
+        url_prefix, hostname, cache, root_path
     ):
         return cls(
             app, name, import_name, template_folder, template_path, url_prefix,
-            hostname, root_path
+            hostname, cache, root_path
         )
 
     @classmethod
     def from_module(
         cls, appmod, import_name, name, template_folder, template_path,
-        url_prefix, hostname, root_path
+        url_prefix, hostname, cache, root_path
     ):
         if '.' in name:
             raise RuntimeError(
@@ -285,26 +286,28 @@ class AppModule(object):
         module_url_prefix = (appmod.url_prefix + (url_prefix or '')) \
             if appmod.url_prefix else url_prefix
         hostname = hostname or appmod.hostname
+        cache = cache or appmod.cache
         return cls(
             appmod.app, name, import_name, template_folder, template_path,
-            module_url_prefix, hostname, root_path, pipeline=appmod.pipeline,
-            injectors=appmod.injectors
+            module_url_prefix, hostname, cache, root_path,
+            pipeline=appmod.pipeline, injectors=appmod.injectors
         )
 
     def module(
         self, import_name, name, template_folder=None, template_path=None,
-        url_prefix=None, hostname=None, root_path=None, module_class=None
+        url_prefix=None, hostname=None, cache=None, root_path=None,
+        module_class=None
     ):
         module_class = module_class or self.__class__
         return module_class.from_module(
             self, import_name, name, template_folder, template_path,
-            url_prefix, hostname, root_path
+            url_prefix, hostname, cache, root_path
         )
 
     def __init__(
         self, app, name, import_name, template_folder=None, template_path=None,
-        url_prefix=None, hostname=None, root_path=None, pipeline=[],
-        injectors=[]
+        url_prefix=None, hostname=None, cache=None, root_path=None,
+        pipeline=[], injectors=[]
     ):
         self.app = app
         self.name = name
@@ -320,6 +323,7 @@ class AppModule(object):
         self.template_path = template_path
         self.url_prefix = url_prefix
         self.hostname = hostname
+        self.cache = cache
         self._super_pipeline = pipeline
         self._super_injectors = injectors
         self.pipeline = []
@@ -355,6 +359,7 @@ class AppModule(object):
         if self.injectors:
             injectors = self.injectors + injectors
         kwargs['injectors'] = injectors
+        kwargs['cache'] = kwargs.get('cache', self.cache)
         return self.app.route(
             paths=paths, name=name, template=template, prefix=self.url_prefix,
             template_folder=self.template_folder,

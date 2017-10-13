@@ -14,41 +14,55 @@ import time
 import heapq
 import threading
 import tempfile
+from collections import OrderedDict
 from functools import wraps
 
-from ._compat import (
-    pickle, integer_types, iteritems, hashlib_md5, hashlib_sha1)
+from ._compat import pickle, integer_types, iteritems, hashlib_sha1
 from .libs.portalocker import LockedFile
 
 __all__ = ['Cache']
 
 
-class CacheDecorator(object):
-    def __init__(self, handler, key, duration):
-        self._cache = handler
-        self.key = key
-        self.duration = duration
+class CacheHashMixin(object):
+    def __init__(self):
+        self.strategies = OrderedDict()
+
+    def add_strategy(self, key, method=lambda data: data):
+        self.strategies[key] = method
 
     def _hash_component(self, key, data):
         return ''.join([key, "{", repr(data), "}"])
 
-    def _build_hash(self, args, kwargs):
+    def _build_hash(self, data):
         components = []
-        components.append(self._hash_component('args', args))
-        components.append(
-            self._hash_component(
-                'kwargs', [(key, kwargs[key]) for key in sorted(kwargs)]))
+        for key, strategy in iteritems(self.strategies):
+            components.append(self._hash_component(key, strategy(data[key])))
         return hashlib_sha1(':'.join(components)).hexdigest()
 
-    def _build_ctx_key(self, args, kwargs):
-        if not args and not kwargs:
-            return self.key
-        return self.key + ":" + self._build_hash(args, kwargs)
+    def _build_ctx_key(self, **ctx):
+        return self.key + ":" + self._build_hash(ctx)
+
+    @staticmethod
+    def dict_strategy(data):
+        return [(key, data[key]) for key in sorted(data)]
+
+
+class CacheDecorator(CacheHashMixin):
+    def __init__(self, handler, key, duration):
+        super(CacheDecorator, self).__init__()
+        self._cache = handler
+        self.key = key
+        self.duration = duration
+        self.add_strategy('args')
+        self.add_strategy('kwargs', self.dict_strategy)
 
     def __call__(self, f):
         @wraps(f)
         def wrap(*args, **kwargs):
-            key = self._build_ctx_key(args, kwargs)
+            if not args and not kwargs:
+                key = self.key
+            else:
+                key = self._build_ctx_key(args=args, kwargs=kwargs)
             return self._cache.get_or_set(
                 key, lambda: f(*args, **kwargs), self.duration)
         if not self.key:
@@ -101,6 +115,13 @@ class CacheHandler(object):
 
     def clear(self, key=None):
         pass
+
+    def route(
+        self, duration='default', query_params=True, language=True,
+        hostname=False, headers=[]
+    ):
+        return RouteCacheRule(
+            self, query_params, language, hostname, headers, duration)
 
 
 class RamElement(object):
@@ -198,7 +219,7 @@ class DiskCache(CacheHandler):
             os.mkdir(self._path)
 
     def _get_filename(self, key):
-        khash = hashlib_md5(key).hexdigest()
+        khash = hashlib_sha1(key).hexdigest()
         return os.path.join(self._path, khash)
 
     def _del_file(self, filename):
@@ -336,6 +357,48 @@ class RedisCache(CacheHandler):
         self._cache.flushdb()
 
 
+class RouteCacheRule(CacheHashMixin):
+    def __init__(
+        self, handler, query_params=True, language=True, hostname=False,
+        headers=[], duration='default'
+    ):
+        super(RouteCacheRule, self).__init__()
+        self.cache = handler
+        self.check_headers = headers
+        self.duration = duration
+        self.add_strategy('kwargs', self.dict_strategy)
+        self._ctx_builders = []
+        if hostname:
+            self.add_strategy('hostname')
+            self._ctx_builders.append(
+                ('hostname', lambda route, current: route.hostname))
+        if language:
+            self.add_strategy('language')
+            self._ctx_builders.append(
+                ('language', lambda route, current: current.language))
+        if query_params:
+            self.add_strategy('query_params', self.dict_strategy)
+            self._ctx_builders.append(
+                ('query_params', lambda route, current:
+                    current.request.query_params))
+        if headers:
+            self.add_strategy('headers', self.headers_strategy)
+            self._ctx_builders.append(
+                ('headers', lambda route, current: current.request.headers))
+
+    def _build_ctx_key(self, route, **ctx):
+        return route.name + ":" + self._build_hash(ctx)
+
+    def _build_ctx(self, kwargs, route, current):
+        rv = {'kwargs': kwargs}
+        for key, builder in self._ctx_builders:
+            rv[key] = builder(route, current)
+        return rv
+
+    def headers_strategy(self, data):
+        return [data[key] for key in self.check_headers]
+
+
 class Cache(object):
     def __init__(self, **kwargs):
         #: load handlers
@@ -366,3 +429,10 @@ class Cache(object):
 
     def clear(self, key=None):
         self._default_handler.clear(key)
+
+    def route(
+        self, duration='default', query_params=True, language=True,
+        hostname=False, headers=[]
+    ):
+        return self._default_handler.route(
+            duration, query_params, language, hostname, headers)

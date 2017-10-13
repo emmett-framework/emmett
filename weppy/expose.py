@@ -18,6 +18,7 @@ from functools import wraps
 from ._compat import PY2, with_metaclass, itervalues, iteritems, text_type
 from .pipeline import Pipeline, Pipe
 from .templating.helpers import TemplateMissingError
+from .cache import RouteCacheRule
 from .globals import current
 from .http import HTTP
 
@@ -57,7 +58,7 @@ class Expose(with_metaclass(MetaExpose)):
     def __init__(
         self, paths=None, name=None, template=None, pipeline=None,
         injectors=None, schemes=None, hostname=None, methods=None, prefix=None,
-        template_folder=None, template_path=None, **kwargs
+        template_folder=None, template_path=None, cache=None
     ):
         if callable(paths):
             raise SyntaxError('Use @route(), not @route.')
@@ -83,6 +84,11 @@ class Expose(with_metaclass(MetaExpose)):
         self.prefix = prefix
         self.pipeline = [ResponsePipe(self)] + self._pipeline + \
             (pipeline or []) + self._injectors + (injectors or [])
+        if cache:
+            if not isinstance(cache, RouteCacheRule):
+                raise RuntimeError(
+                    'route cache argument should be a valid caching rule')
+            self.pipeline.insert(0, CachedResponsePipe(self, cache))
         # check pipes are indeed valid pipes
         if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
             raise RuntimeError('Invalid pipeline')
@@ -432,6 +438,26 @@ class ResponsePipe(Pipe):
             response.output = output
         else:
             response.output = str(output)
+
+
+class CachedResponsePipe(Pipe):
+    def __init__(self, route, rule):
+        self.route = route
+        self.rule = rule
+
+    def pipe(self, next_pipe, **kwargs):
+        if current.request.method != 'GET':
+            return next_pipe(**kwargs)
+        key = self.rule._build_ctx_key(
+            self.route, **self.rule._build_ctx(kwargs, self.route, current))
+        content = self.rule.cache.get(key)
+        if content is None:
+            next_pipe(**kwargs)
+            if current.response.status == 200:
+                self.rule.cache.set(
+                    key, current.response.output, self.rule.duration)
+        else:
+            current.response.output = content
 
 
 class RouteUrl(object):

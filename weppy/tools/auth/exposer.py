@@ -20,12 +20,12 @@ from ...pipeline import RequirePipe
 class AuthModule(AppModule):
     def __init__(
         self, app, name, import_name, template_folder=None, template_path=None,
-        url_prefix=None, hostname=None, root_path=None, pipeline=[],
-        injectors=[]
+        url_prefix=None, hostname=None, cache=None, root_path=None,
+        pipeline=[], injectors=[]
     ):
         super(AuthModule, self).__init__(
             app, name, import_name, template_folder, template_path, url_prefix,
-            hostname, root_path, pipeline, injectors)
+            hostname, cache, root_path, pipeline, injectors)
         self.init()
 
     def init(self):
