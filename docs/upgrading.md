@@ -22,7 +22,25 @@ $ pip install -U weppy
 Version 1.2
 -----------
 
-In weppy 1.2 we rewritten the core logic of the templates engine. This won't change anything if you written an application with weppy, but if you built an extension using templates features, you should check out the [extensions](./extensions#building-extensions) chapter and inspect changes that may have possibly broke your code. Also, if your application uses templates extensions, please check out with the extension maintainer and be sure to upgrade it to the latest version. 
+In weppy 1.2 we rewritten the core logic of the templates engine. This won't change anything if you written an application with weppy, but if you built an extension using templates features, you should check out the [extensions](./extensions#building-extensions) chapter and inspect changes that may have possibly broke your code. Also, if your application uses templates extensions, please check out with the extension maintainer and be sure to upgrade it to the latest version.
+
+Upon this, weppy 1.2 also introduces some deprecations you should be aware of, and some new features you might been interested into.
+
+### Deprecation of session managers classes
+
+In the previous versions, several classes were available to control sessions, in particular `SessionCookiesManager`, `SessionFSManager` and `SessionRedisManager` in the `sessions` module. 
+
+Since we performed a rewrite of the code behind sessions management, we ended up building a single manager to simplify the usage for developers. The new syntax expects the usage of three class methods of the new available class `SessionManager`, so you can migrate your code as follows:
+
+| old class | new implementation |
+| --- | --- |
+| `SessionCookiesManager` | `SessionManager.cookies` |
+| `SessionFSManager` | `SessionManager.files` |
+| `SessionRedisManager` | `SessionManager.redis` |
+
+The old arguments are still valid, but we're also providing some new ones you might be interested into; please check the [Sessions chapter](./sessions) for more details.
+
+The old classes are deprecated in weppy 1.2, so you can still use them, but we really suggest to update your application code to the new naming since the old ones will be definitely removed in the next version.
 
 ### New features
 
