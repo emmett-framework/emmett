@@ -357,9 +357,13 @@ class Set(_Set):
                 q = joins[0]
                 for join in joins[1:]:
                     q = q & join
-                rv = rv.where(q)
-                return JoinSet._from_set(rv, self._model_.tablename, jtables)
+                rv = rv.where(q, model=self._model_)
+                return JoinSet._from_set(rv, jtables)
         return rv
+
+    def switch(self, model):
+        self._model_ = model
+        return self
 
     def _parse_rjoin(self, arg):
         #: match has_many
@@ -650,10 +654,10 @@ class JoinableSet(Set):
 
 class JoinSet(JoinableSet):
     @classmethod
-    def _from_set(cls, obj, table, joins):
+    def _from_set(cls, obj, joins):
         rv = cls(
-            obj.db, obj.query, obj.query.ignore_common_filters)
-        rv._stable_ = table
+            obj.db, obj.query, obj.query.ignore_common_filters, obj._model_)
+        rv._stable_ = obj._model_.tablename
         rv._joins_ = joins
         return rv
 
