@@ -14,7 +14,7 @@ import pytest
 import shutil
 from weppy import App
 from weppy.orm import Database, Field, Model, has_many, belongs_to
-from weppy.sessions import SessionCookieManager
+from weppy.sessions import SessionManager
 from weppy.tools import Auth, Mailer
 from weppy.tools.auth.models import AuthUser
 
@@ -34,7 +34,7 @@ def app():
     rv.config.mailer.sender = 'nina@massivedynamics.com'
     rv.config.auth.single_template = True
     rv.config.auth.hmac_key = "foobar"
-    rv.pipeline = [SessionCookieManager('foobar')]
+    rv.pipeline = [SessionManager.cookies('foobar')]
     return rv
 
 
