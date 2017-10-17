@@ -85,8 +85,8 @@ app.pipeline = [SessionManager.redis(red)]
 
 As you can see `SessionManager.redis` needs a redis connection as first parameter, but as for the cookie manager, it also accepts more parameters:
 
-| parameter | description |
-| --- | --- |
+| parameter | default | description |
+| --- | --- | --- |
 | prefix | `'wppsess:'` | the prefix for the redis keys (default set to |
 | expire | 3600 | the duration in seconds after which the session will expire |
 | secure | `False` | tells the manager to allow sessions only on *https* protocol |
