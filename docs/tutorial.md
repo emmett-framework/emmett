@@ -221,12 +221,12 @@ Exposing routes
 
 Before we can start writing the functions that will handle the clients' requests, we need to add the database and authorization **pipes** to our application, so that we can use them with our functions following the request flow.
 
-Moreover, to use the authorization module, we need to add a **sessions manager** to the application's pipeline, too. In this tutorial, cookie support for session will be enough, and we will use *Walternate* as a secret key for encrypting cookies.
+Moreover, to use the authorization module, we need to add a **session manager** to the application's pipeline, too. In this tutorial, cookie support for session will be enough, and we will use *Walternate* as a secret key for encrypting cookies.
 
 ```python
-from weppy.sessions import SessionCookieManager
+from weppy.sessions import SessionManager
 app.pipeline = [
-    SessionCookieManager('Walternate'),
+    SessionManager.cookies('Walternate'),
     db.pipe,
     auth.pipe
 ]

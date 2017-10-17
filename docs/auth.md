@@ -9,7 +9,7 @@ So, how do you use it? Let's find out with an example:
 from weppy import App
 from weppy.orm import Database
 from weppy.tools.auth import Auth, AuthUser
-from weppy.sessions import SessionCookieManager
+from weppy.sessions import SessionManager
 
 app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
@@ -23,7 +23,7 @@ db = Database(app)
 auth = Auth(app, db, user_model=User)
 
 app.pipeline = [
-    SessionCookieManager('myverysecretkey'),
+    SessionManager.cookies('myverysecretkey'),
     db.pipe,
     auth.pipe
 ]
