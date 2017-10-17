@@ -88,7 +88,8 @@ class Expose(with_metaclass(MetaExpose)):
             if not isinstance(cache, RouteCacheRule):
                 raise RuntimeError(
                     'route cache argument should be a valid caching rule')
-            self.pipeline.insert(0, CachedResponsePipe(self, cache))
+            if any(key in self.methods for key in ['get', 'head']):
+                self.pipeline.insert(0, CachedResponsePipe(self, cache))
         # check pipes are indeed valid pipes
         if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
             raise RuntimeError('Invalid pipeline')
@@ -444,20 +445,26 @@ class CachedResponsePipe(Pipe):
     def __init__(self, route, rule):
         self.route = route
         self.rule = rule
+        self._allowed_methods = {'GET', 'HEAD'}
 
     def pipe(self, next_pipe, **kwargs):
-        if current.request.method != 'GET':
-            return next_pipe(**kwargs)
+        if current.request.method not in self._allowed_methods:
+            next_pipe(**kwargs)
+            return
         key = self.rule._build_ctx_key(
             self.route, **self.rule._build_ctx(kwargs, self.route, current))
-        content = self.rule.cache.get(key)
-        if content is None:
-            next_pipe(**kwargs)
-            if current.response.status == 200:
-                self.rule.cache.set(
-                    key, current.response.output, self.rule.duration)
-        else:
-            current.response.output = content
+        data = self.rule.cache.get(key)
+        if data is not None:
+            current.response.output = data['content']
+            current.response.headers.update(data['headers'])
+            return
+        next_pipe(**kwargs)
+        if current.response.status == 200:
+            self.rule.cache.set(
+                key, {
+                    'content': current.response.output,
+                    'headers': current.response.headers},
+                self.rule.duration)
 
 
 class RouteUrl(object):
