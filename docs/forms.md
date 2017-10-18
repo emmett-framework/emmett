@@ -91,37 +91,31 @@ Here is the complete list of parameters accepted by `Form` class:
 > **Note:** the `fields` and `exclude_fields` parameters should not be used together. If you need to hide just a few fields, you'd better using the `exclude_fields`, and you should use `fields` if you have to show only few table fields. The advantages of these parameters are lost if you use both.
 
 ###Uploads with forms
-As we saw above, the `upload` parameter of forms needs an URL for download. 
-Let's focus a bit on uploads and see an example to completely understand this requirement.
+As we saw above, the `upload` parameter of forms needs an URL for download. Let's focus a bit on uploads and see an example to completely understand this requirement.
 
-Let's say you want to handle the upload of avatar images from your user. So,
-in your model/table, you would have an upload field:
+Let's say you want to handle the upload of avatar images from your user. So, in your model you would have an upload field:
 
 ```python
 avatar = Field.upload()
 ```
 
-and the forms produced by weppy will handle uploads for you. How would you
-display this image in your template? You need a streaming function like this:
+and the forms produced by weppy will handle uploads for you. How would you display this image in your template? You need a streaming function like this:
 
-```
-from weppy import stream_file 
+```python
+from weppy.helpers import stream_dbfile 
 
 @app.route("/download/<str:filename>")
 def download(filename):
-    stream_file(db, filename)
+    stream_dbfile(db, filename)
 ```
 
-and then, in your template, you can create an `img` tag pointing to the
-`download` function you've just exposed:
+and then, in your template, you can create an `img` tag pointing to the `download` function you've just exposed:
 
 ```html
-<img src="{{=url('download', record.avatar')}}" />
+<img src="{{=url('download', record.avatar)}}" />
 ```
 
-The `upload` parameter of `Form` class has the same purpose: when you edit an
-existent record the form will display the image or file link for the existing
-one uploaded. In this example you would do:
+The `upload` parameter of `Form` class has the same purpose: when you edit an existent record the form will display the image or file link for the existing one uploaded. In this example you would do:
 
 ```python
 record = db.Post(id=someid)
