@@ -10,7 +10,7 @@
 """
 
 from functools import wraps
-from ._compat import iteritems, iterkeys
+from ._compat import iteritems, iterkeys, string_types
 from .datastructures import sdict
 from .expose import Expose
 from .globals import current, request, session
@@ -18,6 +18,7 @@ from .html import HtmlTag, tag, cat, asis
 from .orm import Field, Model
 from .security import CSRFStorage
 from .utils import cachedprop
+from .validators import isEmptyOr
 
 __all__ = ['Form', 'ModelForm']
 
@@ -112,6 +113,13 @@ class Form(HtmlTag):
             v = self.input_params.get(field.name)
         return v
 
+    def _validate_value(self, field, value):
+        value, error = field.validate(value)
+        if error:
+            self.errors[field.name] = error
+        else:
+            self.params[field.name] = value
+
     def _process(self):
         self._load_csrf()
         method = self.attributes['_method']
@@ -126,11 +134,7 @@ class Form(HtmlTag):
             # validate input
             for field in self.writable_fields:
                 value = self._get_input_val(field)
-                value, error = field.validate(value)
-                if error:
-                    self.errors[field.name] = error
-                else:
-                    self.params[field.name] = value
+                self._validate_value(field, value)
             # custom validation
             if not self.errors and callable(self.onvalidation):
                 self.onvalidation(self)
@@ -247,6 +251,16 @@ class ModelForm(Form):
         #: finally init the form
         self._preprocess_(**attributes)
 
+    def _validate_value(self, field, value):
+        if field.type == 'upload' and self.record:
+            if (
+                (value == b'' or value is None) and
+                not self.input_params.get(field.name + "__del", False) and
+                self.record[field.name]
+            ):
+                return
+        super(ModelForm, self)._validate_value(field, value)
+
     def _process(self):
         #: send record id to validators if needed
         current._dbvalidation_record_id_ = None
@@ -300,6 +314,12 @@ class ModelForm(Form):
                     self.input_params[field.name] = self.record[field.name]
                 self.input_params[field.name] = field.formatter(
                     self.input_params[field.name])
+        elif self.processed and not self.accepted and self.record:
+            for field in self.writable_fields:
+                if field.type == 'upload' and field.name not in self.params:
+                    self.input_params[field.name] = self.record[field.name]
+                    self.input_params[field.name] = field.formatter(
+                        self.input_params[field.name])
 
 
 class FormStyle(object):
@@ -401,8 +421,14 @@ class FormStyle(object):
             if extension in ['gif', 'png', 'jpg', 'jpeg', 'bmp']:
                 return True
             return False
+
+        def _coerce_value(value):
+            if isinstance(value, string_types) or isinstance(value, bytes):
+                return value or ''
+            return ''
+
         elements = []
-        _value = value or ''
+        _value = _coerce_value(value)
         download_url = attr.get('upload')
         inp = tag.input(_type='file', _name=field.name, _class=_class, _id=_id)
         elements.append(inp)
@@ -412,21 +438,23 @@ class FormStyle(object):
             else:
                 url = download_url + '/' + value
             if is_image(_value):
-                elements.append(tag.img(_src=url, _width='120px',
-                                        _class='upload_img'))
+                elements.append(
+                    tag.img(_src=url, _width='120px', _class='upload_img'))
             else:
                 elements.append(tag.div(tag.a(_value, _href=url)))
             requires = field.requires or []
             # delete checkbox
-            from .validators import isEmptyOr
-            if not requires or (isinstance(v, isEmptyOr) for v in requires):
-                elements.append(tag.div(
-                    tag.input(_type='checkbox', _class='checkbox',
-                              _id=_id + '__del', _name=field.name + '__del',
-                              _style="display: inline;"),
-                    tag.label('delete', _for=_id + '__del',
-                              _style="margin: 4px"),
-                    _style="white-space: nowrap;"))
+            if not requires or any(isinstance(v, isEmptyOr) for v in requires):
+                elements.append(
+                    tag.div(
+                        tag.input(
+                            _type='checkbox', _class='checkbox',
+                            _id=_id + '__del', _name=field.name + '__del',
+                            _style="display: inline;"),
+                        tag.label(
+                            'delete',
+                            _for=_id + '__del', _style="margin: 4px"),
+                        _style="white-space: nowrap;"))
         return tag.div(*elements, _class='upload_wrap')
 
     @staticmethod
