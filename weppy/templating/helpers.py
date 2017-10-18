@@ -16,8 +16,8 @@ import traceback
 class TemplateMissingError(Exception):
     def __init__(self, file_path):
         self.path = file_path
-        message = "Template %s not found" % self.file_path
-        Exception.__init__(self, message)
+        self.message = "Template %s not found" % self.path
+        super(TemplateMissingError, self).__init__()
 
 
 class TemplateError(Exception):
