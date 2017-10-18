@@ -90,7 +90,7 @@ Here is the complete list of parameters accepted by `Form` class:
 
 > **Note:** the `fields` and `exclude_fields` parameters should not be used together. If you need to hide just a few fields, you'd better using the `exclude_fields`, and you should use `fields` if you have to show only few table fields. The advantages of these parameters are lost if you use both.
 
-###Uploads with forms
+### Uploads with forms
 As we saw above, the `upload` parameter of forms needs an URL for download. Let's focus a bit on uploads and see an example to completely understand this requirement.
 
 Let's say you want to handle the upload of avatar images from your user. So, in your model you would have an upload field:
@@ -162,8 +162,8 @@ style of your form?
 
 Well, in weppy, the style of a form is decided by the `FormStyle` class.
 
-###Creating your style
+### Creating your style
 *sub-section under development*
 
-###Custom widgets
+### Custom widgets
 *sub-section under development*
