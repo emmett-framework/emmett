@@ -13,7 +13,7 @@ Next
 - Exposed `get`, `set`, `get_or_set`, `clear` methods in `cache.Cache`
   and handlers objects
 - Added decorator syntax support to cache module
-- Added `route` method to cache module and relevant `cache` parameter in
+- Added `response` method to cache module and relevant `cache` parameter in
   `app.App.route`, `app.App.module` and `app.AppModule.route` decorators
 - Added `switch` method to `orm.objects.Set` to allow changing model context
 - Rewritten sessions' managers

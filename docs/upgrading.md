@@ -48,6 +48,7 @@ weppy 1.2 also introduces some new features:
 
 - An additional parameter in ORM configuration to specify [time-based recycling](.dal/connecting) for pooled connections
 - [Nested transactions](.dal/connecting#transactions) support in ORM
+- Caching now allows decoration syntax and routes caching. Checkout [caching chapter](./caching) for details.
 
 
 Version 1.1
