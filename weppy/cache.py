@@ -116,7 +116,7 @@ class CacheHandler(object):
     def clear(self, key=None):
         pass
 
-    def route(
+    def response(
         self, duration='default', query_params=True, language=True,
         hostname=False, headers=[]
     ):
@@ -398,6 +398,15 @@ class RouteCacheRule(CacheHashMixin):
     def headers_strategy(self, data):
         return [data[key] for key in self.check_headers]
 
+    def __call__(self, f):
+        from .expose import Expose, ResponsePipe, CachedResponsePipe
+        obj = Expose.exposing()
+        for _, pipe in enumerate(obj.pipeline):
+            if isinstance(pipe, ResponsePipe):
+                obj.pipeline.insert(_, CachedResponsePipe(obj, self))
+                break
+        return f
+
 
 class Cache(object):
     def __init__(self, **kwargs):
@@ -430,9 +439,9 @@ class Cache(object):
     def clear(self, key=None):
         self._default_handler.clear(key)
 
-    def route(
+    def response(
         self, duration='default', query_params=True, language=True,
         hostname=False, headers=[]
     ):
-        return self._default_handler.route(
+        return self._default_handler.response(
             duration, query_params, language, hostname, headers)
