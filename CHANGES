@@ -6,6 +6,7 @@ Next
 
 (Release date to be defined, codename to be selected)
 
+- Some bugfixes
 - Rewritten templates parsing and generation logic
 - Rewritten ORM connection pooling
 - Added support for advanced transaction usage in ORM
