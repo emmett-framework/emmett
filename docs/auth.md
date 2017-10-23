@@ -289,7 +289,7 @@ from weppy.orm import Field
 from weppy.tools.auth import AuthUser
 
 class User(AuthUser):
-    avatar = Field("upload", uploadfolder="uploads")
+    avatar = Field.upload(uploadfolder="uploads")
     
     form_profile_rw = {
         "avatar": True
