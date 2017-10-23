@@ -81,7 +81,7 @@ As we saw with the other handlers, `RedisCache` class accepts some parameters to
 | host | `'localhost'` | the host of the redis backend |
 | port | 6379 | the port of the redis backend |
 | db | 0 | the database number to use on the redis backend |
-| prefix | | allows to specify a common prefix for caching keys |
+| prefix | `'cache:'` | allows to specify a common prefix for caching keys |
 | default\_expire | 300 | set a default expiration (in seconds) for stored objects |
 
 ### Using multiple systems together

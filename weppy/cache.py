@@ -299,7 +299,7 @@ class DiskCache(CacheHandler):
 class RedisCache(CacheHandler):
     def __init__(
         self, host='localhost', port=6379, password=None, db=0,
-        default_expire=300, prefix='', **kwargs
+        prefix='cache:', default_expire=300, **kwargs
     ):
         super(RedisCache, self).__init__(
             prefix=prefix, default_expire=default_expire)
