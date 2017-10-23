@@ -14,7 +14,7 @@ from weppy.sessions import SessionManager
 app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
 app.config.auth.hmac_key = "mysupersecretkey"
-app.config.auth.single_template = False
+app.config.auth.single_template = True
 
 class User(AuthUser):
     pass
