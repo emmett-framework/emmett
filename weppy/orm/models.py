@@ -169,6 +169,22 @@ class Model(with_metaclass(MetaModel)):
             setattr(cls, attr_name, default)
 
     @classmethod
+    def _merge_inheritable_dicts_(cls, models):
+        for attr in cls._inheritable_dict_attrs_:
+            if isinstance(attr, tuple):
+                attr_name = attr[0]
+            else:
+                attr_name = attr
+            attrs = {}
+            for model in models:
+                superattrs = getattr(model, attr_name)
+                for k, v in superattrs.items():
+                    attrs[k] = v
+            for k, v in getattr(cls, attr_name).items():
+                attrs[k] = v
+            setattr(cls, attr_name, attrs)
+
+    @classmethod
     def __getsuperattrs(cls):
         superattr = "_supermodels" + cls.__name__
         if hasattr(cls, superattr):
@@ -179,26 +195,13 @@ class Model(with_metaclass(MetaModel)):
             try:
                 supermodel.__getsuperattrs()
                 superattr_val.append(supermodel)
-            except:
+            except Exception:
                 pass
         setattr(cls, superattr, superattr_val)
         sup = getattr(cls, superattr)
         if not sup:
             return
-        #: get super model inheritable dicts
-        for attr in cls._inheritable_dict_attrs_:
-            if isinstance(attr, tuple):
-                attr_name = attr[0]
-            else:
-                attr_name = attr
-            attrs = {}
-            for model in sup:
-                superattrs = getattr(model, attr_name)
-                for k, v in superattrs.items():
-                    attrs[k] = v
-            for k, v in getattr(cls, attr_name).items():
-                attrs[k] = v
-            setattr(cls, attr_name, attrs)
+        cls._merge_inheritable_dicts_(sup)
 
     def __new__(cls):
         if cls._declared_tablename_ is None:

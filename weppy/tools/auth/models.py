@@ -36,10 +36,25 @@ class AuthModel(Model):
                 raise SyntaxError(
                     "{} is not a dictionary".format(attr_name))
             setattr(cls, attr_name, default)
-        setattr(
-            cls, '_inheritable_dict_attrs_', (
-                list(cls._inheritable_dict_attrs_) +
-                cls._additional_inheritable_dict_attrs_))
+
+    @classmethod
+    def _merge_inheritable_dicts_(cls, models):
+        super(AuthModel, cls)._merge_inheritable_dicts_(models)
+        for attr in cls._additional_inheritable_dict_attrs_:
+            if isinstance(attr, tuple):
+                attr_name = attr[0]
+            else:
+                attr_name = attr
+            attrs = {}
+            for model in models:
+                if not issubclass(model, AuthModel):
+                    continue
+                superattrs = getattr(model, attr_name)
+                for k, v in superattrs.items():
+                    attrs[k] = v
+            for k, v in getattr(cls, attr_name).items():
+                attrs[k] = v
+            setattr(cls, attr_name, attrs)
 
     def __super_method(self, name):
         return getattr(super(AuthModel, self), '_Model__' + name)
