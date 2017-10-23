@@ -36,6 +36,10 @@ class AuthModel(Model):
                 raise SyntaxError(
                     "{} is not a dictionary".format(attr_name))
             setattr(cls, attr_name, default)
+        setattr(
+            cls, '_inheritable_dict_attrs_', (
+                list(cls._inheritable_dict_attrs_) +
+                cls._additional_inheritable_dict_attrs_))
 
     def __super_method(self, name):
         return getattr(super(AuthModel, self), '_Model__' + name)
