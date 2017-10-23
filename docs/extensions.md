@@ -269,13 +269,8 @@ class ImgExtension(Extension):
         self.app.add_template_extension(ImgTemplateExtension)
 
 class ImgLexer(TemplateLexer):
-    def process(self, value):
-        s = '_img_lexer_("{}")'.format(value)
-        node = self.parser.create_node(
-            s, pre_extend=False, writer_escape=False
-        )
-        self.top.append(node)
-        
+    def process(self, ctx, value):
+        ctx.python_node('_img_lexer_("{}")'.format(value))
 
 class ImgTemplateExtension(TemplateExtension):
     namespace = "TemplateImg"
