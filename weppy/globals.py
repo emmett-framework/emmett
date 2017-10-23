@@ -204,14 +204,13 @@ class Response(object):
     def alerts(self, **kwargs):
         return get_flashed_messages(**kwargs)
 
-    def get_meta(self):
-        s = '\n'.join(
-            '<meta name="%s" content="%s" />\n' % (k, htmlescape(v))
-            for k, v in iteritems(self.meta or {}))
-        s += '\n'.join(
-            '<meta property="%s" content="%s" />\n' % (k, htmlescape(v))
-            for k, v in iteritems(self.meta_prop or {}))
-        return s
+    def _meta_tmpl(self):
+        return [
+            (key, htmlescape(val)) for key, val in iteritems(self.meta)]
+
+    def _meta_tmpl_prop(self):
+        return [
+            (key, htmlescape(val)) for key, val in iteritems(self.meta_prop)]
 
     __getitem__ = object.__getattribute__
     __setitem__ = object.__setattr__

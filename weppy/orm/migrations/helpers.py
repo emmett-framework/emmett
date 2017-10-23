@@ -9,7 +9,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import os
 from collections import Iterable
 from uuid import uuid4
 from ..._compat import string_types, integer_types
@@ -62,12 +61,12 @@ def render_template(path, template, ctx):
         template_lexers=[],
         debug=False,
         config=sdict(
-            templates_auto_reload=False
+            templates_auto_reload=False,
+            templates_prettify=True
         )
     )
     templater = Templater(_fakeapp)
-    source = templater.load(path, template)
-    return templater._render(source, path, template, ctx)
+    return templater.render(path, template, ctx)
 
 
 def to_tuple(x, default=None):

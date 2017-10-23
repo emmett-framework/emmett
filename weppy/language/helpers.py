@@ -78,7 +78,7 @@ PLURAL_RULES = read_possible_plural_rules()
 class LanguageAccept(Accept):
     def _value_matches(self, value, item):
         def _normalize(language):
-            return regex_locale_delim.split(language.lower())
+            return regex_locale_delim.split(language.lower())[0]
         return item == '*' or _normalize(value) == _normalize(item)
 
 

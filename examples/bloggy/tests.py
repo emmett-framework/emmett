@@ -1,6 +1,6 @@
 import pytest
 from weppy import response, session
-from bloggy import app, db, setup_admin
+from bloggy import app, db, User, auth, setup_admin
 
 
 @pytest.fixture()
@@ -8,13 +8,21 @@ def client():
     return app.test_client()
 
 
+@pytest.fixture(scope='module', autouse=True)
+def _prepare_db(request):
+    with db.connection():
+        setup_admin()
+    yield
+    with db.connection():
+        User.all().delete()
+        auth.delete_group('admin')
+
+
 @pytest.fixture(scope='module')
 def logged_client():
-    db._adapter.reconnect()
-    setup_admin()
     c = app.test_client()
-    with c.get('/account/login').context as ctx:
-        c.post('/account/login', data={
+    with c.get('/auth/login').context as ctx:
+        c.post('/auth/login', data={
             'email': 'walter@massivedynamics.com',
             'password': 'pocketuniverse',
             '_csrf_token': list(ctx.session._csrf)[-1]

@@ -9,12 +9,12 @@ So, how do you use it? Let's find out with an example:
 from weppy import App
 from weppy.orm import Database
 from weppy.tools.auth import Auth, AuthUser
-from weppy.sessions import SessionCookieManager
+from weppy.sessions import SessionManager
 
 app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
 app.config.auth.hmac_key = "mysupersecretkey"
-app.config.auth.single_template = False
+app.config.auth.single_template = True
 
 class User(AuthUser):
     pass
@@ -23,7 +23,7 @@ db = Database(app)
 auth = Auth(app, db, user_model=User)
 
 app.pipeline = [
-    SessionCookieManager('myverysecretkey'),
+    SessionManager.cookies('myverysecretkey'),
     db.pipe,
     auth.pipe
 ]
@@ -289,7 +289,7 @@ from weppy.orm import Field
 from weppy.tools.auth import AuthUser
 
 class User(AuthUser):
-    avatar = Field("upload", uploadfolder="uploads")
+    avatar = Field.upload(uploadfolder="uploads")
     
     form_profile_rw = {
         "avatar": True

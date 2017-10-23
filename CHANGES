@@ -1,6 +1,28 @@
 weppy changelog
 ===============
 
+Version 1.2
+-----------
+
+Released on October 23rd 2017, codename Merak
+
+- Several bugfixes
+- Rewritten templates parsing and generation logic
+- Rewritten ORM connection pooling
+- Added support for advanced transaction usage in ORM
+- Refactored cache module
+- Exposed `get`, `set`, `get_or_set`, `clear` methods in `cache.Cache`
+  and handlers objects
+- Added decorator syntax support to cache module
+- Added `response` method to cache module and relevant `cache` parameter in
+  `app.App.route`, `app.App.module` and `app.AppModule.route` decorators
+- Added `switch` method to `orm.objects.Set` to allow changing model context
+- Rewritten sessions' managers
+- Deprecated `SessionCookieManager`, `SessionFSManager` and
+  `SessionRedisManager` classes in `sessions` module in favour of unified
+  `SessionManager` wrapper and its `cookies`, `files` and `redis` methods
+
+
 Version 1.1
 -----------
 

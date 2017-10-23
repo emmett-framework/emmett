@@ -11,15 +11,13 @@
 
 import os
 import traceback
-from .contents import BlockNode
 
 
 class TemplateMissingError(Exception):
-    def __init__(self, tpath, filename):
-        self.path = tpath
-        self.template = filename
-        message = "Template %s not found" % self.template
-        Exception.__init__(self, message)
+    def __init__(self, file_path):
+        self.path = file_path
+        self.message = "Template %s not found" % self.path
+        super(TemplateMissingError, self).__init__()
 
 
 class TemplateError(Exception):
@@ -37,23 +35,22 @@ class TemplateError(Exception):
 
 
 class TemplateReference(object):
-    def __init__(self, parserdata, code, exc_type, exc_value, tb):
-        self.parser = parserdata
+    def __init__(self, parser_ctx, code, exc_type, exc_value, tb):
+        self.parser_ctx = parser_ctx
         self.exc_type = exc_type
         self.exc_value = exc_value
         self.tb = tb
         if hasattr(exc_value, 'lineno'):
-            dummy_lineno = exc_value.lineno
+            writer_lineno = exc_value.lineno
         else:
             template_frame = traceback.extract_tb(tb, 2)[-1]
-            dummy_lineno = template_frame[1]
-        self.lines = self.get_template_reference(parserdata.content,
-                                                 parserdata.blocks)
-        self.template, self.lineno = self.match_template(dummy_lineno)
+            writer_lineno = template_frame[1]
+        self.lines = parser_ctx.content.reference()
+        self.template, self.lineno = self.match_template(writer_lineno)
 
     @property
     def file_path(self):
-        return os.path.join(self.parser.path, self.template)
+        return os.path.join(self.parser_ctx.path, self.template)
 
     @property
     def message(self):
@@ -64,32 +61,10 @@ class TemplateReference(object):
     def __str__(self):
         return str(self.exc_value)
 
-    @staticmethod
-    def get_template_reference(content, blocks):
-        lines = []
-        for node in content.nodes:
-            if isinstance(node, BlockNode):
-                if node.name in blocks:
-                    lines += TemplateReference.get_template_reference(
-                        blocks[node.name], blocks)
-                else:
-                    lines += TemplateReference.get_template_reference(node,
-                                                                      blocks)
-            else:
-                node_lines = node._rendered_lines()
-                if len(node_lines) == node.lines[1] - node.lines[0] + 1:
-                    linenos = [(i, i + 1) for i in range(node.lines[0],
-                                                         node.lines[1] + 1)]
-                else:
-                    linenos = [(node.lines[0], node.lines[1])
-                               for i in range(0, len(node_lines))]
-                for l in range(0, len(node_lines)):
-                    lines.append((node.template, linenos[l]))
-        return lines
-
-    def match_template(self, dummy_lineno):
+    def match_template(self, writer_lineno):
+        element = self.lines[writer_lineno - 1]
         try:
-            reference = self.lines[dummy_lineno - 1]
-        except:
-            reference = (self.parser.name, ('<unknown>', 'unknown'))
+            reference = (element[0], element[1])
+        except Exception:
+            reference = (self.parser_ctx.name, ('<unknown>', 'unknown'))
         return reference[0], reference[1][0]

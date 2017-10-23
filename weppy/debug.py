@@ -19,7 +19,9 @@ import os
 import sys
 from types import TracebackType, CodeType
 from ._compat import PY2, reraise, iteritems
+from .templating.core import Writer
 from .templating.helpers import TemplateError
+from .templating.parser import TemplateParser
 from .utils import cachedprop
 
 
@@ -203,8 +205,12 @@ class Frame(object):
         if self.is_in_app:
             return self.filename[len(self.app.root_path) + 1:]
         if self.is_in_fw:
-            return "weppy." + self.filename[len(os.path.dirname(__file__)) + 1:]\
-                .replace("/", ".").split(".py")[0]
+            return ''.join([
+                "weppy.",
+                self.filename[
+                    len(os.path.dirname(__file__)) + 1:
+                ].replace("/", ".").split(".py")[0]
+            ])
         return self.filename
 
     @cachedprop
@@ -223,14 +229,14 @@ class Frame(object):
 
     @property
     def first_line_no(self):
-        l = self.lineno > 5 and (self.lineno - 5) or 1
-        if l > len(self.sourcelines):
-            l = 1
-        while not self.sourcelines[l - 1]:
-            l += 1
-            if l > len(self.sourcelines):
+        number = self.lineno > 5 and (self.lineno - 5) or 1
+        if number > len(self.sourcelines):
+            number = 1
+        while not self.sourcelines[number - 1]:
+            number += 1
+            if number > len(self.sourcelines):
                 break
-        return l
+        return number
 
     @property
     def current_line(self):
@@ -245,7 +251,7 @@ class Frame(object):
         for k, v in iteritems(self.locals):
             try:
                 rv[k] = str(v)
-            except:
+            except Exception:
                 rv[k] = '<unavailable>'
         return rv
 
@@ -287,20 +293,15 @@ def smart_traceback(app):
 
 
 def debug_handler(tb):
-    from os.path import join, dirname, basename
-    view = join(dirname(__file__), 'assets', 'debug', basename('view.html'))
-    from .templating.core import DummyResponse
-    from .templating.parser import TemplateParser
-    view_file = open(view, 'rb')
-    view_source = view_file.read().decode('utf8')
-    view_file.close()
-    context = {'_DummyResponse_': DummyResponse(), 'tb': tb}
-    from .datastructures import sdict
-    t_dict = sdict(lexers={})
-    code = str(TemplateParser(t_dict, view_source,
-               context=context, path=''))
+    view = os.path.join(
+        os.path.dirname(__file__), 'assets', 'debug',
+        os.path.basename('view.html'))
+    with open(view, 'rb') as view_file:
+        view_source = view_file.read().decode('utf8')
+    context = {'_writer_': Writer(), 'tb': tb}
+    code = TemplateParser(None, view_source, scope=context, path='').render()
     exec(code, context)
-    return context['_DummyResponse_'].body.getvalue()
+    return context['_writer_'].body.getvalue()
 
 
 def make_frame_proxy(frame):
@@ -399,13 +400,13 @@ def fake_exc_info(exc_info, filename, lineno):
                         code.co_names, code.co_varnames, filename,
                         'template', code.co_firstlineno,
                         code.co_lnotab, (), ())
-    except:
+    except Exception:
         pass
 
     # execute the code and catch the new traceback
     try:
         exec(code, globals, locals)
-    except:
+    except Exception:
         exc_info = sys.exc_info()
         new_tb = exc_info[2].tb_next
 
@@ -480,6 +481,6 @@ tb_set_next = None
 if tproxy is None:
     try:
         tb_set_next = _init_ugly_crap()
-    except:
+    except Exception:
         pass
     del _init_ugly_crap

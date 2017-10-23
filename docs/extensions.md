@@ -133,6 +133,8 @@ class Awesomeness(Extension):
 
 ### Template extensions
 
+*Changed in version 1.2*
+
 Whenever you want to extend something related to the weppy templating system, you can take advantage of another class provided by the framework: the `TemplateExtension` one.
 
 This class provides some useful methods when dealing with templates, and has to be used on conjunction with the `Extension` one. Let's see this with an example.
@@ -242,21 +244,17 @@ class ImgTemplateExtension(TemplateExtension):
         context['_img_lexer_'] = self.gen_img_string
 ```
 
-then we should write a lexer that converts the *img* notation to a call to our method and add it as a template *node* to the template tree:
+then we should write a lexer that converts the *img* notation to a call to our method and add it as a *python node* to the template tree:
 
 ```python
 from weppy.extensions import TemplateLexer
 
 class ImgLexer(TemplateLexer):
-    def process(self, value):
-        s = '_img_lexer_("{}")'.format(value)
-        node = self.parser.create_node(
-            s, pre_extend=False, writer_escape=False
-        )
-        self.top.append(node)
+    def process(self, ctx, value):
+        ctx.python_node('_img_lexer_("{}")'.format(value))
 ```
 
-The above code tells the template parser to add a python node to the current template tree, so that the `_img_lexer_` method will be invoked. The `self.top` property is the actual level of the template tree, so if you are, for example, inside a div or a specific block, that will be used to inject the code.
+The above code tells the template parser to add a python node to the current template tree, so that the `_img_lexer_` method will be invoked. The `ctx` object is responsible to handle the injection of the node in the current level of the template tree.
 
 The last things we need is to register the lexer and the template extension, so the final code will look like this:
 
@@ -271,13 +269,8 @@ class ImgExtension(Extension):
         self.app.add_template_extension(ImgTemplateExtension)
 
 class ImgLexer(TemplateLexer):
-    def process(self, value):
-        s = '_img_lexer_("{}")'.format(value)
-        node = self.parser.create_node(
-            s, pre_extend=False, writer_escape=False
-        )
-        self.top.append(node)
-        
+    def process(self, ctx, value):
+        ctx.python_node('_img_lexer_("{}")'.format(value))
 
 class ImgTemplateExtension(TemplateExtension):
     namespace = "TemplateImg"

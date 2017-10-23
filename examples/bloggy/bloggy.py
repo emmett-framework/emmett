@@ -4,7 +4,7 @@ from weppy import App, session, now, url, redirect, abort
 from weppy.orm import Database, Model, Field, belongs_to, has_many
 from weppy.tools import requires
 from weppy.tools.auth import Auth, AuthUser
-from weppy.sessions import SessionCookieManager
+from weppy.sessions import SessionManager
 
 
 app = App(__name__)
@@ -90,7 +90,7 @@ def setup():
 
 #: pipeline
 app.pipeline = [
-    SessionCookieManager('Walternate'), db.pipe, auth.pipe
+    SessionManager.cookies('Walternate'), db.pipe, auth.pipe
 ]
 
 

@@ -42,10 +42,6 @@ distributed under LGPLv3 license, in particular:
     * weppy/security.py
     * weppy/validators
 
-Other derived components are distributed under BSD license, in particular:
-
-    * weppy/templating
-
 For futher details, check out the web2py's license:
     https://github.com/web2py/web2py/blob/master/LICENSE
 

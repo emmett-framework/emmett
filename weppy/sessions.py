@@ -12,64 +12,149 @@
 import os
 import time
 import tempfile
+
 from ._compat import pickle, to_native
-from .security import secure_loads, secure_dumps, uuid
-from .pipeline import Pipe
-from .globals import current, request, response
+from ._internal import warn_of_deprecation
 from .datastructures import sdict, SessionData
+from .expose import Expose
+from .globals import current, request, response
+from .pipeline import Pipe
+from .security import secure_loads, secure_dumps, uuid
 
 
-class SessionCookieManager(Pipe):
-    def __init__(self, key, secure=False, domain=None):
-        self.key = key
+class SessionPipe(Pipe):
+    def __init__(
+        self, expire=3600, secure=False, domain=None, cookie_name=None
+    ):
+        self.expire = expire
         self.secure = secure
         self.domain = domain
+        self.cookie_name = (
+            cookie_name or 'wpp_session_data_%s' % Expose.application.name)
+
+    def _load_session(self):
+        pass
+
+    def _new_session(self):
+        pass
+
+    def _pack_session(self, expiration):
+        response.cookies[self.cookie_name] = self._session_cookie_data()
+        response.cookies[self.cookie_name]['path'] = "/"
+        response.cookies[self.cookie_name]['expires'] = expiration
+        if self.secure:
+            response.cookies[self.cookie_name]['secure'] = True
+        if self.domain is not None:
+            response.cookies[self.cookie_name]['domain'] = self.domain
+
+    def _session_cookie_data(self):
+        pass
 
     def open(self):
-        self.cookie_data_name = 'wpp_session_data_%s' % request.appname
-        if self.cookie_data_name in request.cookies:
-            cookie_data = request.cookies[self.cookie_data_name].value
-            current.session = SessionData(secure_loads(
-                cookie_data, self.key), expires=3600)
+        if self.cookie_name in request.cookies:
+            current.session = self._load_session()
         if not current.session:
-            current.session = SessionData(expires=3600)
+            current.session = self._new_session()
 
     def close(self):
-        data = secure_dumps(sdict(current.session), self.key)
-        response.cookies[self.cookie_data_name] = data
-        response.cookies[self.cookie_data_name]['path'] = "/"
-        response.cookies[self.cookie_data_name]['expires'] = \
-            current.session._expiration
-        if self.secure:
-            response.cookies[self.cookie_data_name]['secure'] = True
-        if self.domain is not None:
-            response.cookies[self.cookie_data_name]['domain'] = self.domain
+        expiration = current.session._expiration or self.expire
+        self._pack_session(expiration)
+
+    def clear(self):
+        pass
+
+
+class CookieSessionPipe(SessionPipe):
+    def __init__(
+        self, key, expire=3600, secure=False, domain=None, cookie_name=None
+    ):
+        super(CookieSessionPipe, self).__init__(
+            expire, secure, domain, cookie_name)
+        self.key = key
+
+    def _load_session(self):
+        cookie_data = request.cookies[self.cookie_name].value
+        return SessionData(
+            secure_loads(cookie_data, self.key), expires=self.expire)
+
+    def _new_session(self):
+        return SessionData(expires=self.expire)
+
+    def _session_cookie_data(self):
+        return secure_dumps(sdict(current.session), self.key)
 
     def clear(self):
         raise NotImplementedError(
-            "%s doesn't support clear of sessions. " +
+            "%s doesn't support sessions clearing. " +
             "You should change the '%s' parameter to invalidate existing ones."
-            % (self.__class__.__name__, 'secure'))
+            % (self.__class__.__name__, 'key'))
 
 
-class SessionFSManager(Pipe):
+class BackendStoredSessionPipe(SessionPipe):
+    def _new_session(self):
+        return SessionData(sid=uuid())
+
+    def _session_cookie_data(self):
+        return current.session._sid
+
+    def _load_session(self):
+        sid = request.cookies[self.cookie_name].value
+        data = self._load(sid)
+        if data is not None:
+            return SessionData(data, sid=sid)
+        return None
+
+    def _delete_session(self):
+        pass
+
+    def _save_session(self, expiration):
+        pass
+
+    def _load(self, sid):
+        return None
+
+    def close(self):
+        if not current.session:
+            self._delete_session()
+            if current.session._modified:
+                #: if we got here means we want to destroy session definitely
+                if self.cookie_name in response.cookies:
+                    del response.cookies[self.cookie_name]
+            return
+        expiration = current.session._expiration or self.expire
+        self._save_session(expiration)
+        self._pack_session(expiration)
+
+
+class FileSessionPipe(BackendStoredSessionPipe):
     _fs_transaction_suffix = '.__wp_sess'
     _fs_mode = 0o600
 
-    def __init__(self, expire=3600, secure=False, domain=None,
-                 filename_template='weppy_%s.sess'):
+    def __init__(
+        self, expire=3600, secure=False, domain=None, cookie_name=None,
+        filename_template='weppy_%s.sess'
+    ):
+        super(FileSessionPipe, self).__init__(
+            expire, secure, domain, cookie_name)
         assert not filename_template.endswith(self._fs_transaction_suffix), \
             'filename templates cannot end with %s' % \
             self._fs_transaction_suffix
         self._filename_template = filename_template
-        from .expose import Expose
         self._path = os.path.join(Expose.application.root_path, 'sessions')
         #: create required paths if needed
         if not os.path.exists(self._path):
             os.mkdir(self._path)
-        self.expire = expire
-        self.secure = secure
-        self.domain = domain
+
+    def _delete_session(self):
+        fn = self._get_filename(current.session._sid)
+        try:
+            os.unlink(fn)
+        except OSError:
+            pass
+
+    def _save_session(self, expiration):
+        if current.session._modified:
+            self._store(current.session, expiration)
 
     def _get_filename(self, sid):
         sid = to_native(sid)
@@ -77,15 +162,12 @@ class SessionFSManager(Pipe):
 
     def _load(self, sid):
         try:
-            f = open(self._get_filename(sid), 'rb')
+            with open(self._get_filename(sid), 'rb') as f:
+                exp = pickle.load(f)
+                val = pickle.load(f)
         except IOError:
             return None
-        now = time.time()
-        exp = pickle.load(f)
-        val = pickle.load(f)
-        f.close()
-        if exp < now:
-            f.close()
+        if exp < time.time():
             return None
         return val
 
@@ -93,107 +175,115 @@ class SessionFSManager(Pipe):
         fn = self._get_filename(session._sid)
         now = time.time()
         exp = now + expiration
-        fd, tmp = tempfile.mkstemp(suffix=self._fs_transaction_suffix,
-                                   dir=self._path)
+        fd, tmp = tempfile.mkstemp(
+            suffix=self._fs_transaction_suffix, dir=self._path)
         f = os.fdopen(fd, 'wb')
         try:
             pickle.dump(exp, f, 1)
-            #f.write(session._dump)
             pickle.dump(sdict(session), f, pickle.HIGHEST_PROTOCOL)
         finally:
             f.close()
         try:
             os.rename(tmp, fn)
             os.chmod(fn, self._fs_mode)
-        except:
+        except Exception:
             pass
-
-    def _delete(self, session):
-        fn = self._get_filename(session._sid)
-        try:
-            os.unlink(fn)
-        except OSError:
-            pass
-
-    def open(self):
-        self.cookie_data_name = 'wpp_session_data_%s' % request.appname
-        if self.cookie_data_name in request.cookies:
-            sid = request.cookies[self.cookie_data_name].value
-            data = self._load(sid)
-            if data is not None:
-                current.session = SessionData(data, sid=sid)
-        if not current.session:
-            sid = uuid()
-            current.session = SessionData(sid=sid)
-
-    def close(self):
-        if not current.session:
-            self._delete(current.session)
-            if current.session._modified:
-                #: if we got here means we want to destroy session definitely
-                if self.cookie_data_name in response.cookies:
-                    del response.cookies[self.cookie_data_name]
-            return
-        #: store and update cookies
-        expiration = current.session._expiration or self.expire
-        if current.session._modified:
-            self._store(current.session, expiration)
-        response.cookies[self.cookie_data_name] = current.session._sid
-        response.cookies[self.cookie_data_name]['path'] = "/"
-        response.cookies[self.cookie_data_name]['expires'] = expiration
-        if self.secure:
-            response.cookies[self.cookie_data_name]['secure'] = True
-        if self.domain is not None:
-            response.cookies[self.cookie_data_name]['domain'] = self.domain
 
     def clear(self):
         for element in os.listdir(self._path):
-            os.unlink(os.path.join(self._path, element))
+            try:
+                os.unlink(os.path.join(self._path, element))
+            except Exception:
+                pass
 
 
-class SessionRedisManager(Pipe):
-    def __init__(self, redis, prefix="wppsess:", expire=3600, secure=False,
-                 domain=None):
+class RedisSessionPipe(BackendStoredSessionPipe):
+    def __init__(
+        self, redis, prefix="wppsess:", expire=3600, secure=False, domain=None,
+        cookie_name=None
+    ):
+        super(RedisSessionPipe, self).__init__(
+            expire, secure, domain, cookie_name)
         self.redis = redis
-        self.prefix = prefix
-        self.expire = expire
-        self.secure = secure
-        self.domain = domain
 
-    def open(self):
-        self.cookie_data_name = 'wpp_session_data_%s' % request.appname
-        if self.cookie_data_name in request.cookies:
-            sid = request.cookies[self.cookie_data_name].value
-            #: load from redis
-            data = self.redis.get(self.prefix + sid)
-            if data is not None:
-                current.session = SessionData(pickle.loads(data), sid=sid)
-        if not current.session:
-            sid = uuid()
-            current.session = SessionData(sid=sid)
+    def _delete_session(self):
+        self.redis.delete(self.prefix + current.session._sid)
 
-    def close(self):
-        if not current.session:
-            self.redis.delete(self.prefix + current.session._sid)
-            if current.session._modified:
-                #: if we got here means we want to destroy session definitely
-                if self.cookie_data_name in response.cookies:
-                    del response.cookies[self.cookie_data_name]
-            return
-        #: store on redis and update cookies
-        expiration = current.session._expiration or self.expire
+    def _save_session(self, expiration):
         if current.session._modified:
-            self.redis.setex(self.prefix + current.session._sid,
-                             current.session._dump, expiration)
+            self.redis.setex(
+                self.prefix + current.session._sid, current.session._dump,
+                expiration)
         else:
             self.redis.expire(self.prefix + current.session._sid, expiration)
-        response.cookies[self.cookie_data_name] = current.session._sid
-        response.cookies[self.cookie_data_name]['path'] = "/"
-        response.cookies[self.cookie_data_name]['expires'] = expiration
-        if self.secure:
-            response.cookies[self.cookie_data_name]['secure'] = True
-        if self.domain is not None:
-            response.cookies[self.cookie_data_name]['domain'] = self.domain
+
+    def _load(self, sid):
+        data = self.redis.get(self.prefix + sid)
+        return pickle.loads(data) if data else data
 
     def clear(self):
         self.redis.delete(self.prefix + "*")
+
+
+class SessionManager(object):
+    _pipe = None
+
+    @classmethod
+    def _build_pipe(cls, handler_cls, *args, **kwargs):
+        cls._pipe = handler_cls(*args, **kwargs)
+        return cls._pipe
+
+    @classmethod
+    def cookies(
+        cls, key, expire=3600, secure=False, domain=None, cookie_name=None
+    ):
+        return cls._build_pipe(
+            CookieSessionPipe, key, expire=expire, secure=secure,
+            domain=domain, cookie_name=cookie_name)
+
+    @classmethod
+    def files(
+        cls, expire=3600, secure=False, domain=None, cookie_name=None,
+        filename_template='weppy_%s.sess'
+    ):
+        return cls._build_pipe(
+            FileSessionPipe, expire=expire, secure=secure, domain=domain,
+            cookie_name=cookie_name, filename_template=filename_template)
+
+    @classmethod
+    def redis(
+        cls, redis, prefix="wppsess:", expire=3600, secure=False, domain=None,
+        cookie_name=None
+    ):
+        return cls._build_pipe(
+            RedisSessionPipe, redis, prefix=prefix, expire=expire,
+            secure=secure, domain=domain, cookie_name=cookie_name)
+
+    @classmethod
+    def clear(cls):
+        cls._pipe.clear()
+
+
+# 1.2 deprecations
+class SessionCookieManager(CookieSessionPipe):
+    def __init__(self, *args, **kwargs):
+        warn_of_deprecation(
+            'weppy.sessions.SessionCookieManager',
+            'weppy.sessions.SessionManager.cookies', stack=3)
+        super(SessionCookieManager, self).__init__(*args, **kwargs)
+
+
+class SessionFSManager(FileSessionPipe):
+    def __init__(self, *args, **kwargs):
+        warn_of_deprecation(
+            'weppy.sessions.SessionFSManager',
+            'weppy.sessions.SessionManager.files', stack=3)
+        super(SessionFSManager, self).__init__(*args, **kwargs)
+
+
+class SessionRedisManager(RedisSessionPipe):
+    def __init__(self, *args, **kwargs):
+        warn_of_deprecation(
+            'weppy.sessions.SessionRedisManager',
+            'weppy.sessions.SessionManager.redis', stack=3)
+        super(SessionRedisManager, self).__init__(*args, **kwargs)

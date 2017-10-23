@@ -404,33 +404,28 @@ For more information, check out the [Error handling chapter](./request#errors-an
 
 Sessions
 --------
-An essential feature for a web application is the ability to store specific 
-informations about the client between multiple requests. Accordingly, weppy
-provides another object besides the `request`, called `session`.
+An essential feature for a web application is the ability to store specific informations about the client between multiple requests. Accordingly, weppy provides another object besides the `request`, called `session`.
 
-Session contents can be stored in several ways, such as using file or redis.
-In this quick start, we will see how to use the `session` and store its contents
-directly in the cookies of the client.
+Session contents can be stored in several ways, such as using file or redis. In this quick start, we will see how to use the `session` and store its contents directly in the cookies of the client.
 
-You need to use the `SessionCookieManager` pipe provided by weppy:
+We're going to use the `SessionManager` class provided by weppy, and write a very simple route which interacts with the session:
 
 ```python
 from weppy import App, session
-from weppy.sessions import SessionCookieManager
+from weppy.sessions import SessionManager
 
 app = App(__name__)
-app.pipeline = [SessionCookieManager('myverysecretkey')]
+app.pipeline = [SessionManager.cookies('myverysecretkey')]
 
 @app.route("/")
 def count():
     session.counter = (session.counter or 0) + 1
     return "You have visited %d times" % session.counter
 ```
-The above code is quite simple: the app increments the counter every time the 
-user visits the page and return this number to the user. Basically, you can
-store a value to the user session and retrieve it whenever the session is kept.
 
-> – and if I try to access an attribute not existent in session?   
+The above code is quite simple: the app increments the counter every time the user visits the page and return this number to the user. Basically, you can store a value to the user session and retrieve it whenever the session is kept.
+
+> – and what if I try to access an attribute not existent in session?   
 > – *same as `request.params`: the attribute will be `None` and you don't have
 to catch any exception*
 

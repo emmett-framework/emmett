@@ -28,12 +28,12 @@ class Auth(object):
 
     def module(
         self, import_name, name='auth', template_folder='auth',
-        template_path=None, url_prefix='auth', hostname=None, root_path=None,
-        module_class=AuthModule
+        template_path=None, url_prefix='auth', hostname=None, cache=None,
+        root_path=None, module_class=AuthModule
     ):
         return module_class.from_app(
             self.ext.app, import_name, name, template_folder, template_path,
-            url_prefix, hostname, root_path
+            url_prefix, hostname, cache, root_path
         )
 
     @property
