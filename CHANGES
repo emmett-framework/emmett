@@ -1,12 +1,12 @@
 weppy changelog
 ===============
 
-Next
-----
+Version 1.2
+-----------
 
-(Release date to be defined, codename to be selected)
+Released on October 23rd 2017, codename Merak
 
-- Some bugfixes
+- Several bugfixes
 - Rewritten templates parsing and generation logic
 - Rewritten ORM connection pooling
 - Added support for advanced transaction usage in ORM
