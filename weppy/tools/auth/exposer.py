@@ -75,8 +75,8 @@ class AuthModule(AppModule):
         self.ext.bind_exposer(self)
 
     def _template_for(self, key):
-        return 'auth.html' if self.config.single_template \
-            else "{}.html".format(key)
+        tname = 'auth' if self.config.single_template else key
+        return '{}{}'.format(tname, self.app.template_default_extension)
 
     def url(self, path, *args, **kwargs):
         path = "{}.{}".format(self.name, path)
