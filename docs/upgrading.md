@@ -46,8 +46,8 @@ The old classes are deprecated in weppy 1.2, so you can still use them, but we r
 
 weppy 1.2 also introduces some new features:
 
-- An additional parameter in ORM configuration to specify [time-based recycling](.dal/connecting) for pooled connections
-- [Nested transactions](.dal/connecting#transactions) support in ORM
+- An additional parameter in ORM configuration to specify [time-based recycling](./dal/connecting) for pooled connections
+- [Nested transactions](./dal/connecting#transactions) support in ORM
 - Caching now allows decoration syntax and routes caching. Checkout [caching chapter](./caching) for details.
 
 
