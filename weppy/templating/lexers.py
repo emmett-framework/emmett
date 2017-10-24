@@ -71,6 +71,8 @@ class IncludeLexer(WeppyLexer):
                 ctx.parse()
                 ctx.state.extend_src.update_lines_count(
                     ctx.state.lines.end - ctx.state.lines.start)
+                included_id = ctx.state._id
+            ctx.state.extend_src.settings['include_src'] = included_id
 
 
 class ExtendLexer(WeppyLexer):
@@ -107,9 +109,10 @@ class ExtendLexer(WeppyLexer):
             del ctx.blocks_tree[key]
 
     def update_included_indent(self, ctx):
-        block_id = ctx.blocks_tree['__include__']
+        block_id = ctx.state.extend_src.include_src
         block = ctx.contents_map[block_id]
         block.increment_children_indent(block.indent)
+        del ctx.state.extend_src.settings['include_src']
 
 
 class HelpersLexer(WeppyLexer):
