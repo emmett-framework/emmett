@@ -279,12 +279,16 @@ class TemplateParser(object):
         text = self.templater.prerender(text, file_path)
         return filename, file_path, text
 
+    @staticmethod
+    def _cleanup_html_line(line, pos):
+        return line if not pos else line.lstrip()
+
     def parse_html_block(self, ctx, element):
         lines = element.split("\n")
         ctx.update_lines_count(len(lines) - 1)
         new_lines = []
-        for line in lines:
-            line = line.strip()
+        for _, line in enumerate(lines):
+            line = self._cleanup_html_line(line, _)
             if line:
                 new_lines.append(line)
         if new_lines:
