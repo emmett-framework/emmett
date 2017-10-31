@@ -29,7 +29,7 @@ By default, weppy stores your cached content into the RAM of your machine, but y
 As we just saw, this is the default cache mechanism of weppy. Initializing a `Cache` instance without arguments would be the same of using the `RamCache` handler:
 
 ```python
-from weppy import Cache, RamCache
+from weppy.cache import Cache, RamCache
 
 cache = Cache(ram=RamCache())
 ```

@@ -92,7 +92,9 @@ class CacheHandler(object):
             if duration == "default":
                 duration = self._default_expire
             now = time.time()
-            return method(self, key, value, now=now, expiration=now + duration)
+            return method(
+                self, key, value, now=now, duration=duration,
+                expiration=now + duration)
         return wrap
 
     def __call__(self, key=None, function=None, duration='default'):
@@ -241,7 +243,6 @@ class DiskCache(CacheHandler):
                     for i, fpath in enumerate(entries):
                         remove = False
                         f = LockedFile(fpath, 'rb')
-                        #with open(fpath, 'rb') as f:
                         exp = pickle.load(f.file)
                         f.close()
                         remove = exp <= now or i % 3 == 0
@@ -256,7 +257,6 @@ class DiskCache(CacheHandler):
             with self.lock:
                 now = time.time()
                 f = LockedFile(filename, 'rb')
-                #with open(filename, 'rb') as f:
                 exp = pickle.load(f.file)
                 if exp < now:
                     f.close()
@@ -337,7 +337,7 @@ class RedisCache(CacheHandler):
     def set(self, key, value, **kwargs):
         dumped = self._dump_obj(value)
         return self._cache.setex(
-            name=key, value=dumped, time=kwargs['expiration'])
+            name=key, value=dumped, time=kwargs['duration'])
 
     @CacheHandler._key_prefix_
     def clear(self, key=None):
