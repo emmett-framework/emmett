@@ -33,7 +33,7 @@ class DatabasePipe(Pipe):
         self.db = db
 
     def open(self):
-        self.db._adapter.reconnect()
+        self.db.connection_open()
 
     def on_pipe_success(self):
         self.db.commit()
@@ -42,7 +42,7 @@ class DatabasePipe(Pipe):
         self.db.rollback()
 
     def close(self):
-        self.db._adapter.close()
+        self.db.connection_close()
 
 
 class Database(_pyDAL):
