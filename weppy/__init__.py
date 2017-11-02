@@ -1,4 +1,4 @@
-__version__ = '1.2.4-dev'
+__version__ = '1.2.4'
 
 from .app import App, AppModule
 from .cache import Cache
