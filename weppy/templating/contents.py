@@ -110,3 +110,11 @@ class PrettyEscapeNode(PrettyMixin, EscapeNode):
 
 class PrettyHTMLNode(PrettyMixin, HTMLNode):
     pass
+
+
+class PrettyHTMLPreNode(PrettyHTMLNode):
+    def increment_indent(self, increment):
+        return
+
+    def change_indent(self, indent):
+        return

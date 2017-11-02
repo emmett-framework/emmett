@@ -20,7 +20,7 @@ import sys
 from types import TracebackType, CodeType
 from ._compat import PY2, reraise, iteritems
 from .templating.core import Writer
-from .templating.helpers import TemplateError
+from .templating.helpers import TemplateError, TemplateSyntaxError
 from .templating.parser import TemplateParser
 from .utils import cachedprop
 
@@ -119,7 +119,9 @@ class Traceback(object):
         self.exc_value = exc_value
         if not isinstance(exc_type, str):
             exception_type = exc_type.__name__
-            if exc_type.__module__ not in ('__builtin__', 'exceptions'):
+            if exc_type.__module__ not in (
+                '__builtin__', 'builtins', 'exceptions'
+            ):
                 exception_type = exc_type.__module__ + '.' + exception_type
         else:
             exception_type = exc_type
@@ -257,26 +259,25 @@ class Frame(object):
 
 
 def make_traceback(exc_info, template_ref=None):
-    if template_ref:
-        if isinstance(exc_info[1], SyntaxError):
-            if exc_info[1].filename == '<string>':
-                exc_info = translate_syntax_error(exc_info[1], template_ref)
+    initial_skip = 1
     if isinstance(exc_info[1], TemplateError):
         exc_info = translate_template_error(exc_info[1])
-    tb = translate_exception(exc_info, 1)
+        initial_skip = 0
+    elif isinstance(exc_info[1], TemplateSyntaxError):
+        exc_info = translate_syntax_error(exc_info[1])
+        initial_skip = 0
+    tb = translate_exception(exc_info, initial_skip)
     exc_type, exc_value, tb = tb.standard_exc_info
     reraise(exc_type, exc_value, tb)
 
 
-def translate_syntax_error(error, reference):
+def translate_syntax_error(error):
     """Rewrites a syntax error to please traceback systems."""
-    #error.translated = True
-    #exc_info = (error.__class__, error, None)
-    exc_info = (error.__class__, 'invalid syntax', None)
-    filename = reference.file_path
+    exc_info = (error.__class__, error, None)
+    filename = error.file_path
     if filename is None:
         filename = '<unknown>'
-    return fake_exc_info(exc_info, filename, reference.lineno)
+    return fake_exc_info(exc_info, filename, error.lineno)
 
 
 def translate_template_error(error):
@@ -326,6 +327,9 @@ def translate_exception(exc_info, initial_skip=0):
     tb = exc_info[2]
     frames = []
 
+    is_template_error = isinstance(
+        exc_info[1], (TemplateError, TemplateSyntaxError))
+
     # skip some internal frames if wanted
     for x in range(initial_skip):
         if tb is not None:
@@ -340,10 +344,12 @@ def translate_exception(exc_info, initial_skip=0):
         template = tb.tb_frame.f_globals.get('__weppy_template__')
         if template is not None:
             lineno = template.lineno
-            tb = fake_exc_info(exc_info[:2] + (tb,), template.file_path,
-                               lineno)[2]
+            tb = fake_exc_info(
+                exc_info[:2] + (tb,), template.file_path, lineno)[2]
 
         frames.append(make_frame_proxy(tb))
+        if is_template_error and '__weppy_template__' in tb.tb_frame.f_globals:
+            break
         tb = next
 
     # if we don't have any exceptions in the frames left, we have to

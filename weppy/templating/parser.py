@@ -15,7 +15,7 @@ import uuid
 from collections import namedtuple
 from .contents import (
     Node, NodeGroup, WriterNode, EscapeNode, HTMLNode, PrettyWriterNode,
-    PrettyEscapeNode, PrettyHTMLNode)
+    PrettyEscapeNode, PrettyHTMLNode, PrettyHTMLPreNode)
 from .helpers import TemplateError
 from .lexers import default_lexers
 
@@ -109,7 +109,7 @@ class ParsingState(object):
 class ParsingContext(object):
     def __init__(
         self, parser, name, text, scope, writer_node_cls, escape_node_cls,
-        html_node_cls
+        html_node_cls, htmlpre_node_cls
     ):
         self.parser = parser
         self.stack = []
@@ -122,6 +122,8 @@ class ParsingContext(object):
         self._writer_node_cls = writer_node_cls
         self._escape_node_cls = escape_node_cls
         self._html_node_cls = html_node_cls
+        self._htmlpre_node_cls = htmlpre_node_cls
+        self._in_html_pre = False
 
     @property
     def name(self):
@@ -151,7 +153,7 @@ class ParsingContext(object):
         return self
 
     def load(self, name, **kwargs):
-        name, file_path, text = self.parser._get_file_text(name)
+        name, file_path, text = self.parser._get_file_text(self, name)
         self.state.dependencies.append(name)
         kwargs['source'] = file_path
         kwargs['in_python_block'] = False
@@ -205,9 +207,12 @@ class ParsingContext(object):
         self.content.append(node)
         return node
 
-    def html(self, value, indent=None):
+    def html(self, value):
+        node_cls = (
+            self._html_node_cls if not self._in_html_pre else
+            self._htmlpre_node_cls)
         self.content.append(
-            self._html_node_cls(
+            node_cls(
                 value, indent=self.state.indent, new_line=self.state.new_line,
                 source=self.state.source, lines=self.state.lines))
 
@@ -222,7 +227,9 @@ class ParsingContext(object):
 
 
 class TemplateParser(object):
-    _nodes_cls = {'writer': WriterNode, 'escape': EscapeNode, 'html': HTMLNode}
+    _nodes_cls = {
+        'writer': WriterNode, 'escape': EscapeNode, 'html': HTMLNode,
+        'htmlpre': HTMLNode}
 
     r_multiline = re.compile(r'(""".*?""")|(\'\'\'.*?\'\'\')', re.DOTALL)
 
@@ -262,12 +269,13 @@ class TemplateParser(object):
     def _tag_split_text(self, text):
         return self.r_tag.split(text.replace('\t', '    '))
 
-    def _get_file_text(self, filename):
-        if not filename.strip():
-            raise TemplateError(
-                self.path, 'Invalid template filename', self.name, 1)
+    def _get_file_text(self, ctx, filename):
         #: remove quotation from filename string
-        filename = eval(filename, self.scope)
+        try:
+            filename = eval(filename, self.scope)
+        except Exception:
+            raise TemplateError(
+                'Invalid template filename', ctx.state.source, ctx.state.lines)
         #: get the file contents
         tpath, tname = self.templater.preload(self.path, filename)
         file_path = os.path.join(tpath, tname)
@@ -275,24 +283,48 @@ class TemplateParser(object):
             text = self.templater.load(file_path)
         except Exception:
             raise TemplateError(
-                self.path, 'Unable to open included view file', self.name, 1)
+                'Unable to open included view file',
+                ctx.state.source, ctx.state.lines)
         text = self.templater.prerender(text, file_path)
         return filename, file_path, text
 
     @staticmethod
-    def _cleanup_html_line(line, pos):
-        return line if not pos else line.lstrip()
+    def _check_html_pre(ctx, line):
+        if not ctx._in_html_pre and '<pre' in line and '</pre>' not in line:
+            return True, False
+        if ctx._in_html_pre and '</pre>' in line:
+            return False, True
+        return False, False
+
+    @staticmethod
+    def _start_html_pre(ctx, start):
+        if start:
+            ctx._in_html_pre = True
+
+    @staticmethod
+    def _end_html_pre(ctx, end):
+        if end:
+            ctx._in_html_pre = False
+
+    @staticmethod
+    def _cleanup_html_line(ctx, line, pos):
+        if pos and not ctx._in_html_pre:
+            return line.strip()
+        return line
 
     def parse_html_block(self, ctx, element):
         lines = element.split("\n")
         ctx.update_lines_count(len(lines) - 1)
         new_lines = []
         for _, line in enumerate(lines):
-            line = self._cleanup_html_line(line, _)
+            start_pre, end_pre = self._check_html_pre(ctx, line)
+            self._end_html_pre(ctx, end_pre)
+            line = self._cleanup_html_line(ctx, line, _)
             if line:
                 new_lines.append(line)
+            self._start_html_pre(ctx, start_pre)
         if new_lines:
-            ctx.html(''.join(new_lines))
+            ctx.html('\n'.join(new_lines))
 
     def _get_python_block_text(self, element):
         return element[self.delimiters_len[0]:-self.delimiters_len[1]].strip()
@@ -333,7 +365,8 @@ class TemplateParser(object):
     def _build_ctx(self, text):
         return ParsingContext(
             self, self.name, text, self.scope, self._nodes_cls['writer'],
-            self._nodes_cls['escape'], self._nodes_cls['html'])
+            self._nodes_cls['escape'], self._nodes_cls['html'],
+            self._nodes_cls['htmlpre'])
 
     def parse(self, text):
         ctx = self._build_ctx(text)
@@ -371,10 +404,10 @@ class TemplateParser(object):
         #: handle indentation errors
         if indent > 0:
             raise TemplateError(
-                self.path, 'missing "pass" in view', self.name, 1)
+                'missing "pass" in view', self.name, 1)
         elif indent < 0:
             raise TemplateError(
-                self.path, 'too many "pass" in view', self.name, 1)
+                'too many "pass" in view', self.name, 1)
         #: rebuild text
         return u'\n'.join(new_lines)
 
@@ -386,7 +419,8 @@ class PrettyTemplateParser(TemplateParser):
     _nodes_cls = {
         'writer': PrettyWriterNode,
         'escape': PrettyEscapeNode,
-        'html': PrettyHTMLNode}
+        'html': PrettyHTMLNode,
+        'htmlpre': PrettyHTMLPreNode}
 
     r_wspace = re.compile("^( *)")
 
@@ -406,10 +440,13 @@ class PrettyTemplateParser(TemplateParser):
         for line in lines:
             empty_line = not line
             indent = len(self.r_wspace.search(line).group(0))
+            start_pre, end_pre = self._check_html_pre(ctx, line)
+            self._end_html_pre(ctx, end_pre)
             line = line[indent:]
             ctx.state.indent = indent
             if line or empty_line:
                 ctx.html(line)
+            self._start_html_pre(ctx, start_pre)
             ctx.state.new_line = True
         #: set correct `new_line` state depending on last line
         if line and not removed_last_line:
