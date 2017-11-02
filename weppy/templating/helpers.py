@@ -21,21 +21,38 @@ class TemplateMissingError(Exception):
 
 
 class TemplateError(Exception):
-    def __init__(self, tpath, message, filename, lineno):
-        Exception.__init__(self, message)
-        self.path = tpath
-        self.template = filename
+    def __init__(self, message, file_path, lineno):
+        super(TemplateError, self).__init__(message)
+        self.message = message
+        self.file_path = file_path
         if isinstance(lineno, tuple):
             lineno = lineno[0]
         self.lineno = lineno
 
+
+class TemplateSyntaxError(Exception):
+    def __init__(self, parser_ctx, exc_type, exc_value, tb):
+        super(TemplateSyntaxError, self).__init__('invalid syntax')
+        self._reference = TemplateReference(
+            parser_ctx, exc_type, exc_value, tb)
+
     @property
     def file_path(self):
-        return os.path.join(self.path, self.template)
+        return self._reference.file_path
+
+    @property
+    def lineno(self):
+        return self._reference.lineno
+
+    @property
+    def message(self):
+        location = 'File "%s", line %d' % (self.file_path, self.lineno)
+        lines = [self.args[0], '  ' + location]
+        return "\n".join(lines)
 
 
 class TemplateReference(object):
-    def __init__(self, parser_ctx, code, exc_type, exc_value, tb):
+    def __init__(self, parser_ctx, exc_type, exc_value, tb):
         self.parser_ctx = parser_ctx
         self.exc_type = exc_type
         self.exc_value = exc_value
@@ -51,15 +68,6 @@ class TemplateReference(object):
     @property
     def file_path(self):
         return os.path.join(self.parser_ctx.path, self.template)
-
-    @property
-    def message(self):
-        location = 'File "%s", line %d' % (self.file_path, self.lineno)
-        lines = [self.args[0], '  ' + location]
-        return "\n".join(lines)
-
-    def __str__(self):
-        return str(self.exc_value)
 
     def match_template(self, writer_lineno):
         element = self.lines[writer_lineno - 1]

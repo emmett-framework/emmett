@@ -153,7 +153,7 @@ class ParsingContext(object):
         return self
 
     def load(self, name, **kwargs):
-        name, file_path, text = self.parser._get_file_text(name)
+        name, file_path, text = self.parser._get_file_text(self, name)
         self.state.dependencies.append(name)
         kwargs['source'] = file_path
         kwargs['in_python_block'] = False
@@ -269,12 +269,13 @@ class TemplateParser(object):
     def _tag_split_text(self, text):
         return self.r_tag.split(text.replace('\t', '    '))
 
-    def _get_file_text(self, filename):
-        if not filename.strip():
-            raise TemplateError(
-                self.path, 'Invalid template filename', self.name, 1)
+    def _get_file_text(self, ctx, filename):
         #: remove quotation from filename string
-        filename = eval(filename, self.scope)
+        try:
+            filename = eval(filename, self.scope)
+        except Exception:
+            raise TemplateError(
+                'Invalid template filename', ctx.state.source, ctx.state.lines)
         #: get the file contents
         tpath, tname = self.templater.preload(self.path, filename)
         file_path = os.path.join(tpath, tname)
@@ -282,7 +283,8 @@ class TemplateParser(object):
             text = self.templater.load(file_path)
         except Exception:
             raise TemplateError(
-                self.path, 'Unable to open included view file', self.name, 1)
+                'Unable to open included view file',
+                ctx.state.source, ctx.state.lines)
         text = self.templater.prerender(text, file_path)
         return filename, file_path, text
 
@@ -402,10 +404,10 @@ class TemplateParser(object):
         #: handle indentation errors
         if indent > 0:
             raise TemplateError(
-                self.path, 'missing "pass" in view', self.name, 1)
+                'missing "pass" in view', self.name, 1)
         elif indent < 0:
             raise TemplateError(
-                self.path, 'too many "pass" in view', self.name, 1)
+                'too many "pass" in view', self.name, 1)
         #: rebuild text
         return u'\n'.join(new_lines)
 

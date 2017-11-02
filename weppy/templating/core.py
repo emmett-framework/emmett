@@ -19,7 +19,9 @@ from ..html import asis, htmlescape
 from ..utils import cachedprop
 from .parser import TemplateParser, PrettyTemplateParser
 from .cache import TemplaterCache
-from .helpers import TemplateMissingError, TemplateReference
+from .helpers import (
+    TemplateMissingError, TemplateError, TemplateSyntaxError,
+    TemplateReference)
 
 
 class Writer(object):
@@ -169,9 +171,16 @@ class Templater(object):
             parser = self.parser_cls(
                 self, source, name=file_path, scope=context, path=path,
                 lexers=self.lexers)
-            code = compile(
-                to_native(parser.render()), os.path.split(file_path)[-1],
-                'exec')
+            try:
+                code = compile(
+                    to_native(parser.render()), os.path.split(file_path)[-1],
+                    'exec')
+            except SyntaxError:
+                exc_info = sys.exc_info()
+                parser_ctx = sdict(
+                    path=path, name=file_path, content=parser.content)
+                raise TemplateSyntaxError(
+                    parser_ctx, exc_info[0], exc_info[1], exc_info[2])
             content = parser.content
             self.cache.parse.set(
                 path, file_path, source, code, content, parser.dependencies)
@@ -188,7 +197,11 @@ class Templater(object):
         context['load_component'] = context.get(
             'load_component', load_component)
         context['_writer_'] = self.response_cls()
-        code, content = self.parse(path, file_path, source, context)
+        try:
+            code, content = self.parse(path, file_path, source, context)
+        except (TemplateError, TemplateSyntaxError):
+            from ..debug import make_traceback
+            make_traceback(sys.exc_info())
         self.inject(context)
         try:
             exec(code, context)
@@ -198,7 +211,7 @@ class Templater(object):
             try:
                 parser_ctx = sdict(path=path, name=file_path, content=content)
                 template_ref = TemplateReference(
-                    parser_ctx, code, exc_info[0], exc_info[1], exc_info[2])
+                    parser_ctx, exc_info[0], exc_info[1], exc_info[2])
             except Exception:
                 template_ref = None
             context['__weppy_template__'] = template_ref
