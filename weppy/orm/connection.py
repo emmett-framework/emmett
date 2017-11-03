@@ -18,6 +18,7 @@ import threading
 import time
 from collections import OrderedDict
 from pydal.connection import ConnectionPool
+from pydal.helpers.classes import ConnectionConfigurationMixin
 from .transactions import _transaction
 
 
@@ -166,6 +167,15 @@ def _cursors_getter(self):
     return self._connection_manager.state.cursors
 
 
+def _connect_and_configure(self, *args, **kwargs):
+    self._connection_reconnect(*args, **kwargs)
+    with self._reconnect_lock:
+        if self._reconnect_mocked:
+            self._configure_on_first_reconnect()
+            self.reconnect = self._connection_reconnect
+            self._reconnect_mocked = False
+
+
 def _patch_adapter_connection():
     setattr(ConnectionPool, '__init__', _init)
     setattr(ConnectionPool, 'reconnect', _connect)
@@ -174,3 +184,6 @@ def _patch_adapter_connection():
         ConnectionPool, 'connection',
         property(_connection_getter, _connection_setter))
     setattr(ConnectionPool, 'cursors', property(_cursors_getter))
+    setattr(
+        ConnectionConfigurationMixin, '_reconnect_and_configure',
+        _connect_and_configure)
