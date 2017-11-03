@@ -309,7 +309,7 @@ class TemplateParser(object):
     @staticmethod
     def _cleanup_html_line(ctx, line, pos):
         if pos and not ctx._in_html_pre:
-            return line.strip()
+            return line.lstrip()
         return line
 
     def parse_html_block(self, ctx, element):
