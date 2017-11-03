@@ -101,12 +101,12 @@ db2 = Database(app, app.config.db2)
 | parameter | default | description |
 | --- | --- | --- |
 | pool_size | 0 | the pool size to use when connecting to the database |
-| keep_alive_timeout | 3600 | the maximum interval in seconds a connection can be recycled in the pool |
-| auto_connect | `None` | automatically connects to the DBMS on init |
-| auto_migrate | `False` | turns on or off the automatic migration |
+| keep\_alive\_timeout | 3600 | the maximum interval in seconds a connection can be recycled in the pool |
+| auto\_connect | `None` | automatically connects to the DBMS on init |
+| auto\_migrate | `False` | turns on or off the automatic migration |
 | folder | `databases` | the folder relative to your application path where to store the database (when using sqlite) and/or support data |
-| adapter_args | `{}` | specific options for the pyDAL adapter |
-| driver_args | `{}` | specific options for the driver |
+| adapter\_args | `{}` | specific options for the pyDAL adapter |
+| driver\_args | `{}` | specific options for the driver |
 
 Note that when you don't specify any `pool_size` value, weppy won't use any pool when connecting to the database, but just one connection.
 
