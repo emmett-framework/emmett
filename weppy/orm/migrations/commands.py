@@ -27,8 +27,10 @@ class Command(object):
     def load_schema(self, db):
         schema_db_config = sdict(uri=db.config.uri)
         self.schema_db = Database(
-            self.app, schema_db_config, auto_connect=True,
+            self.app, schema_db_config, auto_connect=False,
             migrate=False, migrate_enabled=False)
+        self.schema_db._adapter._connection_manager = \
+            db._adapter._connection_manager
         self.schema_db.define_models(Schema)
         self._ensure_schema_table_()
         self._load_current_revision_()
