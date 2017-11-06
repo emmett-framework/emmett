@@ -56,33 +56,35 @@ class IncludeLexer(WeppyLexer):
             with ctx.load(value):
                 ctx.parse()
                 included_id = ctx.state._id
-            ctx.contents_map[included_id].increment_children_indent(
-                ctx.state.indent)
         #: otherwise, inject in the extended node
         else:
-            ctx.state.extend_src.swap_block_type()
+            extend_src = ctx.state.extend_map[ctx.state.source]
+            extend_src.swap_block_type()
             with ctx(
-                '__include__',
-                ctx.state.extend_src.elements,
-                in_python_block=ctx.state.extend_src.in_python_block,
-                source=ctx.state.extend_src.source,
-                line_start=ctx.state.extend_src.lines.end
+                '__include__' + extend_src._id,
+                extend_src.elements,
+                in_python_block=extend_src.in_python_block,
+                source=extend_src.source,
+                line_start=extend_src.lines.end
             ):
                 ctx.parse()
-                ctx.state.extend_src.update_lines_count(
+                extend_src.update_lines_count(
                     ctx.state.lines.end - ctx.state.lines.start)
                 included_id = ctx.state._id
-            ctx.state.extend_src.settings['include_src'] = included_id
+        ctx.contents_map[included_id].increment_children_indent(
+            ctx.state.indent)
 
 
 class ExtendLexer(WeppyLexer):
     def process(self, ctx, value):
         #: extend the proper template
-        with ctx.load(value, extend_src=ctx.state, injections={}):
+        with ctx.load(
+            value, extend_map=ctx.state.extend_map or {}, injections={}
+        ):
+            ctx.state.extend_map[ctx.state.source] = ctx.state.parent
             ctx.parse()
             self.inject_content_in_children(ctx)
             self.replace_extended_blocks(ctx)
-            self.update_included_indent(ctx)
 
     def inject_content_in_children(self, ctx):
         for key, node in ctx.state.injections.items():
@@ -107,12 +109,6 @@ class ExtendLexer(WeppyLexer):
             ctx.contents_map[src].value = []
             del ctx.contents_map[src]
             del ctx.blocks_tree[key]
-
-    def update_included_indent(self, ctx):
-        block_id = ctx.state.extend_src.include_src
-        block = ctx.contents_map[block_id]
-        block.increment_children_indent(block.indent)
-        del ctx.state.extend_src.settings['include_src']
 
 
 class HelpersLexer(WeppyLexer):
