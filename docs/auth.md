@@ -242,7 +242,7 @@ def not_authorized():
     return dict(error="Not authorized")
 
 @app.route()
-@requires(auth.is_logged_in, not_authorized)
+@requires(auth.is_logged, not_authorized)
 @service.json
 def protected():
     return dict(data="Some data here")
