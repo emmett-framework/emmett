@@ -288,41 +288,10 @@ class TemplateParser(object):
         text = self.templater.prerender(text, file_path)
         return filename, file_path, text
 
-    @staticmethod
-    def _check_html_pre(ctx, line):
-        if not ctx._in_html_pre and '<pre' in line and '</pre>' not in line:
-            return True, False
-        if ctx._in_html_pre and '</pre>' in line:
-            return False, True
-        return False, False
-
-    @staticmethod
-    def _start_html_pre(ctx, start):
-        if start:
-            ctx._in_html_pre = True
-
-    @staticmethod
-    def _end_html_pre(ctx, end):
-        if end:
-            ctx._in_html_pre = False
-
-    @staticmethod
-    def _cleanup_html_line(ctx, line, pos):
-        if pos and not ctx._in_html_pre:
-            return line.lstrip()
-        return line
-
     def parse_html_block(self, ctx, element):
         lines = element.split("\n")
         ctx.update_lines_count(len(lines) - 1)
-        new_lines = []
-        for _, line in enumerate(lines):
-            start_pre, end_pre = self._check_html_pre(ctx, line)
-            self._end_html_pre(ctx, end_pre)
-            line = self._cleanup_html_line(ctx, line, _)
-            if line:
-                new_lines.append(line)
-            self._start_html_pre(ctx, start_pre)
+        new_lines = [line for line in lines if line]
         if new_lines:
             ctx.html('\n'.join(new_lines))
 
@@ -423,6 +392,24 @@ class PrettyTemplateParser(TemplateParser):
         'htmlpre': PrettyHTMLPreNode}
 
     r_wspace = re.compile("^( *)")
+
+    @staticmethod
+    def _check_html_pre(ctx, line):
+        if not ctx._in_html_pre and '<pre' in line and '</pre>' not in line:
+            return True, False
+        if ctx._in_html_pre and '</pre>' in line:
+            return False, True
+        return False, False
+
+    @staticmethod
+    def _start_html_pre(ctx, start):
+        if start:
+            ctx._in_html_pre = True
+
+    @staticmethod
+    def _end_html_pre(ctx, end):
+        if end:
+            ctx._in_html_pre = False
 
     def parse_html_block(self, ctx, element):
         lines = element.split("\n")
