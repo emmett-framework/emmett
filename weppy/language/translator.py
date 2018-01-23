@@ -5,7 +5,7 @@
 
     The translator main logic.
 
-    :copyright: (c) 2014-2017 by Giovanni Barillari
+    :copyright: (c) 2014-2018 by Giovanni Barillari
 
     Based on the web2py's translation system (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>

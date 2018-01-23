@@ -5,7 +5,7 @@
 
     Provides pyDAL advanced transactions implementation for weppy.
 
-    :copyright: (c) 2014-2017 by Giovanni Barillari
+    :copyright: (c) 2014-2018 by Giovanni Barillari
 
     Parts of this code are inspired to peewee
     :copyright: (c) 2010 by Charles Leifer
