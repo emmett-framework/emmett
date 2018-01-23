@@ -5,7 +5,7 @@
 
     Provides auto-reloading utilities.
 
-    :copyright: (c) 2014-2017 by Giovanni Barillari
+    :copyright: (c) 2014-2018 by Giovanni Barillari
 
     Adapted from werkzeug code (http://werkzeug.pocoo.org)
     :copyright: (c) 2015 by Armin Ronacher.
@@ -58,6 +58,11 @@ def _get_args_for_reloading():
         os.path.exists(py_script + '.exe')
     ):
         py_script += '.exe'
+    if (
+        os.path.splitext(rv[0])[1] == '.exe' and
+        os.path.splitext(py_script)[1] == '.exe'
+    ):
+        rv.pop(0)
     rv.append(py_script)
     rv.extend(sys.argv[1:])
     return rv

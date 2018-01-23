@@ -5,7 +5,7 @@
 
     Provides mail facilities for weppy.
 
-    :copyright: (c) 2014-2017 by Giovanni Barillari
+    :copyright: (c) 2014-2018 by Giovanni Barillari
 
     Based on the code of flask-mail
     :copyright: (c) 2010 by Dan Jacob.

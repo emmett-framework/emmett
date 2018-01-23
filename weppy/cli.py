@@ -5,7 +5,7 @@
 
     Provide command line tools for weppy applications.
 
-    :copyright: (c) 2014-2017 by Giovanni Barillari
+    :copyright: (c) 2014-2018 by Giovanni Barillari
 
     Based on the code of Flask (http://flask.pocoo.org)
     :copyright: (c) 2014 by Armin Ronacher.

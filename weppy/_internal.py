@@ -5,7 +5,7 @@
 
     Provides internally used helpers and objects.
 
-    :copyright: (c) 2014-2017 by Giovanni Barillari
+    :copyright: (c) 2014-2018 by Giovanni Barillari
 
     Several parts of this code comes from Flask and Werkzeug.
     :copyright: (c) 2014 by Armin Ronacher.

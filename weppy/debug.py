@@ -5,7 +5,7 @@
 
     Provides debugging utilities.
 
-    :copyright: (c) 2014-2017 by Giovanni Barillari
+    :copyright: (c) 2014-2018 by Giovanni Barillari
 
     Quite a lot of magic comes from Flask (http://flask.pocoo.org)
     :copyright: (c) 2014 by Armin Ronacher.

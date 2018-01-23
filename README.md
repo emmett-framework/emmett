@@ -87,7 +87,7 @@ weppy is one of several Python web frameworks included in [TechEmpower benchmark
 
 ## Status of the project
 
-Since version 1.0 weppy can be considered stable. Is compatible with Python 2.7, 3.3, 3.4, 3.5 and 3.6.
+Since version 1.0 weppy can be considered stable. Is compatible with Python 2.7, 3.4, 3.5 and 3.6.
 
 weppy is currently used in production by:
 

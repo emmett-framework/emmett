@@ -5,7 +5,7 @@
 
     Provides the templating parser.
 
-    :copyright: (c) 2014-2017 by Giovanni Barillari
+    :copyright: (c) 2014-2018 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
