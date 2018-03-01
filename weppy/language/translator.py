@@ -153,8 +153,10 @@ class TLanguage(object):
 
     def _init_plurals(self, lang_info):
         if lang_info:
-            (pname, pmtime, self.plural_language, self.nplurals,
-             self.get_plural_id, self.construct_plural_form) = lang_info[3:]
+            (
+                pname, pmtime, self.plural_language, self.nplurals,
+                self.get_plural_id, self.construct_plural_form
+            ) = lang_info[3:]
             self.pmtime = pmtime
             if pname:
                 pname = os.path.join(self.translator.langpath, pname)

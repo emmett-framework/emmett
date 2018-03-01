@@ -166,7 +166,7 @@ def write_dict(filename, contents):
 
 def _get_lang_struct(plurals, lang, langcode, langname, langfile_mtime):
     if lang == 'default':
-        real_lang = langcode if langcode else None
+        real_lang = langcode
     else:
         real_lang = lang
     (
@@ -223,7 +223,7 @@ def _read_possible_languages(langdir):
         d = read_dict(fname_with_path)
         lang = fname[:-3]
         langcode = d.get(
-            '!langcode!', lang if lang != 'default' else None)
+            '!langcode!', lang if lang != 'default' else '__')
         langname = d.get('!langname!', 'None')
         langfile_mtime = os.stat(fname_with_path).st_mtime
         langs[lang] = _get_lang_struct(
@@ -232,7 +232,7 @@ def _read_possible_languages(langdir):
         # if default.py is not found,
         # add DEFAULT_LANGUAGE as default language:
         langs['default'] = _get_lang_struct(
-            plurals, 'default', None, 'None', 0)
+            plurals, 'default', '__', 'None', 0)
     deflang = langs['default']
     deflangcode = deflang[0]
     if deflangcode not in langs:
