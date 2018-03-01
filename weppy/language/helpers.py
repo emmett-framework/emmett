@@ -32,9 +32,6 @@ regex_plural_tuple = re.compile('^{(?P<w>[^[\]()]+)(?:\[(?P<i>\d+)\])?}$')
 regex_plural_file = re.compile('^plural-[a-zA-Z]{2}(-[a-zA-Z]{2})?\.py$')
 
 
-DEFAULT_LANGUAGE = 'en'
-DEFAULT_LANGUAGE_NAME = 'English'
-
 # DEFAULT PLURAL-FORMS RULES:
 # language doesn't use plural forms
 DEFAULT_NPLURALS = 1
@@ -167,38 +164,48 @@ def write_dict(filename, contents):
     fp.close()
 
 
-def read_possible_languages_aux(langdir):
-    def get_lang_struct(lang, langcode, langname, langfile_mtime):
-        if lang == 'default':
-            real_lang = langcode.lower()
-        else:
-            real_lang = lang
-        (prules_langcode,
-         nplurals,
-         get_plural_id,
-         construct_plural_form
-         ) = PLURAL_RULES.get(real_lang[:2], ('default',
-                                              DEFAULT_NPLURALS,
-                                              DEFAULT_GET_PLURAL_ID,
-                                              DEFAULT_CONSTRUCT_PLURAL_FORM))
-        if prules_langcode != 'default':
-            (pluraldict_fname, pluraldict_mtime) = plurals.get(
-                real_lang,
-                plurals.get(real_lang[:2], ('plural-%s.py' % real_lang, 0)))
-        else:
-            pluraldict_fname = None
-            pluraldict_mtime = 0
-        return (langcode,        # language code from !langcode!
-                langname,
-                # language name in national spelling from !langname!
-                langfile_mtime,  # m_time of language file
-                pluraldict_fname,  # name of plural dictionary file or None (when default.py is not exist)
-                pluraldict_mtime,  # m_time of plural dictionary file or 0 if file is not exist
-                prules_langcode,  # code of plural rules language or 'default'
-                nplurals,        # nplurals for current language
-                get_plural_id,   # get_plural_id() for current language
-                construct_plural_form)  # construct_plural_form() for current language
+def _get_lang_struct(plurals, lang, langcode, langname, langfile_mtime):
+    if lang == 'default':
+        real_lang = langcode
+    else:
+        real_lang = lang
+    (
+        prules_langcode, nplurals, get_plural_id, construct_plural_form
+    ) = PLURAL_RULES.get(
+        (real_lang or '__unknown__')[:2], (
+            'default', DEFAULT_NPLURALS, DEFAULT_GET_PLURAL_ID,
+            DEFAULT_CONSTRUCT_PLURAL_FORM)
+    )
+    if prules_langcode != 'default':
+        pluraldict_fname, pluraldict_mtime = plurals.get(
+            real_lang,
+            plurals.get(real_lang[:2], ('plural-%s.py' % real_lang, 0)))
+    else:
+        pluraldict_fname = None
+        pluraldict_mtime = 0
+    return (
+        # language code from !langcode
+        langcode,
+        # language name in national spelling from !langname!
+        langname,
+        # m_time of language file
+        langfile_mtime,
+        # name of plural dictionary file or None (when default.py is not exist)
+        pluraldict_fname,
+        # m_time of plural dictionary file or 0 if file is not exist
+        pluraldict_mtime,
+        # code of plural rules language or 'default'
+        prules_langcode,
+        # nplurals for current language
+        nplurals,
+        # get_plural_id() for current language
+        get_plural_id,
+        # construct_plural_form() for current language
+        construct_plural_form
+    )
 
+
+def _read_possible_languages(langdir):
     plurals = {}
     flist = os.listdir(langdir)
     # scan languages directory for plural dict files:
@@ -210,33 +217,34 @@ def read_possible_languages_aux(langdir):
     langs = {}
     # scan languages directory for langfiles:
     for fname in flist:
-        if regex_langfile.match(fname) or fname == 'default.py':
-            fname_with_path = os.path.join(langdir, fname)
-            d = read_dict(fname_with_path)
-            lang = fname[:-3]
-            langcode = d.get('!langcode!', lang if lang != 'default'
-                             else DEFAULT_LANGUAGE)
-            langname = d.get('!langname!', langcode)
-            langfile_mtime = os.stat(fname_with_path).st_mtime
-            langs[lang] = get_lang_struct(lang, langcode,
-                                          langname, langfile_mtime)
+        if not (regex_langfile.match(fname) or fname == 'default.py'):
+            continue
+        fname_with_path = os.path.join(langdir, fname)
+        d = read_dict(fname_with_path)
+        lang = fname[:-3]
+        langcode = d.get(
+            '!langcode!', lang if lang != 'default' else '__')
+        langname = d.get('!langname!', 'None')
+        langfile_mtime = os.stat(fname_with_path).st_mtime
+        langs[lang] = _get_lang_struct(
+            plurals, lang, langcode, langname, langfile_mtime)
     if 'default' not in langs:
         # if default.py is not found,
         # add DEFAULT_LANGUAGE as default language:
-        langs['default'] = get_lang_struct('default', DEFAULT_LANGUAGE,
-                                           DEFAULT_LANGUAGE_NAME, 0)
+        langs['default'] = _get_lang_struct(
+            plurals, 'default', '__', 'None', 0)
     deflang = langs['default']
     deflangcode = deflang[0]
     if deflangcode not in langs:
         # create language from default.py:
         langs[deflangcode] = deflang[:2] + (0,) + deflang[3:]
-
     return langs
 
 
 def read_possible_languages(langpath):
-    return getcfs('langs:' + langpath, langpath,
-                  lambda: read_possible_languages_aux(langpath))
+    return getcfs(
+        'langs:' + langpath, langpath,
+        lambda: _read_possible_languages(langpath))
 
 
 def upper_fun(s):

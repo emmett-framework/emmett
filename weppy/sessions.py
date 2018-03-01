@@ -205,6 +205,7 @@ class RedisSessionPipe(BackendStoredSessionPipe):
         super(RedisSessionPipe, self).__init__(
             expire, secure, domain, cookie_name)
         self.redis = redis
+        self.prefix = prefix
 
     def _delete_session(self):
         self.redis.delete(self.prefix + current.session._sid)

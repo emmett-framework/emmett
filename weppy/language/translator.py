@@ -153,8 +153,10 @@ class TLanguage(object):
 
     def _init_plurals(self, lang_info):
         if lang_info:
-            (pname, pmtime, self.plural_language, self.nplurals,
-             self.get_plural_id, self.construct_plural_form) = lang_info[3:]
+            (
+                pname, pmtime, self.plural_language, self.nplurals,
+                self.get_plural_id, self.construct_plural_form
+            ) = lang_info[3:]
             self.pmtime = pmtime
             if pname:
                 pname = os.path.join(self.translator.langpath, pname)
@@ -337,29 +339,30 @@ class Translator(object):
         #: pl_info[2] is the langfile_mtime, if it equals 0 it means
         #  app doesn't have a languages/default.py
         if pl_info[2] == 0:
-            self.default_language_file = self.langpath
+            self.default_language_file = None
         else:
-            self.default_language_file = os.path.join(self.langpath,
-                                                      'default.py')
+            self.default_language_file = os.path.join(
+                self.langpath, 'default.py')
         #: set default languages
         self.current_languages = [pl_info[0]]
         self.add_translator(pl_info[0], self.default_language_file, True)
         self.default_translator = self.TLanguages[pl_info[0]]
-        for lang in languages:
+        for lang in set(languages) - set(self.all_languages.keys()):
             if lang not in self.current_languages:
                 self.TLanguages[lang] = self.default_translator
                 self.current_languages.append(lang)
 
     def build_accepted_translators(self):
-        for lang in self.all_languages.keys():
-            if lang not in self.TLanguages:
-                self.add_translator(
-                    lang, os.path.join(self.langpath, lang + '.py'))
+        for lang in (
+            set(self.all_languages.keys()) - set(self.TLanguages.keys())
+        ):
+            self.add_translator(
+                lang, os.path.join(self.langpath, lang + '.py'))
 
     def add_translator(self, language, filename, default=False):
         writable = not default and self.is_writable
         pl_info = self.get_language_info(language)
-        if filename == self.langpath:
+        if not filename:
             self.TLanguages[language] = TLanguage(
                 self, pl_info, writable=writable)
         else:
