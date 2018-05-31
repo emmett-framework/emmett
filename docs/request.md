@@ -19,7 +19,7 @@ It contains useful information about the current processing request, in particul
 | --- | --- |
 | scheme | could be *http* or *https*|
 | method | the request HTTP method |
-| now | a Pendulum (datetime) object created with request|
+| now | a pendulum Datetime object created with request|
 | headers | the headers of the request |
 | cookies | the cookies passed with the request |
 | client | the IP Address of the client doing the request (if available) |
@@ -35,7 +35,7 @@ If you need to access the *local* time of the request you can use `now_local`:
 request.now_local
 ```
 
-> **Note:** since `now` is a [Pendulum](https://pendulum.eustace.io/) object, you can easily change the timezone using the `in_timezone` method, like `request.now.in_timezone('Europe/Berlin')`.
+> **Note:** since `now` is a [pendulum Datetime](https://pendulum.eustace.io/) object, you can easily change the timezone using the `in_timezone` method, like `request.now.in_timezone('Europe/Berlin')`.
 
 Now, let's see how to deal with request variables.
 

@@ -112,7 +112,7 @@ validation, the input values will also be converted to the right type: an input
 which should be `'int'` that comes as a string from the form will be converted
 to an `int` object for all the other validators, or for your post-validation code.
 
-> **Note:** the datetime validator returns a [Pendulum](https://pendulum.eustace.io/) object, which is a subclass of the standard Python datetime class.
+> **Note:** the datetime validator returns a [pendulum Datetime](https://pendulum.eustace.io/) object, which is a subclass of the standard Python datetime class.
 
 Here are some examples of `'is'` validation helper:
 
