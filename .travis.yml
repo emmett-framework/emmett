@@ -12,7 +12,7 @@ python:
   - "3.4"
   - "3.5"
   - "3.6"
-  # - "pypy3"
+  - "pypy3"
 
 install:
   - pip install tox>=1.8 flake8
