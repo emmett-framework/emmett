@@ -15,6 +15,7 @@
 
 import datetime
 import os
+import pendulum
 import pkgutil
 import sys
 import warnings
@@ -442,7 +443,25 @@ def _pendulum_to_json(obj):
     return obj.strftime('%Y-%m-%dT%H:%M:%S.%f%_z')
 
 
+def _pendulum_to_datetime(obj):
+    return datetime.datetime(
+        obj.year, obj.month, obj.day,
+        obj.hour, obj.minute, obj.second, obj.microsecond,
+        tzinfo=obj.tzinfo
+    )
+
+
+def _pendulum_to_naive_datetime(obj):
+    obj = obj.in_timezone('UTC')
+    return datetime.datetime(
+        obj.year, obj.month, obj.day,
+        obj.hour, obj.minute, obj.second, obj.microsecond
+    )
+
+
 # datetime.date = Date
 # datetime.time = Time
 # datetime.datetime = DateTime
 # pendulum.DateTime.__json__ = _pendulum_to_json
+pendulum.DateTime.as_datetime = _pendulum_to_datetime
+pendulum.DateTime.as_naive_datetime = _pendulum_to_naive_datetime
