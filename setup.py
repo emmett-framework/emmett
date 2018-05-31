@@ -44,7 +44,7 @@ setup(
     platforms='any',
     install_requires=[
         'click>=0.6',
-        'pendulum>=1.0.0',
+        'pendulum>=2.0.0',
         'pyaes',
         'pyDAL==17.3',
         'pyyaml'

@@ -384,7 +384,7 @@ class Route(object):
     def _parse_date_reqarg(args, route_args):
         try:
             for arg in args:
-                route_args[arg] = pendulum.strptime(
+                route_args[arg] = pendulum.DateTime.strptime(
                     route_args[arg], "%Y-%m-%d")
         except Exception:
             raise HTTP(404)
@@ -395,7 +395,7 @@ class Route(object):
             for arg in args:
                 if route_args[arg] is None:
                     continue
-                route_args[arg] = pendulum.strptime(
+                route_args[arg] = pendulum.DateTime.strptime(
                     route_args[arg], "%Y-%m-%d")
         except Exception:
             raise HTTP(404)

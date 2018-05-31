@@ -445,4 +445,4 @@ def _pendulum_to_json(obj):
 # datetime.date = Date
 # datetime.time = Time
 # datetime.datetime = DateTime
-# pendulum.Pendulum.__json__ = _pendulum_to_json
+# pendulum.DateTime.__json__ = _pendulum_to_json
