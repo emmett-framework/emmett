@@ -183,13 +183,14 @@ class AuthPipe(Pipe):
             del session.auth
             return
         #: is session expired?
+        visit_dt = request.now.as_naive_datetime()
         if (
             authsess.last_visit + timedelta(seconds=authsess.expiration) <
-            request.now
+            visit_dt
         ):
             del session.auth
         #: does session need re-sync with db?
-        elif authsess.last_dbcheck + timedelta(seconds=360) < request.now:
+        elif authsess.last_dbcheck + timedelta(seconds=300) < visit_dt:
             if self.auth.user:
                 #: is user still valid?
                 dbrow = self.auth.models['user'].get(self.auth.user.id)
@@ -200,10 +201,10 @@ class AuthPipe(Pipe):
         else:
             #: set last_visit if make sense
             if (
-                (request.now - authsess.last_visit).seconds >
-                (authsess.expiration / 10)
+                (visit_dt - authsess.last_visit).seconds >
+                min(authsess.expiration / 10, 600)
             ):
-                authsess.last_visit = request.now
+                authsess.last_visit = visit_dt
 
     def close(self):
         # set correct session expiration if requested by user

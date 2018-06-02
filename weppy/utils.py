@@ -9,10 +9,11 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import pendulum
 import re
 import socket
-from datetime import datetime
-from pendulum.parser import Parser as PendulumParser
+from datetime import datetime, date, time
+from pendulum.parsing import _parse as _pendulum_parse
 from .datastructures import sdict
 
 
@@ -30,20 +31,35 @@ class cachedprop(object):
         return result
 
 
-class DTParser(PendulumParser):
-    def parse(self, text):
-        try:
-            parsed = self.normalize(self.parse_common(text))
-            return self._create_pendulum_object(parsed)
-        except:
-            raise ValueError('Invalid date string: {}'.format(text))
+_pendulum_parsing_opts = {
+    'day_first': False,
+    'year_first': True,
+    'strict': True,
+    'exact': False,
+    'now': None
+}
 
 
-dt_parser = DTParser(now=datetime.utcnow())
+def _pendulum_normalize(obj):
+    if isinstance(obj, time):
+        now = datetime.utcnow()
+        obj = datetime(
+            now.year, now.month, now.day,
+            obj.hour, obj.minute, obj.second, obj.microsecond
+        )
+    elif isinstance(obj, date) and not isinstance(obj, datetime):
+        obj = datetime(obj.year, obj.month, obj.day)
+    return obj
 
 
 def parse_datetime(text):
-    return dt_parser.parse(text)
+    parsed = _pendulum_normalize(
+        _pendulum_parse(text, **_pendulum_parsing_opts))
+    return pendulum.datetime(
+        parsed.year, parsed.month, parsed.day,
+        parsed.hour, parsed.minute, parsed.second, parsed.microsecond,
+        tz=parsed.tzinfo or pendulum.UTC
+    )
 
 
 def is_valid_ip_address(address):

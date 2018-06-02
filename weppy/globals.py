@@ -90,7 +90,7 @@ class Request(object):
 
     @cachedprop
     def now(self):
-        return pendulum.instance(self.environ['wpp.now'], 'UTC')
+        return pendulum.instance(self.environ['wpp.now'])
 
     @cachedprop
     def now_local(self):
@@ -246,7 +246,7 @@ class Current(threading.local):
         return self._get_lang()
 
     def _sys_now(self):
-        return pendulum.instance(datetime.utcnow(), 'UTC')
+        return pendulum.instance(datetime.utcnow())
 
     def _req_now(self):
         return self.request.now

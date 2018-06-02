@@ -294,8 +294,8 @@ class AuthExtension(Extension):
             self.config.session_expiration
         session.auth = sdict(
             user=user,
-            last_visit=now(),
-            last_dbcheck=now(),
+            last_visit=now().as_naive_datetime(),
+            last_dbcheck=now().as_naive_datetime(),
             expiration=expiration,
             remember=remember
         )
