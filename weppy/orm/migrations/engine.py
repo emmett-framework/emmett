@@ -110,12 +110,7 @@ class Engine(MetaEngine):
         self._log_and_exec(sql)
 
     def _gen_reference(self, tablename, column, tfks):
-        if column.type.startswith('reference'):
-            referenced = column.type[10:].strip()
-            type_name = 'reference'
-        else:
-            referenced = column.type[14:].strip()
-            type_name = 'big-reference'
+        referenced = column.type[10:].strip()
         constraint_name = self.dialect.constraint_name(tablename, column.name)
         try:
             rtablename, rfieldname = referenced.split('.')
@@ -154,7 +149,7 @@ class Engine(MetaEngine):
             csql_info['null'] = ' NOT NULL' if column.notnull else \
                 self.dialect.allow_null
             csql_info['unique'] = ' UNIQUE' if column.unique else ''
-            csql = self.adapter.types[type_name] % csql_info
+            csql = self.adapter.types['reference'] % csql_info
         return csql
 
     def _gen_primary_key(self, fields, primary_keys=[]):
@@ -180,7 +175,7 @@ class Engine(MetaEngine):
         return self.adapter.types[geotype]
 
     def _new_column_sql(self, tablename, column, tfks):
-        if column.type.startswith(('reference', 'big-reference')):
+        if column.type.startswith('reference'):
             csql = self._gen_reference(tablename, column, tfks)
         elif column.type.startswith('list:reference'):
             csql = self.adapter.types[column.type[:14]]
@@ -201,7 +196,7 @@ class Engine(MetaEngine):
             cprops = "%(notnull)s%(default)s%(unique)s%(qualifier)s"
         else:
             cprops = "%(default)s%(notnull)s%(unique)s%(qualifier)s"
-        if not column.type.startswith(('id', 'reference', 'big-reference')):
+        if not column.type.startswith(('id', 'reference')):
             csql += cprops % {
                 'notnull': ' NOT NULL' if column.notnull
                            else self.dialect.allow_null,
@@ -277,7 +272,7 @@ class Engine(MetaEngine):
                 del changes['type']
                 return
             coltype = changes['type'][1]
-            if coltype.startswith(('reference', 'big-reference')):
+            if coltype.startswith('reference'):
                 raise NotImplementedError(
                     'Type change on reference fields is not supported.'
                 )

@@ -348,7 +348,7 @@ def _render_column(column):
 
     if column.type in ("string", "password", "upload"):
         opts.append(("length", column.length))
-    elif column.type.startswith(('reference', 'big-reference')):
+    elif column.type.startswith('reference'):
         opts.append(("ondelete", column.ondelete))
 
     kw_str = ""

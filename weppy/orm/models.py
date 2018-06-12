@@ -304,6 +304,7 @@ class Model(with_metaclass(MetaModel)):
             self.fields.append(obj._make_field(name, self))
 
     def _define_relations_(self):
+        _ftype_builder = lambda v: 'reference {}'.format(v)
         self._virtual_relations_ = OrderedDict()
         bad_args_error = "belongs_to, has_one and has_many only accept " + \
             "strings or dicts as arguments"
@@ -327,10 +328,10 @@ class Model(with_metaclass(MetaModel)):
                 else:
                     tablename = self.tablename
                 if isbelongs:
-                    fieldobj = Field('reference ' + tablename)
+                    fieldobj = Field(_ftype_builder(tablename))
                 else:
                     fieldobj = Field(
-                        'reference ' + tablename, ondelete='nullify',
+                        _ftype_builder(tablename), ondelete='nullify',
                         _isrefers=True)
                 setattr(self.__class__, reference.name, fieldobj)
                 self.fields.append(

@@ -58,14 +58,11 @@ class Column(sdict):
         self.length = self.length or 255
 
     def _build_fks(self, db, tablename):
-        if self.type.startswith(('reference', 'big-reference')):
-            if self.type.startswith('reference'):
-                referenced = self.type[10:].strip()
-            else:
-                referenced = self.type[14:].strip()
+        if self.type.startswith('reference'):
+            referenced = self.type[10:].strip()
             try:
                 rtablename, rfieldname = referenced.split('.')
-            except:
+            except Exception:
                 rtablename = referenced
                 rfieldname = 'id'
             if not rtablename:

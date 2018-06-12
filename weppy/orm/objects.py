@@ -43,11 +43,15 @@ class Table(_Table):
 
 class Field(_Field):
     _weppy_types = {
-        'integer': 'int', 'double': 'float', 'boolean': 'bool',
+        'integer': 'int',
+        'double': 'float',
+        'boolean': 'bool',
         'list:integer': 'list:int'
     }
     _pydal_types = {
-        'int': 'integer', 'bool': 'boolean', 'list:int': 'list:integer'
+        'int': 'integer',
+        'bool': 'boolean',
+        'list:int': 'list:integer',
     }
     _weppy_delete = {
         'cascade': 'CASCADE', 'nullify': 'SET NULL', 'nothing': 'NO ACTION'

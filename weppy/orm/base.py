@@ -90,9 +90,11 @@ class Database(_pyDAL):
             config.uri = self.uri_from_config(config)
         self.config = config
         self._auto_migrate = self.config.get(
-            'auto_migrate', kwargs.get('auto_migrate', False))
+            'auto_migrate', kwargs.pop('auto_migrate', False))
         self._auto_connect = self.config.get(
-            'auto_connect', kwargs.get('auto_connect'))
+            'auto_connect', kwargs.pop('auto_connect', None))
+        self._use_bigint_on_id_fields = self.config.get(
+            'big_id_fields', kwargs.pop('big_id_fields', False))
         #: load config data
         kwargs['check_reserved'] = self.config.check_reserved or \
             kwargs.get('check_reserved', None)
@@ -101,14 +103,12 @@ class Database(_pyDAL):
             kwargs.get('driver_args', None)
         kwargs['adapter_args'] = self.config.adapter_args or \
             kwargs.get('adapter_args', None)
-        if 'auto_migrate' in kwargs:
-            del kwargs['auto_migrate']
-        if 'auto_connect' in kwargs:
-            del kwargs['auto_connect']
         if self._auto_connect is not None:
             kwargs['do_connect'] = self._auto_connect
         else:
             kwargs['do_connect'] = os.environ.get('WEPPY_CLI_ENV') == 'true'
+        if self._use_bigint_on_id_fields:
+            kwargs['bigint_id'] = True
         #: set directory
         folder = folder or 'databases'
         folder = os.path.join(app.root_path, folder)
