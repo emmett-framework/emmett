@@ -10,7 +10,6 @@
 """
 
 import os
-import sys
 import re
 from datetime import datetime
 from .globals import current
@@ -24,7 +23,7 @@ REGEX_STATIC = re.compile(
 def dynamic_handler(app, environ, start_response):
     try:
         #: init current
-        environ["wpp.application"] = app.name
+        environ['wpp.application'] = app.name
         current.initialize(environ)
         #: dispatch request
         response = current.response
@@ -33,18 +32,13 @@ def dynamic_handler(app, environ, start_response):
         http = HTTP(
             response.status, response.output, response.headers,
             response.cookies)
-    except HTTP:
-        #: catch HTTP exceptions
-        http = sys.exc_info()[1]
+    except HTTP as http:
         #: render error with handlers if in app
         error_handler = app.error_handlers.get(http.status_code)
         if error_handler:
             output = error_handler()
             http = HTTP(http.status_code, output, http.headers)
-        #: store cookies
-        if response.cookies:
-            chead = http.cookies2header(response.cookies)
-            http.headers += chead
+        http.set_cookies(response.cookies)
     return http.to(environ, start_response)
 
 
