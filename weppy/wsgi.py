@@ -32,12 +32,14 @@ def dynamic_handler(app, environ, start_response):
         http = HTTP(
             response.status, response.output, response.headers,
             response.cookies)
-    except HTTP as http:
+    except HTTP as httpe:
+        http = httpe
         #: render error with handlers if in app
         error_handler = app.error_handlers.get(http.status_code)
         if error_handler:
             output = error_handler()
             http = HTTP(http.status_code, output, http.headers)
+        #: always set cookies
         http.set_cookies(response.cookies)
     return http.to(environ, start_response)
 
