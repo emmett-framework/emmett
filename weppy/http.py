@@ -60,7 +60,7 @@ status_codes = {
 class HTTP(Exception):
     def __init__(self, status_code, body=u'', headers={}, cookies={}):
         self.status_code = status_code
-        self.set_body(body or [b''])
+        self.set_body(body or [])
         self.headers = list(headers.items())
         self.set_cookies(cookies)
 
