@@ -48,6 +48,9 @@ class Expose(with_metaclass(MetaExpose)):
     _pipeline = []
     _injectors = []
     _prefix_main = ''
+    _prefix_static = '/static'
+    _prefix_wpp = '/__weppy__/'
+    _prefix_wpp_len = 11
     REGEX_INT = re.compile('<int\:(\w+)>')
     REGEX_STR = re.compile('<str\:(\w+)>')
     REGEX_ANY = re.compile('<any\:(\w+)>')
@@ -60,10 +63,11 @@ class Expose(with_metaclass(MetaExpose)):
 
     @classmethod
     def _build_static_regexes_(cls):
+        static_prefix = cls._prefix_main + '/' if cls._prefix_main else ''
         cls.REGEX_STATIC = re.compile(
-            cls.RESTR_STATIC.format(cls._prefix_main, ''))
+            cls.RESTR_STATIC.format(static_prefix, ''))
         cls.REGEX_STATIC_LANG = re.compile(
-            cls.RESTR_STATIC.format(cls._prefix_main, '(?P<l>\w+/)?'))
+            cls.RESTR_STATIC.format(static_prefix, '(?P<l>\w+/)?'))
 
     @classmethod
     def _bind_app_(cls, application, url_prefix=None):
@@ -77,6 +81,10 @@ class Expose(with_metaclass(MetaExpose)):
             if main_prefix == '/':
                 main_prefix = ''
         cls._prefix_main = main_prefix
+        trail_prefix = '/' + main_prefix if main_prefix else ''
+        cls._prefix_static = trail_prefix + '/static'
+        cls._prefix_wpp = trail_prefix + '/__weppy__/'
+        cls._prefix_wpp_len = len(cls._prefix_wpp)
         cls._build_static_regexes_()
 
     def __init__(
@@ -513,7 +521,10 @@ class RouteUrl(object):
         return self.components.pop(0).format(value)
 
     def add_static_versioning(self, args):
-        if self.path[0:7] == '/static' and Expose.static_versioning():
+        if (
+            self.path.startswith(Expose._prefix_static) and
+            Expose.static_versioning()
+        ):
             self.components.insert(1, "/_{}")
             args.insert(1, str(Expose.static_versioning()))
 
@@ -567,7 +578,7 @@ def url(
         args = [args]
     # allow user to use url('static', 'file')
     if path == 'static':
-        path = '/static'
+        path = Expose._prefix_static
     # routes urls with 'dot' notation
     if '/' not in path:
         # urls like 'function' refers to same module

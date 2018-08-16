@@ -43,8 +43,8 @@ def dynamic_handler(app, environ, start_response):
 def static_handler(app, environ, start_response):
     path_info = environ['PATH_INFO']
     #: handle weppy assets (helpers)
-    if path_info.startswith("/__weppy__/"):
-        filename = path_info[11:]
+    if path_info.startswith(app.route._prefix_wpp):
+        filename = path_info[app.route._prefix_wpp_len:]
         static_file = os.path.join(
             os.path.dirname(__file__), 'assets', filename)
         #: avoid exposing html files

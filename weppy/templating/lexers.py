@@ -11,7 +11,7 @@
 """
 
 from .._compat import to_unicode
-from ..expose import url
+from ..expose import Expose, url
 from ..extensions import TemplateLexer
 
 
@@ -114,13 +114,13 @@ class ExtendLexer(WeppyLexer):
 class HelpersLexer(WeppyLexer):
     helpers = [
         '<script type="text/javascript" ' +
-        'src="/__weppy__/jquery.min.js"></script>',
+        'src="{}jquery.min.js"></script>',
         '<script type="text/javascript" ' +
-        'src="/__weppy__/helpers.js"></script>']
+        'src="{}helpers.js"></script>']
 
     def process(self, ctx, value):
         for helper in self.helpers:
-            ctx.html(helper)
+            ctx.html(helper.format(Expose._prefix_wpp))
 
 
 class MetaLexer(WeppyLexer):
