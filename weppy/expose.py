@@ -34,6 +34,7 @@ class MetaExpose(type):
     def __new__(cls, name, bases, attrs):
         nc = type.__new__(cls, name, bases, attrs)
         nc._get_routes_in_for_host = nc._get_routes_in_for_host_simple
+        nc._build_static_regexes_()
         return nc
 
 
@@ -46,14 +47,37 @@ class Expose(with_metaclass(MetaExpose)):
     routes_out = {}
     _pipeline = []
     _injectors = []
+    _prefix_main = ''
     REGEX_INT = re.compile('<int\:(\w+)>')
     REGEX_STR = re.compile('<str\:(\w+)>')
     REGEX_ANY = re.compile('<any\:(\w+)>')
     REGEX_ALPHA = re.compile('<alpha\:(\w+)>')
     REGEX_DATE = re.compile('<date\:(\w+)>')
     REGEX_FLOAT = re.compile('<float\:(\w+)>')
+    RESTR_STATIC = '^/{}{}static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$'
     REGEX_DECORATION = re.compile(
         '(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
+
+    @classmethod
+    def _build_static_regexes_(cls):
+        cls.REGEX_STATIC = re.compile(
+            cls.RESTR_STATIC.format(cls._prefix_main, ''))
+        cls.REGEX_STATIC_LANG = re.compile(
+            cls.RESTR_STATIC.format(cls._prefix_main, '(?P<l>\w+/)?'))
+
+    @classmethod
+    def _bind_app_(cls, application, url_prefix=None):
+        cls.application = application
+        main_prefix = url_prefix or ''
+        if main_prefix:
+            if main_prefix.startswith('/'):
+                main_prefix = main_prefix[1:]
+            if main_prefix.endswith('/'):
+                main_prefix = main_prefix[:-1]
+            if main_prefix == '/':
+                main_prefix = ''
+        cls._prefix_main = main_prefix
+        cls._build_static_regexes_()
 
     def __init__(
         self, paths=None, name=None, template=None, pipeline=None,
@@ -175,6 +199,9 @@ class Expose(with_metaclass(MetaExpose)):
         if self.prefix:
             if not self.prefix.startswith('/'):
                 self.prefix = '/' + self.prefix
+        if self._prefix_main:
+            route_prefix = self.prefix if self.prefix else ''
+            self.prefix = '/' + self._prefix_main + route_prefix
         if not self.template:
             self.template = self.f_name + \
                 self.application.template_default_extension

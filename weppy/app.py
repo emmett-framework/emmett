@@ -32,8 +32,8 @@ class App(object):
     test_client_class = None
 
     def __init__(
-        self, import_name, root_path=None, template_folder='templates',
-        config_folder='config'
+        self, import_name, root_path=None, url_prefix=None,
+        template_folder='templates', config_folder='config'
     ):
         self.import_name = import_name
         #: set paths for the application
@@ -59,7 +59,8 @@ class App(object):
         #: try to create needed folders
         create_missing_app_folders(self)
         #: init expose module
-        Expose.application = self
+        Expose._bind_app_(self, url_prefix)
+        # Expose.application = self
         self.error_handlers = {}
         self.template_default_extension = '.html'
         #: init logger

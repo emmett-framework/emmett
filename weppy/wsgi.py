@@ -10,14 +10,10 @@
 """
 
 import os
-import re
 from datetime import datetime
 from .globals import current
 from .http import HTTP
 from .stream import stream_file_handler
-
-REGEX_STATIC = re.compile(
-    '^/(?P<l>\w+/)?static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
 
 
 def dynamic_handler(app, environ, start_response):
@@ -65,7 +61,7 @@ def static_handler(app, environ, start_response):
 
 
 def _lang_static_handler(app, path_info):
-    static_match = REGEX_STATIC.match(path_info)
+    static_match = app.route.REGEX_STATIC_LANG.match(path_info)
     if static_match:
         lang, version, filename = static_match.group('l', 'v', 'f')
         static_file = os.path.join(app.static_path, filename)
@@ -78,8 +74,9 @@ def _lang_static_handler(app, path_info):
 
 
 def _nolang_static_handler(app, path_info):
-    if path_info.startswith("/static/"):
-        version, filename = REGEX_STATIC.match(path_info).group('v', 'f')
+    static_match = app.route.REGEX_STATIC.match(path_info)
+    if static_match:
+        version, filename = static_match.group('v', 'f')
         static_file = os.path.join(app.static_path, filename)
         return static_file, version
     return None, None
