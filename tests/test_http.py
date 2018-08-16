@@ -57,7 +57,8 @@ def test_redirect():
         'HTTP_HOST': 'localhost',
         'wsgi.url_scheme': 'http',
         'wpp.now': datetime.utcnow(),
-        'wpp.application': 'test'
+        'wpp.application': 'test',
+        'wpp.path_info': '/'
     })
 
     try:

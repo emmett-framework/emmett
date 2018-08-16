@@ -318,7 +318,8 @@ class EnvironBuilder(object):
             'wsgi.input': input_stream,
             'wsgi.errors': self.errors_stream,
             'wpp.application': 'test_application_name',
-            'wpp.now': datetime.utcnow()
+            'wpp.now': datetime.utcnow(),
+            'wpp.path_info': self.path
         })
         for key, value in self.headers.to_wsgi_list():
             result['HTTP_%s' % key.upper().replace('-', '_')] = value

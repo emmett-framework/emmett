@@ -23,7 +23,8 @@ from .templating.core import Templater
 from .utils import dict_to_sdict, cachedprop, read_file
 from .wsgi import (
     error_handler, static_handler, dynamic_handler,
-    _nolang_static_handler, _lang_static_handler
+    _nolang_static_handler, _lang_static_handler,
+    _pre_handler, _pre_handler_prefix
 )
 
 
@@ -60,6 +61,8 @@ class App(object):
         create_missing_app_folders(self)
         #: init expose module
         Expose._bind_app_(self, url_prefix)
+        self._wsgi_pre_handler = (
+            _pre_handler_prefix if Expose._prefix_main else _pre_handler)
         # Expose.application = self
         self.error_handlers = {}
         self.template_default_extension = '.html'

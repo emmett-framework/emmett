@@ -114,13 +114,13 @@ class ExtendLexer(WeppyLexer):
 class HelpersLexer(WeppyLexer):
     helpers = [
         '<script type="text/javascript" ' +
-        'src="{}jquery.min.js"></script>',
+        'src="{}/__weppy__/jquery.min.js"></script>',
         '<script type="text/javascript" ' +
-        'src="{}helpers.js"></script>']
+        'src="{}/__weppy__/helpers.js"></script>']
 
     def process(self, ctx, value):
         for helper in self.helpers:
-            ctx.html(helper.format(Expose._prefix_wpp))
+            ctx.html(helper.format(Expose._prefix_main))
 
 
 class MetaLexer(WeppyLexer):

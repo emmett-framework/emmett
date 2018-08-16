@@ -34,7 +34,6 @@ class MetaExpose(type):
     def __new__(cls, name, bases, attrs):
         nc = type.__new__(cls, name, bases, attrs)
         nc._get_routes_in_for_host = nc._get_routes_in_for_host_simple
-        nc._build_static_regexes_()
         return nc
 
 
@@ -48,44 +47,29 @@ class Expose(with_metaclass(MetaExpose)):
     _pipeline = []
     _injectors = []
     _prefix_main = ''
-    _prefix_static = '/static'
-    _prefix_wpp = '/__weppy__/'
-    _prefix_wpp_len = 11
+    _prefix_main_len = 0
     REGEX_INT = re.compile('<int\:(\w+)>')
     REGEX_STR = re.compile('<str\:(\w+)>')
     REGEX_ANY = re.compile('<any\:(\w+)>')
     REGEX_ALPHA = re.compile('<alpha\:(\w+)>')
     REGEX_DATE = re.compile('<date\:(\w+)>')
     REGEX_FLOAT = re.compile('<float\:(\w+)>')
-    RESTR_STATIC = '^/{}{}static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$'
     REGEX_DECORATION = re.compile(
         '(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
-
-    @classmethod
-    def _build_static_regexes_(cls):
-        static_prefix = cls._prefix_main + '/' if cls._prefix_main else ''
-        cls.REGEX_STATIC = re.compile(
-            cls.RESTR_STATIC.format(static_prefix, ''))
-        cls.REGEX_STATIC_LANG = re.compile(
-            cls.RESTR_STATIC.format(static_prefix, '(?P<l>\w+/)?'))
 
     @classmethod
     def _bind_app_(cls, application, url_prefix=None):
         cls.application = application
         main_prefix = url_prefix or ''
         if main_prefix:
-            if main_prefix.startswith('/'):
-                main_prefix = main_prefix[1:]
             if main_prefix.endswith('/'):
                 main_prefix = main_prefix[:-1]
+            if not main_prefix.startswith('/'):
+                main_prefix = '/' + main_prefix
             if main_prefix == '/':
                 main_prefix = ''
         cls._prefix_main = main_prefix
-        trail_prefix = '/' + main_prefix if main_prefix else ''
-        cls._prefix_static = trail_prefix + '/static'
-        cls._prefix_wpp = trail_prefix + '/__weppy__/'
-        cls._prefix_wpp_len = len(cls._prefix_wpp)
-        cls._build_static_regexes_()
+        cls._prefix_main_len = len(cls._prefix_main)
 
     def __init__(
         self, paths=None, name=None, template=None, pipeline=None,
@@ -207,9 +191,6 @@ class Expose(with_metaclass(MetaExpose)):
         if self.prefix:
             if not self.prefix.startswith('/'):
                 self.prefix = '/' + self.prefix
-        if self._prefix_main:
-            route_prefix = self.prefix if self.prefix else ''
-            self.prefix = '/' + self._prefix_main + route_prefix
         if not self.template:
             self.template = self.f_name + \
                 self.application.template_default_extension
@@ -223,10 +204,11 @@ class Expose(with_metaclass(MetaExpose)):
             routeobj = Route(self, path, idx)
             route = (re.compile(routeobj.regex), routeobj)
             self.add_route(route)
-            self._routes_str[routeobj.name] = "%s %s://%s%s -> %s" % (
+            self._routes_str[routeobj.name] = "%s %s://%s%s%s -> %s" % (
                 "|".join(self.methods).upper(),
                 "|".join(self.schemes),
                 self.hostname or "<any>",
+                self._prefix_main,
                 routeobj.path,
                 self.name
             )
@@ -521,12 +503,14 @@ class RouteUrl(object):
         return self.components.pop(0).format(value)
 
     def add_static_versioning(self, args):
-        if (
-            self.path.startswith(Expose._prefix_static) and
-            Expose.static_versioning()
-        ):
+        if self.path.startswith('/static') and Expose.static_versioning():
             self.components.insert(1, "/_{}")
             args.insert(1, str(Expose.static_versioning()))
+
+    def add_prefix(self, args):
+        if Expose._prefix_main:
+            self.components.insert(0, '{}')
+            args.insert(0, Expose._prefix_main)
 
     def add_language(self, args, language):
         if language:
@@ -565,6 +549,7 @@ class RouteUrl(object):
         args = self._args + args
         self.add_static_versioning(args)
         self.add_language(args, language)
+        self.add_prefix(args)
         return "{}{}{}{}".format(
             self.path_prefix(scheme, host), self.args(args),
             self.params(params), self.anchor(anchor))
@@ -578,7 +563,7 @@ def url(
         args = [args]
     # allow user to use url('static', 'file')
     if path == 'static':
-        path = Expose._prefix_static
+        path = '/static'
     # routes urls with 'dot' notation
     if '/' not in path:
         # urls like 'function' refers to same module
