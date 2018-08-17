@@ -263,28 +263,3 @@ class SessionManager(object):
     @classmethod
     def clear(cls):
         cls._pipe.clear()
-
-
-# 1.2 deprecations
-class SessionCookieManager(CookieSessionPipe):
-    def __init__(self, *args, **kwargs):
-        warn_of_deprecation(
-            'weppy.sessions.SessionCookieManager',
-            'weppy.sessions.SessionManager.cookies', stack=3)
-        super(SessionCookieManager, self).__init__(*args, **kwargs)
-
-
-class SessionFSManager(FileSessionPipe):
-    def __init__(self, *args, **kwargs):
-        warn_of_deprecation(
-            'weppy.sessions.SessionFSManager',
-            'weppy.sessions.SessionManager.files', stack=3)
-        super(SessionFSManager, self).__init__(*args, **kwargs)
-
-
-class SessionRedisManager(RedisSessionPipe):
-    def __init__(self, *args, **kwargs):
-        warn_of_deprecation(
-            'weppy.sessions.SessionRedisManager',
-            'weppy.sessions.SessionManager.redis', stack=3)
-        super(SessionRedisManager, self).__init__(*args, **kwargs)
