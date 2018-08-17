@@ -141,7 +141,8 @@ class Templater(object):
 
     def _load(self, file_path):
         with open(file_path, 'rb') as file_obj:
-            source = to_unicode(file_obj.read())
+            source = to_unicode(
+                file_obj.read(), charset=self.config.templates_encoding)
         return source
 
     def load(self, file_path):

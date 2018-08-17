@@ -57,6 +57,7 @@ class App(object):
         self.config.templates_auto_reload = False
         self.config.templates_escape = 'common'
         self.config.templates_prettify = False
+        self.config.templates_encoding = 'utf8'
         #: try to create needed folders
         create_missing_app_folders(self)
         #: init expose module
