@@ -1,6 +1,18 @@
 weppy changelog
 ===============
 
+Next
+----
+
+(Release date to be defined, codename to be selected)
+
+- Minor bugfixes
+- Added proper support for 'big' id and reference fields to ORM
+- Added `url_prefix` global routing paramater to `App`
+- Allow to specify different `templates_encoding` for templates loading in
+  application config
+
+
 Version 1.2
 -----------
 
