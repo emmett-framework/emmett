@@ -31,9 +31,10 @@ class ScriptDir(object):
     _slug_re = re.compile(r'\w+')
     _default_file_template = "%(rev)s_%(slug)s"
 
-    def __init__(self, app):
+    def __init__(self, app, migrations_folder=None):
         self.app = app
-        self.path = os.path.join(app.root_path, "migrations")
+        self.path = os.path.join(
+            app.root_path, migrations_folder or 'migrations')
         if not os.path.exists(self.path):
             os.mkdir(self.path)
         #self.cwd = os.path.join(os.path.dirname(__file__), 'migration.tmpl')

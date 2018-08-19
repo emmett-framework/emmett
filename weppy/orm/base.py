@@ -88,6 +88,8 @@ class Database(_pyDAL):
         config = config or app.config.db
         if not config.uri:
             config.uri = self.uri_from_config(config)
+        if not config.migrations_folder:
+            config.migrations_folder = 'migrations'
         self.config = config
         self._auto_migrate = self.config.get(
             'auto_migrate', kwargs.pop('auto_migrate', False))
