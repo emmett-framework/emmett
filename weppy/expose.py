@@ -128,12 +128,12 @@ class Expose(with_metaclass(MetaExpose)):
 
     @classmethod
     def build_regex(cls, schemes, hostname, methods, path):
-        path = cls.REGEX_INT.sub('(?P<\g<1>>\d+)', path)
+        path = cls.REGEX_INT.sub('(?P<\g<1>>\\\d+)', path)
         path = cls.REGEX_STR.sub('(?P<\g<1>>[^/]+)', path)
         path = cls.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
-        path = cls.REGEX_ALPHA.sub('(?P<\g<1>>[^/\W\d_]+)', path)
-        path = cls.REGEX_DATE.sub('(?P<\g<1>>\d{4}-\d{2}-\d{2})', path)
-        path = cls.REGEX_FLOAT.sub('(?P<\g<1>>\d+\.\d+)', path)
+        path = cls.REGEX_ALPHA.sub('(?P<\g<1>>[^/\\\W\\\d_]+)', path)
+        path = cls.REGEX_DATE.sub('(?P<\g<1>>\\\d{4}-\\\d{2}-\\\d{2})', path)
+        path = cls.REGEX_FLOAT.sub('(?P<\g<1>>\\\d+\\\.\\\d+)', path)
         re_schemes = ('|'.join(schemes)).lower()
         re_methods = ('|'.join(methods)).upper()
         re_hostname = re.escape(hostname) if hostname else '[^/]*'
