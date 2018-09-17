@@ -882,6 +882,16 @@ class JoinIterRows(_IterRows):
             db_row, self.fdata, self.tables, self.fields, self.colnames,
             self.blob_decode)
 
+    def __iter__(self):
+        try:
+            row = next(self)
+            while row is not None:
+                yield row
+                row = next(self)
+        except StopIteration:
+            self.db._adapter.close_cursor(self.cursor)
+        return
+
 
 class JoinRows(Rows):
     def __init__(self, *args, **kwargs):
