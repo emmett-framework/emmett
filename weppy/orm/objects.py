@@ -287,16 +287,19 @@ class Set(_Set):
             self.db, q, ignore_common_filters=ignore_common_filters,
             model=model)
 
+    def _parse_paginate(self, pagination):
+        if isinstance(pagination, tuple):
+            offset = pagination[0]
+            limit = pagination[1]
+        else:
+            offset = pagination
+            limit = 10
+        return ((offset - 1) * limit, offset * limit)
+
     def select(self, *fields, **options):
         pagination, including = options.get('paginate'), None
         if pagination:
-            if isinstance(pagination, tuple):
-                offset = pagination[0]
-                limit = pagination[1]
-            else:
-                offset = pagination
-                limit = 10
-            options['limitby'] = ((offset - 1) * limit, offset * limit)
+            options['limitby'] = self._parse_paginate(pagination)
             del options['paginate']
         if 'including' in options:
             including = options['including']
@@ -637,6 +640,9 @@ class JoinableSet(Set):
             attributes.get('left', None), attributes.get('orderby', None),
             attributes.get('groupby', None))
         fields = self.db._adapter.expand_all(fields, tablemap)
+        pagination = attributes.pop('paginate', None)
+        if pagination:
+            attributes['limitby'] = self._parse_paginate(pagination)
         colnames, sql = self.db._adapter._select_wcols(
             self.query, fields, **attributes)
         return JoinIterRows(self.db, sql, fields, colnames)
