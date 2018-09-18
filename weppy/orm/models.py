@@ -277,6 +277,7 @@ class Model(with_metaclass(MetaModel)):
                 if 'method' in rv.model:
                     rv.field = rv.model.get(
                         'field', decamelize(self.__class__.__name__))
+                    rv.cast = rv.model.get('cast')
                     rv.method = rv.model['method']
                     del rv.model
                 else:
