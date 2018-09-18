@@ -415,7 +415,7 @@ class Set(_Set):
         for arg in args:
             condition, table, rel_type = self._parse_rjoin(arg)
             joins.append(table.on(condition))
-            jdata.append((arg, condition.first._tablename, rel_type))
+            jdata.append((arg, table._tablename, rel_type))
         return joins, jdata
 
     def _jcolnames_from_rowstmps(self, tmps):
