@@ -251,6 +251,11 @@ class Field(_Field):
     def string_list(cls, *args, **kwargs):
         return cls('list:string', *args, **kwargs)
 
+    def cast(self, value, **kwargs):
+        return Expression(
+            self.db, self._dialect.cast, self,
+            self._dialect.types[value] % kwargs, value)
+
 
 class Set(_Set):
     def __init__(self, db, query, ignore_common_filters=None, model=None):
