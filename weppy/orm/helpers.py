@@ -41,7 +41,7 @@ class Reference(object):
             new_reference[func.__name__]['field'] = field
         cast = self.params.get('cast')
         if cast:
-            new_reference[func.__name__]['cast'] = field
+            new_reference[func.__name__]['cast'] = cast
         self.reference = [new_reference]
         return self
 
