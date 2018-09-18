@@ -267,7 +267,14 @@ class Set(_Set):
         if self._model_:
             self._scopes_ = self._model_._instance_()._scopes_
 
-    def where(self, query, ignore_common_filters=False, model=None):
+    def _clone(self, ignore_common_filters=None, model=None, **changes):
+        return self.__class__(
+            self.db, changes.get('query', self.query),
+            ignore_common_filters=ignore_common_filters,
+            model=model or self._model_
+        )
+
+    def where(self, query, ignore_common_filters=None, model=None):
         if query is None:
             return self
         elif isinstance(query, Table):
@@ -283,9 +290,7 @@ class Set(_Set):
                     "Too many models involved in the Set to use a lambda")
             query = query(model)
         q = self.query & query if self.query else query
-        return Set(
-            self.db, q, ignore_common_filters=ignore_common_filters,
-            model=model)
+        return self._clone(ignore_common_filters, model, query=q)
 
     def _parse_paginate(self, pagination):
         if isinstance(pagination, tuple):
@@ -296,25 +301,27 @@ class Set(_Set):
             limit = 10
         return ((offset - 1) * limit, offset * limit)
 
+    def _join_set_builder(self, obj, jdata, auto_select_tables):
+        return JoinedSet._from_set(
+            obj, jdata=jdata, auto_select_tables=auto_select_tables)
+
+    def _left_join_set_builder(self, jdata):
+        return JoinedSet._from_set(
+            self, ljdata=jdata, auto_select_tables=[self._model_.table])
+
+    def _run_select_(self, *fields, **options):
+        return super(Set, self).select(*fields, **options)
+
     def select(self, *fields, **options):
-        pagination, including = options.get('paginate'), None
+        obj = self
+        pagination, including = (
+            options.pop('paginate', None), options.pop('including', None))
         if pagination:
             options['limitby'] = self._parse_paginate(pagination)
-            del options['paginate']
-        if 'including' in options:
-            including = options['including']
-            del options['including']
         if including and self._model_ is not None:
             options['left'], jdata = self._parse_left_rjoins(including)
-            #: add fields to select
-            fields = list(fields)
-            if not fields:
-                fields = [self._model_.table.ALL]
-            for join in options['left']:
-                fields.append(join.first.ALL)
-            return LeftJoinSet._from_set(
-                self, jdata).select(*fields, **options)
-        return super(Set, self).select(*fields, **options)
+            obj = self._left_join_set_builder(jdata)
+        return obj._run_select_(*fields, **options)
 
     def validate_and_update(self, **update_fields):
         table = self.db._adapter.get_table(self.query)
@@ -355,17 +362,19 @@ class Set(_Set):
         rv = self
         if self._model_ is not None:
             joins = []
-            jtables = []
+            jdata = []
+            auto_select_tables = [self._model_.table]
             for arg in args:
                 condition, table, rel_type = self._parse_rjoin(arg)
                 joins.append(condition)
-                jtables.append((arg, table._tablename, rel_type))
+                jdata.append((arg, table._tablename, rel_type))
+                auto_select_tables.append(table)
             if joins:
                 q = joins[0]
                 for join in joins[1:]:
                     q = q & join
                 rv = rv.where(q, model=self._model_)
-                return JoinSet._from_set(rv, jtables)
+                return self._join_set_builder(rv, jdata, auto_select_tables)
         return rv
 
     def switch(self, model):
@@ -406,7 +415,7 @@ class Set(_Set):
         for arg in args:
             condition, table, rel_type = self._parse_rjoin(arg)
             joins.append(table.on(condition))
-            jdata.append((arg, rel_type))
+            jdata.append((arg, condition.first._tablename, rel_type))
         return joins, jdata
 
     def _jcolnames_from_rowstmps(self, tmps):
@@ -633,16 +642,42 @@ class HasManyViaSet(RelationSet):
             (self.db[self._viadata.via][rel_field] == obj.id)).delete()
 
 
-class JoinableSet(Set):
+class JoinedSet(Set):
+    @classmethod
+    def _from_set(cls, obj, jdata=[], ljdata=[], auto_select_tables=[]):
+        rv = cls(
+            obj.db, obj.query, obj.query.ignore_common_filters, obj._model_)
+        rv._stable_ = obj._model_.tablename
+        rv._jdata_ = list(jdata)
+        rv._ljdata_ = list(ljdata)
+        rv._auto_select_tables_ = list(auto_select_tables)
+        return rv
+
+    def _clone(self, ignore_common_filters=None, model=None, **changes):
+        rv = super(JoinedSet, self)._clone(
+            ignore_common_filters, model, **changes)
+        rv._stable_ = self._stable_
+        rv._jdata_ = self._jdata_
+        rv._ljdata_ = self._ljdata_
+        rv._auto_select_tables_ = self._auto_select_tables_
+        return rv
+
+    def _join_set_builder(self, obj, jdata, auto_select_tables):
+        return JoinedSet._from_set(
+            obj, jdata=self._jdata_ + jdata, ljdata=self._ljdata_,
+            auto_select_tables=self._auto_select_tables_ + auto_select_tables)
+
+    def _left_join_set_builder(self, jdata):
+        return JoinedSet._from_set(
+            self, jdata=self._jdata_, ljdata=self._ljdata_ + jdata,
+            auto_select_tables=self._auto_select_tables_)
+
     def _iterselect_rows(self, *fields, **attributes):
         tablemap = self.db._adapter.tables(
             self.query, attributes.get('join', None),
             attributes.get('left', None), attributes.get('orderby', None),
             attributes.get('groupby', None))
         fields = self.db._adapter.expand_all(fields, tablemap)
-        pagination = attributes.pop('paginate', None)
-        if pagination:
-            attributes['limitby'] = self._parse_paginate(pagination)
         colnames, sql = self.db._adapter._select_wcols(
             self.query, fields, **attributes)
         return JoinIterRows(self.db, sql, fields, colnames)
@@ -653,89 +688,111 @@ class JoinableSet(Set):
             rv[rel_type].append((jname, jtable))
         return rv['belongs'], rv['one'], rv['many']
 
-    def _build_records_from_joined(self, rowmap, inclusions, joins, colnames):
+    def _build_records_from_joined(self, rowmap, inclusions, colnames):
         for rid, many_data in iteritems(inclusions):
             for jname, included in iteritems(many_data):
                 rowmap[rid][jname]._cached_resultset = Rows(
                     self.db, list(included.values()), [])
         return JoinRows(
-            self.db, list(rowmap.values()), colnames, jtables=joins)
+            self.db, list(rowmap.values()), colnames,
+            _jdata=self._jdata_ + self._ljdata_)
 
-
-class JoinSet(JoinableSet):
-    @classmethod
-    def _from_set(cls, obj, joins):
-        rv = cls(
-            obj.db, obj.query, obj.query.ignore_common_filters, obj._model_)
-        rv._stable_ = obj._model_.tablename
-        rv._joins_ = joins
-        return rv
-
-    def select(self, *fields, **options):
-        belongs_joins, one_joins, many_joins = self._split_joins(self._joins_)
+    def _run_select_(self, *fields, **options):
+        #: build parsers
+        belongs_j, one_j, many_j = self._split_joins(self._jdata_)
+        belongs_l, one_l, many_l = self._split_joins(self._ljdata_)
+        parsers = (
+            self._build_jparsers(belongs_j, one_j, many_j) +
+            self._build_lparsers(belongs_l, one_l, many_l)
+        )
+        #: auto add selection field for left joins
+        if self._ljdata_:
+            if not fields:
+                fields = [v.ALL for v in self._auto_select_tables_]
+            for join in options['left']:
+                fields.append(join.first.ALL)
         #: use iterselect for performance
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
         rowmap = OrderedDict()
         inclusions = defaultdict(
-            lambda: {jname: OrderedDict() for jname, jtable in many_joins})
+            lambda: {
+                jname: OrderedDict() for jname, jtable in (many_j + many_l)})
         for row in rows:
             rid = row[self._stable_].id
             rowmap[rid] = rowmap.get(rid, row[self._stable_])
-            for jname, jtable in belongs_joins:
-                rowmap[rid][jname] = JoinedIDReference._from_record(
-                    row[jtable], self.db[jtable])
-            for jname, jtable in one_joins:
-                rowmap[rid][jname]._cached_resultset = row[jtable]
-            for jname, jtable in many_joins:
-                inclusions[rid][jname][row[jtable].id] = \
-                    inclusions[rid][jname].get(
-                        row[jtable].id, row[jtable])
+            for parser in parsers:
+                parser(rowmap, inclusions, row, rid)
         return self._build_records_from_joined(
-            rowmap, inclusions, self._joins_, rows.colnames)
+            rowmap, inclusions, rows.colnames)
 
-
-class LeftJoinSet(JoinableSet):
-    @classmethod
-    def _from_set(cls, obj, jdata):
-        rv = cls(
-            obj.db, obj.query, obj.query.ignore_common_filters, obj._model_)
-        rv._stable_ = rv._model_.tablename
-        rv._jdata_ = jdata
+    def _build_jparsers(self, belongs, one, many):
+        rv = []
+        for jname, jtable in belongs:
+            rv.append(self._jbelong_parser(jname, jtable, self.db))
+        for jname, jtable in one:
+            rv.append(self._jone_parser(jname, jtable))
+        for jname, jtable in many:
+            rv.append(self._jmany_parser(jname, jtable))
         return rv
 
-    def select(self, *fields, **options):
-        #: collect tablenames
-        jtypes = {'belongs': [], 'one': [], 'many': []}
-        jtables = []
-        for index, join in enumerate(options['left']):
-            jname, rel_type = self._jdata_[index]
-            tname = join.first._tablename
-            jtables.append((jname, tname, rel_type))
-            jtypes[rel_type].append((jname, tname))
-        #: use iterselect for performance
-        rows = self._iterselect_rows(*fields, **options)
-        #: rebuild rowset using nested objects
-        rowmap = OrderedDict()
-        inclusions = defaultdict(
-            lambda: {jname: OrderedDict() for jname, jtable in jtypes['many']})
-        for row in rows:
-            rid = row[self._stable_].id
-            rowmap[rid] = rowmap.get(rid, row[self._stable_])
-            for jname, jtable in jtypes['belongs']:
-                if row[jtable].id:
-                    rowmap[rid][jname] = JoinedIDReference._from_record(
-                        row[jtable], self.db[jtable])
-            for jname, jtable in jtypes['one']:
-                if row[jtable].id:
-                    rowmap[rid][jname]._cached_resultset = row[jtable]
-            for jname, jtable in jtypes['many']:
-                if row[jtable].id:
-                    inclusions[rid][jname][row[jtable].id] = \
-                        inclusions[rid][jname].get(
-                            row[jtable].id, row[jtable])
-        return self._build_records_from_joined(
-            rowmap, inclusions, jtables, rows.colnames)
+    def _build_lparsers(self, belongs, one, many):
+        rv = []
+        for jname, jtable in belongs:
+            rv.append(self._lbelong_parser(jname, jtable, self.db))
+        for jname, jtable in one:
+            rv.append(self._lone_parser(jname, jtable))
+        for jname, jtable in many:
+            rv.append(self._lmany_parser(jname, jtable))
+        return rv
+
+    @staticmethod
+    def _jbelong_parser(fieldname, tablename, db):
+        def parser(rowmap, inclusions, row, rid):
+            rowmap[rid][fieldname] = JoinedIDReference._from_record(
+                row[tablename], db[tablename])
+        return parser
+
+    @staticmethod
+    def _jone_parser(fieldname, tablename):
+        def parser(rowmap, inclusions, row, rid):
+            rowmap[rid][fieldname]._cached_resultset = row[tablename]
+        return parser
+
+    @staticmethod
+    def _jmany_parser(fieldname, tablename):
+        def parser(rowmap, inclusions, row, rid):
+            inclusions[rid][fieldname][row[tablename].id] = \
+                inclusions[rid][fieldname].get(
+                    row[tablename].id, row[tablename])
+        return parser
+
+    @staticmethod
+    def _lbelong_parser(fieldname, tablename, db):
+        def parser(rowmap, inclusions, row, rid):
+            if not row[tablename].id:
+                return
+            rowmap[rid][fieldname] = JoinedIDReference._from_record(
+                row[tablename], db[tablename])
+        return parser
+
+    @staticmethod
+    def _lone_parser(fieldname, tablename):
+        def parser(rowmap, inclusions, row, rid):
+            if not row[tablename].id:
+                return
+            rowmap[rid][fieldname]._cached_resultset = row[tablename]
+        return parser
+
+    @staticmethod
+    def _lmany_parser(fieldname, tablename):
+        def parser(rowmap, inclusions, row, rid):
+            if not row[tablename].id:
+                return
+            inclusions[rid][fieldname][row[tablename].id] = \
+                inclusions[rid][fieldname].get(
+                    row[tablename].id, row[tablename])
+        return parser
 
 
 @implements_to_string
@@ -772,6 +829,18 @@ class Row(_Row):
 
     def __repr__(self):
         return str(self)
+
+    def __getitem__(self, name):
+        try:
+            return super(Row, self).__getitem__(name)
+        except KeyError:
+            raise KeyError(name)
+
+    def __getattr__(self, name):
+        try:
+            return self.__getitem__(name)
+        except KeyError:
+            raise AttributeError(name)
 
 
 @implements_to_string
@@ -895,8 +964,7 @@ class JoinIterRows(_IterRows):
 
 class JoinRows(Rows):
     def __init__(self, *args, **kwargs):
-        self._joins_ = kwargs['jtables']
-        del kwargs['jtables']
+        self._joins_ = kwargs.pop('_jdata')
         super(JoinRows, self).__init__(*args, **kwargs)
 
     def as_list(
