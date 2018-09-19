@@ -493,11 +493,7 @@ class RelationSet(object):
         return self._cached_resultset
 
     def _filter_reload(self, kwargs):
-        rv = False
-        if 'reload' in kwargs:
-            rv = kwargs['reload']
-            del kwargs['reload']
-        return rv
+        return kwargs.pop('reload', False)
 
     def create(self, **kwargs):
         attributes = self._get_fields_from_scopes(
@@ -537,18 +533,19 @@ class RelationSet(object):
 
 class HasOneSet(RelationSet):
     def _cache_resultset(self):
-        return self.select().first()
+        return self.select(self._model_.table.ALL, limitby=(0, 1)).first()
 
     def __call__(self, *args, **kwargs):
         refresh = self._filter_reload(kwargs)
         if not args and not kwargs:
             return self._last_resultset(refresh)
+        kwargs['limitby'] = (0, 1)
         return self.select(*args, **kwargs).first()
 
 
 class HasManySet(RelationSet):
     def _cache_resultset(self):
-        return self.select()
+        return self.select(self._model_.table.ALL)
 
     def __call__(self, *args, **kwargs):
         refresh = self._filter_reload(kwargs)
