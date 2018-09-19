@@ -712,6 +712,7 @@ class JoinedSet(Set):
         )
         #: auto add selection field for left joins
         if self._ljdata_:
+            fields = list(fields)
             if not fields:
                 fields = [v.ALL for v in self._auto_select_tables_]
             for join in options['left']:
