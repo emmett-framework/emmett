@@ -198,7 +198,10 @@ class Expose(with_metaclass(MetaExpose)):
             self.template = os.path.join(self.template_folder, self.template)
         self.template_path = self.template_path or \
             self.application.template_path
-        wrapped_f = Pipeline(self.pipeline)(f)
+        pipeline_obj = Pipeline(self.pipeline)
+        wrapped_f = pipeline_obj(f)
+        self.pipeline_flow_open = pipeline_obj._flow_open()
+        self.pipeline_flow_close = pipeline_obj._flow_close()
         self.f = wrapped_f
         for idx, path in enumerate(self.paths):
             routeobj = Route(self, path, idx)
@@ -259,14 +262,14 @@ class Expose(with_metaclass(MetaExpose)):
 
     @staticmethod
     def _before_dispatch(route):
-        #: call pipeline `before_flow` method
-        for pipe in route.pipeline:
+        #: call pipeline `open` method
+        for pipe in route._pipeline_flow_open:
             pipe.open()
 
     @staticmethod
     def _after_dispatch(route):
-        #: call pipeline `after_flow` method
-        for pipe in reversed(route.pipeline):
+        #: call pipeline `close` method
+        for pipe in route._pipeline_flow_close:
             pipe.close()
 
     @classmethod
@@ -311,6 +314,8 @@ class Route(object):
         self.regex = self.exposer.build_regex(
             self.schemes, self.hostname, self.methods, self.path)
         self.build_argparser()
+        self._pipeline_flow_open = self.exposer.pipeline_flow_open
+        self._pipeline_flow_close = self.exposer.pipeline_flow_close
 
     @property
     def hostname(self):
