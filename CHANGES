@@ -1,10 +1,10 @@
 weppy changelog
 ===============
 
-Next
-----
+Version 1.3
+-----------
 
-(Release date to be defined, codename to be selected)
+Released on October 29th 2018, codename Nunki
 
 - Minor bugfixes
 - Added proper support for 'big' id and reference fields to ORM
