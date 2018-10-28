@@ -34,7 +34,19 @@ class MetaExpose(type):
     def __new__(cls, name, bases, attrs):
         nc = type.__new__(cls, name, bases, attrs)
         nc._get_routes_in_for_host = nc._get_routes_in_for_host_simple
+        nc.match_lang = nc._match_no_lang
         return nc
+
+
+def _build_routing_dict():
+    rv = {}
+    for scheme in ['http', 'https']:
+        rv[scheme] = {}
+        for method in [
+            'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'
+        ]:
+            rv[scheme][method] = OrderedDict()
+    return rv
 
 
 class Expose(with_metaclass(MetaExpose)):
@@ -42,7 +54,7 @@ class Expose(with_metaclass(MetaExpose)):
     _routing_stack = []
     _routes_str = OrderedDict()
     application = None
-    routes_in = {'__any__': OrderedDict()}
+    routes_in = {'__any__': _build_routing_dict()}
     routes_out = {}
     _pipeline = []
     _injectors = []
@@ -78,9 +90,11 @@ class Expose(with_metaclass(MetaExpose)):
     ):
         if callable(paths):
             raise SyntaxError('Use @route(), not @route.')
-        if not Expose._routing_started_:
-            Expose._routing_started_ = True
+        if not self.__class__._routing_started_:
+            self.__class__._routing_started_ = True
             self.application.send_signal('before_routes')
+        if self.application.language_force_on_url:
+            self.__class__.match_lang = self.__class__._match_with_lang
         self.schemes = schemes or ('http', 'https')
         if not isinstance(self.schemes, (list, tuple)):
             self.schemes = (self.schemes, )
@@ -127,18 +141,14 @@ class Expose(with_metaclass(MetaExpose)):
         return '.'.join(short.split(os.sep) + [self.f_name])
 
     @classmethod
-    def build_regex(cls, schemes, hostname, methods, path):
+    def build_regex(cls, path):
         path = cls.REGEX_INT.sub('(?P<\g<1>>\\\d+)', path)
         path = cls.REGEX_STR.sub('(?P<\g<1>>[^/]+)', path)
         path = cls.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
         path = cls.REGEX_ALPHA.sub('(?P<\g<1>>[^/\\\W\\\d_]+)', path)
         path = cls.REGEX_DATE.sub('(?P<\g<1>>\\\d{4}-\\\d{2}-\\\d{2})', path)
         path = cls.REGEX_FLOAT.sub('(?P<\g<1>>\\\d+\\\.\\\d+)', path)
-        re_schemes = ('|'.join(schemes)).lower()
-        re_methods = ('|'.join(methods)).upper()
-        re_hostname = re.escape(hostname) if hostname else '[^/]*'
-        expr = '^(%s) (%s)\://(%s)(%s)$' % \
-            (re_methods, re_schemes, re_hostname, path)
+        expr = '^(%s)$' % path
         return expr
 
     @staticmethod
@@ -165,14 +175,17 @@ class Expose(with_metaclass(MetaExpose)):
 
     @classmethod
     def add_route(cls, route):
-        host = route[1].hostname or '__any__'
+        host = route.hostname or '__any__'
         if host not in cls.routes_in:
-            cls.routes_in[host] = OrderedDict()
+            cls.routes_in[host] = _build_routing_dict()
             cls._get_routes_in_for_host = cls._get_routes_in_for_host_all
-        cls.routes_in[host][route[1].name] = route
-        cls.routes_out[route[1].name] = {
-            'host': route[1].hostname,
-            'path': cls.build_route_components(route[1].path)}
+        for scheme in route.schemes:
+            for method in route.methods:
+                cls.routes_in[host][scheme][method.upper()][route.name] = route
+        cls.routes_out[route.name] = {
+            'host': route.hostname,
+            'path': cls.build_route_components(route.path)
+        }
 
     def __call__(self, f):
         self.application.send_signal('before_route', route=self, f=f)
@@ -205,8 +218,7 @@ class Expose(with_metaclass(MetaExpose)):
         self.f = wrapped_f
         for idx, path in enumerate(self.paths):
             routeobj = Route(self, path, idx)
-            route = (re.compile(routeobj.regex), routeobj)
-            self.add_route(route)
+            self.add_route(routeobj)
             self._routes_str[routeobj.name] = "%s %s://%s%s%s -> %s" % (
                 "|".join(self.methods).upper(),
                 "|".join(self.schemes),
@@ -220,7 +232,7 @@ class Expose(with_metaclass(MetaExpose)):
         return f
 
     @classmethod
-    def match_lang(cls, path):
+    def _match_lang(cls, path):
         default = cls.application.language_default
         if len(path) <= 1:
             return path, default
@@ -244,20 +256,27 @@ class Expose(with_metaclass(MetaExpose)):
         return (cls.routes_in['__any__'],)
 
     @classmethod
+    def _match_with_lang(cls, request, path):
+        path, lang = cls._match_lang(path)
+        current.language = request.language = lang
+        return path
+
+    @classmethod
+    def _match_no_lang(cls, request, path):
+        request.language = None
+        return path
+
+    @classmethod
     def match(cls, request):
         path = cls.remove_trailslash(request.path_info)
-        if cls.application.language_force_on_url:
-            path, lang = cls.match_lang(path)
-            current.language = request.language = lang
-        else:
-            request.language = None
-        expression = '%s %s://%s%s' % (
-            request.method, request.scheme, request.hostname, path)
-        for routes in cls._get_routes_in_for_host(request.hostname):
-            for regex, obj in itervalues(routes):
-                match = regex.match(expression)
+        path = cls.match_lang(request, path)
+        for routing_dict in cls._get_routes_in_for_host(request.hostname):
+            for route in itervalues(
+                routing_dict[request.scheme][request.method]
+            ):
+                match, args = route.match(path)
                 if match:
-                    return obj, obj.parse_reqargs(match)
+                    return route, args
         return None, {}
 
     @staticmethod
@@ -311,8 +330,8 @@ class Route(object):
         if self.prefix:
             self.path = \
                 (self.path != '/' and self.prefix + self.path) or self.prefix
-        self.regex = self.exposer.build_regex(
-            self.schemes, self.hostname, self.methods, self.path)
+        self.regex = re.compile(self.exposer.build_regex(self.path))
+        self.build_matcher()
         self.build_argparser()
         self._pipeline_flow_open = self.exposer.pipeline_flow_open
         self._pipeline_flow_close = self.exposer.pipeline_flow_close
@@ -341,6 +360,25 @@ class Route(object):
     def f(self, f):
         self.exposer.f = f
 
+    def match_simple(self, path):
+        return path == self.path, {}
+
+    def match_regex(self, path):
+        match = self.regex.match(path)
+        if match:
+            return True, self.parse_reqargs(match)
+        return False, {}
+
+    def build_matcher(self):
+        if (
+            re.compile('\(.*\)\?').findall(self.path) or
+            re.compile('<(\w+)\:(\w+)>').findall(self.path)
+        ):
+            matcher = self.match_regex
+        else:
+            matcher = self.match_simple
+        self.match = matcher
+
     def build_argparser(self):
         parsers = {
             'int': Route._parse_int_reqarg,
@@ -356,11 +394,11 @@ class Route(object):
         for key in parsers.keys():
             optionals = []
             for element in re.compile(
-                "\(([^<]+)?<{}\:(\w+)>\)\?".format(key)
+                '\(([^<]+)?<{}\:(\w+)>\)\?'.format(key)
             ).findall(self.path):
                 optionals.append(element[1])
             elements = set(
-                re.compile("<{}\:(\w+)>".format(key)).findall(self.path))
+                re.compile('<{}\:(\w+)>'.format(key)).findall(self.path))
             args = elements - set(optionals)
             if args:
                 parser = self._wrap_reqargs_parser(parsers[key], args)
