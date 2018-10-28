@@ -11,6 +11,14 @@ Next
 - Added `url_prefix` global routing paramater to `App`
 - Allow to specify different `templates_encoding` for templates loading in
   application config
+- Added `migrations_folder` variable to database configuration to support
+  migrations with multiple databases
+- Added support for Python 3.7
+- Refactored `join` and `including` options handling in ORM
+- Added `cast` method to ORM `Field`
+- Added `cast` options to `has_many` decorator
+- Optimized pipeline flow
+- Optimized router match code
 
 
 Version 1.2
