@@ -6,6 +6,8 @@ weppy applications are based on the `App` core class. Let's focus on this fundam
 The App object
 --------------
 
+*Changed in version 1.3*
+
 As you learned from the [Getting Started](./quickstart) chapter, your application is defined using weppy's `App` class:
 
 ```python
@@ -17,7 +19,7 @@ The signature of this class's `__init__` method looks like this:
 
 ```python
 def __init__(
-    self, import_name, root_path=None,
+    self, import_name, root_path=None, url_prefix=None,
     template_folder='templates', config_folder='config'
 ):
     # internal code
@@ -29,6 +31,7 @@ Let's see the full parameters list in detail:
 | --- | --- |
 | import_name | gives weppy an idea of what belongs to your application, usually using `__name__` will work out of the box, but you can hardcode the name of your application package if you wish |
 | root_path | allows you to set a custom root path for your application, which is usually unnecessary |
+| url_prefix | allows you to set a global url prefix for routing |
 | template_folder | allows you to set a different folder for your application's templates (by default weppy uses the *templates* folder |
 | config_folder | allows you to set a different configuration folder for your application, if you wish to load your configuration from files |
 

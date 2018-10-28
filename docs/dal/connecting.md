@@ -96,6 +96,8 @@ db2 = Database(app, app.config.db2)
 
 ### Additional configuration parameters
 
+*Changed in version 1.3*
+
 `Database` class accepts several configuration parameters, here we list them in detail:
 
 | parameter | default | description |
@@ -104,6 +106,7 @@ db2 = Database(app, app.config.db2)
 | keep\_alive\_timeout | 3600 | the maximum interval in seconds a connection can be recycled in the pool |
 | auto\_connect | `None` | automatically connects to the DBMS on init |
 | auto\_migrate | `False` | turns on or off the automatic migration |
+| big\_id\_fields | `False` | uses big integer fields for id and reference columns |
 | folder | `databases` | the folder relative to your application path where to store the database (when using sqlite) and/or support data |
 | adapter\_args | `{}` | specific options for the pyDAL adapter |
 | driver\_args | `{}` | specific options for the driver |

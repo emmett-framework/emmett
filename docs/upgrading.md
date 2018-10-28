@@ -19,6 +19,22 @@ or *pip*:
 $ pip install -U weppy
 ```
 
+Version 1.3
+-----------
+
+In weppy 1.3 we didn't introduced any breaking change or deprecation.
+
+Still, version 1.3 removed any previous deprecation, so mind to remove any code deprecated in 1.2 version.
+
+Upon this, weppy 1.3 introduces some new features you might be interested into:
+
+- An additional parameter in ORM configuration to use [big integer fields]() for id and reference columns
+- An `url_prefix` parameter to the application object to specify a [global prefix](./app_and_modules#the-app-object) for routing.
+- A `migrations_folder` parameter in ORM configuration to specify specific folder to use with [migrations](./dal/migrations#using-custom-migration-folders).
+
+weppy 1.3 also introduces official support for Python 3.7.
+
+
 Version 1.2
 -----------
 
