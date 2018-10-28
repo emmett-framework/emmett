@@ -410,6 +410,25 @@ def up(self):
 
 As you can se we added a custom update command inside the upgrade function; and obviously you can add operations to the weppy generated migrations too.
 
+
+Using custom migration folders
+------------------------------
+
+*New in version 1.3*
+
+When you need to manage multiple databases with migrations, or if you prefer a different folder for migrations storage, you can use the `migrations_folder` option in the database configuration:
+
+```python
+from weppy.orm import Database
+
+app.config.db1.migrations_folder = 'db1_migrations'
+app.config.db2.migrations_folder = 'db2_migrations'
+
+db1 = Database(app, app.config.db1)
+db2 = Database(app, app.config.db2)
+```
+
+
 DBMS support
 ------------
 

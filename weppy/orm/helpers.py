@@ -14,6 +14,7 @@ import time
 from functools import wraps
 from pydal._globals import THREAD_LOCAL
 from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
+from pydal.objects import Field as _Field
 from ..datastructures import sdict
 from ..utils import cachedprop
 
@@ -38,6 +39,9 @@ class Reference(object):
         field = self.params.get('field')
         if field:
             new_reference[func.__name__]['field'] = field
+        cast = self.params.get('cast')
+        if cast:
+            new_reference[func.__name__]['cast'] = cast
         self.reference = [new_reference]
         return self
 
@@ -113,6 +117,8 @@ class RelationBuilder(object):
 
     @staticmethod
     def many_query(ref, rid):
+        if ref.cast and isinstance(rid, _Field):
+            rid = rid.cast(ref.cast)
         return ref.model_instance.table[ref.field] == rid
 
     def _many(self, ref, rid):

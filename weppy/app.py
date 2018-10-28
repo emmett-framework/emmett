@@ -23,7 +23,8 @@ from .templating.core import Templater
 from .utils import dict_to_sdict, cachedprop, read_file
 from .wsgi import (
     error_handler, static_handler, dynamic_handler,
-    _nolang_static_handler, _lang_static_handler
+    _nolang_static_handler, _lang_static_handler,
+    _pre_handler, _pre_handler_prefix
 )
 
 
@@ -32,8 +33,8 @@ class App(object):
     test_client_class = None
 
     def __init__(
-        self, import_name, root_path=None, template_folder='templates',
-        config_folder='config'
+        self, import_name, root_path=None, url_prefix=None,
+        template_folder='templates', config_folder='config'
     ):
         self.import_name = import_name
         #: set paths for the application
@@ -56,10 +57,14 @@ class App(object):
         self.config.templates_auto_reload = False
         self.config.templates_escape = 'common'
         self.config.templates_prettify = False
+        self.config.templates_encoding = 'utf8'
         #: try to create needed folders
         create_missing_app_folders(self)
         #: init expose module
-        Expose.application = self
+        Expose._bind_app_(self, url_prefix)
+        self._wsgi_pre_handler = (
+            _pre_handler_prefix if Expose._prefix_main else _pre_handler)
+        # Expose.application = self
         self.error_handlers = {}
         self.template_default_extension = '.html'
         #: init logger

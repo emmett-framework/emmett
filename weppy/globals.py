@@ -40,7 +40,7 @@ class Request(object):
         self.scheme = environ['wsgi.url_scheme']
         self.hostname = self._get_hostname_(environ)
         self.method = environ['REQUEST_METHOD']
-        self.path_info = environ['PATH_INFO'] or '/'
+        self.path_info = environ['wpp.path_info']
 
     @staticmethod
     def _get_hostname_(environ):

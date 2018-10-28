@@ -118,3 +118,45 @@ def test_module_url(app):
     lsplit = link.split('?')
     assert lsplit[0] == '/it/test3/2/foo/bar.json'
     assert lsplit[1] in ['foo=bar&bar=foo', 'bar=foo&foo=bar']
+
+
+def test_global_url_prefix(app):
+    from weppy.globals import current
+    builder = EnvironBuilder('/')
+    current.initialize(builder.get_environ())
+
+    app.route._bind_app_(app, 'foo')
+
+    @app.route('/test')
+    def test_route():
+        return 'Test Router'
+
+    app.config.static_version_urls = False
+    current.request.language = 'en'
+
+    link = url('test_route')
+    assert link == '/foo/test'
+
+    link = url('static', 'js/foo.js')
+    assert link == '/foo/static/js/foo.js'
+
+    app.config.static_version_urls = True
+    app.config.static_version = '1.0.0'
+
+    link = url('static', 'js/foo.js')
+    assert link == '/foo/static/_1.0.0/js/foo.js'
+
+    app.config.static_version_urls = False
+    current.request.language = 'it'
+
+    link = url('test_route')
+    assert link == '/foo/it/test'
+
+    link = url('static', 'js/foo.js')
+    assert link == '/foo/it/static/js/foo.js'
+
+    app.config.static_version_urls = True
+    app.config.static_version = '1.0.0'
+
+    link = url('static', 'js/foo.js')
+    assert link == '/foo/it/static/_1.0.0/js/foo.js'

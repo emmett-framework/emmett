@@ -9,7 +9,7 @@
 """
 
 from functools import wraps
-from ._compat import basestring
+from ._compat import basestring, with_metaclass
 from .helpers import flash
 from .http import HTTP, redirect
 
@@ -18,25 +18,44 @@ class Pipeline(object):
     def __init__(self, pipes=[]):
         self.pipes = pipes
 
+    def _get_proper_wrapper(self, pipe):
+        if pipe._pipeline_all_methods_.issuperset(
+            {'on_pipe_success', 'on_pipe_failure'}
+        ):
+            rv = _wrap_flow_complete
+        elif 'on_pipe_success' in pipe._pipeline_all_methods_:
+            rv = _wrap_flow_success
+        elif 'on_pipe_failure' in pipe._pipeline_all_methods_:
+            rv = _wrap_flow_failure
+        else:
+            rv = _wrap_flow_basic
+        return rv
+
     def __call__(self, f):
-        def wrap(link):
-            @wraps(link.f)
-            def pipe_flow(**kwargs):
-                try:
-                    output = link.pipe.pipe(link.f, **kwargs)
-                    link.pipe.on_pipe_success()
-                    return output
-                except HTTP:
-                    link.pipe.on_pipe_success()
-                    raise
-                except:
-                    link.pipe.on_pipe_failure()
-                    raise
-            return pipe_flow
         for pipe in reversed(self.pipes):
-            if isinstance(pipe, Pipe):
-                f = wrap(PipeLink(pipe, f))
+            if not isinstance(pipe, Pipe):
+                continue
+            if not pipe._is_flow_responsible:
+                continue
+            wrapper = self._get_proper_wrapper(pipe)
+            f = wrapper(pipe, f)
         return f
+
+    def _flow_open(self):
+        rv = []
+        for pipe in self.pipes:
+            if 'open' not in pipe._pipeline_all_methods_:
+                continue
+            rv.append(pipe)
+        return rv
+
+    def _flow_close(self):
+        rv = []
+        for pipe in reversed(self.pipes):
+            if 'close' not in pipe._pipeline_all_methods_:
+                continue
+            rv.append(pipe)
+        return rv
 
 
 class PipeLink(object):
@@ -45,7 +64,29 @@ class PipeLink(object):
         self.f = f
 
 
-class Pipe(object):
+class MetaPipe(type):
+    _pipeline_methods_ = {
+        'open', 'close', 'pipe', 'on_pipe_success', 'on_pipe_failure'
+    }
+
+    def __new__(cls, name, bases, attrs):
+        new_class = type.__new__(cls, name, bases, attrs)
+        if not bases:
+            return new_class
+        declared_methods = cls._pipeline_methods_ & set(attrs.keys())
+        new_class._pipeline_declared_methods_ = declared_methods
+        all_methods = set()
+        for base in reversed(new_class.__mro__[:-2]):
+            if hasattr(base, '_pipeline_declared_methods_'):
+                all_methods = all_methods | base._pipeline_declared_methods_
+        all_methods = all_methods | declared_methods
+        new_class._pipeline_all_methods_ = all_methods
+        new_class._is_flow_responsible = bool(
+            all_methods & {'pipe', 'on_pipe_success', 'on_pipe_failure'})
+        return new_class
+
+
+class Pipe(with_metaclass(MetaPipe)):
     def open(self):
         pass
 
@@ -85,17 +126,66 @@ class RequirePipe(Pipe):
 
 
 class Injector(Pipe):
-    def _inject(self, ctx):
-        exclude = [
-            'on_start', 'on_end', 'on_success', 'on_failure', 'pipe']
-        attr_list = dir(self)
-        for attr in attr_list:
-            if attr.startswith('_') or attr in exclude:
+    def __init__(self):
+        self._injection_attrs_ = []
+        for attr in set(dir(self)) - self._pipeline_methods_:
+            if attr.startswith('_'):
                 continue
-            ctx[attr] = self.__getattribute__(attr)
+            self._injection_attrs_.append(attr)
+
+    def _inject(self, ctx):
+        for attr in self._injection_attrs_:
+            ctx[attr] = getattr(self, attr)
 
     def pipe(self, next_pipe, **kwargs):
         ctx = next_pipe(**kwargs)
         if isinstance(ctx, dict):
             self._inject(ctx)
         return ctx
+
+
+def _wrap_flow_complete(pipe, f):
+    @wraps(f)
+    def flow(**kwargs):
+        try:
+            output = pipe.pipe(f, **kwargs)
+            pipe.on_pipe_success()
+            return output
+        except HTTP:
+            pipe.on_pipe_success()
+            raise
+        except Exception:
+            pipe.on_pipe_failure()
+            raise
+    return flow
+
+
+def _wrap_flow_success(pipe, f):
+    @wraps(f)
+    def flow(**kwargs):
+        try:
+            output = pipe.pipe(f, **kwargs)
+            pipe.on_pipe_success()
+            return output
+        except HTTP:
+            pipe.on_pipe_success()
+            raise
+    return flow
+
+
+def _wrap_flow_failure(pipe, f):
+    @wraps(f)
+    def flow(**kwargs):
+        try:
+            return pipe.pipe(f, **kwargs)
+        except Exception:
+            pipe.on_pipe_failure()
+            raise
+    return flow
+
+
+def _wrap_flow_basic(pipe, f):
+    @wraps(f)
+    def flow(**kwargs):
+        return pipe.pipe(f, **kwargs)
+    return flow

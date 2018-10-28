@@ -58,7 +58,7 @@ class ObjectProxy(object):
 
     def __bool__(self):
         try:
-            return bool(self._get_current_object())
+            return bool(self._get_robj())
         except RuntimeError:
             return False
 
@@ -70,7 +70,7 @@ class ObjectProxy(object):
 
     def __dir__(self):
         try:
-            return dir(self._get_current_object())
+            return dir(self._get_robj())
         except RuntimeError:
             return []
 

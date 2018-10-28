@@ -62,7 +62,8 @@ def render_template(path, template, ctx):
         debug=False,
         config=sdict(
             templates_auto_reload=False,
-            templates_prettify=True
+            templates_prettify=True,
+            templates_encoding='utf8'
         )
     )
     templater = Templater(_fakeapp)
