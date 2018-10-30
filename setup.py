@@ -11,9 +11,11 @@ Links
 
 """
 
-import re
 import ast
+import re
+
 from setuptools import setup
+
 
 _version_re = re.compile(r'__version__\s+=\s+(.*)')
 
@@ -32,13 +34,15 @@ setup(
     long_description=__doc__,
     packages=[
         'weppy',
+        'weppy.asgi', 'weppy.asgi.loops',
         'weppy.language', 'weppy.language.plurals',
         'weppy.orm', 'weppy.orm.migrations',
         'weppy.templating',
         'weppy.testing',
         'weppy.tools', 'weppy.tools.auth',
         'weppy.validators',
-        'weppy.libs'],
+        'weppy.libs'
+    ],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
@@ -52,16 +56,16 @@ setup(
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
+        'Framework :: AsyncIO',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.7'
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
     entry_points={
         'console_scripts': ['weppy = weppy.cli:main']
-    },
+    }
 )
