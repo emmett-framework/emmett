@@ -61,6 +61,8 @@ class HTTP(Exception):
     def __init__(self, status_code, body=u'', headers={}, cookies={}):
         self.status_code = status_code
         self.set_body(body or [])
+        headers = headers or getattr(
+            current, 'response', {'headers': {}})['headers']
         self.headers = list(headers.items())
         self.set_cookies(cookies)
 
