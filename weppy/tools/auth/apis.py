@@ -11,7 +11,7 @@
 
 from datetime import timedelta
 from ..._compat import string_types, integer_types
-from ...globals import session, request
+from ...ctx import session, request
 from ...pipeline import Pipe
 from .ext import AuthExtension
 from .exposer import AuthModule

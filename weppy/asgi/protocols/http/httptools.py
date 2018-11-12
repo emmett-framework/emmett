@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from . import Protocol, protocols
+from . import ProtocolWrapper, protocols
 
 
 @protocols.register('httptools', packages=['httptools'])
-class HttpToolsProtocol(Protocol):
-    def init(self):
-        self.parser = self.httptools.HttpRequestParser(self)
+class HttpToolsProtocol(ProtocolWrapper):
+    @classmethod
+    def protocol_cls(cls):
+        from uvicorn.protocols.http.httptools_impl import HttpToolsProtocol
+        return HttpToolsProtocol

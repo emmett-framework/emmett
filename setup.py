@@ -34,7 +34,7 @@ setup(
     long_description=__doc__,
     packages=[
         'weppy',
-        'weppy.asgi', 'weppy.asgi.loops',
+        'weppy.asgi', 'weppy.asgi.loops', 'weppy.asgi.protocols',
         'weppy.language', 'weppy.language.plurals',
         'weppy.orm', 'weppy.orm.migrations',
         'weppy.templating',
@@ -51,7 +51,9 @@ setup(
         'pendulum>=2.0.0',
         'pyaes',
         'pyDAL==17.3',
-        'pyyaml'
+        'pyyaml',
+        'uvicorn~=0.3.20',
+        # 'uvloop==0.11.3'
     ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',

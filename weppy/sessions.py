@@ -15,9 +15,10 @@ import tempfile
 
 from ._compat import pickle, to_native
 from ._internal import warn_of_deprecation
+from .ctx import current, request, response
 from .datastructures import sdict, SessionData
 from .expose import Expose
-from .globals import current, request, response
+# from .globals import current, request, response
 from .pipeline import Pipe
 from .security import secure_loads, secure_dumps, uuid
 

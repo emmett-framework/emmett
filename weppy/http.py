@@ -57,27 +57,67 @@ status_codes = {
 }
 
 
+# class HTTP(Exception):
+#     def __init__(self, status_code, body=u'', headers={}, cookies={}):
+#         self.status_code = status_code
+#         self.set_body(body or [])
+#         self.headers = list(headers.items())
+#         self.set_cookies(cookies)
+
+#     def set_body(self, body):
+#         if isinstance(body, (text_type, bytes, bytearray)):
+#             body = [to_bytes(body)]
+#         self.body = body
+
+#     def set_cookies(self, cookies):
+#         for cookie in cookies.values():
+#             self.headers.append(('Set-Cookie', str(cookie)[11:]))
+
+#     def to(self, environ, start_response):
+#         start_response(status_codes[self.status_code], self.headers)
+#         if environ['REQUEST_METHOD'] == 'HEAD':
+#             return [b'']
+#         return self.body
+
+#     @classmethod
+#     def redirect(cls, location, status_code=303):
+#         current.response.status = status_code
+#         location = location.replace('\r', '%0D').replace('\n', '%0A')
+#         raise cls(status_code, headers=dict(Location=location))
+
+
 class HTTP(Exception):
     def __init__(self, status_code, body=u'', headers={}, cookies={}):
         self.status_code = status_code
-        self.set_body(body or [])
-        self.headers = list(headers.items())
+        self.set_body(body)
+        self._headers = list(headers.items())
         self.set_cookies(cookies)
 
     def set_body(self, body):
-        if isinstance(body, (text_type, bytes, bytearray)):
-            body = [to_bytes(body)]
-        self.body = body
+        self.body = body.encode('utf-8')
 
     def set_cookies(self, cookies):
         for cookie in cookies.values():
-            self.headers.append(('Set-Cookie', str(cookie)[11:]))
+            self._headers.append(('Set-Cookie', str(cookie)[11:]))
 
-    def to(self, environ, start_response):
-        start_response(status_codes[self.status_code], self.headers)
-        if environ['REQUEST_METHOD'] == 'HEAD':
-            return [b'']
-        return self.body
+    @property
+    def headers(self):
+        rv = []
+        for key, val in self._headers:
+            rv.append((key.encode('utf-8'), val.encode('utf-8')))
+        return rv
+
+    async def send(self, send):
+        await send({
+            'type': 'http.response.start',
+            'status': self.status_code,
+            'headers': self.headers
+        })
+        await send({
+            'type': 'http.response.body',
+            'body': self.body,
+            'more_body': False
+        })
 
     @classmethod
     def redirect(cls, location, status_code=303):

@@ -31,6 +31,19 @@ class cachedprop(object):
         return result
 
 
+class cachedasyncprop(cachedprop):
+    async def __get__(self, obj, cls):
+        if obj is None:
+            return self
+        result = await self.fget(obj)
+
+        async def wrapper():
+            return result
+
+        obj.__dict__[self.__name__] = wrapper
+        return result
+
+
 _pendulum_parsing_opts = {
     'day_first': False,
     'year_first': True,

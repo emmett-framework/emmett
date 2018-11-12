@@ -16,14 +16,14 @@ import pendulum
 from datetime import datetime
 
 from ._internal import ObjectProxy
-from .globals import Request, Response
+# from .globals import Request, Response
+from .globals import Response
 from .language import T, _instance as _translator_instance
 from .utils import cachedprop
+from .web.request import Request
 
 
 class Context(object):
-    __slots__ = ('language',)
-
     def __init__(self):
         self.language = None
 
@@ -33,11 +33,9 @@ class Context(object):
 
 
 class RequestContext(object):
-    __slots__ = ('request', 'response', 'session')
-
-    def __init__(self, environ):
-        self.request = Request(environ)
-        self.response = Response(environ)
+    def __init__(self, scope):
+        self.request = Request(scope)
+        self.response = Response({})
         self.session = None
 
     @property
@@ -51,17 +49,28 @@ class RequestContext(object):
 
 
 class Current(object):
-    __slots__ = ('ctx',)
+    __slots__ = ('_ctx',)
 
     def __init__(self):
-        self.ctx = contextvars.ContextVar('ctx')
-        self.ctx.set(Context())
+        # self.ctx = contextvars.ContextVar('ctx')
+        object.__setattr__(self, '_ctx', contextvars.ContextVar('ctx'))
+        self._ctx.set(Context())
 
-    def _init_(self, environ):
-        return self.ctx.set(RequestContext(environ))
+    def _init_(self, scope):
+        return self._ctx.set(RequestContext(scope))
 
     def _close_(self, token):
-        self.ctx.reset(token)
+        self._ctx.reset(token)
+
+    @property
+    def ctx(self):
+        return self._ctx.get()
+
+    def __getattr__(self, name):
+        return getattr(self.ctx, name)
+
+    def __setattr__(self, name, value):
+        setattr(self.ctx, name, value)
 
     @property
     def language(self):
@@ -83,7 +92,7 @@ class Current(object):
     def session(self):
         return self.ctx.session
 
-    @session.set
+    @session.setter
     def session(self, val):
         self.ctx.session = val
 

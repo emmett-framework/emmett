@@ -19,7 +19,8 @@ from ._compat import PY2, with_metaclass, itervalues, iteritems, text_type
 from .pipeline import Pipeline, Pipe
 from .templating.helpers import TemplateMissingError
 from .cache import RouteCacheRule
-from .globals import current
+# from .globals import current
+from .ctx import current
 from .http import HTTP
 
 if PY2:
@@ -268,7 +269,7 @@ class Expose(with_metaclass(MetaExpose)):
 
     @classmethod
     def match(cls, request):
-        path = cls.remove_trailslash(request.path_info)
+        path = cls.remove_trailslash(request.path)
         path = cls.match_lang(request, path)
         for routing_dict in cls._get_routes_in_for_host(request.hostname):
             for route in itervalues(
@@ -292,7 +293,7 @@ class Expose(with_metaclass(MetaExpose)):
             pipe.close()
 
     @classmethod
-    def dispatch(cls):
+    async def dispatch(cls):
         #: get the right exposed function
         request = current.request
         route, reqargs = cls.match(request)

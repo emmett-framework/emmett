@@ -15,6 +15,8 @@ import click
 from yaml import load as ymlload
 from ._compat import basestring
 from ._internal import get_root_path, create_missing_app_folders
+from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
+from .asgi.server import run as asgi_run
 from .datastructures import sdict, ConfigData
 from .expose import Expose, url
 from .extensions import Extension, TemplateExtension
@@ -64,6 +66,14 @@ class App(object):
         Expose._bind_app_(self, url_prefix)
         self._wsgi_pre_handler = (
             _pre_handler_prefix if Expose._prefix_main else _pre_handler)
+        self._asgi_handler_http = HTTPHandler(self)
+        self._asgi_handler_lifespan = LifeSpanHandler(self)
+        self._asgi_handler_ws = WSHandler(self)
+        self._asgi_handlers = {
+            'http': self._asgi_handler_http,
+            'lifespan': self._asgi_handler_lifespan,
+            'websocket': self._asgi_handler_ws
+        }
         # Expose.application = self
         self.error_handlers = {}
         self.template_default_extension = '.html'
@@ -208,9 +218,10 @@ class App(object):
         return context
 
     def _run(self, host, port):
-        from .libs.rocket import Rocket
-        r = Rocket((host, port), 'wsgi', {'wsgi_app': self})
-        r.start()
+        # from .libs.rocket import Rocket
+        # r = Rocket((host, port), 'wsgi', {'wsgi_app': self})
+        # r.start()
+        asgi_run(self, host, port)
 
     def run(self, host=None, port=None, reloader=True, debug=True):
         if host is None:
@@ -250,8 +261,18 @@ class App(object):
     def wsgi_handler(self, environ, start_request):
         return error_handler(self, environ, start_request)
 
-    def __call__(self, environ, start_request):
-        return self.wsgi_handler(environ, start_request)
+    # def __call__(self, environ, start_request):
+    #     return self.wsgi_handler(environ, start_request)
+
+    def __call__(self, scope):
+        print('App.__call__', scope)
+        handler = self._asgi_handlers[scope['type']]
+
+        async def _scoped_handler(receive, send):
+            print('_scoped_handler')
+            await handler(scope, receive, send)
+
+        return _scoped_handler
 
     def module(
         self, import_name, name, template_folder=None, template_path=None,
