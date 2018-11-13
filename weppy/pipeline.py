@@ -128,7 +128,7 @@ class RequirePipe(Pipe):
 class Injector(Pipe):
     def __init__(self):
         self._injection_attrs_ = []
-        for attr in set(dir(self)) - self._pipeline_methods_:
+        for attr in set(dir(self)) - self.__class__._pipeline_methods_:
             if attr.startswith('_'):
                 continue
             self._injection_attrs_.append(attr)
