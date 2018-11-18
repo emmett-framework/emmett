@@ -14,14 +14,16 @@
 """
 
 from __future__ import print_function
+import multiprocessing
 import os
 import sys
 import time
+import signal
 import subprocess
-import threading
+# import threading
 from itertools import chain
 
-from ._compat import PY2, iteritems
+# from ._compat import PY2, iteritems
 
 
 def _iter_module_files():
@@ -41,8 +43,8 @@ def _iter_module_files():
                 if filename == old:
                     break
             else:
-                if filename[-4:] in ('.pyc', '.pyo'):
-                    filename = filename[:-1]
+                # if filename[-4:] in ('.pyc', '.pyo'):
+                #     filename = filename[:-1]
                 yield filename
 
 
@@ -97,25 +99,27 @@ class ReloaderLoop(object):
             # a weird bug on windows. sometimes unicode strings end up in the
             # environment and subprocess.call does not like this, encode them
             # to latin1 and continue.
-            if os.name == 'nt' and PY2:
-                for key, value in iteritems(new_environ):
-                    if isinstance(value, unicode):
-                        new_environ[key] = value.encode('iso-8859-1')
+            # if os.name == 'nt' and PY2:
+            #     for key, value in iteritems(new_environ):
+            #         if isinstance(value, unicode):
+            #             new_environ[key] = value.encode('iso-8859-1')
 
             exit_code = subprocess.call(args, env=new_environ)
             if exit_code != 3:
                 return exit_code
 
-    def trigger_reload(self, filename):
+    def trigger_reload(self, process, filename):
         filename = os.path.abspath(filename)
         print('> Detected change in %r, reloading' % filename)
+        os.kill(process.pid, signal.SIGTERM)
+        process.join()
         sys.exit(3)
 
 
 class StatReloaderLoop(ReloaderLoop):
     name = 'stat'
 
-    def run(self):
+    def run(self, process):
         mtimes = {}
         while 1:
             for filename in chain(_iter_module_files(), self.extra_files):
@@ -129,7 +133,7 @@ class StatReloaderLoop(ReloaderLoop):
                     mtimes[filename] = mtime
                     continue
                 elif mtime > old_time:
-                    self.trigger_reload(filename)
+                    self.trigger_reload(process, filename)
             self._sleep(self.interval)
 
 
@@ -144,15 +148,14 @@ def run_with_reloader(
     app, host, port, extra_files=None, interval=1, reloader_type='auto'
 ):
     """Run the given function in an independent python interpreter."""
-    import signal
     reloader = reloader_loops[reloader_type](extra_files, interval)
     signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
     try:
         if os.environ.get('WEPPY_RUN_MAIN') == 'true':
-            t = threading.Thread(target=app._run, args=(host, port))
-            t.setDaemon(True)
-            t.start()
-            reloader.run()
+            process = multiprocessing.Process(
+                target=app._run, args=(host, port))
+            process.start()
+            reloader.run(process)
         else:
             sys.exit(reloader.restart_with_reloader())
     except KeyboardInterrupt:

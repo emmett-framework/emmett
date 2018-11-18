@@ -261,6 +261,9 @@ def run_command(info, host, port, reloader, debug):
     if reloader:
         from ._reloader import run_with_reloader
         run_with_reloader(app, host, port)
+        # from .asgi.reloader import Reloader
+        # reloader = Reloader()
+        # reloader.run(app._run, {'host': host, 'port': port})
     else:
         app._run(host, port)
 

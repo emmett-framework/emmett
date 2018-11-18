@@ -265,11 +265,9 @@ class App(object):
     #     return self.wsgi_handler(environ, start_request)
 
     def __call__(self, scope):
-        print('App.__call__', scope)
         handler = self._asgi_handlers[scope['type']]
 
         async def _scoped_handler(receive, send):
-            print('_scoped_handler')
             await handler(scope, receive, send)
 
         return _scoped_handler

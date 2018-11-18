@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
 
+import logging
 import socket
+
 from uvicorn.main import Server
 
 from .loops import loops
 from .protocols import protocols_http, protocols_ws
+
+
+class NullLogger(logging.Logger):
+    def handle(self, record):
+        return
 
 
 def run(
@@ -40,11 +47,14 @@ def run(
     tasks = set()
     state = {"total_requests": 0}
 
+    logger = NullLogger('null')
+
     def create_protocol():
         rv = protocol_cls_http(
             app=app,
             loop=loop,
-            logger=app.log,
+            # logger=app.log,
+            logger=logger,
             access_log=access_log,
             connections=connections,
             tasks=tasks,
@@ -62,7 +72,8 @@ def run(
         port=port,
         uds=uds,
         sock=sock,
-        logger=app.log,
+        # logger=app.log,
+        logger=logger,
         loop=loop,
         connections=connections,
         tasks=tasks,
