@@ -9,8 +9,16 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ._compat import text_type, to_bytes
+import aiofiles
+import errno
+import os
+import stat
+
+from email.utils import formatdate
+from hashlib import md5
+
 from .globals import current
+from .libs.contenttype import contenttype
 
 status_codes = {
     100: '100 CONTINUE',
@@ -89,41 +97,112 @@ status_codes = {
 class HTTP(Exception):
     def __init__(self, status_code, body=u'', headers={}, cookies={}):
         self.status_code = status_code
-        self.set_body(body)
-        self._headers = list(headers.items())
+        self._body = body
+        self._headers = headers
+        self._cookies = []
         self.set_cookies(cookies)
 
-    def set_body(self, body):
-        self.body = body.encode('utf-8')
+    @property
+    def body(self):
+        return self._body.encode('utf-8')
 
     def set_cookies(self, cookies):
         for cookie in cookies.values():
-            self._headers.append(('Set-Cookie', str(cookie)[11:]))
+            self._cookies.append(str(cookie)[11:].encode('utf-8'))
 
     @property
     def headers(self):
         rv = []
-        for key, val in self._headers:
+        for key, val in self._headers.items():
             rv.append((key.encode('utf-8'), val.encode('utf-8')))
+        for cookie in self._cookies:
+            rv.append((b'Set-Cookie', cookie))
         return rv
 
-    async def send(self, send):
+    async def _send_headers(self, send):
         await send({
             'type': 'http.response.start',
             'status': self.status_code,
             'headers': self.headers
         })
+
+    async def _send_body(self, send):
         await send({
             'type': 'http.response.body',
             'body': self.body,
             'more_body': False
         })
 
+    async def send(self, scope, send):
+        await self._send_headers(send)
+        if scope['method'] == 'HEAD':
+            await send({'type': 'http.response.body'})
+        else:
+            await self._send_body(send)
+
     @classmethod
-    def redirect(cls, location, status_code=303):
-        current.response.status = status_code
+    def from_http(cls, http):
+        return cls(
+            http.status_code, body=http._body,
+            headers=http._headers, cookies=http._cookies)
+
+
+class HTTPRedirect(HTTP):
+    def __init__(self, status_code, location):
         location = location.replace('\r', '%0D').replace('\n', '%0A')
-        raise cls(status_code, headers=dict(Location=location))
+        super().__init__(status_code, headers={'Location': location})
+
+    async def send(self, scope, send):
+        await self._send_headers(send)
+        await send({'type': 'http.response.body'})
 
 
-redirect = HTTP.redirect
+class HTTPFile(HTTP):
+    def __init__(self, file_path, headers={}, cookies={}, chunk_size=4096):
+        super().__init__(200, headers=headers, cookies=cookies)
+        self.file_path = file_path
+        self.chunk_size = chunk_size
+
+    def _get_stat_headers(self, stat_data):
+        content_length = str(stat_data.st_size)
+        last_modified = formatdate(stat_data.st_mtime, usegmt=True)
+        etag_base = str(stat_data.st_mtime) + '_' + str(stat_data.st_size)
+        etag = md5(etag_base.encode('utf-8')).hexdigest()
+        return {
+            'Content-Type': contenttype(self.file_path),
+            'Content-Length': content_length,
+            'Last-Modified': last_modified,
+            'Etag': etag
+        }
+
+    async def send(self, scope, send):
+        try:
+            stat_data = os.stat(self.file_path)
+            if not stat.S_ISREG(stat_data.st_mode):
+                await HTTP(403).send(scope, send)
+                return
+            self._headers.update(self._get_stat_headers(stat_data))
+            await self._send_headers(send)
+            await self._send_body(send)
+        except IOError as e:
+            if e.errno == errno.EACCES:
+                await HTTP(403).send(scope, send)
+            else:
+                await HTTP(404).send(scope, send)
+
+    async def _send_body(self, send):
+        async with aiofiles.open(self.file_path, mode='rb') as f:
+            more_body = True
+            while more_body:
+                chunk = await f.read(self.chunk_size)
+                more_body = len(chunk) == self.chunk_size
+                await send({
+                    'type': 'http.response.body',
+                    'body': chunk,
+                    'more_body': more_body,
+                })
+
+
+def redirect(location, status_code=303):
+    current.response.status = status_code
+    raise HTTPRedirect(status_code, location)

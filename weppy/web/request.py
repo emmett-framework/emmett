@@ -68,11 +68,13 @@ class Request(object):
         # ):
         #     from ..exceptions import RequestEntityTooLarge  # noqa Avoiding circular import
         #     raise RequestEntityTooLarge()
-        self._input = Body(self.max_content_length)
+        # self._input = Body(self.max_content_length)
+        self._input = scope['emt.input']
 
     @cachedasyncprop
     async def body(self):
         try:
+            print('ensuring body_future')
             body_future = asyncio.ensure_future(self._input)
             rv = await asyncio.wait_for(body_future, timeout=self.body_timeout)
         except asyncio.TimeoutError:

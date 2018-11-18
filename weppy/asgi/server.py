@@ -27,7 +27,6 @@ def run(
 
     loop = loops.get_loop(loop)
     protocol_cls_http = protocols_http.get_protocol(proto_http)
-    print(protocol_cls_http)
     protocol_cls_ws = protocols_ws.get_protocol(proto_ws)
 
     # if debug:
@@ -55,7 +54,6 @@ def run(
             limit_concurrency=limit_concurrency,
             timeout_keep_alive=timeout_keep_alive,
         )
-        print(rv)
         return rv
 
     server = Server(

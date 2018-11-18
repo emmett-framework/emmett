@@ -47,6 +47,7 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=[
+        'aiofiles==0.4.0',
         'click>=0.6',
         'pendulum>=2.0.0',
         'pyaes',
