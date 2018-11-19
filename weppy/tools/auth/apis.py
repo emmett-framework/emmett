@@ -173,7 +173,7 @@ class AuthPipe(Pipe):
         #: the Auth() instance
         self.auth = auth
 
-    def open(self):
+    async def open(self):
         # check auth session is valid
         authsess = self.auth.session
         if not authsess:
@@ -206,7 +206,7 @@ class AuthPipe(Pipe):
             ):
                 authsess.last_visit = visit_dt
 
-    def close(self):
+    async def close(self):
         # set correct session expiration if requested by user
         if self.auth.session and self.auth.session.remember:
             session._expires_after(self.auth.session.expiration)

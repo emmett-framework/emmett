@@ -8,8 +8,10 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import asyncio
+
 from functools import wraps
-from ._compat import basestring, with_metaclass
+
 from .helpers import flash
 from .http import HTTP, redirect
 
@@ -31,7 +33,16 @@ class Pipeline(object):
             rv = _wrap_flow_basic
         return rv
 
+    @staticmethod
+    def _awaitable_wrap(f):
+        @wraps(f)
+        async def wrap(*args, **kwargs):
+            return f(*args, **kwargs)
+        return wrap
+
     def __call__(self, f):
+        if not asyncio.iscoroutinefunction(f):
+            f = self._awaitable_wrap(f)
         for pipe in reversed(self.pipes):
             if not isinstance(pipe, Pipe):
                 continue
@@ -86,20 +97,20 @@ class MetaPipe(type):
         return new_class
 
 
-class Pipe(with_metaclass(MetaPipe)):
-    def open(self):
+class Pipe(metaclass=MetaPipe):
+    async def open(self):
         pass
 
-    def pipe(self, next_pipe, **kwargs):
-        return next_pipe(**kwargs)
+    async def pipe(self, next_pipe, **kwargs):
+        return await next_pipe(**kwargs)
 
-    def on_pipe_success(self):
+    async def on_pipe_success(self):
         pass
 
-    def on_pipe_failure(self):
+    async def on_pipe_failure(self):
         pass
 
-    def close(self):
+    async def close(self):
         pass
 
 
@@ -107,12 +118,12 @@ class RequirePipe(Pipe):
     def __init__(self, condition=None, otherwise=None):
         if condition is None or otherwise is None:
             raise SyntaxError('usage: @requires(condition, otherwise)')
-        if not callable(otherwise) and not isinstance(otherwise, basestring):
+        if not callable(otherwise) and not isinstance(otherwise, str):
             raise SyntaxError("'otherwise' param must be string or callable")
         self.condition = condition
         self.otherwise = otherwise
 
-    def pipe(self, next_pipe, **kwargs):
+    async def pipe(self, next_pipe, **kwargs):
         flag = self.condition()
         if not flag:
             if self.otherwise is not None:
@@ -122,7 +133,7 @@ class RequirePipe(Pipe):
             else:
                 flash('Insufficient privileges')
                 redirect('/')
-        return next_pipe(**kwargs)
+        return await next_pipe(**kwargs)
 
 
 class Injector(Pipe):
@@ -137,8 +148,8 @@ class Injector(Pipe):
         for attr in self._injection_attrs_:
             ctx[attr] = getattr(self, attr)
 
-    def pipe(self, next_pipe, **kwargs):
-        ctx = next_pipe(**kwargs)
+    async def pipe(self, next_pipe, **kwargs):
+        ctx = await next_pipe(**kwargs)
         if isinstance(ctx, dict):
             self._inject(ctx)
         return ctx
@@ -146,46 +157,46 @@ class Injector(Pipe):
 
 def _wrap_flow_complete(pipe, f):
     @wraps(f)
-    def flow(**kwargs):
+    async def flow(**kwargs):
         try:
-            output = pipe.pipe(f, **kwargs)
-            pipe.on_pipe_success()
+            output = await pipe.pipe(f, **kwargs)
+            await pipe.on_pipe_success()
             return output
         except HTTP:
-            pipe.on_pipe_success()
+            await pipe.on_pipe_success()
             raise
         except Exception:
-            pipe.on_pipe_failure()
+            await pipe.on_pipe_failure()
             raise
     return flow
 
 
 def _wrap_flow_success(pipe, f):
     @wraps(f)
-    def flow(**kwargs):
+    async def flow(**kwargs):
         try:
-            output = pipe.pipe(f, **kwargs)
-            pipe.on_pipe_success()
+            output = await pipe.pipe(f, **kwargs)
+            await pipe.on_pipe_success()
             return output
         except HTTP:
-            pipe.on_pipe_success()
+            await pipe.on_pipe_success()
             raise
     return flow
 
 
 def _wrap_flow_failure(pipe, f):
     @wraps(f)
-    def flow(**kwargs):
+    async def flow(**kwargs):
         try:
-            return pipe.pipe(f, **kwargs)
+            return await pipe.pipe(f, **kwargs)
         except Exception:
-            pipe.on_pipe_failure()
+            await pipe.on_pipe_failure()
             raise
     return flow
 
 
 def _wrap_flow_basic(pipe, f):
     @wraps(f)
-    def flow(**kwargs):
-        return pipe.pipe(f, **kwargs)
+    async def flow(**kwargs):
+        return await pipe.pipe(f, **kwargs)
     return flow

@@ -51,13 +51,13 @@ class SessionPipe(Pipe):
     def _session_cookie_data(self):
         pass
 
-    def open(self):
+    async def open(self):
         if self.cookie_name in request.cookies:
             current.session = self._load_session()
         if not current.session:
             current.session = self._new_session()
 
-    def close(self):
+    async def close(self):
         expiration = current.session._expiration or self.expire
         self._pack_session(expiration)
 
@@ -114,7 +114,7 @@ class BackendStoredSessionPipe(SessionPipe):
     def _load(self, sid):
         return None
 
-    def close(self):
+    async def close(self):
         if not current.session:
             self._delete_session()
             if current.session._modified:

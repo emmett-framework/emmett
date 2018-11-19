@@ -17,7 +17,7 @@ import stat
 from email.utils import formatdate
 from hashlib import md5
 
-from .globals import current
+from .ctx import current
 from .libs.contenttype import contenttype
 
 status_codes = {

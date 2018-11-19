@@ -281,16 +281,16 @@ class Expose(with_metaclass(MetaExpose)):
         return None, {}
 
     @staticmethod
-    def _before_dispatch(route):
+    async def _before_dispatch(route):
         #: call pipeline `open` method
         for pipe in route._pipeline_flow_open:
-            pipe.open()
+            await pipe.open()
 
     @staticmethod
-    def _after_dispatch(route):
+    async def _after_dispatch(route):
         #: call pipeline `close` method
         for pipe in route._pipeline_flow_close:
-            pipe.close()
+            await pipe.close()
 
     @classmethod
     async def dispatch(cls):
@@ -300,13 +300,13 @@ class Expose(with_metaclass(MetaExpose)):
         if not route:
             raise HTTP(404, body="Resource not found\n")
         request.name = route.name
-        cls._before_dispatch(route)
+        await cls._before_dispatch(route)
         try:
-            route.f(**reqargs)
+            await route.f(**reqargs)
         except Exception:
-            cls._after_dispatch(route)
+            await cls._after_dispatch(route)
             raise
-        cls._after_dispatch(route)
+        await cls._after_dispatch(route)
 
     @classmethod
     def static_versioning(cls):
@@ -482,9 +482,9 @@ class ResponsePipe(Pipe):
     def __init__(self, route):
         self.route = route
 
-    def pipe(self, next_pipe, **kwargs):
+    async def pipe(self, next_pipe, **kwargs):
         response = current.response
-        output = next_pipe(**kwargs)
+        output = await next_pipe(**kwargs)
         if output is None:
             output = {'current': current, 'url': url}
         if isinstance(output, dict):
@@ -508,9 +508,9 @@ class CachedResponsePipe(Pipe):
         self.rule = rule
         self._allowed_methods = {'GET', 'HEAD'}
 
-    def pipe(self, next_pipe, **kwargs):
+    async def pipe(self, next_pipe, **kwargs):
         if current.request.method not in self._allowed_methods:
-            next_pipe(**kwargs)
+            await next_pipe(**kwargs)
             return
         key = self.rule._build_ctx_key(
             self.route, **self.rule._build_ctx(kwargs, self.route, current))
@@ -519,7 +519,7 @@ class CachedResponsePipe(Pipe):
             current.response.output = data['content']
             current.response.headers.update(data['headers'])
             return
-        next_pipe(**kwargs)
+        await next_pipe(**kwargs)
         if current.response.status == 200:
             self.rule.cache.set(
                 key, {

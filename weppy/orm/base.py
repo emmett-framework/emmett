@@ -32,16 +32,16 @@ class DatabasePipe(Pipe):
     def __init__(self, db):
         self.db = db
 
-    def open(self):
+    async def open(self):
         self.db.connection_open()
 
-    def on_pipe_success(self):
+    async def on_pipe_success(self):
         self.db.commit()
 
-    def on_pipe_failure(self):
+    async def on_pipe_failure(self):
         self.db.rollback()
 
-    def close(self):
+    async def close(self):
         self.db.connection_close()
 
 
