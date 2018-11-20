@@ -13,29 +13,52 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import contextvars
 import heapq
 import threading
 import time
+
 from collections import OrderedDict
 from pydal.connection import ConnectionPool
 from pydal.helpers.classes import ConnectionConfigurationMixin
+
 from .transactions import _transaction
 
 
-class ConnectionState(threading.local):
-    def __init__(self, **kwargs):
-        super(ConnectionState, self).__init__(**kwargs)
-        self.reset()
+class ConnectionState(object):
+    __slots__ = ('_connection', '_transactions', '_cursors', '_closed')
 
-    def reset(self):
-        self.closed = True
-        self.connection = None
-        self.cursors = OrderedDict()
-        self.transactions = []
+    def __init__(self):
+        self._connection = contextvars.ContextVar('_emt_orm_cs_connection')
+        self._transactions = contextvars.ContextVar('_emt_orm_cs_transactions')
+        self._cursors = contextvars.ContextVar('_emt_orm_cs_cursors')
+        self._closed = contextvars.ContextVar('_emt_orm_cs_closed')
+
+    @property
+    def connection(self):
+        return self._connection.get()
+
+    @property
+    def transactions(self):
+        return self._transactions.get()
+
+    @property
+    def cursors(self):
+        return self._cursors.get()
+
+    @property
+    def closed(self):
+        return self._closed.get()
 
     def set_connection(self, connection):
-        self.connection = connection
-        self.closed = False
+        self._connection.set(connection)
+        self._closed.set(False)
+
+    def reset(self):
+        self._connection.set(None)
+        self._transactions.set([])
+        self._cursors.set(OrderedDict())
+        self._closed.set(True)
 
 
 class ConnectionManager(object):
