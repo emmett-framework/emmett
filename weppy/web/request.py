@@ -75,10 +75,11 @@ class Request(object):
     async def body(self):
         try:
             print('ensuring body_future')
-            body_future = asyncio.ensure_future(self._input)
-            rv = await asyncio.wait_for(body_future, timeout=self.body_timeout)
+            # body_future = asyncio.ensure_future(self._input)
+            # rv = await asyncio.wait_for(body_future, timeout=self.body_timeout)
+            rv = await asyncio.wait_for(self._input, timeout=self.body_timeout)
         except asyncio.TimeoutError:
-            body_future.cancel()
+            # body_future.cancel()
             # from ..exceptions import RequestTimeout
             # raise RequestTimeout()
             raise

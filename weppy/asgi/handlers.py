@@ -88,9 +88,9 @@ class RequestHandler(Handler):
     async def __call__(self, scope, receive, send):
         scope['emt.now'] = datetime.utcnow()
         scope['emt.input'] = Body()
-        task_request = asyncio.ensure_future(
+        task_request = asyncio.create_task(
             self.handle_request(scope, send))
-        task_events = asyncio.ensure_future(
+        task_events = asyncio.create_task(
             self.handle_events(scope, receive, send))
         _, pending = await asyncio.wait(
             [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
