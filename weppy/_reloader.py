@@ -13,17 +13,14 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from __future__ import print_function
 import multiprocessing
 import os
-import sys
-import time
 import signal
 import subprocess
-# import threading
-from itertools import chain
+import sys
+import time
 
-# from ._compat import PY2, iteritems
+from itertools import chain
 
 
 def _iter_module_files():

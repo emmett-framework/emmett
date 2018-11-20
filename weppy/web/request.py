@@ -2,7 +2,9 @@
 
 import asyncio
 import pendulum
-from .._compat import SimpleCookie
+
+from http.cookies import SimpleCookie
+
 from ..utils import cachedprop, cachedasyncprop
 
 
