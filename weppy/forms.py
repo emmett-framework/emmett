@@ -11,13 +11,14 @@
 
 from functools import wraps
 from ._compat import iteritems, iterkeys, string_types
+from .ctx import current, request, session
 from .datastructures import sdict
 from .expose import Expose
-from .globals import current, request, session
+# from .globals import current, request, session
 from .html import HtmlTag, tag, cat, asis
 from .orm import Field, Model
 from .security import CSRFStorage
-from .utils import cachedprop
+from .utils import cachedprop, cachedasyncprop
 from .validators import isEmptyOr
 
 __all__ = ['Form', 'ModelForm']
@@ -33,6 +34,12 @@ class Form(HtmlTag):
     @staticmethod
     def _get_default_style():
         return Expose.application.config.ui.forms_style or FormStyle
+
+    @classmethod
+    async def create(cls, *args, **kwargs):
+        form = cls(*args, **kwargs)
+        await form._process()
+        return form
 
     def __init__(self, fields={}, **kwargs):
         #: get fields from kwargs
@@ -69,6 +76,7 @@ class Form(HtmlTag):
         self.errors = sdict()
         self.params = sdict()
         self.input_params = None
+        # self._awaited = False
         self.processed = False
         self.accepted = False
         self.formkey = "undef"
@@ -82,14 +90,12 @@ class Form(HtmlTag):
             raise RuntimeError(
                 '%s is an invalid weppy form style' %
                 self.attributes['formstyle'].__name__)
-        #: process the form
-        self._process()
 
     @property
     def csrf(self):
-        _csrf = self.attributes["csrf"]
-        return _csrf is True or (_csrf == 'auto' and
-                                 self.attributes['_method'] == 'POST')
+        _csrf = self.attributes['csrf']
+        return _csrf is True or (
+            _csrf == 'auto' and self.attributes['_method'] == 'POST')
 
     def _load_csrf(self):
         if not self.csrf:
@@ -101,6 +107,7 @@ class Form(HtmlTag):
     @property
     def _submitted(self):
         if self.csrf:
+            print(session._csrf, self.input_params._csrf_token)
             return self.input_params._csrf_token in session._csrf
         return self.input_params._csrf_token is 'undef'
 
@@ -120,14 +127,23 @@ class Form(HtmlTag):
         else:
             self.params[field.name] = value
 
-    def _process(self):
-        self._load_csrf()
-        method = self.attributes['_method']
-        # get appropriate input variables
-        if method is "POST":
-            self.input_params = sdict(request.body_params)
+    # async def __await__(self):
+    #     print('Form await', self._awaited)
+    #     if not self._awaited:
+    #         await self._process()
+    #         self._awaited = True
+
+    async def _load_input_params(self):
+        if self.attributes['_method'] == 'POST':
+            params = await request.body_params
         else:
-            self.input_params = sdict(request.query_params)
+            params = request.query_params
+        return sdict(params)
+
+    async def _process(self):
+        self._load_csrf()
+        print('CSRF status', self.csrf)
+        self.input_params = await self._load_input_params()
         # run processing if needed
         if self._submitted:
             self.processed = True
@@ -261,13 +277,14 @@ class ModelForm(Form):
                 return
         super(ModelForm, self)._validate_value(field, value)
 
-    def _process(self):
+    async def _process(self):
         #: send record id to validators if needed
         current._dbvalidation_record_id_ = None
         if self.record:
             current._dbvalidation_record_id_ = self.record.id
         #: load super `_process`
-        Form._process(self)
+        # await Form._process(self)
+        await super()._process()
         #: clear current and run additional operations for DAL
         del current._dbvalidation_record_id_
         if self.accepted:
@@ -561,12 +578,20 @@ class FormStyle(object):
         return tag.form(self.parent, **self.attr)
 
 
+async def form(*args, **kwargs):
+    return await Form.create(*args, **kwargs)
+
+
+async def model_form(*args, **kwargs):
+    return await ModelForm.create(*args, **kwargs)
+
+
 #: patch Model to add a 'form' method
-def add_forms_on_model(cls):
-    @wraps(cls)
-    def wrapped(model, *args, **kwargs):
-        return cls(model.table, *args, **kwargs)
+def add_forms_on_model(factory):
+    @wraps(factory)
+    async def wrapped(model, *args, **kwargs):
+        return await factory(model.table, *args, **kwargs)
     return wrapped
 
 
-setattr(Model, 'form', classmethod(add_forms_on_model(ModelForm)))
+setattr(Model, 'form', classmethod(add_forms_on_model(model_form)))

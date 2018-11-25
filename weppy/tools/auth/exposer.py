@@ -86,7 +86,7 @@ class AuthModule(AppModule):
         return flash(message, 'auth')
 
     #: routes
-    def _login(self):
+    async def _login(self):
         def _validate_form(form):
             row = self.config.models['user'].get(email=form.params.email)
             if row:
@@ -98,7 +98,7 @@ class AuthModule(AppModule):
 
         rv = {'message': None}
         res = {}
-        rv['form'] = self.ext.forms.login(onvalidation=_validate_form)
+        rv['form'] = await self.ext.forms.login(onvalidation=_validate_form)
         if rv['form'].accepted:
             messages = self.config.messages
             if res['user'].registration_key == 'pending':
@@ -123,7 +123,7 @@ class AuthModule(AppModule):
                 self._callbacks['after_login'](rv['form'])
         return rv
 
-    def _logout(self):
+    async def _logout(self):
         self.ext.log_event(
             self.config.messages['logout_log'], {'id': self.auth.user.id})
         session.auth = None
@@ -133,7 +133,7 @@ class AuthModule(AppModule):
             redirect(redirect_after)
         self._callbacks['after_logout']()
 
-    def _registration(self):
+    async def _registration(self):
         def _validate_form(form):
             if form.params.password.password != form.params.password2.password:
                 form.errors.password = "password mismatch"
@@ -145,7 +145,8 @@ class AuthModule(AppModule):
 
         rv = {'message': None}
         res = {}
-        rv['form'] = self.ext.forms.registration(onvalidation=_validate_form)
+        rv['form'] = await self.ext.forms.registration(
+            onvalidation=_validate_form)
         if rv['form'].accepted:
             logged_in = False
             row = self.config.models['user'].get(res['id'])
@@ -178,8 +179,8 @@ class AuthModule(AppModule):
             self._callbacks['after_registration'](rv['form'], row, logged_in)
         return rv
 
-    def _profile(self):
-        rv = {'message': None, 'form': self.ext.forms.profile()}
+    async def _profile(self):
+        rv = {'message': None, 'form': await self.ext.forms.profile()}
         if rv['form'].accepted:
             self.auth.user.update(
                 self.config.models['user'].table._filter_fields(
@@ -194,7 +195,7 @@ class AuthModule(AppModule):
             self._callbacks['after_profile'](rv['form'])
         return rv
 
-    def _email_verification(self, key):
+    async def _email_verification(self, key):
         rv = {'message': None}
         user = self.config.models['user'].get(registration_key=key)
         if not user:
@@ -218,7 +219,7 @@ class AuthModule(AppModule):
         self._callbacks['after_email_verification'](user)
         return rv
 
-    def _password_retrieval(self):
+    async def _password_retrieval(self):
         def _validate_form(form):
             messages = self.config.messages
             row = self.config.models['user'].get(email=form.params.email)
@@ -235,7 +236,7 @@ class AuthModule(AppModule):
 
         rv = {'message': None}
         res = {}
-        rv['form'] = self.ext.forms.password_retrieval(
+        rv['form'] = await self.ext.forms.password_retrieval(
             onvalidation=_validate_form)
         if rv['form'].accepted:
             user = res['user']
@@ -257,7 +258,7 @@ class AuthModule(AppModule):
             self._callbacks['after_password_retrieval'](user)
         return rv
 
-    def _password_reset(self, key):
+    async def _password_reset(self, key):
         def _validate_form(form):
             if form.params.password.password != form.params.password2.password:
                 form.errors.password = "password mismatch"
@@ -273,7 +274,8 @@ class AuthModule(AppModule):
                 redirect(redirect_after)
             self._callbacks['after_password_reset'](user)
             return rv
-        rv['form'] = self.ext.forms.password_reset(onvalidation=_validate_form)
+        rv['form'] = await self.ext.forms.password_reset(
+            onvalidation=_validate_form)
         if rv['form'].accepted:
             user.update_record(
                 password=str(rv['form'].params.password),
@@ -291,7 +293,7 @@ class AuthModule(AppModule):
             self._callbacks['after_password_reset'](user)
         return rv
 
-    def _password_change(self):
+    async def _password_change(self):
         def _validate_form(form):
             messages = self.config.messages
             if form.params.old_password != row.password:
@@ -306,7 +308,7 @@ class AuthModule(AppModule):
 
         rv = {'message': None}
         row = self.config.models['user'].get(self.auth.user.id)
-        rv['form'] = self.ext.forms.password_change(
+        rv['form'] = await self.ext.forms.password_change(
             onvalidation=_validate_form)
         if rv['form'].accepted:
             row.update_record(password=str(rv['form'].params.new_password))

@@ -3,8 +3,13 @@
 import asyncio
 import pendulum
 
+from cgi import FieldStorage, parse_header
+from collections import Mapping
 from http.cookies import SimpleCookie
+from io import BytesIO
+from urllib.parse import parse_qs
 
+from ..datastructures import sdict
 from ..utils import cachedprop, cachedasyncprop
 
 
@@ -54,10 +59,56 @@ class Body(object):
         # self._has_data.set()
 
 
+class Headers(Mapping):
+    def __init__(self, scope):
+        self._header_list = scope['headers']
+
+    @cachedprop
+    def _data(self):
+        rv = {}
+        for key, val in self._header_list:
+            rv[key.decode()] = val.decode()
+        return rv
+
+    __hash__ = None
+
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def __contains__(self, key):
+        return key in self._data
+
+    def __iter__(self):
+        for key, value in self._data.items():
+            yield key, value
+
+    def __len__(self):
+        return len(self._data)
+
+    def get(self, key, default=None, cast=None):
+        rv = self._data.get(key, default)
+        if cast is None:
+            return rv
+        try:
+            return cast(rv)
+        except ValueError:
+            return default
+
+    def items(self):
+        return self._data.items()
+
+    def keys(self):
+        return self._data.keys()
+
+    def values(self):
+        return self._data.values()
+
+
 class Request(object):
     def __init__(self, scope, max_content_length=None, body_timeout=None):
         self._scope = scope
         print(scope)
+        print(type(scope['headers']))
         self.max_content_length = max_content_length
         self.body_timeout = body_timeout
         self.scheme = scope['scheme']
@@ -72,16 +123,16 @@ class Request(object):
         #     raise RequestEntityTooLarge()
         # self._input = Body(self.max_content_length)
         self._input = scope['emt.input']
+        self.headers = Headers(scope)
 
     @cachedasyncprop
     async def body(self):
         try:
             print('ensuring body_future')
-            # body_future = asyncio.ensure_future(self._input)
-            # rv = await asyncio.wait_for(body_future, timeout=self.body_timeout)
-            rv = await asyncio.wait_for(self._input, timeout=self.body_timeout)
+            body_future = asyncio.ensure_future(self._input)
+            rv = await asyncio.wait_for(body_future, timeout=self.body_timeout)
         except asyncio.TimeoutError:
-            # body_future.cancel()
+            body_future.cancel()
             # from ..exceptions import RequestTimeout
             # raise RequestTimeout()
             raise
@@ -96,8 +147,87 @@ class Request(object):
         return self.now.in_timezone(pendulum.local_timezone())
 
     @cachedprop
+    def content_type(self):
+        return parse_header(self.headers.get('content-type', ''))[0]
+
+    @cachedprop
+    def query_params(self):
+        rv = sdict()
+        for key, values in parse_qs(
+            self._scope['query_string'].decode('ascii'), keep_blank_values=True
+        ).items():
+            if len(values) == 1:
+                rv[key] = values[0]
+                continue
+            rv[key] = values
+        return rv
+
+    @cachedprop
     def cookies(self):
         cookies = SimpleCookie()
         # for cookie in self.environ.get('HTTP_COOKIE', '').split(';'):
         #     cookies.load(cookie)
         return cookies
+
+    _empty_body_methods = {v: v for v in ['GET', 'HEAD', 'OPTIONS']}
+
+    @cachedasyncprop
+    async def body_params(self):
+        if self._empty_body_methods.get(self.method):
+            return sdict()
+        # future = asyncio.run_coroutine_threadsafe(
+        #     self._load_params(), asyncio.get_event_loop())
+        # return future.result(3)
+        return await self._load_params()
+
+    def _load_params_form_urlencoded(self, data):
+        rv = sdict()
+        for key, values in parse_qs(
+            data.decode(), keep_blank_values=True
+        ).items():
+            if len(values) == 1:
+                rv[key] = values[0]
+                continue
+            rv[key] = values
+        return rv
+
+    def _load_params_form_multipart(self, data):
+        rv = sdict()
+        field_storage = FieldStorage(
+            BytesIO(data), headers=self.headers,
+            environ={'REQUEST_METHOD': self.method},
+            keep_blank_values=True
+        )
+        for key in field_storage:
+            field = field_storage[key]
+            if isinstance(field, list):
+                if len(field) > 1:
+                    rv[key] = []
+                    for element in field:
+                        rv[key].append(element.value)
+                else:
+                    rv[key] = field[0].value
+            elif (
+                isinstance(field, FieldStorage) and
+                field.filename is not None
+            ):
+                # self._files[key] = FileStorage(  # type: ignore
+                #     io.BytesIO(field.file.read()), field.filename,
+                #     field.name, field.type, field.headers,  # type: ignore # noqa: E501
+                # )
+                continue
+            else:
+                rv[key] = field.value
+        print('body_params', rv)
+        return rv
+
+    _params_loaders = {
+        'application/x-www-form-urlencoded': _load_params_form_urlencoded,
+        'multipart/form-data': _load_params_form_multipart
+    }
+
+    async def _load_params(self):
+        if not self.content_type:
+            return
+        loader = self._params_loaders[self.content_type]
+        return loader(self, await self.body)

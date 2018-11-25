@@ -10,7 +10,7 @@
 """
 
 from ..._compat import iterkeys
-from ...forms import Form, ModelForm
+from ...forms import form, model_form
 from ...orm import Field
 
 
@@ -119,35 +119,35 @@ def password_change_fields(auth):
 
 
 @AuthForms.register_for('login', fields=login_fields)
-def login_form(auth, fields, **kwargs):
+async def login_form(auth, fields, **kwargs):
     opts = {
         'submit': auth.ext.config.messages['login_button'], 'keepvalues': True}
     opts.update(**kwargs)
-    return Form(
+    return await form(
         fields,
         **opts
     )
 
 
 @AuthForms.register_for('registration', fields=registration_fields)
-def registration_form(auth, fields, **kwargs):
+async def registration_form(auth, fields, **kwargs):
     opts = {
         'submit': auth.ext.config.messages['registration_button'],
         'keepvalues': True}
     opts.update(**kwargs)
-    return Form(
+    return await form(
         fields,
         **opts
     )
 
 
 @AuthForms.register_for('profile', fields=profile_fields)
-def profile_form(auth, fields, **kwargs):
+async def profile_form(auth, fields, **kwargs):
     opts = {
         'submit': auth.ext.config.messages['profile_button'],
         'keepvalues': True}
     opts.update(**kwargs)
-    return ModelForm(
+    return await model_form(
         auth.models['user'].table,
         record=auth.user,
         fields=fields,
@@ -157,34 +157,34 @@ def profile_form(auth, fields, **kwargs):
 
 
 @AuthForms.register_for('password_retrieval', fields=password_retrieval_fields)
-def password_retrieval_form(auth, fields, **kwargs):
+async def password_retrieval_form(auth, fields, **kwargs):
     opts = {'submit': auth.ext.config.messages['password_retrieval_button']}
     opts.update(**kwargs)
-    return Form(
+    return await form(
         fields,
         **opts
     )
 
 
 @AuthForms.register_for('password_reset', fields=password_reset_fields)
-def password_reset_form(auth, fields, **kwargs):
+async def password_reset_form(auth, fields, **kwargs):
     opts = {
         'submit': auth.ext.config.messages['password_reset_button'],
         'keepvalues': True}
     opts.update(**kwargs)
-    return Form(
+    return await form(
         fields,
         **opts
     )
 
 
 @AuthForms.register_for('password_change', fields=password_change_fields)
-def password_change_form(auth, fields, **kwargs):
+async def password_change_form(auth, fields, **kwargs):
     opts = {
         'submit': auth.ext.config.messages['password_change_button'],
         'keepvalues': True}
     opts.update(**kwargs)
-    return Form(
+    return await form(
         fields,
         **opts
     )
