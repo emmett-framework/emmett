@@ -10,7 +10,7 @@
 """
 
 from ..._compat import iterkeys
-from ...forms import form, model_form
+from ...forms import Form, ModelForm
 from ...orm import Field
 
 
@@ -123,7 +123,7 @@ async def login_form(auth, fields, **kwargs):
     opts = {
         'submit': auth.ext.config.messages['login_button'], 'keepvalues': True}
     opts.update(**kwargs)
-    return await form(
+    return await Form(
         fields,
         **opts
     )
@@ -135,7 +135,7 @@ async def registration_form(auth, fields, **kwargs):
         'submit': auth.ext.config.messages['registration_button'],
         'keepvalues': True}
     opts.update(**kwargs)
-    return await form(
+    return await Form(
         fields,
         **opts
     )
@@ -147,7 +147,7 @@ async def profile_form(auth, fields, **kwargs):
         'submit': auth.ext.config.messages['profile_button'],
         'keepvalues': True}
     opts.update(**kwargs)
-    return await model_form(
+    return await ModelForm(
         auth.models['user'].table,
         record=auth.user,
         fields=fields,
@@ -160,7 +160,7 @@ async def profile_form(auth, fields, **kwargs):
 async def password_retrieval_form(auth, fields, **kwargs):
     opts = {'submit': auth.ext.config.messages['password_retrieval_button']}
     opts.update(**kwargs)
-    return await form(
+    return await Form(
         fields,
         **opts
     )
@@ -172,7 +172,7 @@ async def password_reset_form(auth, fields, **kwargs):
         'submit': auth.ext.config.messages['password_reset_button'],
         'keepvalues': True}
     opts.update(**kwargs)
-    return await form(
+    return await Form(
         fields,
         **opts
     )
@@ -184,7 +184,7 @@ async def password_change_form(auth, fields, **kwargs):
         'submit': auth.ext.config.messages['password_change_button'],
         'keepvalues': True}
     opts.update(**kwargs)
-    return await form(
+    return await Form(
         fields,
         **opts
     )
