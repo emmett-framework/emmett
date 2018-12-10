@@ -40,7 +40,7 @@ def dynamic_handler(app, environ, start_response):
         error_handler = app.error_handlers.get(http.status_code)
         if error_handler:
             output = error_handler()
-            http = HTTP(http.status_code, output, http.headers)
+            http = HTTP(http.status_code, output, response.headers)
         #: always set cookies
         http.set_cookies(response.cookies)
     return http.to(environ, start_response)
