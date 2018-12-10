@@ -96,13 +96,13 @@ app.pipeline = [
 
 #: exposing functions
 @app.route("/")
-def index():
+async def index():
     posts = Post.all().select(orderby=~Post.date)
     return dict(posts=posts)
 
 
 @app.route("/post/<int:pid>")
-def one(pid):
+async def one(pid):
     def _validate_comment(form):
         # manually set post id in comment form
         form.params.post = pid
@@ -112,7 +112,7 @@ def one(pid):
         abort(404)
     # get comments and create a form for commenting
     comments = post.comments(orderby=~Comment.date)
-    form = Comment.form(onvalidation=_validate_comment)
+    form = await Comment.form(onvalidation=_validate_comment)
     if form.accepted:
         redirect(url('one', pid))
     return locals()
@@ -120,8 +120,8 @@ def one(pid):
 
 @app.route("/new")
 @requires(lambda: auth.has_membership('admin'), url('index'))
-def new_post():
-    form = Post.form()
+async def new_post():
+    form = await Post.form()
     if form.accepted:
         redirect(url('one', form.params.id))
     return dict(form=form)
