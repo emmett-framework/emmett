@@ -13,9 +13,9 @@ import time
 from functools import wraps
 from ..._compat import itervalues, iteritems
 from ...cli import pass_script_info
+from ...ctx import session, now
 from ...datastructures import sdict
 from ...extensions import Extension, listen_signal
-from ...globals import session, now
 from ...language import T
 from ...language.translator import TElement
 from ...orm.helpers import decamelize

@@ -68,7 +68,6 @@ class Handler(metaclass=MetaHandler):
         await self.handle_events(scope, receive, send)
 
     async def handle_events(self, scope, receive, send):
-        print('handle_events')
         task, event = _event_looper, None
         while task:
             task, event = await task(self, scope, receive, send, event)
@@ -109,7 +108,6 @@ class HTTPHandler(RequestHandler):
 
     @Handler.on_event('http.request')
     async def event_request(self, scope, receive, send, event):
-        print('http.request.body')
         scope['emt.input'].append(event['body'])
         if not event.get('more_body', False):
             scope['emt.input'].set_complete()
@@ -152,7 +150,6 @@ class HTTPHandler(RequestHandler):
                     body = '<html><body>Internal error</body></html>'
             self.app.log.exception('Application exception:')
             http = HTTP(500, body)
-        print('GOING TO SEND!')
         await asyncio.wait_for(http.send(scope, send), None)
 
     async def _pre_handler(self, scope, send):
@@ -227,9 +224,7 @@ class WSHandler(RequestHandler):
 
 
 async def _event_looper(handler, scope, receive, send, event):
-    print('_event_looper', event)
     event = await receive()
-    print('_event_looper', 'received', event)
     event_handler = handler.get_event_handler(event['type'])
     return event_handler, event
 

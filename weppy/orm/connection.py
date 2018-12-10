@@ -33,6 +33,7 @@ class ConnectionState(object):
         self._transactions = contextvars.ContextVar('_emt_orm_cs_transactions')
         self._cursors = contextvars.ContextVar('_emt_orm_cs_cursors')
         self._closed = contextvars.ContextVar('_emt_orm_cs_closed')
+        self.reset()
 
     @property
     def connection(self):
@@ -50,15 +51,17 @@ class ConnectionState(object):
     def closed(self):
         return self._closed.get()
 
-    def set_connection(self, connection):
+    def __set(self, connection, closed):
         self._connection.set(connection)
-        self._closed.set(False)
-
-    def reset(self):
-        self._connection.set(None)
         self._transactions.set([])
         self._cursors.set(OrderedDict())
-        self._closed.set(True)
+        self._closed.set(closed)
+
+    def set_connection(self, connection):
+        self.__set(connection, False)
+
+    def reset(self):
+        self.__set(None, True)
 
 
 class ConnectionManager(object):

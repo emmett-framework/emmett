@@ -16,7 +16,6 @@ import pendulum
 from datetime import datetime
 
 from ._internal import ObjectProxy
-# from .globals import Request, Response
 from .globals import Response
 from .language import T, _instance as _translator_instance
 from .utils import cachedprop
@@ -52,7 +51,6 @@ class Current(object):
     __slots__ = ('_ctx',)
 
     def __init__(self):
-        # self.ctx = contextvars.ContextVar('ctx')
         object.__setattr__(self, '_ctx', contextvars.ContextVar('ctx'))
         self._ctx.set(Context())
 
@@ -71,6 +69,9 @@ class Current(object):
 
     def __setattr__(self, name, value):
         setattr(self.ctx, name, value)
+
+    def __delattr__(self, name):
+        delattr(self.ctx, name)
 
     @property
     def language(self):

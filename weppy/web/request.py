@@ -107,8 +107,8 @@ class Headers(Mapping):
 class Request(object):
     def __init__(self, scope, max_content_length=None, body_timeout=None):
         self._scope = scope
-        print(scope)
-        print(type(scope['headers']))
+        # print(scope)
+        # print(type(scope['headers']))
         self.max_content_length = max_content_length
         self.body_timeout = body_timeout
         self.scheme = scope['scheme']
@@ -165,8 +165,8 @@ class Request(object):
     @cachedprop
     def cookies(self):
         cookies = SimpleCookie()
-        # for cookie in self.environ.get('HTTP_COOKIE', '').split(';'):
-        #     cookies.load(cookie)
+        for cookie in self.headers.get('cookie', '').split(';'):
+            cookies.load(cookie)
         return cookies
 
     _empty_body_methods = {v: v for v in ['GET', 'HEAD', 'OPTIONS']}
@@ -218,7 +218,6 @@ class Request(object):
                 continue
             else:
                 rv[key] = field.value
-        print('body_params', rv)
         return rv
 
     _params_loaders = {

@@ -40,7 +40,7 @@ class cachedasyncprop(cachedprop):
         async def wrapper():
             return result
 
-        obj.__dict__[self.__name__] = wrapper
+        obj.__dict__[self.__name__] = wrapper()
         return result
 
 

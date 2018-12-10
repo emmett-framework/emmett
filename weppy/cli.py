@@ -129,7 +129,8 @@ class ScriptInfo(object):
         self._loaded_app = None
         self.db_var_name = None
         #: Set environment flag
-        os.environ['WEPPY_CLI_ENV'] = 'true'
+        # TODO: custom commands?
+        # os.environ['WEPPY_CLI_ENV'] = 'true'
 
     def load_appctx(self):
         if self._loaded_ctx is not None:
@@ -272,6 +273,7 @@ def run_command(info, host, port, reloader, debug):
 @pass_script_info
 def shell_command(info):
     import code
+    os.environ['WEPPY_CLI_ENV'] = 'true'
     ctx = info.load_appctx()
     app = info.load_app()
     banner = 'Python %s on %s\nweppy %s shell on app: %s' % (

@@ -10,8 +10,8 @@
 """
 
 from ...app import AppModule
+from ...ctx import request, session
 from ...expose import url
-from ...globals import request, session
 from ...helpers import flash, stream_dbfile
 from ...http import redirect
 from ...pipeline import RequirePipe
@@ -117,7 +117,7 @@ class AuthModule(AppModule):
                     res['user'], rv['form'].params.get('remember', False))
                 self.ext.log_event(
                     self.config.messages['login_log'], {'id': res['user'].id})
-                redirect_after = request.body_params._after
+                redirect_after = (await request.body_params)._after
                 if redirect_after:
                     redirect(redirect_after)
                 self._callbacks['after_login'](rv['form'])
@@ -173,7 +173,7 @@ class AuthModule(AppModule):
                 self.ext.log_event(
                     self.config.messages['registration_log'],
                     {'id': res['id']})
-            redirect_after = request.body_params._after
+            redirect_after = (await request.body_params)._after
             if redirect_after:
                 redirect(redirect_after)
             self._callbacks['after_registration'](rv['form'], row, logged_in)
@@ -189,7 +189,7 @@ class AuthModule(AppModule):
             self.flash(rv['message'])
             self.ext.log_event(
                 self.config.messages['profile_log'], {'id': self.auth.user.id})
-            redirect_after = request.body_params._after
+            redirect_after = (await request.body_params)._after
             if redirect_after:
                 redirect(redirect_after)
             self._callbacks['after_profile'](rv['form'])
@@ -252,7 +252,7 @@ class AuthModule(AppModule):
                 self.config.messages['password_retrieval_log'],
                 {'id': user.id},
                 user=user)
-            redirect_after = request.body_params._after
+            redirect_after = (await request.body_params)._after
             if redirect_after:
                 redirect(redirect_after)
             self._callbacks['after_password_retrieval'](user)
