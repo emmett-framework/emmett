@@ -17,10 +17,10 @@ from ._compat import basestring
 from ._internal import get_root_path, create_missing_app_folders
 from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
 from .asgi.server import run as asgi_run
+from .ctx import current
 from .datastructures import sdict, ConfigData
 from .expose import Expose, url
 from .extensions import Extension, TemplateExtension
-from .globals import current
 from .templating.core import Templater
 from .utils import dict_to_sdict, cachedprop, read_file
 from .wsgi import (

@@ -19,7 +19,6 @@ from ._compat import PY2, with_metaclass, itervalues, iteritems, text_type
 from .pipeline import Pipeline, Pipe
 from .templating.helpers import TemplateMissingError
 from .cache import RouteCacheRule
-# from .globals import current
 from .ctx import current
 from .http import HTTP
 

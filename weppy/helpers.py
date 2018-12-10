@@ -19,13 +19,13 @@ _REGEX_DBSTREAM = re.compile('(?P<table>.*?)\.(?P<field>.*?)\..*')
 
 def abort(code, body=''):
     from .http import HTTP
-    from .globals import current
+    from .ctx import current
     current.response.status = code
     raise HTTP(code, body)
 
 
 def stream_file(path):
-    from .globals import request, response
+    from .ctx import request, response
     from .expose import Expose
     from .stream import streamer
     fullfilename = os.path.join(Expose.application.root_path, path)
@@ -50,7 +50,7 @@ def stream_dbfile(db, name):
         abort(404)
     except IOError:
         abort(404)
-    from .globals import request, response
+    from .ctx import request, response
     if isinstance(fullfilename, string_types):
         #: handle file uploads
         from .stream import streamer
@@ -68,7 +68,7 @@ def stream_dbfile(db, name):
 
 def flash(message, category='message'):
     #: Flashes a message to the next request.
-    from .globals import session
+    from .ctx import session
     if session._flashes is None:
         session._flashes = []
     session._flashes.append((category, message))
@@ -79,7 +79,7 @@ def get_flashed_messages(with_categories=False, category_filter=[]):
     #  By default just the messages are returned, but when `with_categories`
     #  is set to `True`, the return value will be a list of tuples in the
     #  form `(category, message)` instead.
-    from .globals import session
+    from .ctx import session
     if not isinstance(category_filter, list):
         category_filter = [category_filter]
     try:

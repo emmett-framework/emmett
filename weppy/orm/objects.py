@@ -20,8 +20,8 @@ from pydal.objects import (
 from .._compat import (
     string_types, integer_types, implements_iterator, implements_to_string,
     iterkeys, iteritems, to_unicode)
+from ..ctx import current
 from ..datastructures import sdict
-from ..globals import current
 from ..html import tag
 from ..serializers import xml_encode
 from ..utils import cachedprop

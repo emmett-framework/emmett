@@ -19,7 +19,7 @@ from .._compat import (
     PY2, implements_bool, implements_to_string, iteritems, iterkeys,
     to_unicode
 )
-from ..globals import current
+from ..ctx import current
 from ..html import asis, htmlescape
 from ..utils import cachedprop
 from .helpers import (

@@ -10,7 +10,7 @@
 """
 
 from ..._compat import iterkeys, iteritems
-from ...globals import current, request, now
+from ...ctx import current, request, now
 from ...orm import Model, Field, before_insert, rowmethod
 from ...security import uuid
 

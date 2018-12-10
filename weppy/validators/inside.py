@@ -14,6 +14,7 @@
 """
 
 from .._compat import integer_types, to_native, to_unicode
+from ..ctx import current
 from ..utils import cachedprop
 from .basic import Validator
 from .helpers import options_sorter, translate
@@ -213,7 +214,6 @@ class notInDB(DBValidator):
         row = self.dbset.where(
             self.field == value).select(limitby=(0, 1)).first()
         if row:
-            from ..globals import current
             record_id = getattr(current, '_dbvalidation_record_id_', None)
             if row.id != record_id:
                 return value, translate(self.message)

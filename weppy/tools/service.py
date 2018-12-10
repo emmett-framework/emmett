@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ..globals import response
+from ..ctx import response
 from ..pipeline import Pipe
 from ..serializers import Serializers
 

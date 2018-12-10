@@ -14,7 +14,7 @@
 import re
 from datetime import tzinfo, timedelta
 from .._compat import StringIO, string_types, to_unicode
-from ..globals import current
+from ..ctx import current
 from ..security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
 
 
