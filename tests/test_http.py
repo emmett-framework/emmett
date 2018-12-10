@@ -10,7 +10,12 @@
 """
 
 from datetime import datetime
+from weppy.globals import current
 from weppy.http import HTTP, redirect
+
+
+def _get_response_headers():
+    return getattr(current, 'response', {'headers': {}})['headers']
 
 
 def test_http_body_none():
@@ -18,7 +23,7 @@ def test_http_body_none():
 
     assert http.body == []
     assert http.status_code == 200
-    assert http.headers == []
+    assert http.headers == _get_response_headers()
 
 
 def test_http_body_list():
@@ -26,7 +31,7 @@ def test_http_body_list():
 
     assert http.body == [b'Test list']
     assert http.status_code == 200
-    assert http.headers == []
+    assert http.headers == _get_response_headers()
 
 
 def test_http():
