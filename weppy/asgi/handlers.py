@@ -234,7 +234,6 @@ async def _event_missing(handler, receive, send):
 
 
 async def _cancel_tasks(tasks):
-    print('_cancel_tasks', tasks)
     for task in tasks:
         task.cancel()
     await asyncio.gather(*tasks, return_exceptions=True)
