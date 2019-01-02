@@ -152,16 +152,16 @@ class HTTPHandler(RequestHandler):
             http = HTTP(500, body)
         await asyncio.wait_for(http.send(scope, send), None)
 
-    async def _pre_handler(self, scope, send):
+    def _pre_handler(self, scope, send):
         scope['emt.path'] = scope['path'] or '/'
-        return await self.static_handler(scope, send)
+        return self.static_handler(scope, send)
 
-    async def _prefix_handler(self, scope, send):
+    def _prefix_handler(self, scope, send):
         path = scope['path'] or '/'
         if not path.startswith(self.app.route._prefix_main):
             return HTTP(404)
         scope['emt.path'] = path[self.app.route._prefix_main_len:] or '/'
-        return await self.static_handler(scope, send)
+        return self.static_handler(scope, send)
 
     def _static_lang_matcher(self, path):
         match = REGEX_STATIC_LANG.match(path)
@@ -182,7 +182,7 @@ class HTTPHandler(RequestHandler):
             return static_file, version
         return None, None
 
-    async def _static_handler(self, scope, send):
+    def _static_handler(self, scope, send):
         path = scope['emt.path']
         #: handle weppy assets
         if path.startswith('/__weppy__'):
@@ -191,11 +191,14 @@ class HTTPHandler(RequestHandler):
                 os.path.dirname(__file__), '..', 'assets', file_name)
             if os.path.splitext(static_file)[1] == 'html':
                 return HTTP(404)
-            return HTTPFile(static_file)
+            return self._static_response(static_file)
         static_file, version = self.static_lang_matcher(path)
         if static_file:
-            return HTTPFile(static_file)
-        return await self.dynamic_handler(scope, send)
+            return self._static_response(static_file)
+        return self.dynamic_handler(scope, send)
+
+    async def _static_response(self, file_name):
+        return HTTPFile(file_name)
 
     async def dynamic_handler(self, scope, send):
         ctx_token = current._init_(scope)
@@ -205,8 +208,8 @@ class HTTPHandler(RequestHandler):
             http = HTTP(
                 response.status, response.output,
                 response.headers, response.cookies)
-        except HTTP as httpe:
-            http = httpe
+        except HTTP as http_exception:
+            http = http_exception
             #: render error with handlers if in app
             error_handler = self.app.error_handlers.get(http.status_code)
             if error_handler:

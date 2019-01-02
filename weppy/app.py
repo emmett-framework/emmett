@@ -267,8 +267,8 @@ class App(object):
     def __call__(self, scope):
         handler = self._asgi_handlers[scope['type']]
 
-        async def _scoped_handler(receive, send):
-            await handler(scope, receive, send)
+        def _scoped_handler(receive, send):
+            return handler(scope, receive, send)
 
         return _scoped_handler
 
