@@ -25,15 +25,13 @@ class ServicePipe(Pipe):
         self.json_encoder = Serializers.get_for('json')
         self.xml_encoder = Serializers.get_for('xml')
 
-    async def json(self, f, **kwargs):
+    async def json(self, next_pipe, kwargs):
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
-        data = await f(**kwargs)
-        return self.json_encoder(data)
+        return self.json_encoder(await next_pipe(**kwargs))
 
-    async def xml(self, f, **kwargs):
+    async def xml(self, next_pipe, kwargs):
         response.headers['Content-Type'] = 'text/xml'
-        data = await f(**kwargs)
-        return self.xml_encoder(data)
+        return self.xml_encoder(await next_pipe(**kwargs))
 
-    async def pipe(self, next_pipe, **kwargs):
-        return await self.procedure(next_pipe, **kwargs)
+    def pipe(self, next_pipe, **kwargs):
+        return self.procedure(next_pipe, kwargs)
