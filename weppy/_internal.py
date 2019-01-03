@@ -30,7 +30,8 @@ def _is_immutable(self):
 #: internal datastructures
 class ObjectProxy(object):
     #: Proxy to another object.
-    __slots__ = ('__obj', '__dict__', '__name__')
+    # __slots__ = ('__obj', '__dict__', '__name__')
+    __slots__ = ('__obj', '__name__')
 
     def __init__(self, obj, name=None):
         object.__setattr__(self, '_ObjectProxy__obj', obj)
@@ -92,6 +93,17 @@ class ObjectProxy(object):
     __call__ = lambda x, *a, **kw: x._get_robj()(*a, **kw)
     __iter__ = lambda x: iter(x._get_robj())
     __contains__ = lambda x, i: i in x._get_robj()
+
+
+class ContextVarProxy(ObjectProxy):
+    __slots__ = ('__obj', '__name__')
+
+    def __init__(self, obj, name=None):
+        object.__setattr__(self, '_ContextVarProxy__obj', obj)
+        object.__setattr__(self, '__name__', name)
+
+    def _get_robj(self):
+        return getattr(self.__obj.get(), self.__name__)
 
 
 class ViewItems(object):

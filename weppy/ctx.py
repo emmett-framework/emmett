@@ -15,7 +15,7 @@ import pendulum
 
 from datetime import datetime
 
-from ._internal import ObjectProxy
+from ._internal import ContextVarProxy
 from .globals import Response
 from .language import T, _instance as _translator_instance
 from .utils import cachedprop
@@ -103,9 +103,9 @@ class Current(object):
 
 
 current = Current()
-request = ObjectProxy(current, 'request')
-response = ObjectProxy(current, 'response')
-session = ObjectProxy(current, 'session')
+request = ContextVarProxy(current._ctx, 'request')
+response = ContextVarProxy(current._ctx, 'response')
+session = ContextVarProxy(current._ctx, 'session')
 
 
 def now():
