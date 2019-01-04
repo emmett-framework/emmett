@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
+import json
 import pendulum
+import re
 
 from cgi import FieldStorage, parse_header
 from collections import Mapping
@@ -9,8 +11,13 @@ from http.cookies import SimpleCookie
 from io import BytesIO
 from urllib.parse import parse_qs
 
-from ..datastructures import sdict
-from ..utils import cachedprop, cachedasyncprop
+from ..datastructures import Accept, sdict
+from ..language.helpers import LanguageAccept
+from ..utils import cachedprop
+
+_regex_accept = re.compile(r'''
+    ([^\s;,]+(?:[ \t]*;[ \t]*(?:[^\s;,q][^\s;,]*|q[^\s;,=][^\s;,]*))*)
+    (?:[ \t]*;[ \t]*q=(\d*(?:\.\d+)?)[^,]*)?''', re.VERBOSE)
 
 
 class Body(object):
@@ -60,15 +67,25 @@ class Body(object):
 
 
 class Headers(Mapping):
-    def __init__(self, scope):
-        self._header_list = scope['headers']
+    __slots__ = ('_data',)
 
-    @cachedprop
-    def _data(self):
+    def __init__(self, scope):
+        # self._header_list = scope['headers']
+        self._data = self.__parse_list(scope['headers'])
+
+    @staticmethod
+    def __parse_list(headers):
         rv = {}
-        for key, val in self._header_list:
+        for key, val in headers:
             rv[key.decode()] = val.decode()
         return rv
+
+    # @cachedprop
+    # def _data(self):
+    #     rv = {}
+    #     for key, val in self._header_list:
+    #         rv[key.decode()] = val.decode()
+    #     return rv
 
     __hash__ = None
 
@@ -108,13 +125,14 @@ class Request(object):
     def __init__(self, scope, max_content_length=None, body_timeout=None):
         self._scope = scope
         # print(scope)
+        # print(scope)
         # print(type(scope['headers']))
         self.max_content_length = max_content_length
         self.body_timeout = body_timeout
         self.scheme = scope['scheme']
-        self.hostname = None
+        # self.hostname = None
         self.method = scope['method']
-        self.path = scope['path']
+        self.path = scope['emt.path']
         # if (
         #     self.content_length is not None and self.max_content_length is not None and
         #     self.content_length > self.max_content_length
@@ -124,8 +142,22 @@ class Request(object):
         # self._input = Body(self.max_content_length)
         self._input = scope['emt.input']
         self.headers = Headers(scope)
+        self.host = self.headers.get('host')
 
-    @cachedasyncprop
+    def __parse_accept_header(self, value, cls=Accept):
+        if not value:
+            return cls(None)
+        result = []
+        for match in _regex_accept.finditer(value):
+            quality = match.group(2)
+            if not quality:
+                quality = 1
+            else:
+                quality = max(min(float(quality), 1), 0)
+            result.append((match.group(1), quality))
+        return cls(result)
+
+    @cachedprop
     async def body(self):
         try:
             print('ensuring body_future')
@@ -171,14 +203,20 @@ class Request(object):
 
     _empty_body_methods = {v: v for v in ['GET', 'HEAD', 'OPTIONS']}
 
-    @cachedasyncprop
+    @cachedprop
     async def body_params(self):
         if self._empty_body_methods.get(self.method):
             return sdict()
-        # future = asyncio.run_coroutine_threadsafe(
-        #     self._load_params(), asyncio.get_event_loop())
-        # return future.result(3)
         return await self._load_params()
+
+    def _load_params_missing(self, data):
+        return sdict()
+
+    def _load_params_json(self, data):
+        rv = sdict()
+        json_data = json.loads(data)
+        rv.update(json_data)
+        return rv
 
     def _load_params_form_urlencoded(self, data):
         rv = sdict()
@@ -221,12 +259,19 @@ class Request(object):
         return rv
 
     _params_loaders = {
+        'application/json': _load_params_json,
         'application/x-www-form-urlencoded': _load_params_form_urlencoded,
         'multipart/form-data': _load_params_form_multipart
     }
 
     async def _load_params(self):
         if not self.content_type:
-            return
-        loader = self._params_loaders[self.content_type]
+            return sdict()
+        loader = self._params_loaders.get(
+            self.content_type, self._load_params_missing)
         return loader(self, await self.body)
+
+    @cachedprop
+    def accept_language(self):
+        return self.__parse_accept_header(
+            self.headers.get('accept-language'), LanguageAccept)

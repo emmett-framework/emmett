@@ -7,8 +7,9 @@ import re
 from collections import OrderedDict
 from datetime import datetime
 
-from ..ctx import current
-from ..http import HTTP, HTTPFile
+from ..ctx import current, request, response
+from ..debug import smart_traceback, debug_handler
+from ..http import HTTPResponse, HTTPFile, HTTP
 from ..utils import cachedprop
 from ..web.request import Body
 
@@ -87,6 +88,7 @@ class LifeSpanHandler(Handler):
 class RequestHandler(Handler):
     async def __call__(self, scope, receive, send):
         scope['emt.now'] = datetime.utcnow()
+        scope['emt.path'] = scope['path'] or '/'
         scope['emt.input'] = Body()
         task_request = asyncio.create_task(
             self.handle_request(scope, send))
@@ -117,7 +119,7 @@ class HTTPHandler(RequestHandler):
     def pre_handler(self):
         return (
             self._prefix_handler if self.app.route._prefix_main else
-            self._pre_handler)
+            self.static_handler)
 
     @cachedprop
     def static_handler(self):
@@ -126,41 +128,38 @@ class HTTPHandler(RequestHandler):
             self.dynamic_handler)
 
     @cachedprop
-    def static_lang_matcher(self):
+    def static_matcher(self):
         return (
             self._static_lang_matcher if self.app.language_force_on_url else
             self._static_nolang_matcher)
 
+    @cachedprop
+    def error_handler(self):
+        return (
+            self._debug_handler if self.app.debug else self.exception_handler)
+
+    @cachedprop
+    def exception_handler(self):
+        return self.app.error_handlers.get(500, self._exception_handler)
+
     async def handle_request(self, scope, send):
+        ctx_token = current._init_(scope)
         try:
             http = await self.pre_handler(scope, send)
         except Exception:
-            if self.app.debug:
-                from ..debug import smart_traceback, debug_handler
-                tb = smart_traceback(self.app)
-                body = debug_handler(tb)
-            else:
-                body = None
-                custom_handler = self.app.error_handlers.get(500, lambda: None)
-                try:
-                    body = custom_handler()
-                except Exception:
-                    pass
-                if not body:
-                    body = '<html><body>Internal error</body></html>'
             self.app.log.exception('Application exception:')
-            http = HTTP(500, body)
+            http = HTTP(
+                500, await self.error_handler(), headers=response.headers)
+        current._close_(ctx_token)
+        # TODO: timeout from app config
         await asyncio.wait_for(http.send(scope, send), None)
 
-    def _pre_handler(self, scope, send):
-        scope['emt.path'] = scope['path'] or '/'
-        return self.static_handler(scope, send)
-
     def _prefix_handler(self, scope, send):
-        path = scope['path'] or '/'
+        path = request.path
         if not path.startswith(self.app.route._prefix_main):
             return HTTP(404)
-        scope['emt.path'] = path[self.app.route._prefix_main_len:] or '/'
+        request.path = scope['emt.path'] = (
+            path[self.app.route._prefix_main_len:] or '/')
         return self.static_handler(scope, send)
 
     def _static_lang_matcher(self, path):
@@ -182,6 +181,9 @@ class HTTPHandler(RequestHandler):
             return static_file, version
         return None, None
 
+    async def _static_response(self, file_path):
+        return HTTPFile(file_path)
+
     def _static_handler(self, scope, send):
         path = scope['emt.path']
         #: handle weppy assets
@@ -192,34 +194,32 @@ class HTTPHandler(RequestHandler):
             if os.path.splitext(static_file)[1] == 'html':
                 return HTTP(404)
             return self._static_response(static_file)
-        static_file, version = self.static_lang_matcher(path)
+        #: handle app assets
+        static_file, version = self.static_matcher(path)
         if static_file:
             return self._static_response(static_file)
         return self.dynamic_handler(scope, send)
 
-    async def _static_response(self, file_name):
-        return HTTPFile(file_name)
-
     async def dynamic_handler(self, scope, send):
-        ctx_token = current._init_(scope)
-        response = current.response
         try:
-            await self.app.route.dispatch()
-            http = HTTP(
-                response.status, response.output,
-                response.headers, response.cookies)
-        except HTTP as http_exception:
+            http = await self.app.route.dispatch()
+        except HTTPResponse as http_exception:
             http = http_exception
             #: render error with handlers if in app
             error_handler = self.app.error_handlers.get(http.status_code)
             if error_handler:
-                output = error_handler()
-                http = HTTP(http.status_code, output, response.headers)
+                http = HTTP(
+                    http.status_code, await error_handler(), response.headers)
             #: always set cookies
             http.set_cookies(response.cookies)
-        finally:
-            current._close_(ctx_token)
         return http
+
+    async def _debug_handler(self):
+        return debug_handler(smart_traceback(self.app))
+
+    async def _exception_handler(self):
+        response.headers['Content-Type'] = 'text/plain'
+        return 'Internal error'
 
 
 class WSHandler(RequestHandler):

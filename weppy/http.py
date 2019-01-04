@@ -65,46 +65,15 @@ status_codes = {
 }
 
 
-# class HTTP(Exception):
-#     def __init__(self, status_code, body=u'', headers={}, cookies={}):
-#         self.status_code = status_code
-#         self.set_body(body or [])
-#         self.headers = list(headers.items())
-#         self.set_cookies(cookies)
-
-#     def set_body(self, body):
-#         if isinstance(body, (text_type, bytes, bytearray)):
-#             body = [to_bytes(body)]
-#         self.body = body
-
-#     def set_cookies(self, cookies):
-#         for cookie in cookies.values():
-#             self.headers.append(('Set-Cookie', str(cookie)[11:]))
-
-#     def to(self, environ, start_response):
-#         start_response(status_codes[self.status_code], self.headers)
-#         if environ['REQUEST_METHOD'] == 'HEAD':
-#             return [b'']
-#         return self.body
-
-#     @classmethod
-#     def redirect(cls, location, status_code=303):
-#         current.response.status = status_code
-#         location = location.replace('\r', '%0D').replace('\n', '%0A')
-#         raise cls(status_code, headers=dict(Location=location))
-
-
-class HTTP(Exception):
-    def __init__(self, status_code, body=u'', headers={}, cookies={}):
+class HTTPResponse(Exception):
+    def __init__(
+        self, status_code, *,
+        headers={'Content-Type': 'text/plain'}, cookies={}
+    ):
         self.status_code = status_code
-        self._body = body
         self._headers = headers
         self._cookies = []
         self.set_cookies(cookies)
-
-    @property
-    def body(self):
-        return self._body.encode('utf-8')
 
     def set_cookies(self, cookies):
         for cookie in cookies.values():
@@ -127,37 +96,60 @@ class HTTP(Exception):
         })
 
     async def _send_body(self, send):
+        await send({'type': 'http.response.body'})
+
+    async def send(self, scope, send):
+        await self._send_headers(send)
+        await self._send_body(send)
+
+
+class HTTPBytes(HTTPResponse):
+    def __init__(
+        self, status_code, body=b'',
+        headers={'Content-Type': 'text/plain'}, cookies={}
+    ):
+        super().__init__(status_code, headers=headers, cookies=cookies)
+        self.body = body
+
+    async def _send_body(self, send):
         await send({
             'type': 'http.response.body',
             'body': self.body,
             'more_body': False
         })
 
-    async def send(self, scope, send):
-        await self._send_headers(send)
-        if scope['method'] == 'HEAD':
-            await send({'type': 'http.response.body'})
-        else:
-            await self._send_body(send)
 
-    @classmethod
-    def from_http(cls, http):
-        return cls(
-            http.status_code, body=http._body,
-            headers=http._headers, cookies=http._cookies)
+class HTTP(HTTPResponse):
+    def __init__(
+        self, status_code, body=u'',
+        headers={'Content-Type': 'text/plain'}, cookies={}
+    ):
+        super().__init__(status_code, headers=headers, cookies=cookies)
+        self.body = body
+
+    @property
+    def encoded_body(self):
+        return self.body.encode('utf-8')
+
+    async def _send_body(self, send):
+        await send({
+            'type': 'http.response.body',
+            'body': self.encoded_body,
+            'more_body': False
+        })
 
 
-class HTTPRedirect(HTTP):
+class HTTPRedirect(HTTPResponse):
     def __init__(self, status_code, location):
         location = location.replace('\r', '%0D').replace('\n', '%0A')
         super().__init__(status_code, headers={'Location': location})
 
-    async def send(self, scope, send):
-        await self._send_headers(send)
-        await send({'type': 'http.response.body'})
+    # async def send(self, scope, send):
+    #     await self._send_headers(send)
+    #     await send({'type': 'http.response.body'})
 
 
-class HTTPFile(HTTP):
+class HTTPFile(HTTPResponse):
     def __init__(self, file_path, headers={}, cookies={}, chunk_size=4096):
         super().__init__(200, headers=headers, cookies=cookies)
         self.file_path = file_path

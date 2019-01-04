@@ -43,7 +43,7 @@ class RequestContext(object):
 
     @cachedprop
     def language(self):
-        return self.request.accept_languages.best_match(
+        return self.request.accept_language.best_match(
             list(_translator_instance._t.all_languages))
 
 

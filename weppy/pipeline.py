@@ -13,7 +13,7 @@ import asyncio
 from functools import wraps
 
 from .helpers import flash
-from .http import HTTP, redirect
+from .http import HTTPResponse, redirect
 
 
 class Pipeline(object):
@@ -36,9 +36,9 @@ class Pipeline(object):
     @staticmethod
     def _awaitable_wrap(f):
         @wraps(f)
-        async def wrap(*args, **kwargs):
+        async def awaitable(*args, **kwargs):
             return f(*args, **kwargs)
-        return wrap
+        return awaitable
 
     def __call__(self, f):
         if not asyncio.iscoroutinefunction(f):
@@ -50,6 +50,9 @@ class Pipeline(object):
                 continue
             wrapper = self._get_proper_wrapper(pipe)
             f = wrapper(pipe, f)
+            f._output_type_ = (
+                pipe.output if pipe.output is not None else
+                getattr(f, '_output_type_', None))
         return f
 
     def _flow_open(self):
@@ -66,6 +69,14 @@ class Pipeline(object):
             if 'close' not in pipe._pipeline_all_methods_:
                 continue
             rv.append(pipe)
+        return rv
+
+    def _output_type(self):
+        rv = None
+        for pipe in reversed(self.pipes):
+            if not pipe._is_flow_responsible:
+                continue
+            rv = pipe.output
         return rv
 
 
@@ -85,19 +96,30 @@ class MetaPipe(type):
         if not bases:
             return new_class
         declared_methods = cls._pipeline_methods_ & set(attrs.keys())
+        # declared_coros = {}
+        # for method in declared_methods:
+        #     declared_coros[method] = asyncio.iscoroutinefunction(attrs[method])
         new_class._pipeline_declared_methods_ = declared_methods
+        # new_class._pipeline_declared_coros_ = declared_coros
         all_methods = set()
+        # all_coros = {}
         for base in reversed(new_class.__mro__[:-2]):
             if hasattr(base, '_pipeline_declared_methods_'):
                 all_methods = all_methods | base._pipeline_declared_methods_
+            # if hasattr(base, '_pipeline_declared_coros_'):
+            #     all_coros.update(base._pipeline_declared_coros_)
         all_methods = all_methods | declared_methods
+        # all_coros.update(declared_coros)
         new_class._pipeline_all_methods_ = all_methods
+        # new_class._pipeline_all_coros_ = all_coros
         new_class._is_flow_responsible = bool(
             all_methods & {'pipe', 'on_pipe_success', 'on_pipe_failure'})
         return new_class
 
 
 class Pipe(metaclass=MetaPipe):
+    output = None
+
     async def open(self):
         pass
 
@@ -139,7 +161,7 @@ class RequirePipe(Pipe):
 class Injector(Pipe):
     def __init__(self):
         self._injection_attrs_ = []
-        for attr in set(dir(self)) - self._pipeline_methods_:
+        for attr in set(dir(self)) - self._pipeline_methods_ - {'output'}:
             if attr.startswith('_'):
                 continue
             self._injection_attrs_.append(attr)
@@ -162,7 +184,7 @@ def _wrap_flow_complete(pipe, f):
             output = await pipe.pipe(f, **kwargs)
             await pipe.on_pipe_success()
             return output
-        except HTTP:
+        except HTTPResponse:
             await pipe.on_pipe_success()
             raise
         except Exception:
@@ -178,7 +200,7 @@ def _wrap_flow_success(pipe, f):
             output = await pipe.pipe(f, **kwargs)
             await pipe.on_pipe_success()
             return output
-        except HTTP:
+        except HTTPResponse:
             await pipe.on_pipe_success()
             raise
     return flow

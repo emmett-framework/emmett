@@ -20,7 +20,7 @@ from .pipeline import Pipeline, Pipe
 from .templating.helpers import TemplateMissingError
 from .cache import RouteCacheRule
 from .ctx import current
-from .http import HTTP
+from .http import HTTP, HTTPBytes, HTTPResponse
 
 if PY2:
     from urllib import quote as uquote
@@ -28,6 +28,63 @@ else:
     from urllib.parse import quote as uquote
 
 __all__ = ['Expose', 'url']
+
+
+class ResponseBuilder(object):
+    http_cls = HTTP
+
+    def __init__(self, route):
+        self.route = route
+
+    def __call__(self, output):
+        return self.http_cls, output
+
+
+class ResponseProcessor(ResponseBuilder):
+    def process(self, output):
+        return output
+
+    def __call__(self, output):
+        return self.http_cls, self.process(output)
+
+
+class BytesResponseBuilder(ResponseBuilder):
+    http_cls = HTTPBytes
+
+
+class TemplateResponseBuilder(ResponseProcessor):
+    def process(self, output):
+        if output is None:
+            output = {'current': current, 'url': url}
+        else:
+            output['current'] = output.get('current', current)
+            output['url'] = output.get('url', url)
+        try:
+            return self.route.application.templater.render(
+                self.route.template_path, self.route.template, output)
+        except TemplateMissingError as exc:
+            raise HTTP(404, body="{}\n".format(exc.message))
+
+
+class AutoResponseBuilder(ResponseProcessor):
+    def process(self, output):
+        is_template = False
+        if isinstance(output, dict):
+            is_template = True
+            output['current'] = output.get('current', current)
+            output['url'] = output.get('url', url)
+        elif output is None:
+            is_template = True
+            output = {'current': current, 'url': url}
+        if is_template:
+            try:
+                return self.route.application.templater.render(
+                    self.route.template_path, self.route.template, output)
+            except TemplateMissingError as exc:
+                raise HTTP(404, body="{}\n".format(exc.message))
+        elif isinstance(output, text_type) or hasattr(output, '__iter__'):
+            return output
+        return str(output)
 
 
 class MetaExpose(type):
@@ -45,7 +102,7 @@ def _build_routing_dict():
         for method in [
             'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'
         ]:
-            rv[scheme][method] = OrderedDict()
+            rv[scheme][method] = {'static': {}, 'match': OrderedDict()}
     return rv
 
 
@@ -60,6 +117,12 @@ class Expose(with_metaclass(MetaExpose)):
     _injectors = []
     _prefix_main = ''
     _prefix_main_len = 0
+    _outputs = {
+        'auto': AutoResponseBuilder,
+        'bytes': BytesResponseBuilder,
+        'str': ResponseBuilder,
+        'template': TemplateResponseBuilder
+    }
     REGEX_INT = re.compile('<int\:(\w+)>')
     REGEX_STR = re.compile('<str\:(\w+)>')
     REGEX_ANY = re.compile('<any\:(\w+)>')
@@ -86,7 +149,7 @@ class Expose(with_metaclass(MetaExpose)):
     def __init__(
         self, paths=None, name=None, template=None, pipeline=None,
         injectors=None, schemes=None, hostname=None, methods=None, prefix=None,
-        template_folder=None, template_path=None, cache=None
+        template_folder=None, template_path=None, cache=None, output='auto'
     ):
         if callable(paths):
             raise SyntaxError('Use @route(), not @route.')
@@ -108,6 +171,11 @@ class Expose(with_metaclass(MetaExpose)):
         if not isinstance(self.paths, (list, tuple)):
             self.paths = [self.paths]
         self.name = name
+        if output not in self._outputs:
+            raise SyntaxError(
+                'Invalid output specified. Allowed values are: {}'.format(
+                    ', '.join(self._outputs.keys())))
+        self.output_type = output
         self.template = template
         self.template_folder = template_folder
         self.template_path = template_path
@@ -181,7 +249,12 @@ class Expose(with_metaclass(MetaExpose)):
             cls._get_routes_in_for_host = cls._get_routes_in_for_host_all
         for scheme in route.schemes:
             for method in route.methods:
-                cls.routes_in[host][scheme][method.upper()][route.name] = route
+                routing_dict = cls.routes_in[host][scheme][method.upper()]
+                if route.is_static:
+                    routing_dict['static'][route.path] = route
+                else:
+                    routing_dict['match'][route.name] = route
+                # cls.routes_in[host][scheme][method.upper()][route.name] = route
         cls.routes_out[route.name] = {
             'host': route.hostname,
             'path': cls.build_route_components(route.path)
@@ -216,6 +289,13 @@ class Expose(with_metaclass(MetaExpose)):
         self.pipeline_flow_open = pipeline_obj._flow_open()
         self.pipeline_flow_close = pipeline_obj._flow_close()
         self.f = wrapped_f
+        output_type = pipeline_obj._output_type() or self.output_type
+        self.response_builders = {
+            method.upper(): self._outputs[output_type](self)
+            for method in self.methods
+        }
+        if 'head' in self.response_builders:
+            self.response_builders['head'].http_cls = HTTPResponse
         for idx, path in enumerate(self.paths):
             routeobj = Route(self, path, idx)
             self.add_route(routeobj)
@@ -270,10 +350,15 @@ class Expose(with_metaclass(MetaExpose)):
     def match(cls, request):
         path = cls.remove_trailslash(request.path)
         path = cls.match_lang(request, path)
-        for routing_dict in cls._get_routes_in_for_host(request.hostname):
-            for route in itervalues(
-                routing_dict[request.scheme][request.method]
-            ):
+        for routing_dict in cls._get_routes_in_for_host(request.host):
+            sub_dict = routing_dict[request.scheme][request.method]
+            route = sub_dict['static'].get(path)
+            if route:
+                return route, {}
+            # for route in itervalues(
+            #     routing_dict[request.scheme][request.method]
+            # ):
+            for route in sub_dict['match'].values():
                 match, args = route.match(path)
                 if match:
                     return route, args
@@ -294,18 +379,21 @@ class Expose(with_metaclass(MetaExpose)):
     @classmethod
     async def dispatch(cls):
         #: get the right exposed function
-        request = current.request
+        request, response = current.request, current.response
         route, reqargs = cls.match(request)
         if not route:
             raise HTTP(404, body="Resource not found\n")
         request.name = route.name
         await cls._before_dispatch(route)
         try:
-            await route.f(**reqargs)
+            http_cls, output = await route.f(**reqargs)
+            rv = http_cls(
+                response.status, output, response.headers, response.cookies)
         except Exception:
             await cls._after_dispatch(route)
             raise
         await cls._after_dispatch(route)
+        return rv
 
     @classmethod
     def static_versioning(cls):
@@ -374,10 +462,11 @@ class Route(object):
             re.compile('\(.*\)\?').findall(self.path) or
             re.compile('<(\w+)\:(\w+)>').findall(self.path)
         ):
-            matcher = self.match_regex
+            matcher, is_static = self.match_regex, False
         else:
-            matcher = self.match_simple
+            matcher, is_static = self.match_simple, True
         self.match = matcher
+        self.is_static = is_static
 
     def build_argparser(self):
         parsers = {
@@ -482,23 +571,8 @@ class ResponsePipe(Pipe):
         self.route = route
 
     async def pipe(self, next_pipe, **kwargs):
-        response = current.response
-        output = await next_pipe(**kwargs)
-        if output is None:
-            output = {'current': current, 'url': url}
-        if isinstance(output, dict):
-            output['current'] = output.get('current', current)
-            output['url'] = output.get('url', url)
-            try:
-                output = Expose.application.templater.render(
-                    self.route.template_path, self.route.template, output)
-            except TemplateMissingError as exc:
-                raise HTTP(404, body="{}\n".format(exc.message))
-            response.output = output
-        elif isinstance(output, text_type) or hasattr(output, '__iter__'):
-            response.output = output
-        else:
-            response.output = str(output)
+        return self.route.response_builders[current.request.method](
+            await next_pipe(**kwargs))
 
 
 class CachedResponsePipe(Pipe):
@@ -509,22 +583,23 @@ class CachedResponsePipe(Pipe):
 
     async def pipe(self, next_pipe, **kwargs):
         if current.request.method not in self._allowed_methods:
-            await next_pipe(**kwargs)
-            return
+            return await next_pipe(**kwargs)
+        response = current.response
         key = self.rule._build_ctx_key(
             self.route, **self.rule._build_ctx(kwargs, self.route, current))
         data = self.rule.cache.get(key)
         if data is not None:
-            current.response.output = data['content']
-            current.response.headers.update(data['headers'])
-            return
-        await next_pipe(**kwargs)
-        if current.response.status == 200:
+            response.headers.update(data['headers'])
+            return data['http_cls'], data['content']
+        http_cls, output = await next_pipe(**kwargs)
+        if response.status == 200:
             self.rule.cache.set(
                 key, {
-                    'content': current.response.output,
-                    'headers': current.response.headers},
+                    'http_cls': http_cls,
+                    'content': output,
+                    'headers': response.headers},
                 self.rule.duration)
+        return http_cls, output
 
 
 class RouteUrl(object):
@@ -630,7 +705,7 @@ def url(
             # try to use the correct hostname
             if url_host is not None:
                 try:
-                    if current.request.hostname != url_host:
+                    if current.request.host != url_host:
                         scheme = current.request.scheme
                         host = url_host
                 except Exception:
@@ -670,7 +745,7 @@ def url(
                 raise RuntimeError(
                     'cannot build url("%s",...) without current request' % path
                 )
-            host = current.request.hostname
+            host = current.request.host
     # add signature
     if sign:
         if '_signature' in params:

@@ -15,6 +15,8 @@ from ..serializers import Serializers
 
 
 class ServicePipe(Pipe):
+    output = 'str'
+
     def __init__(self, procedure):
         if not hasattr(self, procedure):
             raise RuntimeError(

@@ -9,39 +9,45 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import asyncio
 import pendulum
 import re
 import socket
+
 from datetime import datetime, date, time
 from pendulum.parsing import _parse as _pendulum_parse
+
 from .datastructures import sdict
 
 
-class cachedprop(object):
-    #: a read-only @property that is only evaluated once.
-    def __init__(self, fget, doc=None, name=None):
-        self.fget = fget
-        self.__doc__ = doc or fget.__doc__
-        self.__name__ = name or fget.__name__
+def cachedprop(fget, doc=None, name=None):
+    doc = doc or fget.__doc__
+    name = name or fget.__name__
+    if asyncio.iscoroutinefunction(fget):
+        return _cached_prop_loop(fget, doc, name)
+    return _cached_prop_sync(fget, doc, name)
 
+
+class _cached_prop(object):
+    def __init__(self, fget, doc, name):
+        self.fget = fget
+        self.__doc__ = doc
+        self.__name__ = name
+
+
+class _cached_prop_sync(_cached_prop):
     def __get__(self, obj, cls):
-        if obj is None:
-            return self
         obj.__dict__[self.__name__] = result = self.fget(obj)
         return result
 
 
-class cachedasyncprop(cachedprop):
-    async def __get__(self, obj, cls):
+class _cached_prop_loop(_cached_prop):
+    def __get__(self, obj, cls):
         if obj is None:
             return self
-        result = await self.fget(obj)
-
-        async def wrapper():
-            return result
-
-        obj.__dict__[self.__name__] = wrapper()
-        return result
+        task = asyncio.create_task(self.fget(obj))
+        obj.__dict__[self.__name__] = task
+        return task
 
 
 _pendulum_parsing_opts = {
