@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+"""
+    weppy.wrappers.request
+    -----------------------
+
+    Provides http request wrappers.
+
+    :copyright: (c) 2014-2019 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
 
 import asyncio
 import json
@@ -12,8 +21,10 @@ from io import BytesIO
 from urllib.parse import parse_qs
 
 from ..datastructures import Accept, sdict
+from ..http import HTTP
 from ..language.helpers import LanguageAccept
 from ..utils import cachedprop
+from . import Wrapper
 
 _regex_accept = re.compile(r'''
     ([^\s;,]+(?:[ \t]*;[ \t]*(?:[^\s;,q][^\s;,]*|q[^\s;,=][^\s;,]*))*)
@@ -26,27 +37,7 @@ class Body(object):
     def __init__(self, max_content_length=None):
         self._data = bytearray()
         self._complete = asyncio.Event()
-        # self._has_data = asyncio.Event()
         self._max_content_length = max_content_length
-
-    # def __aiter__(self):
-    #     return self
-
-    # async def __anext__(self) -> bytes:
-    #     # If the first time through was the entirety of the data,
-    #     # set_complete was already called so we have to wait on both
-    #     # _has_data and _complete otherwise we'll hang indefinitely
-    #     # waiting for _has_data since it will never get set again
-    #     await asyncio.wait(
-    #         [self._has_data.wait(), self._complete.wait()], return_when=asyncio.FIRST_COMPLETED,
-    #     )
-    #     if self._complete.is_set() and len(self._data) == 0:
-    #         raise StopAsyncIteration()
-
-    #     data = bytes(self._data)
-    #     self._data.clear()
-    #     self._has_data.clear()
-    #     return data
 
     async def __await__(self):
         await self._complete.wait()
@@ -56,18 +47,18 @@ class Body(object):
         if data == b'':
             return
         self._data.extend(data)
-        # self._has_data.set()
-        # if self._max_content_length is not None and len(self._data) > self._max_content_length:
-        #     from ..exceptions import RequestEntityTooLarge  # noqa Avoiding circular import
-        #     raise RequestEntityTooLarge()
+        if (
+            self._max_content_length is not None and
+            len(self._data) > self._max_content_length
+        ):
+            raise HTTP(413, 'Request entity too large')
 
     def set_complete(self):
         self._complete.set()
-        # self._has_data.set()
 
 
 class Headers(Mapping):
-    __slots__ = ('_data',)
+    __slots__ = ('_data')
 
     def __init__(self, scope):
         # self._header_list = scope['headers']
@@ -90,7 +81,7 @@ class Headers(Mapping):
     __hash__ = None
 
     def __getitem__(self, key):
-        return self._data[key]
+        return self._data[key.lower()]
 
     def __contains__(self, key):
         return key in self._data
@@ -103,7 +94,7 @@ class Headers(Mapping):
         return len(self._data)
 
     def get(self, key, default=None, cast=None):
-        rv = self._data.get(key, default)
+        rv = self._data.get(key.lower(), default)
         if cast is None:
             return rv
         try:
@@ -121,25 +112,14 @@ class Headers(Mapping):
         return self._data.values()
 
 
-class Request(object):
+class Request(Wrapper):
     def __init__(self, scope, max_content_length=None, body_timeout=None):
         self._scope = scope
-        # print(scope)
-        # print(scope)
-        # print(type(scope['headers']))
         self.max_content_length = max_content_length
         self.body_timeout = body_timeout
         self.scheme = scope['scheme']
-        # self.hostname = None
         self.method = scope['method']
         self.path = scope['emt.path']
-        # if (
-        #     self.content_length is not None and self.max_content_length is not None and
-        #     self.content_length > self.max_content_length
-        # ):
-        #     from ..exceptions import RequestEntityTooLarge  # noqa Avoiding circular import
-        #     raise RequestEntityTooLarge()
-        # self._input = Body(self.max_content_length)
         self._input = scope['emt.input']
         self.headers = Headers(scope)
         self.host = self.headers.get('host')
@@ -159,15 +139,17 @@ class Request(object):
 
     @cachedprop
     async def body(self):
+        if (
+            self.max_content_length and
+            self.content_length > self.max_content_length
+        ):
+            raise HTTP(413, 'Request entity too large')
         try:
-            print('ensuring body_future')
             body_future = asyncio.ensure_future(self._input)
             rv = await asyncio.wait_for(body_future, timeout=self.body_timeout)
         except asyncio.TimeoutError:
             body_future.cancel()
-            # from ..exceptions import RequestTimeout
-            # raise RequestTimeout()
-            raise
+            raise HTTP(408, 'Request timeout')
         return rv
 
     @cachedprop
@@ -181,6 +163,10 @@ class Request(object):
     @cachedprop
     def content_type(self):
         return parse_header(self.headers.get('content-type', ''))[0]
+
+    @cachedprop
+    def content_length(self):
+        return self.headers.get('content_length', 0, cast=int)
 
     @cachedprop
     def query_params(self):

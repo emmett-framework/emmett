@@ -64,6 +64,7 @@ setup(
         'weppy.testing',
         'weppy.tools', 'weppy.tools.auth',
         'weppy.validators',
+        'weppy.wrappers',
         'weppy.libs'
     ],
     include_package_data=True,

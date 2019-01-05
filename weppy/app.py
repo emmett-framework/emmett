@@ -9,10 +9,12 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import sys
-import os
 import click
+import os
+import sys
+
 from yaml import load as ymlload
+
 from ._compat import basestring
 from ._internal import get_root_path, create_missing_app_folders
 from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
@@ -23,11 +25,6 @@ from .expose import Expose, url
 from .extensions import Extension, TemplateExtension
 from .templating.core import Templater
 from .utils import dict_to_sdict, cachedprop, read_file
-from .wsgi import (
-    error_handler, static_handler, dynamic_handler,
-    _nolang_static_handler, _lang_static_handler,
-    _pre_handler, _pre_handler_prefix
-)
 
 
 class App(object):
@@ -56,6 +53,8 @@ class App(object):
         self.config.static_version_urls = None
         self.config.handle_static = True
         self.config.url_default_namespace = None
+        self.config.request_max_content_length = None
+        self.config.request_body_timeout = None
         self.config.templates_auto_reload = False
         self.config.templates_escape = 'common'
         self.config.templates_prettify = False
@@ -64,15 +63,10 @@ class App(object):
         create_missing_app_folders(self)
         #: init expose module
         Expose._bind_app_(self, url_prefix)
-        self._wsgi_pre_handler = (
-            _pre_handler_prefix if Expose._prefix_main else _pre_handler)
-        self._asgi_handler_http = HTTPHandler(self)
-        self._asgi_handler_lifespan = LifeSpanHandler(self)
-        self._asgi_handler_ws = WSHandler(self)
         self._asgi_handlers = {
-            'http': self._asgi_handler_http,
-            'lifespan': self._asgi_handler_lifespan,
-            'websocket': self._asgi_handler_ws
+            'http': HTTPHandler(self),
+            'lifespan': LifeSpanHandler(self),
+            'websocket': WSHandler(self)
         }
         # Expose.application = self
         self.error_handlers = {}
@@ -96,6 +90,8 @@ class App(object):
         self.templater = Templater(self)
         #: init debug var
         self.debug = os.environ.get('WEPPY_RUN_ENV') == "true"
+        #: store app in current
+        current.app = self
 
     @cachedprop
     def name(self):
@@ -218,9 +214,6 @@ class App(object):
         return context
 
     def _run(self, host, port):
-        # from .libs.rocket import Rocket
-        # r = Rocket((host, port), 'wsgi', {'wsgi_app': self})
-        # r.start()
         asgi_run(self, host, port)
 
     def run(self, host=None, port=None, reloader=True, debug=True):
@@ -245,24 +238,6 @@ class App(object):
             from .testing import WeppyTestClient
             tclass = WeppyTestClient
         return tclass(self, use_cookies=use_cookies, **kwargs)
-
-    @cachedprop
-    def common_static_handler(self):
-        if self.config.handle_static:
-            return static_handler
-        return dynamic_handler
-
-    @cachedprop
-    def static_handler(self):
-        if self.language_force_on_url:
-            return _lang_static_handler
-        return _nolang_static_handler
-
-    def wsgi_handler(self, environ, start_request):
-        return error_handler(self, environ, start_request)
-
-    # def __call__(self, environ, start_request):
-    #     return self.wsgi_handler(environ, start_request)
 
     def __call__(self, scope):
         handler = self._asgi_handlers[scope['type']]

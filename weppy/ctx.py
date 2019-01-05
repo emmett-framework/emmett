@@ -16,10 +16,7 @@ import pendulum
 from datetime import datetime
 
 from ._internal import ContextVarProxy
-from .globals import Response
-from .language import T, _instance as _translator_instance
-from .utils import cachedprop
-from .web.request import Request
+from .language import T
 
 
 class Context(object):
@@ -31,22 +28,6 @@ class Context(object):
         return pendulum.instance(datetime.utcnow())
 
 
-class RequestContext(object):
-    def __init__(self, scope):
-        self.request = Request(scope)
-        self.response = Response({})
-        self.session = None
-
-    @property
-    def now(self):
-        return self.request.now
-
-    @cachedprop
-    def language(self):
-        return self.request.accept_language.best_match(
-            list(_translator_instance._t.all_languages))
-
-
 class Current(object):
     __slots__ = ('_ctx',)
 
@@ -54,8 +35,8 @@ class Current(object):
         object.__setattr__(self, '_ctx', contextvars.ContextVar('ctx'))
         self._ctx.set(Context())
 
-    def _init_(self, scope):
-        return self._ctx.set(RequestContext(scope))
+    def _init_(self, ctx_cls, app, scope):
+        return self._ctx.set(ctx_cls(app, scope))
 
     def _close_(self, token):
         self._ctx.reset(token)
@@ -73,29 +54,29 @@ class Current(object):
     def __delattr__(self, name):
         delattr(self.ctx, name)
 
-    @property
-    def language(self):
-        return self.ctx.language
+    # @property
+    # def language(self):
+    #     return self.ctx.language
 
-    @property
-    def now(self):
-        return self.ctx.now
+    # @property
+    # def now(self):
+    #     return self.ctx.now
 
-    @property
-    def request(self):
-        return self.ctx.request
+    # @property
+    # def request(self):
+    #     return self.ctx.request
 
-    @property
-    def response(self):
-        return self.ctx.response
+    # @property
+    # def response(self):
+    #     return self.ctx.response
 
-    @property
-    def session(self):
-        return self.ctx.session
+    # @property
+    # def session(self):
+    #     return self.ctx.session
 
-    @session.setter
-    def session(self, val):
-        self.ctx.session = val
+    # @session.setter
+    # def session(self, val):
+    #     self.ctx.session = val
 
     @property
     def T(self):

@@ -10,8 +10,10 @@ from datetime import datetime
 from ..ctx import current, request, response
 from ..debug import smart_traceback, debug_handler
 from ..http import HTTPResponse, HTTPFile, HTTP
+from ..language import _instance as _translator_instance
 from ..utils import cachedprop
-from ..web.request import Body
+from ..wrappers.request import Body, Request
+from ..wrappers.response import Response
 
 REGEX_STATIC = re.compile(
     '^/static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
@@ -89,7 +91,7 @@ class RequestHandler(Handler):
     async def __call__(self, scope, receive, send):
         scope['emt.now'] = datetime.utcnow()
         scope['emt.path'] = scope['path'] or '/'
-        scope['emt.input'] = Body()
+        scope['emt.input'] = Body(self.app.config.request_max_content_length)
         task_request = asyncio.create_task(
             self.handle_request(scope, send))
         task_events = asyncio.create_task(
@@ -143,7 +145,7 @@ class HTTPHandler(RequestHandler):
         return self.app.error_handlers.get(500, self._exception_handler)
 
     async def handle_request(self, scope, send):
-        ctx_token = current._init_(scope)
+        ctx_token = current._init_(RequestContext, self.app, scope)
         try:
             http = await self.pre_handler(scope, send)
         except Exception:
@@ -151,7 +153,7 @@ class HTTPHandler(RequestHandler):
             http = HTTP(
                 500, await self.error_handler(), headers=response.headers)
         current._close_(ctx_token)
-        # TODO: timeout from app config
+        # TODO: timeout from app config/response
         await asyncio.wait_for(http.send(scope, send), None)
 
     def _prefix_handler(self, scope, send):
@@ -224,6 +226,27 @@ class HTTPHandler(RequestHandler):
 
 class WSHandler(RequestHandler):
     pass
+
+
+class RequestContext(object):
+    def __init__(self, app, scope):
+        self.app = app
+        self.request = Request(
+            scope,
+            app.config.request_max_content_length,
+            app.config.request_body_timeout
+        )
+        self.response = Response()
+        self.session = None
+
+    @property
+    def now(self):
+        return self.request.now
+
+    @cachedprop
+    def language(self):
+        return self.request.accept_language.best_match(
+            list(_translator_instance._t.all_languages))
 
 
 async def _event_looper(handler, scope, receive, send, event):
