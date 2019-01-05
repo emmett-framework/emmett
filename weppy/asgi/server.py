@@ -18,10 +18,9 @@ def run(
     app,
     host='127.0.0.1', port=8000, uds=None, fd=None,
     loop='auto', proto_http='auto', proto_ws='auto',
-    # log_level='info', logger=None,
-    access_log=True,
-    debug=False,
-    proxy_headers=False,
+    access_log=False,
+    # debug=False,
+    # proxy_headers=False,
     root_path='',
     limit_concurrency=None, limit_max_requests=None, timeout_keep_alive=5
 ):
@@ -35,13 +34,6 @@ def run(
     loop = loops.get_loop(loop)
     protocol_cls_http = protocols_http.get_protocol(proto_http)
     protocol_cls_ws = protocols_ws.get_protocol(proto_ws)
-
-    # if debug:
-    #     app = DebugMiddleware(app)
-    # if logger.level <= logging.DEBUG:
-    #     app = MessageLoggerMiddleware(app)
-    # if proxy_headers:
-    #     app = ProxyHeadersMiddleware(app)
 
     connections = set()
     tasks = set()
