@@ -12,6 +12,7 @@ Links
 """
 
 import ast
+import platform
 import re
 
 from setuptools import setup
@@ -22,6 +23,28 @@ _version_re = re.compile(r'__version__\s+=\s+(.*)')
 with open('weppy/__init__.py', 'rb') as f:
     version = str(ast.literal_eval(_version_re.search(
         f.read().decode('utf-8')).group(1)))
+
+
+_requirements_basic = [
+    'aiofiles==0.4.0',
+    'click>=0.6',
+    'h11',
+    'pendulum>=2.0.0',
+    'pyaes',
+    'pyDAL==17.3',
+    'pyyaml',
+    'uvicorn~=0.3.20',
+    'websockets>=6.0'
+]
+
+if platform.system() == 'Windows' or platform.system().startswith('CYGWIN'):
+    requirements = _requirements_basic
+else:
+    requirements = sorted(_requirements_basic + [
+        'httptools',
+        'uvloop==0.11.3'
+    ])
+
 
 setup(
     name='weppy',
@@ -46,16 +69,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     platforms='any',
-    install_requires=[
-        'aiofiles==0.4.0',
-        'click>=0.6',
-        'pendulum>=2.0.0',
-        'pyaes',
-        'pyDAL==17.3',
-        'pyyaml',
-        'uvicorn~=0.3.20',
-        # 'uvloop==0.11.3'
-    ],
+    install_requires=requirements,
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
