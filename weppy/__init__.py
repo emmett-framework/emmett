@@ -2,7 +2,7 @@ __version__ = '2.0-dev'
 
 from .app import App, AppModule
 from .cache import Cache
-from .ctx import request, response, session, now
+from .ctx import current, request, response, session, now
 from .datastructures import sdict
 from .expose import url
 from .forms import Form
