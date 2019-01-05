@@ -180,14 +180,16 @@ class Expose(with_metaclass(MetaExpose)):
         self.template_folder = template_folder
         self.template_path = template_path
         self.prefix = prefix
-        self.pipeline = [ResponsePipe(self)] + self._pipeline + \
-            (pipeline or []) + self._injectors + (injectors or [])
+        self.pipeline = (
+            self._pipeline + (pipeline or []) +
+            self._injectors + (injectors or []))
+        self.cache_rule = None
         if cache:
             if not isinstance(cache, RouteCacheRule):
                 raise RuntimeError(
                     'route cache argument should be a valid caching rule')
             if any(key in self.methods for key in ['get', 'head']):
-                self.pipeline.insert(0, CachedResponsePipe(self, cache))
+                self.cache_rule = cache
         # check pipes are indeed valid pipes
         if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
             raise RuntimeError('Invalid pipeline')
@@ -355,26 +357,11 @@ class Expose(with_metaclass(MetaExpose)):
             route = sub_dict['static'].get(path)
             if route:
                 return route, {}
-            # for route in itervalues(
-            #     routing_dict[request.scheme][request.method]
-            # ):
             for route in sub_dict['match'].values():
                 match, args = route.match(path)
                 if match:
                     return route, args
         return None, {}
-
-    @staticmethod
-    async def _before_dispatch(route):
-        #: call pipeline `open` method
-        for pipe in route._pipeline_flow_open:
-            await pipe.open()
-
-    @staticmethod
-    async def _after_dispatch(route):
-        #: call pipeline `close` method
-        for pipe in route._pipeline_flow_close:
-            await pipe.close()
 
     @classmethod
     async def dispatch(cls):
@@ -384,16 +371,9 @@ class Expose(with_metaclass(MetaExpose)):
         if not route:
             raise HTTP(404, body="Resource not found\n")
         request.name = route.name
-        await cls._before_dispatch(route)
-        try:
-            http_cls, output = await route.f(**reqargs)
-            rv = http_cls(
-                response.status, output, response.headers, response.cookies)
-        except Exception:
-            await cls._after_dispatch(route)
-            raise
-        await cls._after_dispatch(route)
-        return rv
+        http_cls, output = await route.dispatch(request, reqargs)
+        return http_cls(
+            response.status, output, response.headers, response.cookies)
 
     @classmethod
     def static_versioning(cls):
@@ -423,6 +403,7 @@ class Route(object):
         self.build_argparser()
         self._pipeline_flow_open = self.exposer.pipeline_flow_open
         self._pipeline_flow_close = self.exposer.pipeline_flow_close
+        self.build_dispatcher()
 
     @property
     def hostname(self):
@@ -564,6 +545,136 @@ class Route(object):
                 parser(route_args)
             return route_args
         return wrapped
+
+    def build_dispatcher(self):
+        dispatchers = {
+            'base': Dispatcher, 'open': BeforeDispatcher,
+            'close': AfterDispatcher, 'flow': CompleteDispatcher
+        } if not self.exposer.cache_rule else {
+            'base': CacheDispatcher, 'open': BeforeCacheDispatcher,
+            'close': AfterCacheDispatcher, 'flow': CompleteCacheDispatcher
+        }
+        if self._pipeline_flow_open and self._pipeline_flow_close:
+            dispatcher = dispatchers['flow']
+        elif self._pipeline_flow_open and not self._pipeline_flow_close:
+            dispatcher = dispatchers['open']
+        elif not self._pipeline_flow_open and self._pipeline_flow_close:
+            dispatcher = dispatchers['close']
+        else:
+            dispatcher = dispatchers['base']
+        self.dispatcher = dispatcher(self)
+
+    def dispatch(self, request, reqargs):
+        return self.dispatcher.dispatch(request, reqargs)
+
+
+class Dispatcher(object):
+    __slots__ = ('f', 'flow_open', 'flow_close', 'response_builders')
+
+    def __init__(self, route):
+        self.f = route.f
+        self.flow_open = route._pipeline_flow_open
+        self.flow_close = route._pipeline_flow_close
+        self.response_builders = route.exposer.response_builders
+
+    async def before_dispatch(self):
+        for pipe in self.flow_open:
+            await pipe.open()
+
+    async def after_dispatch(self):
+        for pipe in self.flow_close:
+            await pipe.close()
+
+    def build_response(self, request, output):
+        return self.response_builders[request.method](output)
+
+    async def get_response(self, request, reqargs):
+        return self.build_response(request, await self.f(**reqargs))
+
+    def dispatch(self, request, reqargs):
+        return self.get_response(request, reqargs)
+
+
+class BeforeDispatcher(Dispatcher):
+    __slots__ = ()
+
+    async def dispatch(self, request, reqargs):
+        await self.before_dispatch()
+        return await self.get_response(request, reqargs)
+
+
+class AfterDispatcher(Dispatcher):
+    __slots__ = ()
+
+    async def dispatch(self, request, reqargs):
+        try:
+            rv = await self.get_response(request, reqargs)
+        except Exception:
+            await self.after_dispatch()
+            raise
+        await self.after_dispatch()
+        return rv
+
+
+class CompleteDispatcher(Dispatcher):
+    __slots__ = ()
+
+    async def dispatch(self, request, reqargs):
+        await self.before_dispatch()
+        try:
+            rv = await self.get_response(request, reqargs)
+        except Exception:
+            await self.after_dispatch()
+            raise
+        await self.after_dispatch()
+        return rv
+
+
+class DispatcherCacheMixin(object):
+    __slots__ = ()
+    _allowed_methods = {'GET', 'HEAD'}
+
+    def __init__(self, route):
+        super().__init__(route)
+        self.exposer = route.exposer
+        self.rule = route.exposer.cache_rule
+
+    async def get_response(self, request, reqargs):
+        if request.method not in self._allowed_methods:
+            return await super().get_response(request, reqargs)
+        response = current.response
+        key = self.rule._build_ctx_key(
+            self.exposer, **self.rule._build_ctx(
+                reqargs, self.exposer, current))
+        data = self.rule.cache.get(key)
+        if data is not None:
+            response.headers.update(data['headers'])
+            return data['http_cls'], data['content']
+        http_cls, output = await super().get_response(request, reqargs)
+        if response.status == 200:
+            self.rule.cache.set(
+                key, {
+                    'http_cls': http_cls,
+                    'content': output,
+                    'headers': response.headers},
+                self.rule.duration)
+        return http_cls, output
+
+
+class CacheDispatcher(DispatcherCacheMixin, Dispatcher):
+    __slots__ = ('exposer', 'rule')
+
+
+class BeforeCacheDispatcher(DispatcherCacheMixin, BeforeDispatcher):
+    __slots__ = ('exposer', 'rule')
+
+
+class AfterCacheDispatcher(DispatcherCacheMixin, AfterDispatcher):
+    __slots__ = ('exposer', 'rule')
+
+
+class CompleteCacheDispatcher(DispatcherCacheMixin, CompleteDispatcher):
+    __slots__ = ('exposer', 'rule')
 
 
 class ResponsePipe(Pipe):

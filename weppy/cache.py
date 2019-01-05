@@ -399,12 +399,9 @@ class RouteCacheRule(CacheHashMixin):
         return [data[key] for key in self.check_headers]
 
     def __call__(self, f):
-        from .expose import Expose, ResponsePipe, CachedResponsePipe
+        from .expose import Expose
         obj = Expose.exposing()
-        for _, pipe in enumerate(obj.pipeline):
-            if isinstance(pipe, ResponsePipe):
-                obj.pipeline.insert(_, CachedResponsePipe(obj, self))
-                break
+        obj.cache_rule = self
         return f
 
 
