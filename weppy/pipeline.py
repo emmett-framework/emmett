@@ -50,9 +50,6 @@ class Pipeline(object):
                 continue
             wrapper = self._get_proper_wrapper(pipe)
             f = wrapper(pipe, f)
-            f._output_type_ = (
-                pipe.output if pipe.output is not None else
-                getattr(f, '_output_type_', None))
         return f
 
     def _flow_open(self):
@@ -80,12 +77,6 @@ class Pipeline(object):
         return rv
 
 
-class PipeLink(object):
-    def __init__(self, pipe, f):
-        self.pipe = pipe
-        self.f = f
-
-
 class MetaPipe(type):
     _pipeline_methods_ = {
         'open', 'close', 'pipe', 'on_pipe_success', 'on_pipe_failure'
@@ -96,22 +87,13 @@ class MetaPipe(type):
         if not bases:
             return new_class
         declared_methods = cls._pipeline_methods_ & set(attrs.keys())
-        # declared_coros = {}
-        # for method in declared_methods:
-        #     declared_coros[method] = asyncio.iscoroutinefunction(attrs[method])
         new_class._pipeline_declared_methods_ = declared_methods
-        # new_class._pipeline_declared_coros_ = declared_coros
         all_methods = set()
-        # all_coros = {}
         for base in reversed(new_class.__mro__[:-2]):
             if hasattr(base, '_pipeline_declared_methods_'):
                 all_methods = all_methods | base._pipeline_declared_methods_
-            # if hasattr(base, '_pipeline_declared_coros_'):
-            #     all_coros.update(base._pipeline_declared_coros_)
         all_methods = all_methods | declared_methods
-        # all_coros.update(declared_coros)
         new_class._pipeline_all_methods_ = all_methods
-        # new_class._pipeline_all_coros_ = all_coros
         new_class._is_flow_responsible = bool(
             all_methods & {'pipe', 'on_pipe_success', 'on_pipe_failure'})
         return new_class
