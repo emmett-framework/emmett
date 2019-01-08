@@ -13,19 +13,16 @@
 import os
 import pendulum
 import re
+
 from collections import OrderedDict
 from functools import wraps
-from ._compat import PY2, with_metaclass, itervalues, iteritems, text_type
-from .pipeline import Pipeline, Pipe
-from .templating.helpers import TemplateMissingError
+from urllib.parse import quote as uquote
+
 from .cache import RouteCacheRule
 from .ctx import current
 from .http import HTTP, HTTPBytes, HTTPResponse
-
-if PY2:
-    from urllib import quote as uquote
-else:
-    from urllib.parse import quote as uquote
+from .pipeline import Pipeline, Pipe
+from .templating.helpers import TemplateMissingError
 
 __all__ = ['Expose', 'url']
 
@@ -82,7 +79,7 @@ class AutoResponseBuilder(ResponseProcessor):
                     self.route.template_path, self.route.template, output)
             except TemplateMissingError as exc:
                 raise HTTP(404, body="{}\n".format(exc.message))
-        elif isinstance(output, text_type) or hasattr(output, '__iter__'):
+        elif isinstance(output, str) or hasattr(output, '__iter__'):
             return output
         return str(output)
 
@@ -106,7 +103,7 @@ def _build_routing_dict():
     return rv
 
 
-class Expose(with_metaclass(MetaExpose)):
+class Expose(metaclass=MetaExpose):
     _routing_started_ = False
     _routing_stack = []
     _routes_str = OrderedDict()
@@ -761,7 +758,7 @@ class RouteUrl(object):
         if params:
             return '?' + '&'.join(
                 '%s=%s' % (uquote(str(k)), uquote(str(v)))
-                for k, v in iteritems(params)
+                for k, v in params.items()
             )
         return ''
 

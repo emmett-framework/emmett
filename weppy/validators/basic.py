@@ -14,9 +14,13 @@
 """
 
 import re
+
 from cgi import FieldStorage
+from functools import reduce
 from os import SEEK_END, SEEK_SET
-from .._compat import text_type, to_unicode, to_native, reduce
+
+# TODO: check unicode conversions
+from .._shortcuts import to_unicode
 from .helpers import translate, is_empty
 
 
@@ -56,7 +60,7 @@ class _is(Validator):
         if (
             self.rule is None or (
                 self.rule is not None and
-                self.rule.match(to_native(to_unicode(value)) or ''))
+                self.rule.match(to_unicode(value) or ''))
         ):
             return self.check(value)
         return value, translate(self.message)
@@ -199,7 +203,7 @@ class Matches(Validator):
         #if self.is_unicode and not isinstance(value, unicode):
         #    match = self.regex.search(str(value).decode('utf8'))
         #else:
-        match = self.regex.search(to_native(to_unicode(value)) or '')
+        match = self.regex.search(to_unicode(value) or '')
         if match is not None:
             return self.extract and match.group() or value, None
         return value, translate(self.message)
@@ -254,14 +258,14 @@ class hasLength(Validator):
                 return (value, None)
         elif isinstance(value, bytes):
             try:
-                lvalue = len(to_unicode(value))
-            except:
+                lvalue = len(value.decode('utf8'))
+            except Exception:
                 lvalue = len(value)
             if self._between(lvalue):
                 return (value, None)
-        elif isinstance(value, text_type):
+        elif isinstance(value, str):
             if self._between(len(value)):
-                return (to_native(value), None)
+                return (value, None)
         elif isinstance(value, (tuple, list)):
             if self._between(len(value)):
                 return (value, None)

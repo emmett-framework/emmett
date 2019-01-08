@@ -15,8 +15,9 @@
 
 import smtplib
 import time
+
 from contextlib import contextmanager
-from email import charset as _charsetreg
+from email import charset as _charsetreg, policy
 from email.encoders import encode_base64
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -24,19 +25,13 @@ from email.mime.text import MIMEText
 from email.header import Header
 from email.utils import formatdate, formataddr, make_msgid, parseaddr
 from functools import wraps
-from .._compat import PY2, string_types, to_bytes, to_unicode
-from ..libs.contenttype import contenttype
+
 from ..extensions import Extension
+from ..libs.contenttype import contenttype
 from ..utils import cachedprop
 
-
-if PY2:
-    message_policy = None
-else:
-    from email import policy
-    message_policy = policy.SMTP
-
 _charsetreg.add_charset('utf-8', _charsetreg.SHORTEST, None, 'utf-8')
+message_policy = policy.SMTP
 
 
 def _has_newline(line):
@@ -54,8 +49,8 @@ def sanitize_subject(subject, encoding='utf-8'):
 
 
 def sanitize_address(address, encoding='utf-8'):
-    if isinstance(address, string_types):
-        address = parseaddr(to_unicode(address))
+    if isinstance(address, str):
+        address = parseaddr(address)
     name, address = address
     name = Header(name, encoding).encode()
     try:
@@ -103,7 +98,7 @@ class MailServer(object):
         self.host.sendmail(
             sanitize_address(message.sender),
             list(sanitize_addresses(message.all_recipients)),
-            to_bytes(str(message)),
+            str(message).encode('utf8'),
             message.mail_options,
             message.rcpt_options)
         return True
@@ -209,8 +204,7 @@ class Mail(object):
                 alternative.attach(self._mimetext(content, mimetype))
             msg.attach(alternative)
         if self.subject:
-            msg['Subject'] = sanitize_subject(
-                to_unicode(self.subject), self.charset)
+            msg['Subject'] = sanitize_subject(self.subject, self.charset)
         msg['From'] = sanitize_address(self.sender, self.charset)
         msg['To'] = ', '.join(
             list(set(sanitize_addresses(self.recipients, self.charset))))
@@ -232,8 +226,6 @@ class Mail(object):
             try:
                 filename and filename.encode('ascii')
             except UnicodeEncodeError:
-                if PY2:
-                    filename = filename.encode('utf8')
                 filename = ('UTF8', '', filename)
             f.add_header(
                 'Content-Disposition', attachment.disposition,

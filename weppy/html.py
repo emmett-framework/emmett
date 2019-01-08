@@ -12,15 +12,12 @@
 import cgi
 import re
 import threading
-from ._compat import (
-    iteritems, text_type, implements_to_string, implements_bool, to_unicode,
-    to_native)
+
 from .libs.sanitizer import sanitize
 
 __all__ = ['tag', 'cat', 'safe', 'asis']
 
 
-@implements_bool
 class TagStack(threading.local):
     def __init__(self):
         self.stack = []
@@ -38,36 +35,6 @@ class TagStack(threading.local):
         return len(self.stack) > 0
 
 
-_stack = TagStack()
-
-
-def _to_unicode(obj):
-    if not isinstance(obj, text_type):
-        return to_unicode(obj)
-    return obj
-
-
-#: cgi module seems faster
-# def htmlescape(obj):
-#     if hasattr(obj, '__html__'):
-#         return obj.__html__()
-#     return (
-#         _to_unicode(obj)
-#         .replace('&', '&amp;')
-#         .replace('>', '&gt;')
-#         .replace('<', '&lt;')
-#         .replace("'", '&#39;')
-#         .replace('"', '&#34;')
-#     )
-
-
-def htmlescape(obj):
-    if hasattr(obj, '__html__'):
-        return obj.__html__()
-    return cgi.escape(_to_unicode(obj), True).replace(u"'", u"&#39;")
-
-
-@implements_to_string
 class HtmlTag(object):
     rules = {
         'ul': ['li'],
@@ -199,8 +166,8 @@ class HtmlTag(object):
         return tags
 
     def _build_html_attributes(self):
-        return u' '.join(
-            u'%s="%s"' % (k[1:], k[1:] if v is True else htmlescape(v))
+        return ' '.join(
+            '%s="%s"' % (k[1:], k[1:] if v is True else htmlescape(v))
             for (k, v) in sorted(self.attributes.items())
             if k.startswith('_') and v is not None)
 
@@ -208,15 +175,15 @@ class HtmlTag(object):
         name = self.name
         attrs = self._build_html_attributes()
         data = self.attributes.get('data', {})
-        data_attrs = u' '.join(
-            u'data-%s="%s"' % (k, htmlescape(v)) for k, v in iteritems(data))
+        data_attrs = ' '.join(
+            'data-%s="%s"' % (k, htmlescape(v)) for k, v in data.items())
         if data_attrs:
-            attrs = attrs + u' ' + data_attrs
-        attrs = u' ' + attrs if attrs else u''
+            attrs = attrs + ' ' + data_attrs
+        attrs = ' ' + attrs if attrs else ''
         if name in self._self_closed:
-            return u'<%s%s />' % (name, attrs)
-        components = u''.join(htmlescape(v) for v in self.components)
-        return u'<%s%s>%s</%s>' % (name, attrs, components, name)
+            return '<%s%s />' % (name, attrs)
+        components = ''.join(htmlescape(v) for v in self.components)
+        return '<%s%s>%s</%s>' % (name, attrs, components, name)
 
     def __json__(self):
         return str(self)
@@ -236,7 +203,7 @@ class cat(HtmlTag):
         self.attributes = {}
 
     def __html__(self):
-        return u''.join(htmlescape(v) for v in self.components)
+        return ''.join(htmlescape(v) for v in self.components)
 
 
 class asis(HtmlTag):
@@ -244,16 +211,35 @@ class asis(HtmlTag):
         self.text = text
 
     def __html__(self):
-        return _to_unicode(self.text)
+        return _to_str(self.text)
 
 
 class safe(asis):
     default_allowed_tags = {
-        'a': ['href', 'title', 'target'], 'b': [], 'blockquote': ['type'],
-        'br': [], 'i': [], 'li': [], 'ol': [], 'ul': [], 'p': [], 'cite': [],
-        'code': [], 'pre': [], 'img': ['src', 'alt'], 'strong': [],
-        'h1': [], 'h2': [], 'h3': [], 'h4': [], 'h5': [], 'h6': [],
-        'table': [], 'tr': [], 'td': ['colspan'], 'div': [],
+        'a': ['href', 'title', 'target'],
+        'b': [],
+        'blockquote': ['type'],
+        'br': [],
+        'i': [],
+        'li': [],
+        'ol': [],
+        'ul': [],
+        'p': [],
+        'cite': [],
+        'code': [],
+        'pre': [],
+        'img': ['src', 'alt'],
+        'strong': [],
+        'h1': [],
+        'h2': [],
+        'h3': [],
+        'h4': [],
+        'h5': [],
+        'h6': [],
+        'table': [],
+        'tr': [],
+        'td': ['colspan'],
+        'div': []
     }
 
     def __init__(self, text, sanitize=False, allowed_tags=None):
@@ -264,10 +250,23 @@ class safe(asis):
     def __html__(self):
         if self.sanitize:
             return sanitize(
-                to_native(self.text),
+                _to_str(self.text),
                 self.allowed_tags.keys(),
                 self.allowed_tags)
         return super(safe, self).__html__()
 
 
+def _to_str(obj):
+    if not isinstance(obj, str):
+        return str(obj)
+    return obj
+
+
+def htmlescape(obj):
+    if hasattr(obj, '__html__'):
+        return obj.__html__()
+    return cgi.escape(_to_str(obj), True).replace("'", "&#39;")
+
+
+_stack = TagStack()
 tag = MetaHtmlTag()

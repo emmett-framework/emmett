@@ -10,7 +10,7 @@
 """
 
 from functools import wraps
-from ._compat import iteritems, iterkeys, string_types
+
 from .ctx import current, request, session
 from .datastructures import sdict
 from .expose import Expose
@@ -36,15 +36,15 @@ class Form(HtmlTag):
 
     def __init__(self, fields={}, **kwargs):
         #: get fields from kwargs
-        for name, parameter in iteritems(kwargs):
+        for name, parameter in kwargs.items():
             if isinstance(parameter, Field):
                 fields[name] = parameter
-        for name in iterkeys(fields):
+        for name in fields.keys():
             if name in kwargs:
                 del kwargs[name]
         #: order fields correctly
         sorted_fields = []
-        for name, field in iteritems(fields):
+        for name, field in fields.items():
             sorted_fields.append((name, field))
         sorted_fields.sort(key=lambda x: x[1]._inst_count_)
         #: init fields
@@ -173,7 +173,7 @@ class Form(HtmlTag):
             styler._proc_element(field, value, error)
         styler.add_buttons()
         styler._add_formkey(self.formkey)
-        for key, value in iteritems(self.attributes.get('hidden', {})):
+        for key, value in self.attributes.get('hidden', {}).items():
             styler._add_hidden(key, value)
         return styler.render()
 
@@ -211,7 +211,7 @@ class Form(HtmlTag):
         hidden.append(
             tag.input(
                 _name='_csrf_token', _type='hidden', _value=self.formkey))
-        for key, value in iteritems(self.attributes.get('hidden', {})):
+        for key, value in self.attributes.get('hidden', {}).items():
             hidden.append(
                 tag.input(_name=key, _type='hidden', _value=value))
         # provides end attribute
@@ -436,7 +436,7 @@ class FormStyle(object):
             return False
 
         def _coerce_value(value):
-            if isinstance(value, string_types) or isinstance(value, bytes):
+            if isinstance(value, str) or isinstance(value, bytes):
                 return value or ''
             return ''
 

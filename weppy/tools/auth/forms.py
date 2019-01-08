@@ -9,7 +9,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ..._compat import iterkeys
 from ...forms import Form, ModelForm
 from ...orm import Field
 
@@ -33,7 +32,7 @@ class AuthForms(object):
     @classmethod
     def map(cls):
         rv = {}
-        for key in iterkeys(cls._registry_):
+        for key in cls._registry_.keys():
             rv[key] = cls.get_for(key)
         return rv
 

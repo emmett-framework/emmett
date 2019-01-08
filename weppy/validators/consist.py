@@ -17,20 +17,17 @@ import decimal
 import json
 import re
 import struct
+
 from datetime import date, time, datetime, timedelta
 from time import strptime
-from .._compat import PY2, basestring, string_types
+from urllib.parse import unquote as url_unquote
+
 from ..serializers import Serializers
 from ..utils import parse_datetime
 from .basic import Validator, ParentValidator, _is, Matches
 from .helpers import translate, _UTC, url_split_regex, official_url_schemes, \
     unofficial_url_schemes, unicode_to_ascii_url, official_top_level_domains, \
     _DEFAULT
-
-if PY2:
-    from urllib import unquote as url_unquote
-else:
-    from urllib.parse import unquote as url_unquote
 
 _utc = _UTC()
 
@@ -227,7 +224,7 @@ class isList(ParentValidator):
             self.splitter = re.compile('[^' + splitter + '\s]+')
 
     def __call__(self, value):
-        if self.splitter is not None and isinstance(value, basestring):
+        if self.splitter is not None and isinstance(value, str):
             values = self.splitter.findall(value)
         else:
             if not isinstance(value, list):
@@ -252,7 +249,7 @@ class isJSON(_is):
                   KeyError)
 
     def check(self, value):
-        if isinstance(value, string_types):
+        if isinstance(value, str):
             try:
                 v = json.loads(value)
                 return v, None

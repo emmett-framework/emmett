@@ -13,7 +13,9 @@
 
 import re
 import unicodedata
-from .._compat import to_unicode, to_native
+
+# TODO: check unicode conversions
+from .._shortcuts import to_unicode
 from .basic import Validator
 from .helpers import translate, LazyCrypt
 
@@ -27,7 +29,7 @@ class Cleanup(Validator):
         self.regex = self.rule if regex is None else re.compile(regex)
 
     def __call__(self, value):
-        v = self.regex.sub('', (to_native(to_unicode(value)) or '').strip())
+        v = self.regex.sub('', (to_unicode(value) or '').strip())
         return v, None
 
 
@@ -37,7 +39,7 @@ class Lower(Validator):
     def __call__(self, value):
         if value is None:
             return (value, None)
-        return (to_native(to_unicode(value).lower()), None)
+        return (to_unicode(value).lower(), None)
 
 
 class Upper(Validator):
@@ -46,7 +48,7 @@ class Upper(Validator):
     def __call__(self, value):
         if value is None:
             return (value, None)
-        return (to_native(to_unicode(value).upper()), None)
+        return (to_unicode(value).upper(), None)
 
 
 class Urlify(Validator):

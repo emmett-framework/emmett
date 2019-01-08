@@ -10,8 +10,9 @@
 """
 
 import time
+
 from functools import wraps
-from ..._compat import itervalues, iteritems
+
 from ...cli import pass_script_info
 from ...ctx import session, now
 from ...datastructures import sdict
@@ -115,7 +116,7 @@ class AuthExtension(Extension):
 
     def __init_messages(self):
         self.config.messages = self.config.get('messages', sdict())
-        for key, dval in iteritems(self.default_messages):
+        for key, dval in self.default_messages.items():
             self.config.messages[key] = T(self.config.messages.get(key, dval))
 
     def __init_mails(self):
@@ -196,7 +197,7 @@ class AuthExtension(Extension):
         self.define_models()
 
     def __set_models_labels(self):
-        for model in itervalues(self.default_config['models']):
+        for model in self.default_config['models'].values():
             for supmodel in list(reversed(model.__mro__))[1:]:
                 if not supmodel.__module__.startswith(
                     'weppy.tools.auth.models'
@@ -205,7 +206,7 @@ class AuthExtension(Extension):
                 if not hasattr(supmodel, 'form_labels'):
                     continue
                 current_labels = {}
-                for key, val in iteritems(supmodel.form_labels):
+                for key, val in supmodel.form_labels.items():
                     current_labels[key] = T(val)
                 supmodel.form_labels = current_labels
 
@@ -276,12 +277,12 @@ class AuthExtension(Extension):
             models['permission'], models['event']
         )
         self.model_names = sdict()
-        for key, value in iteritems(models):
+        for key, value in models.items():
             self.model_names[key] = value.__name__
 
     def init_forms(self):
         self.forms = sdict()
-        for key, (method, fields_method) in iteritems(AuthForms.map()):
+        for key, (method, fields_method) in AuthForms.map().items():
             self.forms[key] = _wrap_form(
                 method, fields_method(self.auth), self.auth)
 

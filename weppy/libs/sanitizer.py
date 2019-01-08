@@ -10,18 +10,11 @@
 
 """
 
-from weppy._compat import PY2
-if PY2:
-    from htmllib import HTMLParser
-    from urlparse import urlparse
-    from htmlentitydefs import entitydefs
-else:
-    from html.parser import HTMLParser
-    from urllib.parse import urlparse
-    from html.entities import entitydefs
 from cgi import escape
 from formatter import AbstractFormatter
-
+from html.entities import entitydefs
+from html.parser import HTMLParser
+from urllib.parse import urlparse
 from xml.sax.saxutils import quoteattr
 
 __all__ = ['sanitize']
@@ -107,9 +100,9 @@ class XssCleaner(HTMLParser):
             bt = '<' + tag
             if tag in self.allowed_attributes:
                 attrs = dict(attrs)
-                self.allowed_attributes_here = [x for x in
-                                                self.allowed_attributes[tag] if x in attrs and
-                                                len(attrs[x]) > 0]
+                self.allowed_attributes_here = [
+                    x for x in self.allowed_attributes[tag]
+                    if x in attrs and len(attrs[x]) > 0]
                 for attribute in self.allowed_attributes_here:
                     if attribute in ['href', 'src', 'background']:
                         if self.url_is_acceptable(attrs[attribute]):
@@ -193,19 +186,21 @@ class XssCleaner(HTMLParser):
 
 def sanitize(
     text,
-    permitted_tags=['a', 'b', 'blockquote', 'br/', 'i', 'li',
-                    'ol', 'ul', 'p', 'cite', 'code', 'pre',
-                    'img/', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                    'table', 'tr', 'td', 'div', ],
+    permitted_tags=[
+        'a', 'b', 'blockquote', 'br/', 'i', 'li', 'ol', 'ul', 'p', 'cite',
+        'code', 'pre', 'img/', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table',
+        'tr', 'td', 'div'
+    ],
     allowed_attributes={
         'a': ['href', 'title'],
         'img': ['src', 'alt'],
         'blockquote': ['type'],
-        'td': ['colspan'],
+        'td': ['colspan']
     },
     escape=True
 ):
-    if not isinstance(text, basestring):
+    if not isinstance(text, str):
         return str(text)
-    return XssCleaner(permitted_tags=permitted_tags,
-                      allowed_attributes=allowed_attributes).strip(text, escape)
+    return XssCleaner(
+        permitted_tags=permitted_tags, allowed_attributes=allowed_attributes
+    ).strip(text, escape)

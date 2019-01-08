@@ -19,8 +19,8 @@ import pendulum
 import pkgutil
 import sys
 import warnings
+
 from functools import partial
-from ._compat import PY2, implements_iterator
 
 
 def _is_immutable(self):
@@ -173,115 +173,6 @@ class ImmutableList(ImmutableListMixin, list):
         )
 
 
-@implements_iterator
-class LimitedStream(object):
-    def __init__(self, stream, limit):
-        self._read = stream.read
-        self._readline = stream.readline
-        self._pos = 0
-        self.limit = limit
-
-    def __iter__(self):
-        return self
-
-    @property
-    def is_exhausted(self):
-        """If the stream is exhausted this attribute is `True`."""
-        return self._pos >= self.limit
-
-    def on_exhausted(self):
-        """This is called when the stream tries to read past the limit.
-        The return value of this function is returned from the reading
-        function.
-        """
-        # Read null bytes from the stream so that we get the
-        # correct end of stream marker.
-        return self._read(0)
-
-    def on_disconnect(self):
-        raise Exception
-
-    def exhaust(self, chunk_size=1024 * 64):
-        """Exhaust the stream.  This consumes all the data left until the
-        limit is reached.
-
-        :param chunk_size: the size for a chunk.  It will read the chunk
-                           until the stream is exhausted and throw away
-                           the results.
-        """
-        to_read = self.limit - self._pos
-        chunk = chunk_size
-        while to_read > 0:
-            chunk = min(to_read, chunk)
-            self.read(chunk)
-            to_read -= chunk
-
-    def read(self, size=None):
-        """Read `size` bytes or if size is not provided everything is read.
-
-        :param size: the number of bytes read.
-        """
-        if self._pos >= self.limit:
-            return self.on_exhausted()
-        if size is None or size == -1:  # -1 is for consistence with file
-            size = self.limit
-        to_read = min(self.limit - self._pos, size)
-        try:
-            read = self._read(to_read)
-        except (IOError, ValueError):
-            return self.on_disconnect()
-        if to_read and len(read) != to_read:
-            return self.on_disconnect()
-        self._pos += len(read)
-        return read
-
-    def readline(self, size=None):
-        """Reads one line from the stream."""
-        if self._pos >= self.limit:
-            return self.on_exhausted()
-        if size is None:
-            size = self.limit - self._pos
-        else:
-            size = min(size, self.limit - self._pos)
-        try:
-            line = self._readline(size)
-        except (ValueError, IOError):
-            return self.on_disconnect()
-        if size and not line:
-            return self.on_disconnect()
-        self._pos += len(line)
-        return line
-
-    def readlines(self, size=None):
-        """Reads a file into a list of strings.  It calls :meth:`readline`
-        until the file is read to the end.  It does support the optional
-        `size` argument if the underlaying stream supports it for
-        `readline`.
-        """
-        last_pos = self._pos
-        result = []
-        if size is not None:
-            end = min(self.limit, last_pos + size)
-        else:
-            end = self.limit
-        while 1:
-            if size is not None:
-                size -= last_pos - self._pos
-            if self._pos >= end:
-                break
-            result.append(self.readline(size))
-            if size is not None:
-                last_pos = self._pos
-        return result
-
-    def __next__(self):
-        line = self.readline()
-        if not line:
-            raise StopIteration()
-        return line
-
-
-@implements_iterator
 class ClosingIterator(object):
     def __init__(self, iterable, callbacks=None):
         iterator = iter(iterable)
@@ -308,34 +199,11 @@ class ClosingIterator(object):
             callback()
 
 
-#: decorators
-def native_itermethods(names):
-    if not PY2:
-        return lambda x: x
-
-    def setviewmethod(cls, name):
-        viewmethod_name = 'view%s' % name
-        viewmethod = lambda self, *a, **kw: ViewItems(
-            self, name, 'view_%s' % name, *a, **kw)
-        viewmethod.__doc__ = \
-            '"""`%s()` object providing a view on %s"""' % (
-                viewmethod_name, name)
-        setattr(cls, viewmethod_name, viewmethod)
-
-    def setitermethod(cls, name):
-        itermethod = getattr(cls, name)
-        setattr(cls, 'iter%s' % name, itermethod)
-        listmethod = lambda self, *a, **kw: list(itermethod(self, *a, **kw))
-        listmethod.__doc__ = \
-            'Like :py:meth:`iter%s`, but returns a list.' % name
-        setattr(cls, name, listmethod)
-
-    def wrap(cls):
-        for name in names:
-            setitermethod(cls, name)
-            setviewmethod(cls, name)
-        return cls
-    return wrap
+#: utilities
+def reraise(tp, value, tb=None):
+    if value.__traceback__ is not tb:
+        raise value.with_traceback(tb)
+    raise value
 
 
 #: deprecation helpers
@@ -420,7 +288,7 @@ def create_missing_app_folders(app):
             path = os.path.join(app.root_path, subfolder)
             if not os.path.exists(path):
                 os.mkdir(path)
-    except:
+    except Exception:
         pass
 
 

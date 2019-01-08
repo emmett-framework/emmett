@@ -12,8 +12,12 @@
 """
 
 import re
+
 from datetime import tzinfo, timedelta
-from .._compat import StringIO, string_types, to_unicode
+from io import StringIO
+
+# TODO: check unicode conversions
+from .._shortcuts import to_unicode
 from ..ctx import current
 from ..security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
 
@@ -24,7 +28,7 @@ _DEFAULT = lambda: None
 def translate(text):
     if text is None:
         return None
-    elif isinstance(text, string_types):
+    elif isinstance(text, str):
         return current.T(text)
     return str(text)
 
@@ -36,7 +40,7 @@ def options_sorter(x, y):
 def is_empty(value, empty_regex=None):
     if value is None:
         return value, True
-    if isinstance(value, string_types) or isinstance(value, bytes):
+    if isinstance(value, (str, bytes)):
         value = value.strip()
         if empty_regex is not None and empty_regex.match(value):
             value = ''

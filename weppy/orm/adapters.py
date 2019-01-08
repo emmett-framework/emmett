@@ -20,7 +20,7 @@ from pydal.adapters.postgres import (
     PostgreBoolean, PostgrePsycoBoolean, PostgrePG8000Boolean
 )
 from pydal.adapters.sqlite import SQLite as _SQLite
-from .._compat import iteritems
+
 from .connection import ConnectionManager, PooledConnectionManager
 from .objects import Field
 
@@ -139,7 +139,7 @@ def _parse(adapter, row, fdata, tables, fields, colnames, blob_decode):
 
 def _build_newrow_wtables(adapter, tables):
     rv = adapter.db.Row()
-    for name, table in iteritems(tables):
+    for name, table in tables.items():
         rv[name] = table._model_._rowclass_()
     return rv
 

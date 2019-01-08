@@ -23,12 +23,14 @@ from urllib.parse import parse_qs
 from ..datastructures import Accept, sdict
 from ..http import HTTP
 from ..language.helpers import LanguageAccept
+from ..parsers import Parsers
 from ..utils import cachedprop
 from . import Wrapper
 
 _regex_accept = re.compile(r'''
     ([^\s;,]+(?:[ \t]*;[ \t]*(?:[^\s;,q][^\s;,]*|q[^\s;,=][^\s;,]*))*)
     (?:[ \t]*;[ \t]*q=(\d*(?:\.\d+)?)[^,]*)?''', re.VERBOSE)
+# _regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
 
 
 class Body(object):
@@ -200,8 +202,7 @@ class Request(Wrapper):
 
     def _load_params_json(self, data):
         rv = sdict()
-        json_data = json.loads(data)
-        rv.update(json_data)
+        rv.update(Parsers.get_for('json')(data))
         return rv
 
     def _load_params_form_urlencoded(self, data):
@@ -215,6 +216,7 @@ class Request(Wrapper):
             rv[key] = values
         return rv
 
+    # TODO: files
     def _load_params_form_multipart(self, data):
         rv = sdict()
         field_storage = FieldStorage(
@@ -261,3 +263,19 @@ class Request(Wrapper):
     def accept_language(self):
         return self.__parse_accept_header(
             self.headers.get('accept-language'), LanguageAccept)
+
+    # @cachedprop
+    # def client(self):
+    #     g = _regex_client.search(self.headers.get('x-forwarded-for', ''))
+    #     client = (g.group() or '').split(',')[0] if g else None
+    #     if client in (None, '', 'unknown'):
+    #         g = _regex_client.search(self.headers.get('remote-addr', ''))
+    #         if g:
+    #             client = g.group()
+    #         elif self.hostname.startswith('['):
+    #             # IPv6
+    #             client = '::1'
+    #         else:
+    #             # IPv4
+    #             client = '127.0.0.1'
+    #     return client

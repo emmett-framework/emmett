@@ -13,12 +13,14 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import traceback
 import inspect
 import os
 import sys
+import traceback
+
 from types import TracebackType, CodeType
-from ._compat import PY2, reraise, iteritems
+
+from ._internal import reraise
 from .templating.core import Writer
 from .templating.helpers import TemplateError, TemplateSyntaxError
 from .templating.parser import TemplateParser
@@ -136,8 +138,7 @@ class Traceback(object):
     def exception(self):
         """String representation of the exception."""
         buf = traceback.format_exception_only(self.exc_type, self.exc_value)
-        rv = ''.join(buf).strip()
-        return rv.decode('utf-8', 'replace') if PY2 else rv
+        return ''.join(buf).strip()
 
     def generate_plaintext_traceback(self):
         """Like the plaintext attribute but returns a generator"""
@@ -250,7 +251,7 @@ class Frame(object):
     @cachedprop
     def render_locals(self):
         rv = dict()
-        for k, v in iteritems(self.locals):
+        for k, v in self.locals.items():
             try:
                 rv[k] = str(v)
             except Exception:
@@ -373,7 +374,7 @@ def fake_exc_info(exc_info, filename, lineno):
             locals = ctx
         else:
             locals = {}
-        #for name, value in iteritems(real_locals):
+        #for name, value in real_locals.items():
         #    if name.startswith('l_') and value is not missing:
         #        locals[name[2:]] = value
 

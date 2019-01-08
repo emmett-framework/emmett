@@ -13,13 +13,13 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from __future__ import print_function
+# from __future__ import print_function
 
 import click
 import os
 import sys
 import types
-from ._compat import itervalues, iteritems
+
 from . import __version__ as weppy_version
 
 
@@ -36,7 +36,7 @@ def find_best_app(module):
             return app
 
     # Otherwise find the only object that is a weppy App instance.
-    matches = [v for k, v in iteritems(module.__dict__) if isinstance(v, App)]
+    matches = [v for k, v in module.__dict__.items() if isinstance(v, App)]
 
     if len(matches) == 1:
         return matches[0]
@@ -52,7 +52,7 @@ def find_db(module, var_name=None):
         return [getattr(module, var_name)]
     from .orm import Database
     matches = [
-        v for k, v in iteritems(module.__dict__) if isinstance(v, Database)]
+        v for k, v in module.__dict__.items() if isinstance(v, Database)]
 
     return matches
 
@@ -139,7 +139,7 @@ class ScriptInfo(object):
             raise Exception("Could not locate application.")
         module, mod, app_obj = get_app_module(self.app_import_path)
         ctx = {}
-        for key, value in iteritems(mod.__dict__):
+        for key, value in mod.__dict__.items():
             if key == "__builtins__" or isinstance(value, types.FunctionType):
                 continue
             ctx[key] = value
@@ -290,7 +290,7 @@ def shell_command(info):
 def routes_command(info):
     app = info.load_app()
     print("> Routing table for weppy application %s:" % app.import_name)
-    for route in itervalues(app.route._routes_str):
+    for route in app.route._routes_str.values():
         print(route)
 
 

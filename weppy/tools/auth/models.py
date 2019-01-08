@@ -9,7 +9,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ..._compat import iterkeys, iteritems
 from ...ctx import current, request, now
 from ...orm import Model, Field, before_insert, rowmethod
 from ...security import uuid
@@ -94,11 +93,11 @@ class AuthModel(Model):
         settings = {
             'form_registration_rw': {'writable': [], 'readable': []},
             'form_profile_rw': {'writable': [], 'readable': []}}
-        for config_dict in iterkeys(settings):
+        for config_dict in settings.keys():
             rw_data = self.__base_visibility()
             rw_data.update(**self.fields_rw)
             rw_data.update(**getattr(self, config_dict))
-            for key, value in iteritems(rw_data):
+            for key, value in rw_data.items():
                 if isinstance(value, (tuple, list)):
                     readable, writable = value
                 else:

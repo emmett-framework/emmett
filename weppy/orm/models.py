@@ -10,8 +10,9 @@
 """
 
 import types
+
 from collections import OrderedDict
-from .._compat import iteritems, itervalues, with_metaclass
+
 from ..datastructures import sdict
 from ..utils import cachedprop
 from .apis import (
@@ -147,7 +148,7 @@ class MetaModel(type):
         return new_class
 
 
-class Model(with_metaclass(MetaModel)):
+class Model(metaclass=MetaModel):
     db = None
     table = None
 
@@ -298,7 +299,7 @@ class Model(with_metaclass(MetaModel)):
         idfield = Field('id')._make_field('id', self)
         setattr(self.__class__, 'id', idfield)
         self.fields.append(idfield)
-        for name, obj in iteritems(self._all_fields_):
+        for name, obj in self._all_fields_.items():
             if obj.modelname is not None:
                 obj = Field(obj._type, *obj._args, **obj._kwargs)
                 setattr(self.__class__, name, obj)
@@ -345,7 +346,7 @@ class Model(with_metaclass(MetaModel)):
         #: has_one are mapped with rowattr
         hasone_references = {}
         if hasattr(self, '_all_hasone_ref_'):
-            for item in itervalues(getattr(self, '_all_hasone_ref_')):
+            for item in getattr(self, '_all_hasone_ref_').values():
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item, False)
@@ -356,7 +357,7 @@ class Model(with_metaclass(MetaModel)):
         #: has_many are mapped with rowattr
         hasmany_references = {}
         if hasattr(self, '_all_hasmany_ref_'):
-            for item in itervalues(getattr(self, '_all_hasmany_ref_')):
+            for item in getattr(self, '_all_hasmany_ref_').values():
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item)
@@ -379,7 +380,7 @@ class Model(with_metaclass(MetaModel)):
             'existent field!'
         field_names = [field.name for field in self.fields]
         for attr in ['_virtual_relations_', '_all_virtuals_']:
-            for name, obj in iteritems(getattr(self, attr, {})):
+            for name, obj in getattr(self, attr, {}).items():
                 if obj.field_name in field_names:
                     raise RuntimeError(err)
                 wrapped = wrap_virtual_on_model(self, obj.f)
@@ -394,7 +395,7 @@ class Model(with_metaclass(MetaModel)):
     def _build_rowclass_(self):
         clsname = self.__class__.__name__ + "Row"
         attrs = {
-            k: cachedprop(v, name=k) for k, v in iteritems(self._all_rowattrs_)
+            k: cachedprop(v, name=k) for k, v in self._all_rowattrs_.items()
         }
         attrs.update(self._all_rowmethods_)
         self._rowclass_ = type(clsname, (Row,), attrs)
@@ -457,7 +458,7 @@ class Model(with_metaclass(MetaModel)):
         err = 'computations should have the name of an existing field to ' +\
             'compute!'
         field_names = [field.name for field in self.fields]
-        for name, obj in iteritems(self._all_computations_):
+        for name, obj in self._all_computations_.items():
             if obj.field_name not in field_names:
                 raise RuntimeError(err)
             # TODO add check virtuals
@@ -465,7 +466,7 @@ class Model(with_metaclass(MetaModel)):
                 lambda row, obj=obj, self=self: obj.f(self, row)
 
     def __define_callbacks(self):
-        for name, obj in iteritems(self._all_callbacks_):
+        for name, obj in self._all_callbacks_.items():
             for t in obj.t:
                 if t in ["_before_insert", "_before_delete", "_after_delete"]:
                     getattr(self.table, t).append(
@@ -477,7 +478,7 @@ class Model(with_metaclass(MetaModel)):
 
     def __define_scopes(self):
         self._scopes_ = {}
-        for name, obj in iteritems(self._all_scopes_):
+        for name, obj in self._all_scopes_.items():
             self._scopes_[obj.name] = obj
             if not hasattr(self.__class__, obj.name):
                 setattr(
@@ -518,7 +519,7 @@ class Model(with_metaclass(MetaModel)):
 
     def __define_indexes(self):
         self._indexes_ = {}
-        for key, value in iteritems(self.indexes):
+        for key, value in self.indexes.items():
             if isinstance(value, bool):
                 if not value:
                     continue

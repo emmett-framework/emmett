@@ -15,7 +15,6 @@ import sys
 
 from yaml import load as ymlload
 
-from ._compat import basestring
 from ._internal import get_root_path, create_missing_app_folders
 from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
 from .asgi.server import run as asgi_run
@@ -193,7 +192,7 @@ class App(object):
         ext_env, ext_config = self.__init_extension(ext)
         self.template_extensions.append(ext(ext_env, ext_config))
         fext = self.template_extensions[-1].file_extension
-        if fext is not None and isinstance(fext, basestring):
+        if fext is not None and isinstance(fext, str):
             if fext not in self.template_preloaders.keys():
                 self.template_preloaders[fext] = []
             self.template_preloaders[fext].append(self.template_extensions[-1])

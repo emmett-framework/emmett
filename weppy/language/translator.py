@@ -15,10 +15,9 @@
 
 import os
 
-from .._compat import (
-    PY2, implements_bool, implements_to_string, iteritems, iterkeys,
-    to_unicode
-)
+# TODO: check conversions
+from .._shortcuts import to_unicode
+
 from ..ctx import current
 from ..html import asis, htmlescape
 from ..utils import cachedprop
@@ -30,17 +29,12 @@ from .helpers import (
 )
 from .cache import get_from_cache
 
-if PY2:
-    NUMBERS = (int, long, float)
-else:
-    NUMBERS = (int, float)
+NUMBERS = (int, float)
 
 
 #: The single 'translator string element', is created when user calls
 #  T('string'), and will be translated when loaded in templates or converted to
 #  a string (via str())
-@implements_bool
-@implements_to_string
 class TElement(object):
     m = s = T = language = None
     M = is_copy = False
@@ -260,7 +254,6 @@ class TLanguage(object):
         the ## notation is ignored in multiline strings and strings that
         start with ##. this is to allow markmin syntax to be translated
         """
-        message = to_unicode(message)
         key = prefix + message
         mt = self.get(key)
         if mt is not None:
@@ -279,9 +272,9 @@ class TLanguage(object):
     def translate(self, message):
         if self.cached:
             return get_from_cache(
-                self.filename, to_unicode(message),
-                lambda: to_unicode(self.get_t(message)))
-        return to_unicode(self.get_t(message))
+                self.filename, message,
+                lambda: self.get_t(message))
+        return self.get_t(message)
 
 
 #: The main translator object, responsible of creating elements and loading
@@ -322,7 +315,7 @@ class Translator(object):
     @cachedprop
     def all_languages(self):
         return {
-            lang: lang for lang in iterkeys(self.possible_languages)
+            lang: lang for lang in self.possible_languages.keys()
             if lang != 'default'}
 
     def get_language_info(self, lang):
@@ -387,7 +380,7 @@ class Translator(object):
             if isinstance(symbols, dict):
                 symbols.update(
                     (key, htmlescape(value).translate(ttab_in))
-                    for key, value in iteritems(symbols)
+                    for key, value in symbols.items()
                     if not isinstance(value, NUMBERS))
             else:
                 if not isinstance(symbols, tuple):
@@ -524,8 +517,8 @@ class Translator(object):
                 symbols.update(
                     (
                         key, to_unicode(value).translate(ttab_in)
-                        if value else u'')
-                    for key, value in iteritems(symbols)
+                        if value else '')
+                    for key, value in symbols.items()
                     if not isinstance(value, NUMBERS))
             else:
                 if not isinstance(symbols, tuple):
@@ -533,7 +526,7 @@ class Translator(object):
                 symbols = tuple(
                     value if isinstance(value, NUMBERS)
                     else (
-                        to_unicode(value).translate(ttab_in) if value else u'')
+                        to_unicode(value).translate(ttab_in) if value else '')
                     for value in symbols)
             message = self.params_substitution(lang, message, symbols)
         return message.translate(ttab_out)

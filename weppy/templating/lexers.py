@@ -10,7 +10,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .._compat import to_unicode
 from ..expose import Expose, url
 from ..extensions import TemplateLexer
 
@@ -143,7 +142,7 @@ class StaticLexer(WeppyLexer):
 
     def process(self, ctx, value):
         file_name = value.split("?")[0]
-        surl = to_unicode(url('static', file_name))
+        surl = url('static', file_name)
         file_ext = file_name.rsplit(".", 1)[-1]
         if file_ext == 'js':
             s = u'<script type="text/javascript" src="%s"></script>' % surl

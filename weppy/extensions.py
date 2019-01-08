@@ -9,7 +9,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ._compat import with_metaclass, iteritems
 from collections import OrderedDict
 from functools import wraps
 
@@ -53,7 +52,7 @@ class MetaExtension(type):
         return new_class
 
 
-class Extension(with_metaclass(MetaExtension)):
+class Extension(metaclass=MetaExtension):
     namespace = None
     default_config = {}
 
@@ -65,12 +64,12 @@ class Extension(with_metaclass(MetaExtension)):
         self.__init_listeners()
 
     def __init_config(self):
-        for key, dval in iteritems(self.default_config):
+        for key, dval in self.default_config.items():
             self.config[key] = self.config.get(key, dval)
 
     def __init_listeners(self):
         self._listeners_ = []
-        for name, obj in iteritems(self._all_listeners_):
+        for name, obj in self._all_listeners_.items():
             self._listeners_.append((obj.signal, _wrap_listener(self, obj.f)))
 
     def on_load(self):

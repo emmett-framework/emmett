@@ -11,9 +11,9 @@
 
 from collections import Iterable
 from uuid import uuid4
-from ..._compat import string_types, integer_types
-from ...templating.core import Templater
+
 from ...datastructures import sdict, _unique_list
+from ...templating.core import Templater
 
 
 DEFAULT_VALUE = lambda: None
@@ -73,7 +73,7 @@ def render_template(path, template, ctx):
 def to_tuple(x, default=None):
     if x is None:
         return default
-    elif isinstance(x, string_types):
+    elif isinstance(x, str):
         return (x, )
     elif isinstance(x, Iterable):
         return tuple(x)
@@ -106,7 +106,7 @@ def dedupe_tuple(tup):
 def format_with_comma(value):
     if value is None:
         return ""
-    elif isinstance(value, string_types):
+    elif isinstance(value, str):
         return value
     elif isinstance(value, Iterable):
         return ", ".join(value)
@@ -119,9 +119,9 @@ def _feasible_as_dbms_default(val):
         return False
     if val is None:
         return True
-    if isinstance(val, integer_types):
+    if isinstance(val, int):
         return True
-    if isinstance(val, string_types):
+    if isinstance(val, str):
         return True
     if isinstance(val, (bool, float)):
         return True

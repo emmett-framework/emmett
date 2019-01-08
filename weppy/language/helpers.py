@@ -14,7 +14,9 @@ import os
 import pkgutil
 import re
 
-from .._compat import PY2, to_unicode, to_bytes
+# TODO: check conversions
+from .._shortcuts import to_bytes, to_unicode
+
 from ..datastructures import Accept
 from ..libs.portalocker import read_locked, LockedFile
 from .cache import clear_cache, getcfs
@@ -96,18 +98,26 @@ def read_plural_dict(filename):
                   lambda: read_plural_dict_aux(filename))
 
 
+_plural_header = '''#!/usr/bin/env python
+# "singular form (0)": ["first plural form (1)", "second plural form (2)", ...]
+{
+'''
+
+
 def write_plural_dict(filename, contents):
     if '__corrupted__' in contents:
         return
     try:
         fp = LockedFile(filename, 'wb')
-        fp.write(to_bytes(u'#!/usr/bin/env python\n{\n# "singular form (0)": ["first plural form (1)", "second plural form (2)", ...],\n'))
+        fp.write(to_bytes(_plural_header))
         # coding: utf8\n{\n')
         for key in sorted(contents):
-            forms = u'[' + u','.join('"' + form + '"' for form in contents[key]) + u']'
-            val = u'"%s": %s,\n' % (key, forms)
+            forms = '[' + ','.join(
+                '"' + form + '"' for form in contents[key]
+            ) + ']'
+            val = '    "%s": %s,\n' % (key, forms)
             fp.write(to_bytes(val))
-        fp.write(to_bytes(u'}\n'))
+        fp.write(to_bytes('}\n'))
     except (IOError, OSError):
         #if not is_gae:
         #    logging.warning('Unable to write to file %s' % filename)
@@ -130,9 +140,6 @@ def read_dict_aux(filename):
     clear_cache(filename)
     try:
         rv = safe_eval(lang_text) or {}
-        if PY2:
-            for key, val in rv.items():
-                rv[to_unicode(key)] = to_unicode(val)
     except Exception:
         #e = sys.exc_info()[1]
         #status = 'Syntax error in %s (%s)' % (filename, e)
@@ -156,11 +163,11 @@ def write_dict(filename, contents):
         fp = LockedFile(filename, 'wb')
     except (IOError, OSError):
         return
-    fp.write(to_bytes(u'# coding: utf8\n{\n'))
+    fp.write(to_bytes('# coding: utf8\n{\n'))
     for key in sorted(contents):
-        val = u'"%s": "%s",\n' % (key, contents[key])
+        val = '"%s": "%s",\n' % (key, contents[key])
         fp.write(to_bytes(val))
-    fp.write(to_bytes(u'}\n'))
+    fp.write(to_bytes('}\n'))
     fp.close()
 
 
@@ -260,18 +267,16 @@ def cap_fun(s):
 
 
 def _make_ttabin():
-    ltrans = u"\\%{}"
-    rtrans = u'\x1c\x1d\x1e\x1f'
+    ltrans = "\\%{}"
+    rtrans = '\x1c\x1d\x1e\x1f'
     return dict((ord(char), rtrans) for char in ltrans)
 
 
 def _make_ttabout():
-    ltrans = u'\x1c\x1d\x1e\x1f'
-    rtrans = u"\\%{}"
+    ltrans = '\x1c\x1d\x1e\x1f'
+    rtrans = "\\%{}"
     return dict((ord(char), rtrans) for char in ltrans)
 
 
-#ttab_in = maketrans(u"\\%{}", u'\x1c\x1d\x1e\x1f')
-#ttab_out = maketrans(u'\x1c\x1d\x1e\x1f', u"\\%{}")
 ttab_in = _make_ttabin()
 ttab_out = _make_ttabout()

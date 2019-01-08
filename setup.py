@@ -32,6 +32,7 @@ _requirements_basic = [
     'pendulum>=2.0.0',
     'pyaes',
     'pyDAL==17.3',
+    'python-rapidjson~=0.6.3',
     'pyyaml',
     'uvicorn~=0.3.20',
     'websockets>=6.0'

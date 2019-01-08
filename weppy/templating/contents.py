@@ -9,7 +9,8 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .._compat import to_unicode
+# TODO: check unicode conversions
+from .._shortcuts import to_unicode
 from ..datastructures import sdict
 
 

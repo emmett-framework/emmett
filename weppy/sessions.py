@@ -10,10 +10,10 @@
 """
 
 import os
-import time
+import pickle
 import tempfile
+import time
 
-from ._compat import pickle, to_native
 from .ctx import current, request, response
 from .datastructures import sdict, SessionData
 from .expose import Expose
@@ -156,8 +156,7 @@ class FileSessionPipe(BackendStoredSessionPipe):
             self._store(current.session, expiration)
 
     def _get_filename(self, sid):
-        sid = to_native(sid)
-        return os.path.join(self._path, self._filename_template % sid)
+        return os.path.join(self._path, self._filename_template % str(sid))
 
     def _load(self, sid):
         try:

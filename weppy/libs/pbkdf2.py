@@ -44,23 +44,20 @@ import codecs
 import sys
 import hmac
 import hashlib
+from itertools import starmap
 from struct import Struct
 from operator import xor
-from weppy._compat import PY2, xrange, to_bytes, to_native
-if PY2:
-    from itertools import izip, starmap
-else:
-    izip = zip
-    from itertools import starmap
+from weppy._shortcuts import to_bytes
 
-
+izip = zip
+xrange = range
 _pack_int = Struct('>I').pack
 
 
 def pbkdf2_hex(data, salt, iterations=1000, keylen=24, hashfunc=None):
     """Like :func:`pbkdf2_bin` but returns a hex encoded string."""
     rv = pbkdf2_bin(data, salt, iterations, keylen, hashfunc)
-    return to_native(codecs.encode(rv, 'hex_codec'))
+    return str(codecs.encode(rv, 'hex_codec'))
 
 
 def pbkdf2_bin(data, salt, iterations=1000, keylen=24, hashfunc=None):

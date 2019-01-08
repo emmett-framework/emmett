@@ -17,6 +17,7 @@ import base64
 import hashlib
 import hmac
 import os
+import pickle
 import pyaes
 import random
 import struct
@@ -24,9 +25,11 @@ import threading
 import time
 import uuid as uuidm
 import zlib
+
 from collections import OrderedDict
 
-from ._compat import PY2, xrange, pickle, hashlib_sha1, to_bytes, to_native
+# TODO: check bytes conversions
+from ._shortcuts import hashlib_sha1, to_bytes
 from .libs.pbkdf2 import pbkdf2_hex
 
 
@@ -61,8 +64,9 @@ def simple_hash(text, key='', salt='', digest_alg='md5'):
         h = digest_alg(text + key + salt)
     elif digest_alg.startswith('pbkdf2'):  # latest and coolest!
         iterations, keylen, alg = digest_alg[7:-1].split(',')
-        return pbkdf2_hex(to_bytes(text), to_bytes(salt), int(iterations),
-                          int(keylen), get_digest(alg))
+        return pbkdf2_hex(
+            to_bytes(text), to_bytes(salt), int(iterations), int(keylen),
+            get_digest(alg))
     elif key:  # use hmac
         digest_alg = get_digest(digest_alg)
         h = hmac.new(to_bytes(key + salt), to_bytes(text), digest_alg)
@@ -121,7 +125,7 @@ def secure_dumps(data, encryption_key, hash_key=None, compression_level=None):
     aes = pyaes.AESModeOfOperationCFB(key, iv=key[:16], segment_size=8)
     encrypted_data = base64.urlsafe_b64encode(aes.encrypt(_pad(dump)))
     signature = hmac.new(to_bytes(hash_key), encrypted_data).hexdigest()
-    return signature + ':' + to_native(encrypted_data)
+    return signature + ':' + str(encrypted_data)
 
 
 def secure_loads(data, encryption_key, hash_key=None, compression_level=None):
@@ -164,7 +168,7 @@ def _init_urandom():
     node_id = uuidm.getnode()
     microseconds = int(time.time() * 1e6)
     ctokens = [((node_id + microseconds) >> ((i % 6) * 8)) %
-               256 for i in xrange(16)]
+               256 for i in range(16)]
     random.seed(node_id + microseconds)
     try:
         os.urandom(1)
@@ -173,10 +177,7 @@ def _init_urandom():
             # try to add process-specific entropy
             frandom = open('/dev/urandom', 'wb')
             try:
-                if PY2:
-                    frandom.write(''.join(chr(t) for t in ctokens))
-                else:
-                    frandom.write(bytes([]).join(bytes([t]) for t in ctokens))
+                frandom.write(bytes([]).join(bytes([t]) for t in ctokens))
             finally:
                 frandom.close()
         except IOError:
@@ -184,10 +185,7 @@ def _init_urandom():
             pass
     except NotImplementedError:
         have_urandom = False
-    if PY2:
-        packed = ''.join(chr(x) for x in ctokens)
-    else:
-        packed = bytes([]).join(bytes([x]) for x in ctokens)
+    packed = bytes([]).join(bytes([x]) for x in ctokens)
     unpacked_ctokens = struct.unpack('=QQ', packed)
     return unpacked_ctokens, have_urandom
 
@@ -206,7 +204,7 @@ def fast_urandom16(urandom=[], locker=threading.RLock()):
         try:
             locker.acquire()
             ur = os.urandom(16 * 1024)
-            urandom += [ur[i:i + 16] for i in xrange(16, 1024 * 16, 16)]
+            urandom += [ur[i:i + 16] for i in range(16, 1024 * 16, 16)]
             return ur[0:16]
         finally:
             locker.release()

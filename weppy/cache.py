@@ -9,15 +9,17 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import os
-import time
 import heapq
-import threading
+import os
+import pickle
 import tempfile
+import threading
+import time
+
 from collections import OrderedDict
 from functools import wraps
 
-from ._compat import pickle, integer_types, iteritems, hashlib_sha1
+from ._shortcuts import hashlib_sha1
 from .libs.portalocker import LockedFile
 
 __all__ = ['Cache']
@@ -35,7 +37,7 @@ class CacheHashMixin(object):
 
     def _build_hash(self, data):
         components = []
-        for key, strategy in iteritems(self.strategies):
+        for key, strategy in self.strategies.items():
             components.append(self._hash_component(key, strategy(data[key])))
         return hashlib_sha1(':'.join(components)).hexdigest()
 
@@ -311,7 +313,7 @@ class RedisCache(CacheHandler):
             host=host, port=port, password=password, db=db, **kwargs)
 
     def _dump_obj(self, value):
-        if type(value) in integer_types:
+        if isinstance(value, int):
             return str(value).encode('ascii')
         return b'!' + pickle.dumps(value)
 
@@ -409,7 +411,7 @@ class Cache(object):
     def __init__(self, **kwargs):
         #: load handlers
         handlers = []
-        for key, val in iteritems(kwargs):
+        for key, val in kwargs.items():
             if key == "default":
                 continue
             handlers.append((key, val))

@@ -9,17 +9,19 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import copyreg
 import os
 import threading
+
 from contextlib import contextmanager
 from functools import wraps
 from pydal import DAL as _pyDAL
 from pydal._globals import THREAD_LOCAL
-from .._compat import copyreg
+
 from ..datastructures import sdict
 from ..pipeline import Pipe
 from ..security import uuid as _uuid
-from ..serializers import _pydal_json_encode, xml
+from ..serializers import _json_default, xml
 from .adapters import _patch_adapter_cls, patch_adapter
 from .connection import _patch_adapter_connection
 from .objects import Table, Field, Set, Row, Rows
@@ -46,7 +48,7 @@ class DatabasePipe(Pipe):
 
 
 class Database(_pyDAL):
-    serializers = {'json': _pydal_json_encode, 'xml': xml}
+    serializers = {'json': _json_default, 'xml': xml}
     logger = None
     uuid = lambda x: _uuid()
 

@@ -10,13 +10,13 @@
 """
 
 import os
-import hashlib
-from .._compat import to_bytes
+
+from .._shortcuts import hashlib_sha1
 from ..utils import cachedprop
 
 
 def make_hash(value):
-    return hashlib.sha1(to_bytes(value)).hexdigest()[:8]
+    return hashlib_sha1(value).hexdigest()[:8]
 
 
 class TemplaterCache(object):

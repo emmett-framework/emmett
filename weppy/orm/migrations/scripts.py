@@ -16,15 +16,16 @@
 import os
 import re
 import sys
+
 from contextlib import contextmanager
 from datetime import datetime
-from ..._compat import itervalues, to_bytes, string_types
+
 from .base import Migration
 from .exceptions import (
     RangeNotAncestorError, MultipleHeads, ResolutionError, RevisionError
 )
-from .revisions import Revision, RevisionsMap
 from .helpers import tuple_rev_as_scalar, render_template, format_with_comma
+from .revisions import Revision, RevisionsMap
 
 
 class ScriptDir(object):
@@ -144,8 +145,8 @@ class ScriptDir(object):
 
     def _generate_template(self, filename, ctx):
         rendered = render_template(self.cwd, 'migration.tmpl', ctx)
-        with open(os.path.join(self.path, filename), 'wb') as f:
-            f.write(to_bytes(rendered))
+        with open(os.path.join(self.path, filename), 'w') as f:
+            f.write(rendered)
 
     def generate_revision(self, revid, message, head=None, splice=False, **kw):
         """Generate a new revision file.
@@ -190,7 +191,7 @@ class ScriptDir(object):
             h.revision if h is not None else None for h in heads)
 
         down_migration_var = tuple_rev_as_scalar(down_migration)
-        if isinstance(down_migration_var, string_types):
+        if isinstance(down_migration_var, str):
             down_migration_var = "%r" % down_migration_var
         else:
             down_migration_var = str(down_migration_var)
@@ -322,7 +323,7 @@ class Script(Revision):
         module = sys.modules[py_module]
         migration_class = getattr(module, 'Migration', None)
         if migration_class is None:
-            for v in itervalues(module.__dict__):
+            for v in module.__dict__.values():
                 if isinstance(v, Migration):
                     migration_class = v
                     break

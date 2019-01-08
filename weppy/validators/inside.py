@@ -13,7 +13,8 @@
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
-from .._compat import integer_types, to_native, to_unicode
+# TODO: check unicode conversions
+from .._shortcuts import to_unicode
 from ..ctx import current
 from ..utils import cachedprop
 from .basic import Validator
@@ -57,7 +58,7 @@ class inRange(Validator):
                 message += ' greater than or equal to %(min)s'
             elif maximum is not None:
                 message += ' less than or equal to %(max)s'
-        if isinstance(maximum, integer_types):
+        if isinstance(maximum, int):
             maximum -= 1
         return translate(message) % dict(min=minimum, max=maximum)
 
@@ -108,7 +109,7 @@ class inSet(Validator):
             values = [value]
         failures = [
             x for x in values
-            if (to_native(to_unicode(x)) or '') not in self.theset]
+            if (to_unicode(x) or '') not in self.theset]
         if failures and self.theset:
             if self.multiple and (value is None or value == ''):
                 return ([], None)

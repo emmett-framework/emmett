@@ -9,11 +9,12 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .._compat import iteritems, basestring
-from .basic import Validator, isntEmpty, isEmptyOr, Equals, Matches, \
-    hasLength, Not, Allow, isEmpty, Any
-from .consist import isInt, isFloat, isDecimal, isDate, isTime, isDatetime, \
-    isEmail, isJSON, isUrl, isIP, isImage, isAlphanumeric, isList
+from .basic import (
+    Validator, isntEmpty, isEmptyOr, Equals, Matches, hasLength, Not, Allow,
+    isEmpty, Any)
+from .consist import (
+    isInt, isFloat, isDecimal, isDate, isTime, isDatetime, isEmail, isJSON,
+    isUrl, isIP, isImage, isAlphanumeric, isList)
 from .inside import inRange, inSet, inDB, notInDB
 from .process import Cleanup, Crypt, Lower, Urlify, Upper
 
@@ -35,7 +36,7 @@ class ValidateFromDict(object):
 
     def parse_num_comparisons(self, data, minv=None, maxv=None):
         inclusions = [True, False]
-        for key, include in iteritems(self.numkeys):
+        for key, include in self.numkeys.items():
             val = data.get(key)
             if val is not None:
                 if key[0] == "g":
@@ -48,7 +49,7 @@ class ValidateFromDict(object):
 
     def parse_is(self, data):
         #: map types with fields
-        if isinstance(data, basestring):
+        if isinstance(data, str):
             #: map {'is': 'int'}
             key = data
             options = {}
@@ -67,7 +68,7 @@ class ValidateFromDict(object):
         options = {}
         suboptions = {}
         lopts = ['splitter']
-        if isinstance(data, basestring):
+        if isinstance(data, str):
             #: map {'is': 'list:int'}
             key = data
         elif isinstance(data, dict):
@@ -187,13 +188,13 @@ class ValidateFromDict(object):
             else:
                 validators.append(Matches(data['match']))
         #: parse transforming validators
-        for key, vclass in iteritems(self.proc_validators):
+        for key, vclass in self.proc_validators.items():
             if key in data:
                 options = {}
                 if isinstance(data[key], dict):
                     options = data[key]
                 elif data[key] != True:
-                    if key == 'crypt' and isinstance(data[key], basestring):
+                    if key == 'crypt' and isinstance(data[key], str):
                         options = {'algorithm': data[key]}
                     else:
                         raise SyntaxError(

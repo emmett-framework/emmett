@@ -13,13 +13,12 @@ import copy
 import datetime
 import decimal
 import types
+
 from collections import OrderedDict, defaultdict
 from pydal.objects import (
     Table as _Table, Field as _Field, Set as _Set,
     Row as _Row, Rows as _Rows, IterRows as _IterRows, Query, Expression)
-from .._compat import (
-    string_types, integer_types, implements_iterator, implements_to_string,
-    iterkeys, iteritems, to_unicode)
+
 from ..ctx import current
 from ..datastructures import sdict
 from ..html import tag
@@ -334,14 +333,14 @@ class Set(_Set):
         if table._unique_fields_validation_ and self.count() == 1:
             if any(
                 table._unique_fields_validation_.get(fieldname)
-                for fieldname in iterkeys(update_fields)
+                for fieldname in update_fields.keys()
             ):
                 current._dbvalidation_record_id_ = \
                     self.select(table.id).first().id
         response = Row()
         response.errors = Row()
         new_fields = copy.copy(update_fields)
-        for key, value in iteritems(update_fields):
+        for key, value in update_fields.items():
             value, error = table[key].validate(value)
             if error:
                 response.errors[key] = '%s' % error
@@ -431,7 +430,7 @@ class Set(_Set):
             all_colnames[colname[0]] = colname[0]
             jcolnames[colname[0]] = jcolnames.get(colname[0], [])
             jcolnames[colname[0]].append(colname[1])
-        for colname in iterkeys(all_colnames):
+        for colname in all_colnames.keys():
             if colname == self._stable_:
                 colnames.append(colname)
                 del jcolnames[colname]
@@ -691,8 +690,8 @@ class JoinedSet(Set):
         return rv['belongs'], rv['one'], rv['many']
 
     def _build_records_from_joined(self, rowmap, inclusions, colnames):
-        for rid, many_data in iteritems(inclusions):
-            for jname, included in iteritems(many_data):
+        for rid, many_data in inclusions.items():
+            for jname, included in many_data.items():
                 rowmap[rid][jname]._cached_resultset = Rows(
                     self.db, list(included.values()), [])
         return JoinRows(
@@ -798,19 +797,18 @@ class JoinedSet(Set):
         return parser
 
 
-@implements_to_string
 class Row(_Row):
     _as_dict_types_ = tuple(
-        [type(None)] + list(integer_types) + [float, bool, list, dict] +
-        list(string_types) + [datetime.datetime, datetime.date, datetime.time])
+        [type(None)] + [int, float, bool, list, dict, str] +
+        [datetime.datetime, datetime.date, datetime.time])
 
     def as_dict(self, datetime_to_str=False, custom_types=None):
         rv = {}
-        for key, val in self.iteritems():
+        for key, val in self.items():
             if isinstance(val, Row):
                 val = val.as_dict()
             elif isinstance(val, _IDReference):
-                val = integer_types[-1](val)
+                val = int(val)
             elif isinstance(val, decimal.Decimal):
                 val = float(val)
             elif not isinstance(val, self._as_dict_types_):
@@ -828,7 +826,7 @@ class Row(_Row):
         return xml_encode(self.as_dict(), key or 'row', quote)
 
     def __str__(self):
-        return u'<Row %s>' % to_unicode(self.as_dict())
+        return '<Row {}>'.format(self.as_dict())
 
     def __repr__(self):
         return str(self)
@@ -846,7 +844,6 @@ class Row(_Row):
             raise AttributeError(name)
 
 
-@implements_to_string
 class Rows(_Rows):
     def __init__(
         self, db=None, records=[], colnames=[], compact=True, rawrows=None
@@ -925,10 +922,9 @@ class Rows(_Rows):
         return tag[key](*[item.__xml__(quote=quote) for item in self])
 
     def __str__(self):
-        return to_unicode(self.records)
+        return str(self.records)
 
 
-@implements_iterator
 class JoinIterRows(_IterRows):
     def __init__(self, db, sql, fields, colnames):
         self.db = db

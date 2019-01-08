@@ -9,7 +9,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from .._compat import basestring
 from ..expose import Expose
 
 
@@ -29,7 +28,7 @@ class requires(Decorator):
             raise SyntaxError(
                 'requires usage: @requires(condition, otherwise)'
             )
-        if not callable(otherwise) and not isinstance(otherwise, basestring):
+        if not callable(otherwise) and not isinstance(otherwise, str):
             raise SyntaxError(
                 "requires 'otherwise' param must be string or callable"
             )

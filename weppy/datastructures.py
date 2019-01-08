@@ -11,9 +11,11 @@
 
 import copy
 import hashlib
+import pickle
+
 from collections import Mapping
-from ._compat import pickle, string_types, iteritems
-from ._internal import ImmutableList, native_itermethods
+
+from ._internal import ImmutableList
 
 
 class sdict(dict):
@@ -206,7 +208,6 @@ class OrderedSet(set):
     __isub__ = difference_update
 
 
-@native_itermethods(['keys', 'values', 'items'])
 class EnvironHeaders(Mapping):
     def __init__(self, environ):
         self.environ = environ
@@ -223,7 +224,7 @@ class EnvironHeaders(Mapping):
         return self._key_to_headername(key) in self.environ
 
     def __iter__(self):
-        for key, value in iteritems(self.environ):
+        for key, value in self.environ.items():
             if (
                 key.startswith('HTTP_') and key not in
                 ('HTTP_CONTENT_TYPE', 'HTTP_CONTENT_LENGTH')
@@ -247,15 +248,14 @@ class EnvironHeaders(Mapping):
             yield key, value
 
     def keys(self):
-        for key, _ in iteritems(self):
+        for key, _ in self.items():
             yield key
 
     def values(self):
-        for _, value in iteritems(self):
+        for _, value in self.items():
             yield value
 
 
-@native_itermethods(['values'])
 class Accept(ImmutableList):
     def __init__(self, values=()):
         if values is None:
@@ -273,7 +273,7 @@ class Accept(ImmutableList):
         return item == '*' or item.lower() == value.lower()
 
     def __getitem__(self, key):
-        if isinstance(key, string_types):
+        if isinstance(key, str):
             return self.quality(key)
         return list.__getitem__(self, key)
 
@@ -296,7 +296,7 @@ class Accept(ImmutableList):
         )
 
     def index(self, key):
-        if isinstance(key, string_types):
+        if isinstance(key, str):
             for idx, (item, quality) in enumerate(self):
                 if self._value_matches(key, item):
                     return idx

@@ -14,7 +14,7 @@
 """
 
 from collections import OrderedDict
-from ..._compat import itervalues
+
 from ...datastructures import OrderedSet
 from .base import Column
 from .helpers import Dispatcher, DEFAULT_VALUE, _feasible_as_dbms_default
@@ -47,7 +47,7 @@ class MetaTable(object):
     def __repr__(self):
         return "Table(%r, %s)" % (
             self.name,
-            ", ".join(["%s" % column for column in itervalues(self.columns)])
+            ", ".join(["%s" % column for column in self.columns.values()])
         )
 
 
@@ -297,8 +297,7 @@ def _add_table(op):
     table = op.to_table()
 
     args = [
-        col for col in [
-            _render_column(col) for col in itervalues(table.columns)]
+        col for col in [_render_column(col) for col in table.columns.values()]
         if col
     ]
     # + sorted([

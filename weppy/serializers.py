@@ -7,23 +7,14 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import datetime
-import decimal
-import json as _json
-from ._compat import PY2, integer_types, itervalues
-from .html import tag, htmlescape
+from rapidjson import DM_ISO8601, NM_DECIMAL, dumps as _json_dumps
 
+from .html import tag, htmlescape
 
 _json_safe_table = {
     'u2028': [r'\u2028', '\\u2028'],
     'u2029': [r'\u2029', '\\u2029']
 }
-
-if PY2:
-    _json_safe_table['u2028'][0] = \
-        _json_safe_table['u2028'][0].decode('raw_unicode_escape')
-    _json_safe_table['u2029'][0] = \
-        _json_safe_table['u2029'][0].decode('raw_unicode_escape')
 
 
 class Serializers(object):
@@ -41,35 +32,22 @@ class Serializers(object):
         return cls._registry_[target]
 
 
-class JSONEncoder(_json.JSONEncoder):
-    def default(self, o):
-        if hasattr(o, '__json__'):
-            return o.__json__()
-        if isinstance(o, datetime.datetime):
-            return o.strftime('%Y-%m-%dT%H:%M:%S.%f%_z')
-        if isinstance(o, (datetime.date, datetime.time)):
-            return o.isoformat()
-        if isinstance(o, integer_types):
-            return int(o)
-        if isinstance(o, decimal.Decimal):
-            return str(o)
-        return _json.JSONEncoder.default(self, o)
-
-
-def _pydal_json_encode(o):
+def _json_default(self, o):
     if hasattr(o, '__json__'):
         return o.__json__()
-    raise TypeError(repr(o) + " is not JSON serializable")
+    raise ValueError('%r is not JSON serializable' % o)
 
 
 @Serializers.register_for('json')
 def json(value):
-    return _json.dumps(value, cls=JSONEncoder)
+    return _json_dumps(
+        value, default=_json_default,
+        datetime_mode=DM_ISO8601, number_mode=NM_DECIMAL)
 
 
 def json_safe(value):
     rv = json(value)
-    for val, rep in itervalues(_json_safe_table):
+    for val, rep in _json_safe_table.values():
         rv.replace(val, rep)
     return rv
 

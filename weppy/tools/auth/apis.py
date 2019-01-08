@@ -10,7 +10,7 @@
 """
 
 from datetime import timedelta
-from ..._compat import string_types, integer_types
+
 from ...ctx import session, request
 from ...pipeline import Pipe
 from .ext import AuthExtension
@@ -52,7 +52,7 @@ class Auth(object):
     def user(self):
         try:
             rv = self.session.user
-        except:
+        except Exception:
             rv = None
         return rv
 
@@ -64,7 +64,7 @@ class Auth(object):
         rv = False
         if not group and role:
             group = self.group_for_role(role)
-        if isinstance(group, string_types):
+        if isinstance(group, str):
             group = self.group_for_role(group)
         if not user and self.user:
             user = self.user.id
@@ -95,7 +95,7 @@ class Auth(object):
         if user is not None:
             parent = self.models['user'].get(id=user)
         elif group is not None:
-            if isinstance(group, string_types):
+            if isinstance(group, str):
                 group = self.group_for_role(group)
             parent = self.models['group'].get(id=group)
         if not parent:
@@ -111,14 +111,14 @@ class Auth(object):
         return res.id
 
     def delete_group(self, group):
-        if isinstance(group, string_types):
+        if isinstance(group, str):
             group = self.group_for_role(group)
         return self.ext.db(self.models['group'].id == group).delete()
 
     def add_membership(self, group, user=None):
-        if isinstance(group, integer_types):
+        if isinstance(group, int):
             group = self.models['group'].get(group)
-        elif isinstance(group, string_types):
+        elif isinstance(group, str):
             group = self.group_for_role(group)
         if not user and self.user:
             user = self.user.id
@@ -127,9 +127,9 @@ class Auth(object):
         return res.id
 
     def remove_membership(self, group, user=None):
-        if isinstance(group, integer_types):
+        if isinstance(group, int):
             group = self.models['group'].get(group)
-        elif isinstance(group, string_types):
+        elif isinstance(group, str):
             group = self.group_for_role(group)
         if not user and self.user:
             user = self.user.id

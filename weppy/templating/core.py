@@ -11,8 +11,13 @@
 
 import os
 import sys
-from .._compat import StringIO, reduce, string_types, text_type, to_native, \
-    to_unicode, to_bytes
+
+from functools import reduce
+from io import StringIO
+
+# TODO: check conversions
+from .._shortcuts import to_bytes, to_unicode
+
 from ..datastructures import sdict
 from ..helpers import load_component
 from ..html import asis, htmlescape
@@ -33,19 +38,13 @@ class Writer(object):
         return htmlescape(data)
 
     @staticmethod
-    def _to_native(data):
-        if not isinstance(data, text_type):
-            data = to_unicode(data)
-        return to_native(data)
-
-    @staticmethod
     def _to_unicode(data):
-        if not isinstance(data, string_types):
-            return text_type(data)
+        if isinstance(data, str):
+            return data
         return to_unicode(data)
 
     def write(self, data):
-        self.body.write(self._to_native(data))
+        self.body.write(self._to_unicode(data))
 
     def _escape_data(self, data):
         body = None
@@ -72,13 +71,13 @@ class IndentWriter(Writer):
 
     def _write_first(self, data, indent=0, prepend=''):
         self.body.write(' ' * indent)
-        self.body.write(self._to_native(data))
+        self.body.write(self._to_unicode(data))
         self.write = self._write
 
     def _write(self, data, indent=0, prepend=''):
         self.body.write(prepend)
         self.body.write(' ' * indent)
-        self.body.write(self._to_native(data))
+        self.body.write(self._to_unicode(data))
 
     def escape(self, data, indent=0, prepend=''):
         self.write(self._escape_data(data), indent, prepend)
@@ -174,7 +173,8 @@ class Templater(object):
                 lexers=self.lexers)
             try:
                 code = compile(
-                    to_native(parser.render()), os.path.split(file_path)[-1],
+                    parser.render(),
+                    os.path.split(file_path)[-1],
                     'exec')
             except SyntaxError:
                 exc_info = sys.exc_info()

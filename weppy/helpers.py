@@ -14,7 +14,6 @@ import re
 
 from pydal.exceptions import NotAuthorizedException, NotFoundException
 
-from ._compat import string_types
 from .ctx import current, request, response, session
 from .html import tag
 from .http import HTTP
@@ -51,7 +50,7 @@ def stream_dbfile(db, name):
         abort(404)
     except IOError:
         abort(404)
-    if isinstance(fullfilename, string_types):
+    if isinstance(fullfilename, str):
         #: handle file uploads
         raise streamer(request.environ, fullfilename, headers=response.headers)
     else:

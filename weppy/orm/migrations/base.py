@@ -9,7 +9,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ..._compat import iteritems
 from ...datastructures import sdict
 from .. import Model, Field
 from .engine import MetaEngine, Engine
@@ -53,7 +52,7 @@ class Column(sdict):
         self.type = type
         self.unique = unique
         self.notnull = notnull
-        for key, val in iteritems(kwargs):
+        for key, val in kwargs.items():
             self[key] = val
         self.length = self.length or 255
 
@@ -98,5 +97,5 @@ class Column(sdict):
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
-            ", ".join(["%s=%r" % (k, v) for k, v in iteritems(self)])
+            ", ".join(["%s=%r" % (k, v) for k, v in self.items()])
         )

@@ -9,7 +9,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ..._compat import iteritems
 from ...datastructures import sdict
 
 
@@ -31,7 +30,7 @@ class MetaEngine(object):
 
     def alter_column(self, table_name, column_name, changes):
         pchanges = self._parse_column_changes(changes)
-        updates = {k: v[1] for k, v in iteritems(pchanges)}
+        updates = {k: v[1] for k, v in pchanges.items()}
         self.db.change_column(table_name, column_name, updates)
 
     def create_index(self, name, table_name, fields, expr, unique, **kw):
@@ -300,7 +299,7 @@ class Engine(MetaEngine):
         col_len = self.db[table_name][column_name].length
         self._represent_changes(changes, col_len)
         sql_changes = []
-        for change_type, change_val in iteritems(changes):
+        for change_type, change_val in changes.items():
             change_sql = sql_changes_map[change_type]
             if isinstance(change_sql, dict):
                 sql_changes.append(change_sql[change_val[1]])
