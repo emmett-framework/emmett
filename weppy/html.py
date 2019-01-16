@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import cgi
+import html
 import re
 import threading
 
@@ -125,10 +125,10 @@ class HtmlTag(object):
         self['_class'] = ' '.join(classes) if classes else None
         return self
 
-    regex_tag = re.compile('^([\w\-\:]+)')
-    regex_id = re.compile('#([\w\-]+)')
-    regex_class = re.compile('\.([\w\-]+)')
-    regex_attr = re.compile('\[([\w\-\:]+)=(.*?)\]')
+    regex_tag = re.compile(r'^([\w\-\:]+)')
+    regex_id = re.compile(r'#([\w\-]+)')
+    regex_class = re.compile(r'\.([\w\-]+)')
+    regex_attr = re.compile(r'\[([\w\-\:]+)=(.*?)\]')
 
     def find(self, expr):
         union = lambda a, b: a.union(b)
@@ -265,7 +265,7 @@ def _to_str(obj):
 def htmlescape(obj):
     if hasattr(obj, '__html__'):
         return obj.__html__()
-    return cgi.escape(_to_str(obj), True).replace("'", "&#39;")
+    return html.escape(_to_str(obj), True).replace("'", "&#39;")
 
 
 _stack = TagStack()

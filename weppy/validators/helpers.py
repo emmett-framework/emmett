@@ -289,8 +289,9 @@ def unicode_to_ascii_url(url, prepend_scheme):
     return scheme + _unicode_to_ascii_authority(authority) +\
         _escape_unicode(path) + _escape_unicode(query) + str(fragment)
 
+
 url_split_regex = \
-    re.compile('^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?')
+    re.compile(r'^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?')
 
 official_url_schemes = [
     'aaa', 'aaas', 'acap', 'cap', 'cid', 'crid', 'data', 'dav', 'dict',

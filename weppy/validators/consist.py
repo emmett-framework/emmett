@@ -545,27 +545,7 @@ class isUrl(Validator):
         else:
             raise SyntaxError("invalid mode '%s' in isUrl" % self.mode)
 
-        # TODO: find a better solution
-        if not PY2:
-            return subValidator(value)
-        #
-        if isinstance(value, unicode):
-            return subValidator(value)
-        else:
-            try:
-                asciiValue = unicode_to_ascii_url(value, self.prepend_scheme)
-            except Exception:
-                #If we are not able to convert the unicode url into a
-                # US-ASCII URL, then the URL is not valid
-                return value, translate(self.message)
-
-            rv = subValidator(asciiValue)
-            #if the validation of the US-ASCII version of the value failed
-            if not rv[1] is None:
-                # then return the original input value, not the US-ASCII
-                return value, rv[1]
-            else:
-                return rv
+        return subValidator(value)
 
 
 class isIPv4(Validator):

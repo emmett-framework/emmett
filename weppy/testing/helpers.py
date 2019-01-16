@@ -81,7 +81,7 @@ class TestCookieJar(CookieJar):
     and to wsgi environments, and wsgi application responses.
     """
 
-    def inject_wsgi(self, environ):
+    def inject_asgi(self, scope):
         """Inject the cookies as client headers into the server's wsgi
         environment.
         """
@@ -89,9 +89,10 @@ class TestCookieJar(CookieJar):
         for cookie in self:
             cvals.append('%s=%s' % (cookie.name, cookie.value))
         if cvals:
-            environ['HTTP_COOKIE'] = '; '.join(cvals)
+            scope['headers'].append(
+                (b'Cookie', '; '.join(cvals).encode('utf-8')))
 
-    def extract_wsgi(self, environ, headers):
+    def extract_asgi(self, scope, headers):
         """Extract the server's set-cookie headers as cookies into the
         cookie jar.
         """
@@ -130,9 +131,10 @@ class Headers(dict):
             pass
         return rv
 
-    def to_wsgi_list(self):
-        if PY2:
-            return [(to_native(k), v.encode('latin1')) for k, v in self]
+    # def to_wsgi_list(self):
+    #     return list(self)
+
+    def to_asgi_list(self):
         return list(self)
 
 

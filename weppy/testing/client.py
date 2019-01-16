@@ -13,30 +13,49 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import asyncio
 import copy
+import types
+
+from io import BytesIO
 from itertools import chain
+
 from .._compat import reraise, text_type, to_native
 from .._internal import ClosingIterator
+
+from ..ctx import current
+from ..wrappers.request import Request
+from ..wrappers.response import Response
+
 from ..utils import cachedprop
-from .env import EnvironBuilder
+from .env import EnvironBuilder, ScopeBuilder
 from .helpers import TestCookieJar, Headers
 from .urls import get_host, url_parse, url_unparse
 
 
+# class ClientContext(object):
+#     def __init__(self):
+#         from ..globals import current, Request, Response
+#         self.request = Request(current.request.environ)
+#         self.response = Response(current.request.environ)
+#         self.response.__dict__.update(current.response.__dict__)
+#         self.session = copy.deepcopy(current.session)
+#         self.T = current.T
+
+#     def __enter__(self):
+#         return self
+
+#     def __exit__(self, exc_type, exc_value, tb):
+#         pass
+
+
 class ClientContext(object):
     def __init__(self):
-        from ..globals import current, Request, Response
-        self.request = Request(current.request.environ)
-        self.response = Response(current.request.environ)
+        self.request = Request(current.request.scope)
+        self.response = Response()
         self.response.__dict__.update(current.response.__dict__)
         self.session = copy.deepcopy(current.session)
         self.T = current.T
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, tb):
-        pass
 
 
 class ClientResponse(object):
@@ -45,7 +64,7 @@ class ClientResponse(object):
         self.status = status
         self.headers = headers
         self._close = lambda: None
-        self._context = None
+        # self._context = None
 
     def __enter__(self):
         return self
@@ -61,7 +80,8 @@ class ClientResponse(object):
     def data(self):
         self._ensure_sequence()
         rv = b''.join(self.iter_encoded())
-        return to_native(rv)
+        # return to_native(rv)
+        return rv.decode('utf8')
 
     @property
     def is_sequence(self):
@@ -86,9 +106,9 @@ class ClientResponse(object):
             self.response.close()
         self._close()
 
-    def iter_encoded(self, charset='utf-8'):
+    def iter_encoded(self, charset='utf8'):
         for item in self.raw:
-            if isinstance(item, text_type):
+            if isinstance(item, str):
                 yield item.encode(charset)
             else:
                 yield item
@@ -97,8 +117,10 @@ class ClientResponse(object):
 class WeppyTestClient(object):
     """This class allows to send requests to a wrapped application."""
 
-    def __init__(self, application, response_wrapper=ClientResponse,
-                 use_cookies=True, allow_subdomain_redirects=False):
+    def __init__(
+        self, application, response_wrapper=ClientResponse, use_cookies=True,
+        allow_subdomain_redirects=False
+    ):
         self.application = application
         self.response_wrapper = response_wrapper
         if use_cookies:
@@ -107,32 +129,21 @@ class WeppyTestClient(object):
             self.cookie_jar = None
         self.allow_subdomain_redirects = allow_subdomain_redirects
 
-    # def set_cookie(self, server_name, key, value='', max_age=None,
-    #                expires=None, path='/', domain=None, secure=None,
-    #                httponly=False, charset='utf-8'):
-    #     """Sets a cookie in the client's cookie jar.  The server name
-    #     is required and has to match the one that is also passed to
-    #     the open call.
-    #     """
-    #     assert self.cookie_jar is not None, 'cookies disabled'
-    #     header = dump_cookie(key, value, max_age, expires, path, domain,
-    #                          secure, httponly, charset)
-    #     environ = create_environ(path, base_url='http://' + server_name)
-    #     headers = [('Set-Cookie', header)]
-    #     self.cookie_jar.extract_wsgi(environ, headers)
+    # def run_wsgi_app(self, environ, buffered=False):
+    #     """Runs the wrapped WSGI app with the given environment."""
+    #     if self.cookie_jar is not None:
+    #         self.cookie_jar.inject_wsgi(environ)
+    #     rv = run_wsgi_app(self.application, environ, buffered=buffered)
+    #     if self.cookie_jar is not None:
+    #         self.cookie_jar.extract_wsgi(environ, rv[2])
+    #     return rv
 
-    # def delete_cookie(self, server_name, key, path='/', domain=None):
-    #     """Deletes a cookie in the test client."""
-    #     self.set_cookie(server_name, key, expires=0, max_age=0,
-    #                     path=path, domain=domain)
-
-    def run_wsgi_app(self, environ, buffered=False):
-        """Runs the wrapped WSGI app with the given environment."""
+    def run_asgi_app(self, scope, body):
         if self.cookie_jar is not None:
-            self.cookie_jar.inject_wsgi(environ)
-        rv = run_wsgi_app(self.application, environ, buffered=buffered)
+            self.cookie_jar.inject_asgi(scope)
+        rv = run_asgi_app(self.application, scope, body)
         if self.cookie_jar is not None:
-            self.cookie_jar.extract_wsgi(environ, rv[2])
+            self.cookie_jar.extract_asgi(scope, rv[2])
         return rv
 
     def resolve_redirect(self, response, new_loc, environ, buffered=False):
@@ -193,47 +204,48 @@ class WeppyTestClient(object):
                                  follow HTTP redirects.
         """
         as_tuple = kwargs.pop('as_tuple', False)
-        buffered = kwargs.pop('buffered', False)
+        # buffered = kwargs.pop('buffered', False)
         follow_redirects = kwargs.pop('follow_redirects', False)
-        environ = None
+        scope, body = None, b''
         if not kwargs and len(args) == 1:
-            if isinstance(args[0], EnvironBuilder):
-                environ = args[0].get_environ()
-            elif isinstance(args[0], dict):
-                environ = args[0]
-        if environ is None:
-            builder = EnvironBuilder(*args, **kwargs)
+            if isinstance(args[0], ScopeBuilder):
+                scope, body = args[0].get_data()
+            # elif isinstance(args[0], dict):
+            #     environ = args[0]
+        if scope is None:
+            builder = ScopeBuilder(*args, **kwargs)
             try:
-                environ = builder.get_environ()
+                scope, body = builder.get_data()
             finally:
                 builder.close()
 
-        response = self.run_wsgi_app(environ, buffered=buffered)
+        response = self.run_asgi_app(scope, body)
 
         # handle redirects
         redirect_chain = []
         while 1:
-            status_code = int(response[1].split(None, 1)[0])
-            if status_code not in (301, 302, 303, 305, 307) \
-               or not follow_redirects:
+            status_code = int(response['status'].split(None, 1)[0])
+            if (
+                status_code not in (301, 302, 303, 305, 307) or
+                not follow_redirects
+            ):
                 break
-            new_location = response[2]['location']
+            new_location = response['headers']['location']
             if new_location.startswith('/'):
                 new_location = (
-                    environ['wsgi.url_scheme'] + "://" +
-                    environ['HTTP_HOST'] + new_location)
+                    scope['scheme'] + "://" +
+                    scope['server'][0] + new_location)
             new_redirect_entry = (new_location, status_code)
             if new_redirect_entry in redirect_chain:
                 raise Exception('loop detected')
             redirect_chain.append(new_redirect_entry)
-            environ, response = self.resolve_redirect(response, new_location,
-                                                      environ,
-                                                      buffered=buffered)
+            scope, response = self.resolve_redirect(
+                response, new_location, scope)
 
         if self.response_wrapper is not None:
-            response = self.response_wrapper(*response)
+            response = self.response_wrapper(response)
         if as_tuple:
-            return environ, response
+            return scope, response
         return response
 
     def get(self, *args, **kw):
@@ -327,3 +339,77 @@ def run_wsgi_app(app, environ, buffered=False):
             app_iter = ClosingIterator(app_iter, close_func)
 
     return app_iter, response[0], Headers(response[1])
+
+
+def run_asgi_app(app, scope, body=b''):
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    request_complete = False
+    response_started = False
+    response_complete = False
+    raw = {"body": BytesIO()}
+
+    async def receive():
+        nonlocal request_complete
+
+        if request_complete:
+            while not response_complete:
+                await asyncio.sleep(0.0001)
+            return {"type": "http.disconnect"}
+
+        if isinstance(body, str):
+            body_bytes = body.encode("utf-8")
+        elif body is None:
+            body_bytes = b""
+        elif isinstance(body, types.GeneratorType):
+            try:
+                chunk = body.send(None)
+                if isinstance(chunk, str):
+                    chunk = chunk.encode("utf-8")
+                return {
+                    "type": "http.request", "body": chunk, "more_body": True}
+            except StopIteration:
+                request_complete = True
+                return {"type": "http.request", "body": b""}
+        else:
+            body_bytes = body
+
+        request_complete = True
+        return {"type": "http.request", "body": body_bytes}
+
+    async def send(message):
+        nonlocal response_started, response_complete
+
+        if message["type"] == "http.response.start":
+            raw["version"] = 11
+            raw["status"] = message["status"]
+            # raw["reason"] = _get_reason_phrase(message["status"])
+            raw["headers"] = [
+                (key.decode(), value.decode()) for key, value in message["headers"]
+            ]
+            raw["preload_content"] = False
+            # raw["original_response"] = _MockOriginalResponse(
+            #     raw["headers"]
+            # )
+            response_started = True
+        elif message["type"] == "http.response.body":
+            body = message.get("body", b"")
+            more_body = message.get("more_body", False)
+            if scope['method'] != "HEAD":
+                raw["body"].write(body)
+            if not more_body:
+                raw["body"].seek(0)
+                response_complete = True
+
+    try:
+        connection = app(scope)
+        loop.run_until_complete(connection(receive, send))
+    except BaseException as exc:
+        if self.raise_server_exceptions:
+            raise exc from None
+
+    return raw

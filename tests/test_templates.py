@@ -12,7 +12,7 @@
 import pytest
 from datetime import datetime
 from weppy import App
-from weppy.globals import current
+from weppy.ctx import current
 
 
 @pytest.fixture(scope='module')

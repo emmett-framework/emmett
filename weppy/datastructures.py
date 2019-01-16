@@ -13,7 +13,7 @@ import copy
 import hashlib
 import pickle
 
-from collections import Mapping
+from collections.abc import Mapping
 
 from ._internal import ImmutableList
 

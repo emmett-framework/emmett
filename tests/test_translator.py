@@ -12,8 +12,8 @@
 import os
 import pytest
 from weppy import App, T
+from weppy.ctx import current
 from weppy.language import _instance as Tinstance
-from weppy.globals import current
 
 
 @pytest.fixture(scope='module')

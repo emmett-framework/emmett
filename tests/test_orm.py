@@ -19,7 +19,7 @@ from weppy.orm import Database, Field, Model, compute, before_insert, \
     after_insert, before_update, after_update, before_delete, after_delete, \
     rowattr, rowmethod, has_one, has_many, belongs_to, scope
 from weppy.validators import isntEmpty, hasLength
-from weppy.validators._old import notInDb
+# from weppy.validators._old import notInDb
 
 
 def _represent_f(value):
@@ -82,8 +82,8 @@ class Stuff(Model):
         "a": _widget_f
     }
 
-    def setup(self):
-        self.table.b.requires = notInDb(self.db, self.table.b)
+    # def setup(self):
+    #     self.table.b.requires = notInDb(self.db, self.table.b)
 
     @compute('total')
     def eval_total(self, row):
@@ -346,8 +346,8 @@ def test_widgets(db):
     assert db.Stuff.a.widget == _widget_f
 
 
-def test_set_helper(db):
-    assert isinstance(db.Stuff.b.requires, notInDb)
+# def test_set_helper(db):
+#     assert isinstance(db.Stuff.b.requires, notInDb)
 
 
 def test_computations(db):

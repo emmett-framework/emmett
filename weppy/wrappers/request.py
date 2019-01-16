@@ -15,7 +15,7 @@ import pendulum
 import re
 
 from cgi import FieldStorage, parse_header
-from collections import Mapping
+from collections.abc import Mapping
 from http.cookies import SimpleCookie
 from io import BytesIO
 from urllib.parse import parse_qs

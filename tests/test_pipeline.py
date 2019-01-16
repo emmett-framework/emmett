@@ -11,7 +11,7 @@
 
 import pytest
 from weppy import App, request, abort
-from weppy.globals import current
+from weppy.ctx import current
 from weppy.http import HTTP
 from weppy.pipeline import Pipe
 from weppy.testing.env import EnvironBuilder
