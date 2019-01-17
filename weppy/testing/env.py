@@ -608,7 +608,7 @@ class ScopeBuilder(object):
             # 'SCRIPT_NAME': self.script_root,
             # 'PATH_INFO': self.path,
             'path': self.path,
-            'query_string': self.query_string,
+            'query_string': self.query_string.encode('utf-8'),
             # 'SERVER_NAME': self.server_name,
             # 'SERVER_PORT': str(self.server_port),
             # 'HTTP_HOST': self.host,

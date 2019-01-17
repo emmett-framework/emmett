@@ -37,6 +37,8 @@ class _cached_prop(object):
 
 class _cached_prop_sync(_cached_prop):
     def __get__(self, obj, cls):
+        if obj is None:
+            return self
         obj.__dict__[self.__name__] = result = self.fget(obj)
         return result
 

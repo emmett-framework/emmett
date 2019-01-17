@@ -143,7 +143,7 @@ class WeppyTestClient(object):
             self.cookie_jar.inject_asgi(scope)
         rv = run_asgi_app(self.application, scope, body)
         if self.cookie_jar is not None:
-            self.cookie_jar.extract_asgi(scope, rv[2])
+            self.cookie_jar.extract_asgi(scope, Headers(rv['headers']))
         return rv
 
     def resolve_redirect(self, response, new_loc, environ, buffered=False):

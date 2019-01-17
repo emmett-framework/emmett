@@ -98,7 +98,7 @@ class TestCookieJar(CookieJar):
         """
         self.extract_cookies(
             _TestCookieResponse(headers),
-            U2Request(get_current_url(environ)),
+            U2Request(get_current_url(scope)),
         )
 
 

@@ -10,7 +10,8 @@
 """
 
 from weppy.datastructures import sdict
-from weppy.utils import cachedprop, dict_to_sdict, is_valid_ip_address
+from weppy.utils import (
+    cachedprop, _cached_prop_sync, dict_to_sdict, is_valid_ip_address)
 
 
 class TestClass(object):
@@ -21,7 +22,7 @@ class TestClass(object):
 
 
 def test_cachedprop():
-    assert isinstance(TestClass.prop, cachedprop)
+    assert isinstance(TestClass.prop, _cached_prop_sync)
     obj = TestClass()
     assert obj.prop == 'test_cachedprop'
 

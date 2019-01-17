@@ -10,9 +10,9 @@
 """
 
 import pytest
-from datetime import datetime
+
+from helpers import current_ctx
 from weppy import App
-from weppy.ctx import current
 
 
 @pytest.fixture(scope='module')
@@ -50,23 +50,15 @@ def test_helpers(app):
 
 
 def test_meta(app):
-    current.initialize({
-        'PATH_INFO': '/',
-        'REQUEST_METHOD': 'GET',
-        'HTTP_HOST': 'localhost',
-        'wsgi.url_scheme': 'http',
-        'wpp.now': datetime.utcnow(),
-        'wpp.application': 'test',
-        'wpp.path_info': '/'
-    })
-    current.response.meta.foo = "bar"
-    current.response.meta_prop.foo = "bar"
-    templater = app.templater
-    r = templater._render(
-        source="\n{{include_meta}}", file_path='mtest',
-        context={'current': current})
-    assert r == '<meta name="foo" content="bar" />\n' + \
-        '<meta property="foo" content="bar" />'
+    with current_ctx('/') as ctx:
+        ctx.response.meta.foo = "bar"
+        ctx.response.meta_prop.foo = "bar"
+        templater = app.templater
+        r = templater._render(
+            source="\n{{include_meta}}", file_path='mtest',
+            context={'current': ctx})
+        assert r == '<meta name="foo" content="bar" />\n' + \
+            '<meta property="foo" content="bar" />'
 
 
 def test_static(app):
@@ -101,8 +93,6 @@ rendered_value = """
 <html>
     <head>
         <title>Test</title>
-        <meta name="foo" content="bar" />
-        <meta property="foo" content="bar" />
         <script type="text/javascript" src="/__weppy__/jquery.min.js"></script>
         <script type="text/javascript" src="/__weppy__/helpers.js"></script>
         <link rel="stylesheet" href="/static/style.css" type="text/css" />
@@ -130,15 +120,12 @@ rendered_value = """
 
 
 def test_render(app):
-    current.language = 'it'
-    r = app.templater.render(
-        app.template_path, 'test.html', {
-            'current': current, 'posts': [{'title': 'foo'}, {'title': 'bar'}]
-        }
-    )
-    assert "\n".join([l.rstrip() for l in r.splitlines()]) == \
-        rendered_value[1:]
-
-
-# def test_cache(app):
-#     pass
+    with current_ctx('/') as ctx:
+        ctx.language = 'it'
+        r = app.templater.render(
+            app.template_path, 'test.html', {
+                'current': ctx, 'posts': [{'title': 'foo'}, {'title': 'bar'}]
+            }
+        )
+        assert "\n".join([l.rstrip() for l in r.splitlines()]) == \
+            rendered_value[1:]
