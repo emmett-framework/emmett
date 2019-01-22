@@ -17,7 +17,9 @@ import codecs
 import mimetypes
 import re
 import sys
+
 from io import BytesIO
+
 from .._compat import PY2, to_bytes, to_native, string_types, iteritems
 from ..datastructures import sdict
 from .urls import get_host, uri_to_iri, url_quote
@@ -90,7 +92,7 @@ class TestCookieJar(CookieJar):
             cvals.append('%s=%s' % (cookie.name, cookie.value))
         if cvals:
             scope['headers'].append(
-                (b'Cookie', '; '.join(cvals).encode('utf-8')))
+                (b'cookie', '; '.join(cvals).encode('utf-8')))
 
     def extract_asgi(self, scope, headers):
         """Extract the server's set-cookie headers as cookies into the
@@ -263,21 +265,23 @@ def _get_query_string(environ):
     return to_native(url_quote(qs, safe=':&%=+$!*\'(),'))
 
 
-def get_current_url(environ, root_only=False, strip_querystring=False,
-                    host_only=False, trusted_hosts=None):
-    tmp = [environ['wsgi.url_scheme'], '://', get_host(environ, trusted_hosts)]
-    cat = tmp.append
+def get_current_url(
+    scope, root_only=False, strip_querystring=False, host_only=False,
+    trusted_hosts=None
+):
+    headers = Headers(scope['headers'])
+    components = [
+        scope['scheme'], '://', get_host(scope, headers, trusted_hosts)]
     if host_only:
-        return uri_to_iri(''.join(tmp) + '/')
-    cat(url_quote(to_bytes(environ.get('SCRIPT_NAME', ''))).rstrip('/'))
-    cat('/')
+        return uri_to_iri(''.join(components) + '/')
+    components.extend([
+        url_quote(to_bytes(scope['root_path'])).rstrip('/'), '/'])
     if not root_only:
-        cat(url_quote(to_bytes(environ.get('PATH_INFO', '')).lstrip(b'/')))
+        components.append(url_quote(to_bytes(scope['path']).lstrip(b'/')))
         if not strip_querystring:
-            qs = _get_query_string(environ)
-            if qs:
-                cat('?' + qs)
-    return uri_to_iri(''.join(tmp))
+            if scope['query_string']:
+                components.extend(['?', scope['query_string']])
+    return uri_to_iri(''.join(components))
 
 
 def _is_ascii_encoding(encoding):

@@ -630,4 +630,4 @@ class ScopeBuilder(object):
                 (key.encode('utf-8'), value.encode('utf-8')))
         if self.environ_overrides:
             result.update(self.environ_overrides)
-        return result, input_stream
+        return result, input_stream.getvalue()

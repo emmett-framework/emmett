@@ -23,48 +23,53 @@ from itertools import chain
 from .._compat import reraise, text_type, to_native
 from .._internal import ClosingIterator
 
-from ..ctx import current
+from ..asgi.handlers import HTTPHandler, RequestContext
+from ..ctx import current, response
+from ..http import HTTP
 from ..wrappers.request import Request
 from ..wrappers.response import Response
-
 from ..utils import cachedprop
 from .env import EnvironBuilder, ScopeBuilder
 from .helpers import TestCookieJar, Headers
 from .urls import get_host, url_parse, url_unparse
 
 
-# class ClientContext(object):
-#     def __init__(self):
-#         from ..globals import current, Request, Response
-#         self.request = Request(current.request.environ)
-#         self.response = Response(current.request.environ)
-#         self.response.__dict__.update(current.response.__dict__)
-#         self.session = copy.deepcopy(current.session)
-#         self.T = current.T
-
-#     def __enter__(self):
-#         return self
-
-#     def __exit__(self, exc_type, exc_value, tb):
-#         pass
-
-
 class ClientContext(object):
     def __init__(self):
-        self.request = Request(current.request.scope)
+        self.request = Request(current.request._scope)
         self.response = Response()
         self.response.__dict__.update(current.response.__dict__)
         self.session = copy.deepcopy(current.session)
         self.T = current.T
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        pass
+
+
+class ClientHTTPHandler(HTTPHandler):
+    async def handle_request(self, scope, send):
+        ctx_token = current._init_(RequestContext, self.app, scope)
+        try:
+            http = await self.pre_handler(scope, send)
+        except Exception:
+            self.app.log.exception('Application exception:')
+            http = HTTP(
+                500, await self.error_handler(), headers=response.headers)
+        scope['emt.ctx'] = ClientContext()
+        current._close_(ctx_token)
+        await asyncio.wait_for(http.send(scope, send), None)
+
 
 class ClientResponse(object):
-    def __init__(self, raw, status, headers):
+    def __init__(self, ctx, raw, status, headers):
+        self.context = ctx
         self.raw = raw
         self.status = status
         self.headers = headers
         self._close = lambda: None
-        # self._context = None
 
     def __enter__(self):
         return self
@@ -73,14 +78,9 @@ class ClientResponse(object):
         pass
 
     @cachedprop
-    def context(self):
-        return ClientContext()
-
-    @cachedprop
     def data(self):
         self._ensure_sequence()
         rv = b''.join(self.iter_encoded())
-        # return to_native(rv)
         return rv.decode('utf8')
 
     @property
@@ -146,7 +146,9 @@ class WeppyTestClient(object):
             self.cookie_jar.extract_asgi(scope, Headers(rv['headers']))
         return rv
 
-    def resolve_redirect(self, response, new_loc, environ, buffered=False):
+    def resolve_redirect(
+        self, response, new_loc, scope, headers, buffered=False
+    ):
         """Resolves a single redirect and triggers the request again
         directly on this redirect client.
         """
@@ -154,7 +156,7 @@ class WeppyTestClient(object):
         base_url = url_unparse((scheme, netloc, '', '', '')).rstrip('/') + '/'
 
         cur_name = netloc.split(':', 1)[0].split('.')
-        real_name = get_host(environ).rsplit(':', 1)[0].split('.')
+        real_name = get_host(scope, headers).rsplit(':', 1)[0].split('.')
 
         if len(cur_name) == 1 and not cur_name[0]:
             allowed = True
@@ -168,9 +170,9 @@ class WeppyTestClient(object):
             raise RuntimeError('%r does not support redirect to '
                                'external targets' % self.__class__)
 
-        status_code = int(response[1].split(None, 1)[0])
+        status_code = response['status']
         if status_code == 307:
-            method = environ['REQUEST_METHOD']
+            method = scope['method']
         else:
             method = 'GET'
 
@@ -181,8 +183,8 @@ class WeppyTestClient(object):
         self.response_wrapper = None
         try:
             return self.open(path=script_root, base_url=base_url,
-                             query_string=qs, as_tuple=True,
-                             buffered=buffered, method=method)
+                             query_string=qs, method=method, as_tuple=True)
+                             # buffered=buffered, method=method)
         finally:
             self.response_wrapper = old_response_wrapper
 
@@ -224,13 +226,14 @@ class WeppyTestClient(object):
         # handle redirects
         redirect_chain = []
         while 1:
-            status_code = int(response['status'].split(None, 1)[0])
+            status_code = response['status']
             if (
                 status_code not in (301, 302, 303, 305, 307) or
                 not follow_redirects
             ):
                 break
-            new_location = response['headers']['location']
+            headers = Headers(response['headers'])
+            new_location = headers['location']
             if new_location.startswith('/'):
                 new_location = (
                     scope['scheme'] + "://" +
@@ -240,10 +243,12 @@ class WeppyTestClient(object):
                 raise Exception('loop detected')
             redirect_chain.append(new_redirect_entry)
             scope, response = self.resolve_redirect(
-                response, new_location, scope)
+                response, new_location, scope, headers)
 
         if self.response_wrapper is not None:
-            response = self.response_wrapper(response)
+            response = self.response_wrapper(
+                scope['emt.ctx'], response['body'], response['status'],
+                Headers(response['headers']))
         if as_tuple:
             return scope, response
         return response
@@ -406,8 +411,8 @@ def run_asgi_app(app, scope, body=b''):
                 response_complete = True
 
     try:
-        connection = app(scope)
-        loop.run_until_complete(connection(receive, send))
+        connection = ClientHTTPHandler(app)
+        loop.run_until_complete(connection(scope, receive, send))
     except BaseException as exc:
         if self.raise_server_exceptions:
             raise exc from None

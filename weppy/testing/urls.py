@@ -517,17 +517,16 @@ def _host_is_trusted(hostname, trusted_list):
     return False
 
 
-def get_host(environ, trusted_hosts=None):
-    if 'HTTP_X_FORWARDED_HOST' in environ:
-        rv = environ['HTTP_X_FORWARDED_HOST'].split(',', 1)[0].strip()
-    elif 'HTTP_HOST' in environ:
-        rv = environ['HTTP_HOST']
+def get_host(scope, headers, trusted_hosts=None):
+    if 'x-forwarded-host' in headers:
+        rv = headers['x-forwarded-host'].split(',', 1)[0].strip()
+    elif 'host' in headers:
+        rv = headers['host']
     else:
-        rv = environ['SERVER_NAME']
-        if (environ['wsgi.url_scheme'], environ['SERVER_PORT']) not \
-           in (('https', '443'), ('http', '80')):
-            rv += ':' + environ['SERVER_PORT']
-    if trusted_hosts is not None:
-        if not _host_is_trusted(rv, trusted_hosts):
-            raise Exception('Host "%s" is not trusted' % rv)
+        rv = scope['server'][0]
+        if (
+            (scope['scheme'], scope['server'][1]) not in
+            (('https', '443'), ('http', '80'))
+        ):
+            rv += ':{}'.format(scope['server'][1])
     return rv
