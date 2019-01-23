@@ -73,7 +73,7 @@ setup(
     platforms='any',
     install_requires=requirements,
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
         'Framework :: AsyncIO',
         'Intended Audience :: Developers',
