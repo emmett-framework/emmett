@@ -25,7 +25,7 @@ from ..http import HTTP
 from ..wrappers.request import Request
 from ..wrappers.response import Response
 from ..utils import cachedprop
-from .env import EnvironBuilder, ScopeBuilder
+from .env import ScopeBuilder
 from .helpers import TestCookieJar, Headers
 from .urls import get_host, url_parse, url_unparse
 
@@ -285,14 +285,6 @@ class WeppyTestClient(object):
             self.__class__.__name__,
             self.application
         )
-
-
-def create_environ(*args, **kwargs):
-    builder = EnvironBuilder(*args, **kwargs)
-    try:
-        return builder.get_environ()
-    finally:
-        builder.close()
 
 
 def run_asgi_app(app, scope, body=b''):
