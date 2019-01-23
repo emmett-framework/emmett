@@ -18,10 +18,6 @@ import copy
 import types
 
 from io import BytesIO
-from itertools import chain
-
-from .._compat import reraise, text_type, to_native
-from .._internal import ClosingIterator
 
 from ..asgi.handlers import HTTPHandler, RequestContext
 from ..ctx import current, response
@@ -128,15 +124,6 @@ class WeppyTestClient(object):
         else:
             self.cookie_jar = None
         self.allow_subdomain_redirects = allow_subdomain_redirects
-
-    # def run_wsgi_app(self, environ, buffered=False):
-    #     """Runs the wrapped WSGI app with the given environment."""
-    #     if self.cookie_jar is not None:
-    #         self.cookie_jar.inject_wsgi(environ)
-    #     rv = run_wsgi_app(self.application, environ, buffered=buffered)
-    #     if self.cookie_jar is not None:
-    #         self.cookie_jar.extract_wsgi(environ, rv[2])
-    #     return rv
 
     def run_asgi_app(self, scope, body):
         if self.cookie_jar is not None:
@@ -306,44 +293,6 @@ def create_environ(*args, **kwargs):
         return builder.get_environ()
     finally:
         builder.close()
-
-
-def run_wsgi_app(app, environ, buffered=False):
-    response = []
-    buffer = []
-
-    def start_response(status, headers, exc_info=None):
-        if exc_info is not None:
-            reraise(*exc_info)
-        response[:] = [status, headers]
-        return buffer.append
-
-    app_rv = app(environ, start_response)
-    close_func = getattr(app_rv, 'close', None)
-    app_iter = iter(app_rv)
-
-    # when buffering we emit the close call early and convert the
-    # application iterator into a regular list
-    if buffered:
-        try:
-            app_iter = list(app_iter)
-        finally:
-            if close_func is not None:
-                close_func()
-
-    # otherwise we iterate the application iter until we have a response, chain
-    # the already received data with the already collected data and wrap it in
-    # a new `ClosingIterator` if we need to restore a `close` callable from the
-    # original return value.
-    else:
-        while not response:
-            buffer.append(next(app_iter))
-        if buffer:
-            app_iter = chain(buffer, app_iter)
-        if close_func is not None and app_iter is not app_rv:
-            app_iter = ClosingIterator(app_iter, close_func)
-
-    return app_iter, response[0], Headers(response[1])
 
 
 def run_asgi_app(app, scope, body=b''):

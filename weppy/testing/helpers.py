@@ -18,19 +18,14 @@ import mimetypes
 import re
 import sys
 
+from http.cookiejar import CookieJar
 from io import BytesIO
+from urllib.request import Request as U2Request
 
-from .._compat import PY2, to_bytes, to_native, string_types, iteritems
+# TODO: check conversions
+from .._shortcuts import to_bytes
 from ..datastructures import sdict
 from .urls import get_host, uri_to_iri, url_quote
-
-if PY2:
-    from cookielib import CookieJar
-    from urllib2 import Request as U2Request
-else:
-    from http.cookiejar import CookieJar
-    from urllib.request import Request as U2Request
-
 
 _quoted_string_re = r'"[^"\\]*(?:\\.[^"\\]*)*"'
 _option_header_piece_re = re.compile(
@@ -160,7 +155,7 @@ class _FileHandler(object):
             # On Python 3 we want to make sure the filename is always unicode.
             # This might not be if the name attribute is bytes due to the
             # file being opened from the bytes API.
-            if not PY2 and isinstance(filename, bytes):
+            if isinstance(filename, bytes):
                 filename = filename.decode(get_filesystem_encoding(),
                                            'replace')
 
@@ -210,7 +205,7 @@ class _FileHandler(object):
         """
         from shutil import copyfileobj
         close_dst = False
-        if isinstance(dst, string_types):
+        if isinstance(dst, str):
             dst = open(dst, 'wb')
             close_dst = True
         try:
@@ -249,7 +244,7 @@ class filesdict(sdict):
         if isinstance(file, _FileHandler):
             value = file
         else:
-            if isinstance(file, string_types):
+            if isinstance(file, str):
                 if filename is None:
                     filename = file
                 file = open(file, 'rb')
@@ -258,11 +253,6 @@ class filesdict(sdict):
                     'application/octet-stream'
             value = _FileHandler(file, filename, name, content_type)
         self[name] = value
-
-
-def _get_query_string(environ):
-    qs = to_bytes(environ.get('QUERY_STRING', ''))
-    return to_native(url_quote(qs, safe=':&%=+$!*\'(),'))
 
 
 def get_current_url(
@@ -369,7 +359,7 @@ def stream_encode_multipart(values, threshold=1024 * 500, boundary=None,
     def write(string):
         write_binary(string.encode(charset))
 
-    for key, values in iteritems(values):
+    for key, values in values.items():
         if not isinstance(values, list):
             values = [values]
         for value in values:
@@ -395,7 +385,7 @@ def stream_encode_multipart(values, threshold=1024 * 500, boundary=None,
                         break
                     write_binary(chunk)
             else:
-                if not isinstance(value, string_types):
+                if not isinstance(value, str):
                     value = str(value)
                 else:
                     value = to_bytes(value, charset)

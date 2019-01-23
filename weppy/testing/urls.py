@@ -15,10 +15,11 @@
 
 import os
 import re
+
 from collections import namedtuple
-from .._compat import (
-    text_type, string_types, to_native, to_unicode, implements_to_string,
-    iteritems)
+
+# TODO: check conversions
+from .._compat import to_unicode
 from ..datastructures import sdict
 
 
@@ -51,17 +52,17 @@ class BaseURL(_URLTuple):
     @property
     def ascii_host(self):
         rv = self.host
-        if rv is not None and isinstance(rv, text_type):
+        if rv is not None and isinstance(rv, str):
             try:
                 rv = _encode_idna(rv)
             except UnicodeError:
                 rv = rv.encode('ascii', 'ignore')
-        return to_native(rv, 'ascii', 'ignore')
+        return to_unicode(rv, 'ascii', 'ignore')
 
     @property
     def port(self):
         try:
-            rv = int(to_native(self._split_host()[1]))
+            rv = int(to_unicode(self._split_host()[1]))
             if 0 <= rv <= 65535:
                 return rv
         except (ValueError, TypeError):
@@ -193,7 +194,6 @@ class BaseURL(_URLTuple):
         return host, None
 
 
-@implements_to_string
 class URL(BaseURL):
     __slots__ = ()
     _at = '@'
@@ -217,7 +217,7 @@ class URL(BaseURL):
         ]))
         if auth:
             rv = '%s@%s' % (auth, rv)
-        return to_native(rv)
+        return to_unicode(rv)
 
     def encode(self, charset='utf-8', errors='replace'):
         return BytesURL(
@@ -253,13 +253,13 @@ class BytesURL(BaseURL):
 
 
 def url_quote(string, charset='utf-8', errors='strict', safe='/:', unsafe=''):
-    if not isinstance(string, (text_type, bytes, bytearray)):
-        string = text_type(string)
-    if isinstance(string, text_type):
+    if not isinstance(string, (str, bytes, bytearray)):
+        string = str(string)
+    if isinstance(string, str):
         string = string.encode(charset, errors)
-    if isinstance(safe, text_type):
+    if isinstance(safe, str):
         safe = safe.encode(charset, errors)
-    if isinstance(unsafe, text_type):
+    if isinstance(unsafe, str):
         unsafe = unsafe.encode(charset, errors)
     safe = frozenset(bytearray(safe) + _always_safe) - \
         frozenset(bytearray(unsafe))
@@ -269,13 +269,13 @@ def url_quote(string, charset='utf-8', errors='strict', safe='/:', unsafe=''):
             rv.append(char)
         else:
             rv.extend(('%%%02X' % char).encode('ascii'))
-    return to_native(bytes(rv))
+    return to_unicode(bytes(rv))
 
 
 def _unquote_to_bytes(string, unsafe=''):
-    if isinstance(string, text_type):
+    if isinstance(string, str):
         string = string.encode('utf-8')
-    if isinstance(unsafe, text_type):
+    if isinstance(unsafe, str):
         unsafe = unsafe.encode('utf-8')
     unsafe = frozenset(bytearray(unsafe))
     bits = iter(string.split(b'%'))
@@ -306,7 +306,7 @@ def url_quote_plus(string, charset='utf-8', errors='strict', safe=''):
 
 
 def url_unquote_plus(s, charset='utf-8', errors='replace'):
-    if isinstance(s, text_type):
+    if isinstance(s, str):
         s = s.replace(u'+', u' ')
     else:
         s = s.replace(b'+', b' ')
@@ -315,12 +315,12 @@ def url_unquote_plus(s, charset='utf-8', errors='replace'):
 
 def url_parse(url, scheme=None, allow_fragments=True):
     #s = make_literal_wrapper(url)
-    is_text_based = isinstance(url, text_type)
+    is_text_based = isinstance(url, str)
     if scheme is None:
         scheme = ''
     netloc = query = fragment = ''
     i = url.find(':')
-    if i > 0 and _scheme_re.match(to_native(url[:i], errors='replace')):
+    if i > 0 and _scheme_re.match(to_unicode(url[:i], errors='replace')):
         # make sure "iri" is not actually a port number (in which case
         # "scheme" is really part of the path)
         rest = url[i + 1:]
@@ -375,26 +375,26 @@ def url_unparse(components):
 
 def _url_encode_impl(obj, charset, encode_keys, sort, key):
     iterable = sdict()
-    for key, values in iteritems(obj):
+    for key, values in obj.items():
         if not isinstance(values, list):
             values = [values]
         iterable[key] = values
     if sort:
         iterable = sorted(iterable, key=key)
-    for key, values in iteritems(iterable):
+    for key, values in iterable.items():
         for value in values:
             if value is None:
                 continue
             if not isinstance(key, bytes):
-                key = text_type(key).encode(charset)
+                key = str(key).encode(charset)
             if not isinstance(value, bytes):
-                value = text_type(value).encode(charset)
+                value = str(value).encode(charset)
             yield url_quote_plus(key) + '=' + url_quote_plus(value)
 
 
 def url_encode(obj, charset='utf-8', encode_keys=False, sort=False, key=None,
                separator=b'&'):
-    separator = to_native(separator, 'ascii')
+    separator = to_unicode(separator, 'ascii')
     return separator.join(
         _url_encode_impl(obj, charset, encode_keys, sort, key))
 
@@ -420,7 +420,7 @@ def iri_to_uri(iri, charset='utf-8', errors='strict'):
     query = url_quote(iri.query, charset, errors, '%&[]:;$*()+,!?*/=')
     fragment = url_quote(iri.fragment, charset, errors, '=%&[]:;$()+,!?*/')
 
-    return to_native(url_unparse((iri.scheme, netloc, path, query, fragment)))
+    return to_unicode(url_unparse((iri.scheme, netloc, path, query, fragment)))
 
 
 def url_fix(s, charset='utf-8'):
@@ -438,13 +438,13 @@ def url_fix(s, charset='utf-8'):
     path = url_quote(url.path, charset, safe='/%+$!*\'(),')
     qs = url_quote_plus(url.query, charset, safe=':&%=+$!*\'(),')
     anchor = url_quote_plus(url.fragment, charset, safe=':&%=+$!*\'(),')
-    return to_native(url_unparse((url.scheme, url.encode_netloc(),
+    return to_unicode(url_unparse((url.scheme, url.encode_netloc(),
                                   path, qs, anchor)))
 
 
 def _encode_idna(domain):
     # If we're given bytes, make sure they fit into ASCII
-    if not isinstance(domain, text_type):
+    if not isinstance(domain, str):
         domain.decode('ascii')
         return domain
 
@@ -465,7 +465,7 @@ def _decode_idna(domain):
     # If the input is a string try to encode it to ascii to
     # do the idna decoding.  if that fails because of an
     # unicode error, then we already have a decoded idna domain
-    if isinstance(domain, text_type):
+    if isinstance(domain, str):
         try:
             domain = domain.encode('ascii')
         except UnicodeError:
@@ -488,7 +488,7 @@ def _host_is_trusted(hostname, trusted_list):
     if not hostname:
         return False
 
-    if isinstance(trusted_list, string_types):
+    if isinstance(trusted_list, str):
         trusted_list = [trusted_list]
 
     def _normalize(hostname):
