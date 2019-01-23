@@ -54,30 +54,6 @@ class Current(object):
     def __delattr__(self, name):
         delattr(self.ctx, name)
 
-    # @property
-    # def language(self):
-    #     return self.ctx.language
-
-    # @property
-    # def now(self):
-    #     return self.ctx.now
-
-    # @property
-    # def request(self):
-    #     return self.ctx.request
-
-    # @property
-    # def response(self):
-    #     return self.ctx.response
-
-    # @property
-    # def session(self):
-    #     return self.ctx.session
-
-    # @session.setter
-    # def session(self, val):
-    #     self.ctx.session = val
-
     @property
     def T(self):
         return T

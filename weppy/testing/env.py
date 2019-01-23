@@ -24,7 +24,7 @@ from .urls import iri_to_uri, url_fix, url_parse, url_unparse, url_encode
 
 
 class ScopeBuilder(object):
-    #: This class creates a WSGI environment for testing purposes.
+    #: This class creates an ASGI environment for testing purposes.
 
     #: the server protocol to use.  defaults to HTTP/1.1
     server_protocol = '1.1'
@@ -300,23 +300,8 @@ class ScopeBuilder(object):
             'method': self.method,
             'scheme': self.url_scheme,
             'root_path': self.script_root,
-            # 'SCRIPT_NAME': self.script_root,
-            # 'PATH_INFO': self.path,
             'path': self.path,
             'query_string': self.query_string.encode('utf-8'),
-            # 'SERVER_NAME': self.server_name,
-            # 'SERVER_PORT': str(self.server_port),
-            # 'HTTP_HOST': self.host,
-            # 'SERVER_PROTOCOL': self.server_protocol,
-            # 'CONTENT_TYPE': content_type or '',
-            # 'CONTENT_LENGTH': str(content_length or '0'),
-            # 'wsgi.version': self.wsgi_version,
-            # 'wsgi.url_scheme': self.url_scheme,
-            # 'wsgi.input': input_stream,
-            # 'wsgi.errors': self.errors_stream,
-            # 'wpp.application': 'test_application_name',
-            # 'wpp.now': datetime.utcnow(),
-            # 'wpp.path_info': self.path
             'emt.path': self.path,
             'emt.input': None
         })

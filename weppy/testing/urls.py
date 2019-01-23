@@ -431,15 +431,18 @@ def url_fix(s, charset='utf-8'):
 
     # For the specific case that we look like a malformed windows URL
     # we want to fix this up manually:
-    if s.startswith('file://') and s[7:8].isalpha() and s[8:10] in (':/', '|/'):
+    if (
+        s.startswith('file://') and s[7:8].isalpha() and
+        s[8:10] in (':/', '|/')
+    ):
         s = 'file:///' + s[7:]
 
     url = url_parse(s)
     path = url_quote(url.path, charset, safe='/%+$!*\'(),')
     qs = url_quote_plus(url.query, charset, safe=':&%=+$!*\'(),')
     anchor = url_quote_plus(url.fragment, charset, safe=':&%=+$!*\'(),')
-    return to_unicode(url_unparse((url.scheme, url.encode_netloc(),
-                                  path, qs, anchor)))
+    return to_unicode(
+        url_unparse((url.scheme, url.encode_netloc(), path, qs, anchor)))
 
 
 def _encode_idna(domain):

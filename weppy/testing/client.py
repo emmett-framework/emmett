@@ -133,9 +133,7 @@ class WeppyTestClient(object):
             self.cookie_jar.extract_asgi(scope, Headers(rv['headers']))
         return rv
 
-    def resolve_redirect(
-        self, response, new_loc, scope, headers, buffered=False
-    ):
+    def resolve_redirect(self, response, new_loc, scope, headers):
         """Resolves a single redirect and triggers the request again
         directly on this redirect client.
         """
@@ -169,38 +167,19 @@ class WeppyTestClient(object):
         old_response_wrapper = self.response_wrapper
         self.response_wrapper = None
         try:
-            return self.open(path=script_root, base_url=base_url,
-                             query_string=qs, method=method, as_tuple=True)
-                             # buffered=buffered, method=method)
+            return self.open(
+                path=script_root, base_url=base_url, query_string=qs,
+                method=method, as_tuple=True)
         finally:
             self.response_wrapper = old_response_wrapper
 
     def open(self, *args, **kwargs):
-        """Takes the same arguments as the :class:`EnvironBuilder` class with
-        some additions:  You can provide a :class:`EnvironBuilder` or a WSGI
-        environment as only argument instead of the :class:`EnvironBuilder`
-        arguments and two optional keyword arguments (`as_tuple`, `buffered`)
-        that change the type of the return value or the way the application is
-        executed.
-
-        Additional parameters:
-
-        :param as_tuple: Returns a tuple in the form ``(environ, result)``
-        :param buffered: Set this to True to buffer the application run.
-                         This will automatically close the application for
-                         you as well.
-        :param follow_redirects: Set this to True if the `Client` should
-                                 follow HTTP redirects.
-        """
         as_tuple = kwargs.pop('as_tuple', False)
-        # buffered = kwargs.pop('buffered', False)
         follow_redirects = kwargs.pop('follow_redirects', False)
         scope, body = None, b''
         if not kwargs and len(args) == 1:
             if isinstance(args[0], ScopeBuilder):
                 scope, body = args[0].get_data()
-            # elif isinstance(args[0], dict):
-            #     environ = args[0]
         if scope is None:
             builder = ScopeBuilder(*args, **kwargs)
             try:
@@ -333,14 +312,11 @@ def run_asgi_app(app, scope, body=b''):
         if message["type"] == "http.response.start":
             raw["version"] = 11
             raw["status"] = message["status"]
-            # raw["reason"] = _get_reason_phrase(message["status"])
             raw["headers"] = [
-                (key.decode(), value.decode()) for key, value in message["headers"]
+                (key.decode(), value.decode())
+                for key, value in message["headers"]
             ]
             raw["preload_content"] = False
-            # raw["original_response"] = _MockOriginalResponse(
-            #     raw["headers"]
-            # )
             response_started = True
         elif message["type"] == "http.response.body":
             body = message.get("body", b"")
@@ -351,11 +327,7 @@ def run_asgi_app(app, scope, body=b''):
                 raw["body"].seek(0)
                 response_complete = True
 
-    try:
-        connection = ClientHTTPHandler(app)
-        loop.run_until_complete(connection(scope, receive, send))
-    except BaseException as exc:
-        if self.raise_server_exceptions:
-            raise exc from None
+    handler = ClientHTTPHandler(app)
+    loop.run_until_complete(handler(scope, receive, send))
 
     return raw
