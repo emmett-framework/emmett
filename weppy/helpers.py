@@ -28,11 +28,13 @@ def abort(code, body=''):
     raise HTTP(code, body)
 
 
+# TODO: update streaming to use asgi
 def stream_file(path):
     fullfilename = os.path.join(current.app.root_path, path)
     raise streamer(request.environ, fullfilename, headers=response.headers)
 
 
+# TODO: update streaming to use asgi
 def stream_dbfile(db, name):
     items = _REGEX_DBSTREAM.match(name)
     if not items:

@@ -20,8 +20,6 @@ import pkgutil
 import sys
 import warnings
 
-from functools import partial
-
 
 def _is_immutable(self):
     raise TypeError('%r objects are immutable' % self.__class__.__name__)
@@ -30,7 +28,6 @@ def _is_immutable(self):
 #: internal datastructures
 class ObjectProxy(object):
     #: Proxy to another object.
-    # __slots__ = ('__obj', '__dict__', '__name__')
     __slots__ = ('__obj', '__name__')
 
     def __init__(self, obj, name=None):
@@ -62,12 +59,6 @@ class ObjectProxy(object):
             return bool(self._get_robj())
         except RuntimeError:
             return False
-
-    def __unicode__(self):
-        try:
-            return unicode(self._get_robj())
-        except RuntimeError:
-            return repr(self)
 
     def __dir__(self):
         try:
@@ -104,24 +95,6 @@ class ContextVarProxy(ObjectProxy):
 
     def _get_robj(self):
         return getattr(self.__obj.get(), self.__name__)
-
-
-class ViewItems(object):
-    def __init__(self, obj, method, repr_name, *a, **kw):
-        self.__obj = obj
-        self.__method = method
-        self.__repr_name = repr_name
-        self.__a = a
-        self.__kw = kw
-
-    def __get_items(self):
-        return getattr(self.__obj, self.__method)(*self.__a, **self.__kw)
-
-    def __repr__(self):
-        return '%s(%r)' % (self.__repr_name, list(self.__get_items()))
-
-    def __iter__(self):
-        return iter(self.__get_items())
 
 
 class ImmutableListMixin(object):
@@ -171,32 +144,6 @@ class ImmutableList(ImmutableListMixin, list):
         return '%s(%s)' % (
             self.__class__.__name__, list.__repr__(self)
         )
-
-
-class ClosingIterator(object):
-    def __init__(self, iterable, callbacks=None):
-        iterator = iter(iterable)
-        self._next = partial(next, iterator)
-        if callbacks is None:
-            callbacks = []
-        elif callable(callbacks):
-            callbacks = [callbacks]
-        else:
-            callbacks = list(callbacks)
-        iterable_close = getattr(iterator, 'close', None)
-        if iterable_close:
-            callbacks.insert(0, iterable_close)
-        self._callbacks = callbacks
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self._next()
-
-    def close(self):
-        for callback in self._callbacks:
-            callback()
 
 
 #: utilities

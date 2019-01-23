@@ -36,10 +36,6 @@ _option_header_start_mime_type = re.compile(r',\s*([^;,\s]+)([;,]\s*.+)?')
 
 
 class _TestCookieHeaders(object):
-
-    """A headers adapter for cookielib
-    """
-
     def __init__(self, headers):
         self.headers = headers
 
@@ -60,11 +56,6 @@ class _TestCookieHeaders(object):
 
 
 class _TestCookieResponse(object):
-
-    """Something that looks like a httplib.HTTPResponse, but is actually just an
-    adapter for our test responses to make them available for cookielib.
-    """
-
     def __init__(self, headers):
         self.headers = _TestCookieHeaders(headers)
 
@@ -73,15 +64,7 @@ class _TestCookieResponse(object):
 
 
 class TestCookieJar(CookieJar):
-
-    """A cookielib.CookieJar modified to inject and read cookie headers from
-    and to wsgi environments, and wsgi application responses.
-    """
-
     def inject_asgi(self, scope):
-        """Inject the cookies as client headers into the server's wsgi
-        environment.
-        """
         cvals = []
         for cookie in self:
             cvals.append('%s=%s' % (cookie.name, cookie.value))
@@ -90,9 +73,6 @@ class TestCookieJar(CookieJar):
                 (b'cookie', '; '.join(cvals).encode('utf-8')))
 
     def extract_asgi(self, scope, headers):
-        """Extract the server's set-cookie headers as cookies into the
-        cookie jar.
-        """
         self.extract_cookies(
             _TestCookieResponse(headers),
             U2Request(get_current_url(scope)),
@@ -127,9 +107,6 @@ class Headers(dict):
         except ValueError:
             pass
         return rv
-
-    # def to_wsgi_list(self):
-    #     return list(self)
 
     def to_asgi_list(self):
         return list(self)

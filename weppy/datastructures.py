@@ -13,8 +13,6 @@ import copy
 import hashlib
 import pickle
 
-from collections.abc import Mapping
-
 from ._internal import ImmutableList
 
 
@@ -206,54 +204,6 @@ class OrderedSet(set):
         return self
 
     __isub__ = difference_update
-
-
-class EnvironHeaders(Mapping):
-    def __init__(self, environ):
-        self.environ = environ
-
-    __hash__ = None
-
-    def _key_to_headername(self, key):
-        return 'HTTP_' + key.upper().replace('-', '_')
-
-    def __getitem__(self, key):
-        return self.environ[self._key_to_headername(key)]
-
-    def __contains__(self, key):
-        return self._key_to_headername(key) in self.environ
-
-    def __iter__(self):
-        for key, value in self.environ.items():
-            if (
-                key.startswith('HTTP_') and key not in
-                ('HTTP_CONTENT_TYPE', 'HTTP_CONTENT_LENGTH')
-            ):
-                yield (key[5:].replace('_', '-').title(), value)
-
-    def __len__(self):
-        return len(list(iter(self)))
-
-    def get(self, key, default=None, cast=None):
-        rv = self.environ.get(self._key_to_headername(key), default)
-        if cast is None:
-            return rv
-        try:
-            return cast(rv)
-        except ValueError:
-            return default
-
-    def items(self):
-        for key, value in self:
-            yield key, value
-
-    def keys(self):
-        for key, _ in self.items():
-            yield key
-
-    def values(self):
-        for _, value in self.items():
-            yield value
 
 
 class Accept(ImmutableList):
