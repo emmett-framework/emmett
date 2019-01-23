@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+    weppy.asgi.helpers
+    ------------------
+
+    :copyright: (c) 2014-2019 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
 
 import sys
 
