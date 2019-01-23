@@ -19,7 +19,7 @@ import re
 from collections import namedtuple
 
 # TODO: check conversions
-from .._compat import to_unicode
+from .._shortcuts import to_unicode
 from ..datastructures import sdict
 
 
