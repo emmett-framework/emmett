@@ -1,3 +1,5 @@
+**Warning:** *this branch is to be considered in alpha stage. Use at your own risk*
+
 ![logo](http://weppy.org/static/logo-big.png)
 
 [![pip version](https://img.shields.io/pypi/v/weppy.svg?style=flat)](https://pypi.python.org/pypi/weppy) 
@@ -63,35 +65,9 @@ While we're still populating this folder with more examples, you can also take a
 
 Aside from the examples, we encourage you to look at the [starter kit](https://github.com/mijdavis2/starter_weppy) and the convenient [scaffold generator](https://github.com/mijdavis2/generator-weppy-mvc) written by [MJ Davis](https://github.com/mijdavis2). These projects can really help you writing your next weppy application.
 
-## Benchmarks
-
-weppy is one of several Python web frameworks included in [TechEmpower benchmarks](https://www.techempower.com/benchmarks). Here are some snippets from the results (Python 3):
-
-**ORM**
-
-| framework | req/s | performance gain |
-| --- | --- | --- |
-| weppy 1.0.1 | 40690 | 2.1x |
-| pyramid 1.6.1 | 28342 | 1.5x |
-| django 1.9.4 | 25525 | 1.3x |
-| flask 0.10.1 | 19495 | 1x |
-
-**JSON serialization**
-
-| framework | req/s | performance gain |
-| --- | --- | --- |
-| weppy 1.0.1 | 257196 | 3.1x |
-| pyramid 1.6.1 | 172666 | 2.1x |
-| flask 0.10.1 | 106679 | 1.3x |
-| django 1.9.4 | 83390 | 1x |
-
 ## Status of the project
 
-Since version 1.0 weppy can be considered stable. Is compatible with Python 2.7, 3.4, 3.5 and 3.6.
-
-weppy is currently used in production by:
-
-- [Sellf](https://github.com/Sellf)
+This is an alpha stage branch for the async weppy support. It can be used only with Python 3.7 and above versions.
 
 ## How can I help?
 
