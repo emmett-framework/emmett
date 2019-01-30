@@ -32,10 +32,10 @@ class Serializers(object):
         return cls._registry_[target]
 
 
-def _json_default(self, o):
-    if hasattr(o, '__json__'):
-        return o.__json__()
-    raise ValueError('%r is not JSON serializable' % o)
+def _json_default(obj):
+    if hasattr(obj, '__json__'):
+        return obj.__json__()
+    raise ValueError('%r is not JSON serializable' % obj)
 
 
 @Serializers.register_for('json')
