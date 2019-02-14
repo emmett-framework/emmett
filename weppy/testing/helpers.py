@@ -84,8 +84,9 @@ class Headers(dict):
         super(Headers, self).__init__()
         self._list = []
         for header in headers:
-            self._list.append(header)
-            self[header[0].lower()] = header[1]
+            key, value = header[0].lower(), header[1]
+            self._list.append((key, value))
+            self[key] = value
 
     def __getitem__(self, name):
         return super(Headers, self).__getitem__(name.lower())
