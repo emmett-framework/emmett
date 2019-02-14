@@ -71,7 +71,7 @@ class Pipeline(object):
     def _output_type(self):
         rv = None
         for pipe in reversed(self.pipes):
-            if not pipe._is_flow_responsible:
+            if not pipe._is_flow_responsible or pipe.output is None:
                 continue
             rv = pipe.output
         return rv
