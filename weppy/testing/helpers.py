@@ -23,7 +23,7 @@ from io import BytesIO
 from urllib.request import Request as U2Request
 
 # TODO: check conversions
-from .._shortcuts import to_bytes
+from .._shortcuts import to_bytes, to_unicode
 from ..datastructures import sdict
 from .urls import get_host, uri_to_iri, url_quote
 
@@ -248,7 +248,7 @@ def get_current_url(
         components.append(url_quote(to_bytes(scope['path']).lstrip(b'/')))
         if not strip_querystring:
             if scope['query_string']:
-                components.extend(['?', scope['query_string']])
+                components.extend(['?', to_unicode(scope['query_string'])])
     return uri_to_iri(''.join(components))
 
 
