@@ -13,14 +13,13 @@
     :license: BSD, see LICENSE for more details.
 """
 
-# from __future__ import print_function
-
 import click
 import os
 import sys
 import types
 
 from . import __version__ as weppy_version
+from ._internal import warn_of_deprecation
 
 
 def find_best_app(module):
@@ -201,8 +200,10 @@ class WeppyGroup(click.Group):
 
         if add_default_commands:
             self.add_command(run_command)
+            self.add_command(develop_command)
             self.add_command(shell_command)
             self.add_command(routes_command)
+            self.add_command(serve_command)
 
     def list_commands(self, ctx):
         rv = super(WeppyGroup, self).list_commands(ctx)
@@ -241,7 +242,7 @@ class WeppyGroup(click.Group):
         return click.Group.main(self, *args, **kwargs)
 
 
-@click.command('run', short_help='Runs a development server.')
+@click.command('run', short_help='Deprecated - Runs a development server.')
 @click.option('--host', '-h', default='127.0.0.1',
               help='The interface to bind to.')
 @click.option('--port', '-p', default=8000,
@@ -249,24 +250,49 @@ class WeppyGroup(click.Group):
 @click.option('--reloader', type=(bool), default=True,
               help='Runs with reloader.')
 @click.option('--debug', type=(bool), default=True, help='Runs in debug mode.')
+@click.pass_context
+def run_command(ctx, host, port, reloader, debug):
+    warn_of_deprecation('command run', 'command develop')
+    ctx.forward(develop_command)
+
+
+@click.command('develop', short_help='Runs a development server.')
+@click.option(
+    '--host', '-h', default='127.0.0.1', help='The interface to bind to.')
+@click.option(
+    '--port', '-p', default=8000, help='The port to bind to.')
+@click.option(
+    '--reloader', type=(bool), default=True, help='Runs with reloader.')
+@click.option(
+    '--debug', type=(bool), default=True, help='Runs in debug mode.')
 @pass_script_info
-def run_command(info, host, port, reloader, debug):
+def develop_command(info, host, port, reloader, debug):
     os.environ["WEPPY_RUN_ENV"] = 'true'
     app = info.load_app()
     app.debug = debug
     if os.environ.get('WEPPY_RUN_MAIN') != 'true':
-        print("> Serving weppy application %s" % app.import_name)
+        print(f"> Serving weppy application {app.import_name}")
         quit_msg = "(press CTRL+C to quit)"
-        print("> weppy application %s running on http://%s:%i %s" %
-              (app.import_name, host, port, quit_msg))
+        print(
+            f"> weppy application {app.import_name} running on "
+            f"http://{host}:{port} {quit_msg}"
+        )
     if reloader:
         from ._reloader import run_with_reloader
         run_with_reloader(app, host, port)
-        # from .asgi.reloader import Reloader
-        # reloader = Reloader()
-        # reloader.run(app._run, {'host': host, 'port': port})
     else:
         app._run(host, port)
+
+
+@click.command('serve', short_help='Serve the app.')
+@click.option(
+    '--host', '-h', default='0.0.0.0', help='The interface to bind to.')
+@click.option(
+    '--port', '-p', default=8000, help='The port to bind to.')
+@pass_script_info
+def serve_command(info, host, port):
+    app = info.load_app()
+    app._run(host, port)
 
 
 @click.command('shell', short_help='Runs a shell in the app context.')
