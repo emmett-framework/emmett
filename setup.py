@@ -34,7 +34,7 @@ _requirements_basic = [
     'pyDAL==17.3',
     'python-rapidjson~=0.6.3',
     'pyyaml',
-    'uvicorn==0.3.23',
+    'uvicorn==0.7.0.b1',
     'websockets>=6.0'
 ]
 
@@ -42,8 +42,8 @@ if platform.system() == 'Windows' or platform.system().startswith('CYGWIN'):
     requirements = _requirements_basic
 else:
     requirements = sorted(_requirements_basic + [
-        'httptools',
-        'uvloop==0.11.3'
+        'httptools~=0.0.13',
+        'uvloop~=0.12.2'
     ])
 
 

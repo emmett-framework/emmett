@@ -10,79 +10,84 @@
 """
 
 import logging
-import socket
 
+from uvicorn.config import Config as UvicornConfig
+from uvicorn.lifespan.on import LifespanOn
 from uvicorn.main import Server
 
 from .loops import loops
 from .protocols import protocols_http, protocols_ws
 
 
-class NullLogger(logging.Logger):
-    def handle(self, record):
-        return
+class Config(UvicornConfig):
+    def setup_event_loop(self):
+        pass
+
+    def load(self):
+        assert not self.loaded
+
+        encoded_headers = [
+            (key.lower().encode("latin1"), value.encode("latin1"))
+            for key, value in self.headers
+        ]
+        self.encoded_headers = (
+            encoded_headers if b"server" in dict(encoded_headers) else
+            [(b"server", b"weppy")] + encoded_headers
+        )
+
+        self.http_protocol_class = self.http
+        self.ws_protocol_class = self.ws
+        self.lifespan_class = LifespanOn
+
+        self.loaded_app = self.app
+        self.interface = "asgi3"
+
+        self.loaded = True
+
+
+def _build_server_logger(app):
+    level = logging.DEBUG if app.debug else logging.WARNING
+    log_format = '[SERVER] %(levelname)s %(message)s'
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(log_format))
+    logger = logging.getLogger("uvicorn")
+    logger.setLevel(level)
+    logger.addHandler(handler)
+    return logger
 
 
 def run(
     app,
     host='127.0.0.1', port=8000, uds=None, fd=None,
     loop='auto', proto_http='auto', proto_ws='auto',
-    access_log=False,
-    # debug=False,
+    access_log=None,
     # proxy_headers=False,
-    root_path='',
-    limit_concurrency=None, limit_max_requests=None, timeout_keep_alive=5
+    limit_concurrency=None, limit_max_requests=None,
+    timeout_keep_alive=5, timeout_notify=30
 ):
-    if fd is None:
-        sock = None
-    else:
-        host = None
-        port = None
-        sock = socket.fromfd(fd, socket.AF_UNIX, socket.SOCK_STREAM)
-
     loop = loops.get_loop(loop)
     protocol_cls_http = protocols_http.get_protocol(proto_http)
     protocol_cls_ws = protocols_ws.get_protocol(proto_ws)
 
-    connections = set()
-    tasks = set()
-    state = {"total_requests": 0}
+    if access_log is None:
+        access_log = bool(app.debug)
 
-    logger = NullLogger('null')
-
-    def create_protocol():
-        rv = protocol_cls_http(
-            app=app,
-            loop=loop,
-            # logger=app.log,
-            logger=logger,
-            access_log=access_log,
-            connections=connections,
-            tasks=tasks,
-            state=state,
-            ws_protocol_class=protocol_cls_ws,
-            root_path=root_path,
-            limit_concurrency=limit_concurrency,
-            timeout_keep_alive=timeout_keep_alive,
-        )
-        return rv
-
-    server = Server(
+    uvicorn_config = Config(
         app=app,
         host=host,
         port=port,
         uds=uds,
-        sock=sock,
-        # logger=app.log,
-        logger=logger,
+        fd=fd,
         loop=loop,
-        connections=connections,
-        tasks=tasks,
-        state=state,
+        http=protocol_cls_http,
+        ws=protocol_cls_ws,
+        logger=_build_server_logger(app),
+        access_log=access_log,
+        debug=bool(app.debug),
+        limit_concurrency=limit_concurrency,
         limit_max_requests=limit_max_requests,
-        create_protocol=create_protocol,
-        on_tick=protocol_cls_http.tick,
-        install_signal_handlers=True,
-        ready_event=None
+        timeout_keep_alive=timeout_keep_alive,
+        timeout_notify=timeout_notify
     )
+    server = Server(uvicorn_config)
     server.run()

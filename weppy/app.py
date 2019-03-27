@@ -223,8 +223,10 @@ class App(object):
         self.debug = debug
         if os.environ.get('WEPPY_RUN_MAIN') != 'true':
             quit_msg = "(press CTRL+C to quit)"
-            self.log.info("> weppy application %s running on http://%s:%i %s" %
-                          (self.import_name, host, port, quit_msg))
+            self.log.info(
+                f"> weppy application {self.import_name} running on "
+                f"http://{host}:{port} {quit_msg}"
+            )
         if reloader:
             from ._reloader import run_with_reloader
             run_with_reloader(self, host, port)
@@ -238,13 +240,8 @@ class App(object):
             tclass = WeppyTestClient
         return tclass(self, use_cookies=use_cookies, **kwargs)
 
-    def __call__(self, scope):
-        handler = self._asgi_handlers[scope['type']]
-
-        def _scoped_handler(receive, send):
-            return handler(scope, receive, send)
-
-        return _scoped_handler
+    def __call__(self, scope, receive, send):
+        return self._asgi_handlers[scope['type']](scope, receive, send)
 
     def module(
         self, import_name, name, template_folder=None, template_path=None,
