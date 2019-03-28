@@ -69,18 +69,19 @@ db.define_models(Post, Comment)
 
 #: setup helping function
 def setup_admin():
-    # create the user
-    user = User.create(
-        email="walter@massivedynamics.com",
-        first_name="Walter",
-        last_name="Bishop",
-        password="pocketuniverse"
-    )
-    # create an admin group
-    admins = auth.create_group("admin")
-    # add user to admins group
-    auth.add_membership(admins, user.id)
-    db.commit()
+    with db.connection():
+        # create the user
+        user = User.create(
+            email="walter@massivedynamics.com",
+            first_name="Walter",
+            last_name="Bishop",
+            password="pocketuniverse"
+        )
+        # create an admin group
+        admins = auth.create_group("admin")
+        # add user to admins group
+        auth.add_membership(admins, user.id)
+        db.commit()
 
 
 @app.command('setup')
