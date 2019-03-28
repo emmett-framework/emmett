@@ -40,9 +40,12 @@ class Body(object):
         self._complete = asyncio.Event()
         self._max_content_length = max_content_length
 
-    async def __await__(self):
+    async def __load(self):
         await self._complete.wait()
         return bytes(self._data)
+
+    def __await__(self):
+        return self.__load().__await__()
 
     def append(self, data):
         if data == b'':
@@ -146,10 +149,8 @@ class Request(Wrapper):
         ):
             raise HTTP(413, 'Request entity too large')
         try:
-            body_future = asyncio.ensure_future(self._input)
-            rv = await asyncio.wait_for(body_future, timeout=self.body_timeout)
+            rv = await asyncio.wait_for(self._input, timeout=self.body_timeout)
         except asyncio.TimeoutError:
-            body_future.cancel()
             raise HTTP(408, 'Request timeout')
         return rv
 
@@ -192,10 +193,11 @@ class Request(Wrapper):
 
     @cachedprop
     async def body_params(self):
-        if self._empty_body_methods.get(self.method):
+        if self._empty_body_methods.get(self.method) or not self.content_type:
             return sdict()
         return await self._load_params()
 
+    @staticmethod
     def _load_params_missing(self, data):
         return sdict()
 
@@ -252,8 +254,6 @@ class Request(Wrapper):
     }
 
     async def _load_params(self):
-        if not self.content_type:
-            return sdict()
         loader = self._params_loaders.get(
             self.content_type, self._load_params_missing)
         return loader(self, await self.body)
