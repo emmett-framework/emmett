@@ -20,6 +20,7 @@ import types
 
 from . import __version__ as weppy_version
 from ._internal import warn_of_deprecation
+from .logger import LOG_LEVELS
 
 
 def find_best_app(module):
@@ -243,13 +244,14 @@ class WeppyGroup(click.Group):
 
 
 @click.command('run', short_help='Deprecated - Runs a development server.')
-@click.option('--host', '-h', default='127.0.0.1',
-              help='The interface to bind to.')
-@click.option('--port', '-p', default=8000,
-              help='The port to bind to.')
-@click.option('--reloader', type=(bool), default=True,
-              help='Runs with reloader.')
-@click.option('--debug', type=(bool), default=True, help='Runs in debug mode.')
+@click.option(
+    '--host', '-h', default='127.0.0.1', help='The interface to bind to.')
+@click.option(
+    '--port', '-p', type=int, default=8000, help='The port to bind to.')
+@click.option(
+    '--reloader', type=bool, default=True, help='Runs with reloader.')
+@click.option(
+    '--debug', type=bool, default=True, help='Runs in debug mode.')
 @click.pass_context
 def run_command(ctx, host, port, reloader, debug):
     warn_of_deprecation('command run', 'command develop')
@@ -260,11 +262,11 @@ def run_command(ctx, host, port, reloader, debug):
 @click.option(
     '--host', '-h', default='127.0.0.1', help='The interface to bind to.')
 @click.option(
-    '--port', '-p', default=8000, help='The port to bind to.')
+    '--port', '-p', type=int, default=8000, help='The port to bind to.')
 @click.option(
-    '--reloader', type=(bool), default=True, help='Runs with reloader.')
+    '--reloader', type=bool, default=True, help='Runs with reloader.')
 @click.option(
-    '--debug', type=(bool), default=True, help='Runs in debug mode.')
+    '--debug', type=bool, default=True, help='Runs in debug mode.')
 @pass_script_info
 def develop_command(info, host, port, reloader, debug):
     os.environ["WEPPY_RUN_ENV"] = 'true'
@@ -288,11 +290,30 @@ def develop_command(info, host, port, reloader, debug):
 @click.option(
     '--host', '-h', default='0.0.0.0', help='The interface to bind to.')
 @click.option(
-    '--port', '-p', default=8000, help='The port to bind to.')
+    '--port', '-p', type=int, default=8000, help='The port to bind to.')
+@click.option(
+    '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='warning',
+    help='Logging level.')
+@click.option(
+    '--access-log', type=bool, default=True, help='Enable access log.')
+@click.option(
+    '--max-queue', type=int,
+    help='The maximum number of concurrent connections.')
+@click.option(
+    '--keep-alive-timeout', type=int, default=5,
+    help='Keep alive timeout for connections.')
 @pass_script_info
-def serve_command(info, host, port):
+def serve_command(
+    info, host, port, log_level, access_log, max_queue, keep_alive_timeout
+):
     app = info.load_app()
-    app._run(host, port)
+    app._run(
+        host, port,
+        log_level=log_level,
+        access_log=access_log,
+        limit_concurrency=max_queue,
+        timeout_keep_alive=keep_alive_timeout
+    )
 
 
 @click.command('shell', short_help='Runs a shell in the app context.')

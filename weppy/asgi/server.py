@@ -15,6 +15,7 @@ from uvicorn.config import Config as UvicornConfig
 from uvicorn.lifespan.on import LifespanOn
 from uvicorn.main import Server
 
+from ..logger import LOG_LEVELS
 from .loops import loops
 from .protocols import protocols_http, protocols_ws
 
@@ -45,8 +46,10 @@ class Config(UvicornConfig):
         self.loaded = True
 
 
-def _build_server_logger(app):
-    level = logging.DEBUG if app.debug else logging.WARNING
+def _build_server_logger(app, level=None):
+    level = (
+        LOG_LEVELS[level] if level else (
+            logging.DEBUG if app.debug else logging.WARNING))
     log_format = '[SERVER] %(levelname)s %(message)s'
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter(log_format))
@@ -60,9 +63,10 @@ def run(
     app,
     host='127.0.0.1', port=8000, uds=None, fd=None,
     loop='auto', proto_http='auto', proto_ws='auto',
-    access_log=None,
+    log_level=None, access_log=None,
     # proxy_headers=False,
-    limit_concurrency=None, limit_max_requests=None,
+    limit_concurrency=None,
+    # limit_max_requests=None,
     timeout_keep_alive=5, timeout_notify=30
 ):
     loop = loops.get_loop(loop)
@@ -81,11 +85,11 @@ def run(
         loop=loop,
         http=protocol_cls_http,
         ws=protocol_cls_ws,
-        logger=_build_server_logger(app),
+        logger=_build_server_logger(app, log_level),
         access_log=access_log,
         debug=bool(app.debug),
         limit_concurrency=limit_concurrency,
-        limit_max_requests=limit_max_requests,
+        # limit_max_requests=limit_max_requests,
         timeout_keep_alive=timeout_keep_alive,
         timeout_notify=timeout_notify
     )

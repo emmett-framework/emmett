@@ -212,8 +212,20 @@ class App(object):
         context['app'] = self
         return context
 
-    def _run(self, host, port):
-        asgi_run(self, host, port)
+    def _run(
+        self, host, port,
+        log_level=None,
+        access_log=None,
+        limit_concurrency=None,
+        timeout_keep_alive=5
+    ):
+        asgi_run(
+            self, host, port,
+            log_level=log_level,
+            access_log=access_log,
+            limit_concurrency=limit_concurrency,
+            timeout_keep_alive=timeout_keep_alive
+        )
 
     def run(self, host=None, port=None, reloader=True, debug=True):
         if host is None:

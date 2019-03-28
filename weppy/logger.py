@@ -13,21 +13,23 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from __future__ import absolute_import
+import logging
 import os
-from threading import Lock
-from logging import getLogger, StreamHandler, Formatter, getLoggerClass, DEBUG
+
+from logging import StreamHandler, Formatter
 from logging.handlers import RotatingFileHandler
+from threading import Lock
+
 from .datastructures import sdict
 
 _logger_lock = Lock()
 
-_levels = {
-    'debug': 10,
-    'info': 20,
-    'warning': 30,
-    'error': 40,
-    'critical': 50
+LOG_LEVELS = {
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING,
+    'error': logging.ERROR,
+    'critical': logging.CRITICAL
 }
 
 _def_log_config = sdict(
@@ -45,12 +47,12 @@ _debug_log_format = (
 
 
 def create_logger(app):
-    Logger = getLoggerClass()
+    Logger = logging.getLoggerClass()
 
     class DebugLogger(Logger):
         def getEffectiveLevel(x):
             if x.level == 0 and app.debug:
-                return DEBUG
+                return logging.DEBUG
             return Logger.getEffectiveLevel(x)
 
     class DebugHandler(StreamHandler):
@@ -67,9 +69,9 @@ def create_logger(app):
 
     # init the console debug handler
     debug_handler = DebugHandler()
-    debug_handler.setLevel(DEBUG)
+    debug_handler.setLevel(logging.DEBUG)
     debug_handler.setFormatter(Formatter(_debug_log_format))
-    logger = getLogger(app.logger_name)
+    logger = logging.getLogger(app.logger_name)
     # just in case that was not a new logger, get rid of all the handlers
     # already attached to it.
     del logger.handlers[:]
@@ -83,15 +85,16 @@ def create_logger(app):
         lfile = os.path.join(app.root_path, 'logs', lname + '.log')
         max_size = lconf.max_size or _def_log_config.production.max_size
         file_no = lconf.file_no or _def_log_config.production.file_no
-        level = _levels.get(lconf.level or 'warning', _levels.get('warning'))
+        level = LOG_LEVELS.get(
+            lconf.level or 'warning', LOG_LEVELS.get('warning'))
         lformat = lconf.format or _def_log_config.production.format
         on_app_debug = lconf.on_app_debug
         if on_app_debug:
-            handler = DebugRFHandler(lfile, maxBytes=max_size,
-                                     backupCount=file_no)
+            handler = DebugRFHandler(
+                lfile, maxBytes=max_size, backupCount=file_no)
         else:
-            handler = ProdRFHandler(lfile, maxBytes=max_size,
-                                    backupCount=file_no)
+            handler = ProdRFHandler(
+                lfile, maxBytes=max_size, backupCount=file_no)
         handler.setLevel(level)
         handler.setFormatter(Formatter(lformat))
         logger.addHandler(handler)
