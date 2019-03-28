@@ -20,6 +20,8 @@ import types
 
 from . import __version__ as weppy_version
 from ._internal import warn_of_deprecation
+from .asgi.loops import loops
+from .asgi.protocols import protocols_http, protocols_ws
 from .logger import LOG_LEVELS
 
 
@@ -292,6 +294,15 @@ def develop_command(info, host, port, reloader, debug):
 @click.option(
     '--port', '-p', type=int, default=8000, help='The port to bind to.')
 @click.option(
+    '--loop', type=click.Choice(loops.registry.keys()), default='auto',
+    help='Event loop implementation.')
+@click.option(
+    '--http-protocol', type=click.Choice(protocols_http.registry.keys()),
+    default='auto', help='HTTP protocol implementation.')
+@click.option(
+    '--ws-protocol', type=click.Choice(protocols_ws.registry.keys()),
+    default='auto', help='HTTP protocol implementation.')
+@click.option(
     '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='warning',
     help='Logging level.')
 @click.option(
@@ -300,17 +311,18 @@ def develop_command(info, host, port, reloader, debug):
     '--max-queue', type=int,
     help='The maximum number of concurrent connections.')
 @click.option(
-    '--keep-alive-timeout', type=int, default=5,
+    '--keep-alive-timeout', type=int, default=0,
     help='Keep alive timeout for connections.')
 @pass_script_info
 def serve_command(
-    info, host, port, log_level, access_log, max_queue, keep_alive_timeout
+    info, host, port, loop, http_protocol, ws_protocol, log_level, access_log,
+    max_queue, keep_alive_timeout
 ):
     app = info.load_app()
     app._run(
         host, port,
-        log_level=log_level,
-        access_log=access_log,
+        loop=loop, proto_http=http_protocol, proto_ws=ws_protocol,
+        log_level=log_level, access_log=access_log,
         limit_concurrency=max_queue,
         timeout_keep_alive=keep_alive_timeout
     )
