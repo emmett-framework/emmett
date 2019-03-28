@@ -39,17 +39,50 @@ class _cached_prop_sync(_cached_prop):
     def __get__(self, obj, cls):
         if obj is None:
             return self
-        obj.__dict__[self.__name__] = result = self.fget(obj)
-        return result
+        obj.__dict__[self.__name__] = rv = self.fget(obj)
+        return rv
+
+
+class _cached_awaitable_coro(object):
+    slots = ['coro', '_result', '_awaitable']
+
+    def __init__(self, coro):
+        self.coro = coro
+        self._awaitable = self.__fetcher
+
+    async def __fetcher(self):
+        self._result = rv = await self.coro
+        self._awaitable = self.__cached
+        return rv
+
+    async def __cached(self):
+        return self._result
+
+    def __await__(self):
+        return self._awaitable().__await__()
+
+
+class _cached_awaitable_task(object):
+    slots = ['coro', 'task']
+
+    def __init__(self, coro):
+        self.coro = coro
+
+    @cachedprop
+    def task(self):
+        return asyncio.create_task(self.coro)
+
+    def __await__(self):
+        return self.task.__await__()
 
 
 class _cached_prop_loop(_cached_prop):
     def __get__(self, obj, cls):
         if obj is None:
             return self
-        task = asyncio.create_task(self.fget(obj))
-        obj.__dict__[self.__name__] = task
-        return task
+        obj.__dict__[self.__name__] = rv = _cached_awaitable_coro(
+            self.fget(obj))
+        return rv
 
 
 _pendulum_parsing_opts = {
