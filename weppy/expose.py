@@ -10,6 +10,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import asyncio
 import os
 import pendulum
 import re
@@ -253,7 +254,6 @@ class Expose(metaclass=MetaExpose):
                     routing_dict['static'][route.path] = route
                 else:
                     routing_dict['match'][route.name] = route
-                # cls.routes_in[host][scheme][method.upper()][route.name] = route
         cls.routes_out[route.name] = {
             'host': route.hostname,
             'path': cls.build_route_components(route.path)
@@ -574,13 +574,18 @@ class Dispatcher(object):
         self.flow_close = route._pipeline_flow_close
         self.response_builders = route.exposer.response_builders
 
-    async def before_dispatch(self):
-        for pipe in self.flow_open:
-            await pipe.open()
+    async def _parallel_flow(self, flow):
+        tasks = [asyncio.create_task(method()) for method in flow]
+        await asyncio.gather(*tasks, return_exceptions=True)
+        for task in tasks:
+            if task.exception():
+                raise task.exception()
 
-    async def after_dispatch(self):
-        for pipe in self.flow_close:
-            await pipe.close()
+    def before_dispatch(self):
+        return self._parallel_flow(self.flow_open)
+
+    def after_dispatch(self):
+        return self._parallel_flow(self.flow_close)
 
     def build_response(self, request, output):
         return self.response_builders[request.method](output)

@@ -57,7 +57,7 @@ class Pipeline(object):
         for pipe in self.pipes:
             if 'open' not in pipe._pipeline_all_methods_:
                 continue
-            rv.append(pipe)
+            rv.append(pipe.open)
         return rv
 
     def _flow_close(self):
@@ -65,7 +65,7 @@ class Pipeline(object):
         for pipe in reversed(self.pipes):
             if 'close' not in pipe._pipeline_all_methods_:
                 continue
-            rv.append(pipe)
+            rv.append(pipe.close)
         return rv
 
     def _output_type(self):
