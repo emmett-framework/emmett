@@ -121,14 +121,12 @@ class Expose(metaclass=MetaExpose):
         'str': ResponseBuilder,
         'template': TemplateResponseBuilder
     }
-    REGEX_INT = re.compile('<int\:(\w+)>')
-    REGEX_STR = re.compile('<str\:(\w+)>')
-    REGEX_ANY = re.compile('<any\:(\w+)>')
-    REGEX_ALPHA = re.compile('<alpha\:(\w+)>')
-    REGEX_DATE = re.compile('<date\:(\w+)>')
-    REGEX_FLOAT = re.compile('<float\:(\w+)>')
-    REGEX_DECORATION = re.compile(
-        '(([?*+])|(\([^()]*\))|(\[[^\[\]]*\])|(\<[^<>]*\>))')
+    REGEX_INT = re.compile(r'<int\:(\w+)>')
+    REGEX_STR = re.compile(r'<str\:(\w+)>')
+    REGEX_ANY = re.compile(r'<any\:(\w+)>')
+    REGEX_ALPHA = re.compile(r'<alpha\:(\w+)>')
+    REGEX_DATE = re.compile(r'<date\:(\w+)>')
+    REGEX_FLOAT = re.compile(r'<float\:(\w+)>')
 
     @classmethod
     def _bind_app_(cls, application, url_prefix=None):
@@ -210,12 +208,12 @@ class Expose(metaclass=MetaExpose):
 
     @classmethod
     def build_regex(cls, path):
-        path = cls.REGEX_INT.sub('(?P<\g<1>>\\\d+)', path)
-        path = cls.REGEX_STR.sub('(?P<\g<1>>[^/]+)', path)
-        path = cls.REGEX_ANY.sub('(?P<\g<1>>.*)', path)
-        path = cls.REGEX_ALPHA.sub('(?P<\g<1>>[^/\\\W\\\d_]+)', path)
-        path = cls.REGEX_DATE.sub('(?P<\g<1>>\\\d{4}-\\\d{2}-\\\d{2})', path)
-        path = cls.REGEX_FLOAT.sub('(?P<\g<1>>\\\d+\\\.\\\d+)', path)
+        path = cls.REGEX_INT.sub(r'(?P<\g<1>>\\d+)', path)
+        path = cls.REGEX_STR.sub(r'(?P<\g<1>>[^/]+)', path)
+        path = cls.REGEX_ANY.sub(r'(?P<\g<1>>.*)', path)
+        path = cls.REGEX_ALPHA.sub(r'(?P<\g<1>>[^/\\W\\d_]+)', path)
+        path = cls.REGEX_DATE.sub(r'(?P<\g<1>>\\d{4}-\\d{2}-\\d{2})', path)
+        path = cls.REGEX_FLOAT.sub(r'(?P<\g<1>>\\d+\.\\d+)', path)
         expr = '^(%s)$' % path
         return expr
 
@@ -227,7 +225,7 @@ class Expose(metaclass=MetaExpose):
 
     @classmethod
     def build_route_components(cls, path):
-        rule = re.compile("(\()?([^<\w]+)?<(\w+)\:(\w+)>(\)\?)?")
+        rule = re.compile(r'(\()?([^<\w]+)?<(\w+)\:(\w+)>(\)\?)?')
         components = []
         params = []
         for match in rule.findall(path):
@@ -437,8 +435,8 @@ class Route(object):
 
     def build_matcher(self):
         if (
-            re.compile('\(.*\)\?').findall(self.path) or
-            re.compile('<(\w+)\:(\w+)>').findall(self.path)
+            re.compile(r'\(.*\)\?').findall(self.path) or
+            re.compile(r'<(\w+)\:(\w+)>').findall(self.path)
         ):
             matcher, is_static = self.match_regex, False
         else:
@@ -461,11 +459,11 @@ class Route(object):
         for key in parsers.keys():
             optionals = []
             for element in re.compile(
-                '\(([^<]+)?<{}\:(\w+)>\)\?'.format(key)
+                r'\(([^<]+)?<{}\:(\w+)>\)\?'.format(key)
             ).findall(self.path):
                 optionals.append(element[1])
             elements = set(
-                re.compile('<{}\:(\w+)>'.format(key)).findall(self.path))
+                re.compile(r'<{}\:(\w+)>'.format(key)).findall(self.path))
             args = elements - set(optionals)
             if args:
                 parser = self._wrap_reqargs_parser(parsers[key], args)
