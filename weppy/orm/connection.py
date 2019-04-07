@@ -22,10 +22,11 @@ from collections import OrderedDict
 from pydal.connection import ConnectionPool
 from pydal.helpers.classes import ConnectionConfigurationMixin
 
+from ..ctx import current
 from .transactions import _transaction
 
 
-class ConnectionState(object):
+class ConnectionStateCtxVars(object):
     __slots__ = ('_connection', '_transactions', '_cursors', '_closed')
 
     def __init__(self):
@@ -64,10 +65,70 @@ class ConnectionState(object):
         self.__set(None, True)
 
 
+class ConnectionState(object):
+    __slots__ = ('_connection', '_transactions', '_cursors', '_closed')
+
+    def __init__(self, connection=None):
+        self.connection = connection
+        self._transactions = []
+        self._cursors = OrderedDict()
+
+    @property
+    def connection(self):
+        return self._connection
+
+    @connection.setter
+    def connection(self, value):
+        self._connection = value
+        self._closed = not bool(value)
+
+
+class ConnectionStateCtl(object):
+    __slots__ = []
+    state_cls = ConnectionState
+
+    @property
+    def _has_ctx(self):
+        return getattr(current, '__emt_orm_state_loaded__', False)
+
+    @property
+    def ctx(self):
+        if not self._has_ctx:
+            current.__emt_orm_state__ = self.__class__.state_cls()
+            current.__emt_orm_state_loaded__ = True
+        return current.__emt_orm_state__
+
+    @property
+    def connection(self):
+        return self.ctx.connection
+
+    @property
+    def transactions(self):
+        return self.ctx._transactions
+
+    @property
+    def cursors(self):
+        return self.ctx._cursors
+
+    @property
+    def closed(self):
+        return self.ctx._closed
+
+    def set_connection(self, connection):
+        self.ctx.connection = connection
+
+    def reset(self):
+        self.ctx.connection = None
+        self.ctx._transactions = []
+        self.ctx._cursors = OrderedDict()
+
+
 class ConnectionManager(object):
+    state_cls = ConnectionStateCtl
+
     def __init__(self, adapter, **kwargs):
         self.adapter = adapter
-        self.state = ConnectionState()
+        self.state = self.__class__.state_cls()
 
     def configure(self, **kwargs):
         for key, value in kwargs.items():

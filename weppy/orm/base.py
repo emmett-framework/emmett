@@ -143,15 +143,17 @@ class Database(_pyDAL):
     def execution_timings(self):
         return getattr(THREAD_LOCAL, '_weppydal_timings_', [])
 
-    def connection_open(self, reuse_if_open=True):
-        return self._adapter.reconnect(reuse_if_open=reuse_if_open)
+    def connection_open(self, with_transaction=True, reuse_if_open=True):
+        return self._adapter.reconnect(
+            with_transaction=with_transaction, reuse_if_open=reuse_if_open)
 
     def connection_close(self):
         self._adapter.close()
 
     @contextmanager
-    def connection(self, reuse_if_open=True):
-        new_connection = self.connection_open(reuse_if_open)
+    def connection(self, with_transaction=True, reuse_if_open=True):
+        new_connection = self.connection_open(
+            with_transaction=with_transaction, reuse_if_open=reuse_if_open)
         try:
             yield
         finally:
