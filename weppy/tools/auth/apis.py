@@ -173,7 +173,7 @@ class AuthPipe(Pipe):
         #: the Auth() instance
         self.auth = auth
 
-    async def open(self):
+    def session_open(self):
         # check auth session is valid
         authsess = self.auth.session
         if not authsess:
@@ -206,7 +206,17 @@ class AuthPipe(Pipe):
             ):
                 authsess.last_visit = visit_dt
 
-    async def close(self):
+    def session_close(self):
         # set correct session expiration if requested by user
         if self.auth.session and self.auth.session.remember:
             session._expires_after(self.auth.session.expiration)
+
+    async def wrap(self, next_pipe, **kwargs):
+        self.session_open()
+        return await next_pipe(**kwargs)
+
+    async def on_pipe_success(self):
+        self.session_close()
+
+    async def on_pipe_failure(self):
+        self.session_close()
