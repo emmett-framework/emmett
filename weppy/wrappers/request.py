@@ -202,9 +202,11 @@ class Request(Wrapper):
         return sdict()
 
     def _load_params_json(self, data):
-        rv = sdict()
-        rv.update(Parsers.get_for('json')(data))
-        return rv
+        try:
+            params = Parsers.get_for('json')(data)
+        except Exception:
+            params = {}
+        return sdict(params)
 
     def _load_params_form_urlencoded(self, data):
         rv = sdict()
