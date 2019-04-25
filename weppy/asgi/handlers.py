@@ -101,10 +101,10 @@ class RequestHandler(Handler):
         scope['emt.now'] = datetime.utcnow()
         scope['emt.path'] = scope['path'] or '/'
         scope['emt.input'] = Body(self.app.config.request_max_content_length)
-        task_request = asyncio.create_task(
-            self.handle_request(scope, send))
         task_events = asyncio.create_task(
             self.handle_events(scope, receive, send))
+        task_request = asyncio.create_task(
+            self.handle_request(scope, send))
         _, pending = await asyncio.wait(
             [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
         )
