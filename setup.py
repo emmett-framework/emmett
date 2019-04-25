@@ -34,7 +34,7 @@ _requirements_basic = [
     'pyDAL==17.3',
     'python-rapidjson~=0.6.3',
     'pyyaml',
-    'uvicorn==0.7.0.b1',
+    'uvicorn==0.7.0',
     'websockets>=6.0'
 ]
 
