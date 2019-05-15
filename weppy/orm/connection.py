@@ -84,19 +84,25 @@ class ConnectionState(object):
 
 
 class ConnectionStateCtl(object):
-    __slots__ = []
+    __slots__ = ['_state_obj_var', '_state_load_var']
+
     state_cls = ConnectionState
+
+    def __init__(self):
+        inst_id = id(self)
+        self._state_obj_var = f'__emt_orm_state_{inst_id}__'
+        self._state_load_var = f'__emt_orm_state_loaded_{inst_id}__'
 
     @property
     def _has_ctx(self):
-        return getattr(current, '__emt_orm_state_loaded__', False)
+        return getattr(current, self._state_load_var, False)
 
     @property
     def ctx(self):
         if not self._has_ctx:
-            current.__emt_orm_state__ = self.__class__.state_cls()
-            current.__emt_orm_state_loaded__ = True
-        return current.__emt_orm_state__
+            setattr(current, self._state_obj_var, self.__class__.state_cls())
+            setattr(current, self._state_load_var, True)
+        return getattr(current, self._state_obj_var)
 
     @property
     def connection(self):
