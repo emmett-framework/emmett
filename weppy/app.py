@@ -12,8 +12,9 @@
 import sys
 import os
 import click
-from yaml import load as ymlload
-from yaml import SafeLoader as ymlLoader
+
+from yaml import SafeLoader as ymlLoader, load as ymlload
+
 from ._compat import basestring
 from ._internal import get_root_path, create_missing_app_folders
 from .datastructures import sdict, ConfigData
