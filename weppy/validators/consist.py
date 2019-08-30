@@ -613,15 +613,15 @@ class isIPv4(Validator):
     automatic = (2851995648, 2852061183)
 
     def __init__(self, min='0.0.0.0', max='255.255.255.255', invert=False,
-                 localhost=None, private=None, auto=None, message=None):
+                 localhost=None, private=None, automatic=None, message=None):
         Validator.__init__(self, message)
         for n, value in enumerate((min, max)):
             temp = []
             if isinstance(value, str):
                 temp.append(value.split('.'))
             elif isinstance(value, (list, tuple)):
-                if len(value) == len(filter(
-                        lambda item: isinstance(item, int), value)) == 4:
+                if len(value) == len(list(filter(
+                        lambda item: isinstance(item, int), value))) == 4:
                     temp.append(value)
                 else:
                     for item in value:
@@ -642,7 +642,7 @@ class isIPv4(Validator):
         self.invert = invert
         self.is_localhost = localhost
         self.is_private = private
-        self.is_automatic = auto
+        self.is_automatic = automatic
 
     def __call__(self, value):
         if self.regex.match(value):
