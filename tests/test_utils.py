@@ -11,20 +11,44 @@
 
 from weppy.datastructures import sdict
 from weppy.utils import (
-    cachedprop, _cached_prop_sync, dict_to_sdict, is_valid_ip_address)
+    cachedprop, _cached_prop_sync, _cached_prop_loop,
+    dict_to_sdict, is_valid_ip_address)
 
 
 class TestClass(object):
+    def __init__(self):
+        self.calls = 0
 
     @cachedprop
     def prop(self):
-        return 'test_cachedprop'
+        self.calls += 1
+        return 'test_cachedprop_sync'
+
+    @cachedprop
+    async def prop_loop(self):
+        self.calls += 1
+        return 'test_cachedprop_loop'
 
 
-def test_cachedprop():
+def test_cachedprop_sync():
     assert isinstance(TestClass.prop, _cached_prop_sync)
     obj = TestClass()
-    assert obj.prop == 'test_cachedprop'
+    assert obj.calls == 0
+    assert obj.prop == 'test_cachedprop_sync'
+    assert obj.calls == 1
+    assert obj.prop == 'test_cachedprop_sync'
+    assert obj.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_cachedprop_loop():
+    assert isinstance(TestClass.prop_loop, _cached_prop_loop)
+    obj = TestClass()
+    assert obj.calls == 0
+    assert (await obj.prop_loop) == 'test_cachedprop_loop'
+    assert obj.calls == 1
+    assert (await obj.prop_loop) == 'test_cachedprop_loop'
+    assert obj.calls == 1
 
 
 def test_is_valid_ip_address():

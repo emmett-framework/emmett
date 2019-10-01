@@ -44,14 +44,15 @@ class _cached_prop_sync(_cached_prop):
 
 
 class _cached_awaitable_coro(object):
-    slots = ['coro', '_result', '_awaitable']
+    slots = ['coro_f', 'obj', '_result', '_awaitable']
 
-    def __init__(self, coro):
-        self.coro = coro
+    def __init__(self, coro_f, obj):
+        self.coro_f = coro_f
+        self.obj = obj
         self._awaitable = self.__fetcher
 
     async def __fetcher(self):
-        self._result = rv = await self.coro
+        self._result = rv = await self.coro_f(self.obj)
         self._awaitable = self.__cached
         return rv
 
@@ -81,7 +82,7 @@ class _cached_prop_loop(_cached_prop):
         if obj is None:
             return self
         obj.__dict__[self.__name__] = rv = _cached_awaitable_coro(
-            self.fget(obj))
+            self.fget, obj)
         return rv
 
 
