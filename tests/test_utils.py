@@ -9,6 +9,8 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import pytest
+
 from weppy.datastructures import sdict
 from weppy.utils import (
     cachedprop, _cached_prop_sync, _cached_prop_loop,
