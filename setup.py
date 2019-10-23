@@ -34,8 +34,8 @@ _requirements_basic = [
     'pyDAL==17.3',
     'python-rapidjson~=0.8.0',
     'pyyaml',
-    'uvicorn==0.9.0',
-    'websockets>=6.0'
+    'uvicorn==0.9.1',
+    'websockets>=8.0'
 ]
 
 if platform.system() == 'Windows' or platform.system().startswith('CYGWIN'):
