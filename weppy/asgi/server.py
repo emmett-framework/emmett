@@ -11,7 +11,7 @@
 
 import logging
 
-from uvicorn.config import Config as UvicornConfig
+from uvicorn.config import Config as UvicornConfig, create_ssl_context
 from uvicorn.lifespan.on import LifespanOn
 from uvicorn.main import Server
 
@@ -26,6 +26,18 @@ class Config(UvicornConfig):
 
     def load(self):
         assert not self.loaded
+
+        if self.is_ssl:
+            self.ssl = create_ssl_context(
+                keyfile=self.ssl_keyfile,
+                certfile=self.ssl_certfile,
+                ssl_version=self.ssl_version,
+                cert_reqs=self.ssl_cert_reqs,
+                ca_certs=self.ssl_ca_certs,
+                ciphers=self.ssl_ciphers,
+            )
+        else:
+            self.ssl = None
 
         encoded_headers = [
             (key.lower().encode("latin1"), value.encode("latin1"))
