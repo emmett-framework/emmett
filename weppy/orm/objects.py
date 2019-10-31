@@ -889,10 +889,9 @@ class Rows(_Rows):
         return self._getrow_(i)[self.compact_tablename]
 
     def __getitem__(self, i):
+        if isinstance(i, slice):
+            return self.__class__(self.db, self.records[i], self.colnames)
         return self._getrow(i)
-
-    def __getslice__(self, a, b):
-        return self.__class__(self.db, self.records[a:b], self.colnames)
 
     def column(self, column=None):
         colname = str(column) if column else self.colnames[0]
