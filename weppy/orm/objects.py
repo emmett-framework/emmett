@@ -316,6 +316,11 @@ class Set(_Set):
     def _run_select_(self, *fields, **options):
         return super(Set, self).select(*fields, **options)
 
+    def _get_table_from_query(self):
+        if self._model_:
+            return self._model_.table
+        return self.db._adapter.get_table(self.query)
+
     def select(self, *fields, **options):
         obj = self
         pagination, including = (
@@ -327,8 +332,19 @@ class Set(_Set):
             obj = self._left_join_set_builder(jdata)
         return obj._run_select_(*fields, **options)
 
+    def update(self, **update_fields):
+        table = self._get_table_from_query()
+        row = table._fields_and_values_for_update(update_fields)
+        if not row._values:
+            raise ValueError("No fields to update")
+        if any(f(self, row) for f in table._before_update):
+            return 0
+        ret = self.db._adapter.update(table, self.query, row.op_values())
+        ret and [f(self, row) for f in table._after_update]
+        return ret
+
     def validate_and_update(self, **update_fields):
-        table = self.db._adapter.get_table(self.query)
+        table = self._get_table_from_query()
         current._dbvalidation_record_id_ = None
         if table._unique_fields_validation_ and self.count() == 1:
             if any(
