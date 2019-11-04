@@ -10,7 +10,6 @@
 """
 
 from ...datastructures import sdict
-from ..base import Database
 from .base import Schema, Column
 from .helpers import make_migration_id, to_tuple
 from .operations import MigrationOp, UpgradeOps, DowngradeOps
@@ -32,43 +31,38 @@ class Command(object):
                         self.app, dal.config.migrations_folder)))
 
     def load_schema(self, ctx):
-        schema_db_config = sdict(uri=ctx.db.config.uri)
-        ctx.schema_db = Database(
-            self.app, schema_db_config, auto_connect=False,
-            migrate=False, migrate_enabled=False)
-        ctx.schema_db._adapter._connection_manager = \
-            ctx.db._adapter._connection_manager
-        ctx.schema_db.define_models(Schema)
-        self._ensure_schema_table_(ctx)
-        self._load_current_revision_(ctx)
+        ctx.db.define_models(Schema)
+        with ctx.db.connection():
+            self._ensure_schema_table_(ctx)
+            self._load_current_revision_(ctx)
 
     def _ensure_schema_table_(self, ctx):
         # TODO -> has_table method in adapter, I don't like this "dirtness"
         try:
-            ctx.schema_db(ctx.schema_db.Schema.id > 0).count()
+            ctx.db(ctx.db.Schema.id > 0).count()
         except Exception:
-            ctx.schema_db.rollback()
+            ctx.db.rollback()
             from .engine import Engine
             from .operations import CreateTableOp
             op = CreateTableOp.from_table(self._build_schema_metatable_(ctx))
-            op.engine = Engine(ctx.schema_db)
+            op.engine = Engine(ctx.db)
             op.run()
-            ctx.schema_db.commit()
+            ctx.db.commit()
 
     @staticmethod
     def _build_schema_metatable_(ctx):
         from .generation import MetaTable
         columns = []
-        for field in list(ctx.schema_db.Schema):
+        for field in list(ctx.db.Schema):
             columns.append(Column.from_field(field))
         return MetaTable(
-            ctx.schema_db.Schema._tablename,
+            ctx.db.Schema._tablename,
             columns
         )
 
     @staticmethod
     def _load_current_revision_(ctx):
-        revisions = ctx.schema_db(ctx.schema_db.Schema.id > 0).select()
+        revisions = ctx.db(ctx.db.Schema.id > 0).select()
         if not revisions:
             ctx._current_revision_ = []
         elif len(revisions) == 1:
@@ -86,45 +80,45 @@ class Command(object):
         dest = to_tuple(dest)
         if source is None:
             print(logs['new'] % dest[0])
-            ctx.schema_db.Schema.insert(version=dest[0])
-            ctx.schema_db.commit()
+            ctx.db.Schema.insert(version=dest[0])
+            ctx.db.commit()
             ctx._current_revision_ = [dest[0]]
             return
         if dest is None:
             print(logs['del'] % source[0])
-            ctx.schema_db(ctx.schema_db.Schema.version == source[0]).delete()
-            ctx.schema_db.commit()
+            ctx.db(ctx.db.Schema.version == source[0]).delete()
+            ctx.db.commit()
             ctx._current_revision_ = []
             return
         if len(source) > 1:
             if len(source) > 2:
-                ctx.schema_db(
-                    ctx.schema_db.Schema.version.belongs(
+                ctx.db(
+                    ctx.db.Schema.version.belongs(
                         source[1:])).delete()
                 print(logs['del'] % source[1:])
             else:
-                ctx.schema_db(
-                    ctx.schema_db.Schema.version == source[1]).delete()
+                ctx.db(
+                    ctx.db.Schema.version == source[1]).delete()
                 print(logs['del'] % source[1])
-            ctx.schema_db(ctx.schema_db.Schema.version == source[0]).update(
+            ctx.db(ctx.db.Schema.version == source[0]).update(
                 version=dest[0]
             )
             print(logs['upd'] % (source[0], dest[0]))
             ctx._current_revision_ = [dest[0]]
         else:
             if list(source) != ctx._current_revision_:
-                ctx.schema_db.Schema.insert(version=dest[0])
+                ctx.db.Schema.insert(version=dest[0])
                 print(logs['new'] % dest[0])
                 ctx._current_revision_.append(dest[0])
             else:
-                ctx.schema_db(
-                    ctx.schema_db.Schema.version == source[0]
+                ctx.db(
+                    ctx.db.Schema.version == source[0]
                 ).update(
                     version=dest[0]
                 )
                 print(logs['upd'] % (source[0], dest[0]))
                 ctx._current_revision_ = [dest[0]]
-        ctx.schema_db.commit()
+        ctx.db.commit()
 
     @staticmethod
     def _generate_migration_script(ctx, migration, head):
@@ -192,20 +186,23 @@ class Command(object):
             revisions = ctx.scriptdir.get_upgrade_revs(
                 rev_id, start_point)
             print("> Performing upgrades against %s" % ctx.db._uri)
-            for revision in revisions:
-                print("> Performing upgrade: %s" % revision)
-                migration = revision.migration_class(self.app, ctx.db)
-                try:
-                    migration.up()
-                    ctx.db.commit()
-                    self._store_current_revision_(
-                        ctx, migration.revises, migration.revision)
-                    print("> Succesfully upgraded to revision %s: %s" %
-                          (revision.revision, revision.doc))
-                except Exception:
-                    ctx.db.rollback()
-                    print("> [ERROR] failed upgrading to %s" % revision)
-                    raise
+            with ctx.db.connection():
+                for revision in revisions:
+                    print("> Performing upgrade: %s" % revision)
+                    migration = revision.migration_class(self.app, ctx.db)
+                    try:
+                        migration.up()
+                        ctx.db.commit()
+                        self._store_current_revision_(
+                            ctx, migration.revises, migration.revision)
+                        print(
+                            "> Succesfully upgraded to revision %s: %s" %
+                            (revision.revision, revision.doc)
+                        )
+                    except Exception:
+                        ctx.db.rollback()
+                        print("[ERROR] failed upgrading to %s" % revision)
+                        raise
 
     def down(self, rev_id):
         for ctx in self.envs:
@@ -214,20 +211,23 @@ class Command(object):
             revisions = ctx.scriptdir.get_downgrade_revs(
                 rev_id, start_point)
             print("> Performing downgrades against %s" % ctx.db._uri)
-            for revision in revisions:
-                print("> Performing downgrade: %s" % revision)
-                migration = revision.migration_class(self.app, ctx.db)
-                try:
-                    migration.down()
-                    ctx.db.commit()
-                    self._store_current_revision_(
-                        ctx, migration.revision, migration.revises)
-                    print("> Succesfully downgraded from revision %s: %s" %
-                          (revision.revision, revision.doc))
-                except Exception:
-                    ctx.db.rollback()
-                    print("> [ERROR] failed downgrading from %s" % revision)
-                    raise
+            with ctx.db.connection():
+                for revision in revisions:
+                    print("> Performing downgrade: %s" % revision)
+                    migration = revision.migration_class(self.app, ctx.db)
+                    try:
+                        migration.down()
+                        ctx.db.commit()
+                        self._store_current_revision_(
+                            ctx, migration.revision, migration.revises)
+                        print(
+                            "> Succesfully downgraded from revision %s: %s" %
+                            (revision.revision, revision.doc)
+                        )
+                    except Exception:
+                        ctx.db.rollback()
+                        print("[ERROR] failed downgrading from %s" % revision)
+                        raise
 
 
 def generate(app, dals, message, head):
