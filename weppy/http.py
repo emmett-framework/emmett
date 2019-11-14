@@ -195,6 +195,35 @@ class HTTPFile(HTTPResponse):
                 })
 
 
+class HTTPIO(HTTPResponse):
+    def __init__(self, io_stream, headers={}, cookies={}, chunk_size=4096):
+        super().__init__(200, headers=headers, cookies=cookies)
+        self.io_stream = io_stream
+        self.chunk_size = chunk_size
+
+    def _get_io_headers(self):
+        content_length = str(self.io_stream.getbuffer().nbytes)
+        return {
+            'Content-Length': content_length
+        }
+
+    async def send(self, scope, send):
+        self._headers.update(self._get_io_headers())
+        await self._send_headers(send)
+        await self._send_body(send)
+
+    async def _send_body(self, send):
+        more_body = True
+        while more_body:
+            chunk = await self.io_stream.read(self.chunk_size)
+            more_body = len(chunk) == self.chunk_size
+            await send({
+                'type': 'http.response.body',
+                'body': chunk,
+                'more_body': more_body,
+            })
+
+
 def redirect(location, status_code=303):
     current.response.status = status_code
     raise HTTPRedirect(status_code, location)

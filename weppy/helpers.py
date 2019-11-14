@@ -14,11 +14,9 @@ import re
 
 from pydal.exceptions import NotAuthorizedException, NotFoundException
 
-from .ctx import current, request, response, session
+from .ctx import current, response, session
 from .html import tag
-from .http import HTTP
-from .libs.contenttype import contenttype
-from .stream import streamer
+from .http import HTTP, HTTPFile, HTTPIO
 
 _REGEX_DBSTREAM = re.compile('(?P<table>.*?)\.(?P<field>.*?)\..*')
 
@@ -28,41 +26,34 @@ def abort(code, body=''):
     raise HTTP(code, body)
 
 
-# TODO: update streaming to use asgi
 def stream_file(path):
-    fullfilename = os.path.join(current.app.root_path, path)
-    raise streamer(request.environ, fullfilename, headers=response.headers)
+    full_path = os.path.join(current.app.root_path, path)
+    raise HTTPFile(
+        full_path, headers=response.headers, cookies=response.cookies)
 
 
-# TODO: update streaming to use asgi
 def stream_dbfile(db, name):
     items = _REGEX_DBSTREAM.match(name)
     if not items:
         abort(404)
-    (t, f) = (items.group('table'), items.group('field'))
+    table_name, field_name = items.group('table'), items.group('field')
     try:
-        field = db[t][f]
+        field = db[table_name][field_name]
     except AttributeError:
         abort(404)
     try:
-        (filename, fullfilename) = field.retrieve(name, nameonly=True)
+        filename, path_or_stream = field.retrieve(name, nameonly=True)
     except NotAuthorizedException:
         abort(403)
     except NotFoundException:
         abort(404)
     except IOError:
         abort(404)
-    if isinstance(fullfilename, str):
-        #: handle file uploads
-        raise streamer(request.environ, fullfilename, headers=response.headers)
-    else:
-        #: handle blob fields
-        response.headers['Content-Type'] = contenttype(filename)
-        if 'wsgi.file_wrapper' in request.environ:
-            data = request.environ['wsgi.file_wrapper'](fullfilename, 10**5)
-        else:
-            data = iter(lambda: fullfilename.read(10**5), '')
-        raise HTTP(200, data, response.headers)
+    if isinstance(path_or_stream, str):
+        raise HTTPFile(
+            path_or_stream, headers=response.headers, cookies=response.cookies)
+    raise HTTPIO(
+        path_or_stream, headers=response.headers, cookies=response.cookies)
 
 
 def flash(message, category='message'):
