@@ -86,6 +86,8 @@ def run(
     protocol_cls_http = protocols_http.get_protocol(proto_http)
     protocol_cls_ws = protocols_ws.get_protocol(proto_ws)
 
+    app.send_signal('after_loop', loop=loop)
+
     if access_log is None:
         access_log = bool(app.debug)
 

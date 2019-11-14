@@ -32,7 +32,8 @@ class MetaExtension(type):
     _signals_ = [
         'before_routes',
         'before_route', 'after_route',
-        'before_database', 'after_database'
+        'before_database', 'after_database',
+        'after_loop'
     ]
 
     def __new__(cls, name, bases, attrs):
