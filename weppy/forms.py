@@ -13,7 +13,6 @@ from functools import wraps
 
 from .ctx import current, request, session
 from .datastructures import sdict
-from .expose import Expose
 from .html import HtmlTag, tag, cat, asis
 from .orm import Field, Model
 from .security import CSRFStorage
@@ -32,7 +31,7 @@ class Form(HtmlTag):
 
     @staticmethod
     def _get_default_style():
-        return Expose.application.config.ui.forms_style or FormStyle
+        return current.app.config.ui.forms_style or FormStyle
 
     def __init__(self, fields={}, **kwargs):
         #: get fields from kwargs

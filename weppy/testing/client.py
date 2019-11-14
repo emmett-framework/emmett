@@ -46,10 +46,10 @@ class ClientContext(object):
 
 
 class ClientHTTPHandler(HTTPHandler):
-    async def handle_request(self, scope, send):
+    async def handle_request(self, scope, receive, send):
         ctx_token = current._init_(RequestContext, self.app, scope)
         try:
-            http = await self.pre_handler(scope, send)
+            http = await self.pre_handler(scope, receive, send)
         except Exception:
             self.app.log.exception('Application exception:')
             http = HTTP(

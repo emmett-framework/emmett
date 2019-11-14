@@ -10,8 +10,9 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ..expose import Expose, url
+from ..ctx import current
 from ..extensions import TemplateLexer
+from ..routing.urls import url
 
 
 class WeppyLexer(TemplateLexer):
@@ -119,7 +120,7 @@ class HelpersLexer(WeppyLexer):
 
     def process(self, ctx, value):
         for helper in self.helpers:
-            ctx.html(helper.format(Expose._prefix_main))
+            ctx.html(helper.format(current.app._router_http._prefix_main))
 
 
 class MetaLexer(WeppyLexer):

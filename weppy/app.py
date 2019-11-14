@@ -20,8 +20,9 @@ from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
 from .asgi.server import run as asgi_run
 from .ctx import current
 from .datastructures import sdict, ConfigData
-from .expose import Expose, url
 from .extensions import Extension, TemplateExtension
+from .routing.router import HTTPRouter, WebsocketRouter
+from .routing.urls import url
 from .templating.core import Templater
 from .utils import dict_to_sdict, cachedprop, read_file
 
@@ -60,24 +61,25 @@ class App(object):
         self.config.templates_encoding = 'utf8'
         #: try to create needed folders
         create_missing_app_folders(self)
-        #: init expose module
-        Expose._bind_app_(self, url_prefix)
+        #: init languages
+        self._languages = []
+        self._languages_set = set()
+        self._language_force_on_url = False
+        self.language_default = None
+        self.language_write = False
+        #: init routing
+        self._router_http = HTTPRouter(self)
+        self._router_ws = WebsocketRouter(self)
         self._asgi_handlers = {
             'http': HTTPHandler(self),
             'lifespan': LifeSpanHandler(self),
             'websocket': WSHandler(self)
         }
-        # Expose.application = self
         self.error_handlers = {}
         self.template_default_extension = '.html'
         #: init logger
         self._logger = None
         self.logger_name = self.import_name
-        #: init languages
-        self.languages = []
-        self.language_default = None
-        self.language_force_on_url = False
-        self.language_write = False
         #: init extensions
         self.ext = sdict()
         self._extensions_env = sdict()
@@ -94,10 +96,6 @@ class App(object):
 
     @cachedprop
     def name(self):
-        """The name of the application. This is usually the import name
-        with the difference that it's guessed from the run file if the
-        import name is main.
-        """
         if self.import_name == '__main__':
             fn = getattr(sys.modules['__main__'], '__file__', None)
             if fn is None:
@@ -109,16 +107,33 @@ class App(object):
         return rv
 
     @property
-    def route(self):
-        return Expose
+    def languages(self):
+        return self._languages
+
+    @languages.setter
+    def languages(self, value):
+        self._languages = value
+        self._languages_set = set(self._languages)
+
+    @property
+    def language_force_on_url(self):
+        return self._language_force_on_url
+
+    @language_force_on_url.setter
+    def language_force_on_url(self, value):
+        self._language_force_on_url = value
+        self._router_http._set_language_handling()
+        self._router_ws._set_language_handling()
 
     @property
     def pipeline(self):
-        return self.route._pipeline
+        # return self.route._pipeline
+        return self._router_http.pipeline
 
     @pipeline.setter
     def pipeline(self, pipes):
-        self.route._pipeline = pipes
+        # self.route._pipeline = pipes
+        self._router_http.pipeline = pipes
 
     @property
     def injectors(self):
@@ -127,6 +142,45 @@ class App(object):
     @injectors.setter
     def injectors(self, injectors):
         self.route._injectors = injectors
+
+    def route(
+        self, paths=None, name=None, template=None, pipeline=None,
+        injectors=None, schemes=None, hostname=None, methods=None, prefix=None,
+        template_folder=None, template_path=None, cache=None, output='auto'
+    ):
+        if callable(paths):
+            raise SyntaxError('Use @route(), not @route.')
+        return self._router_http(
+            paths=paths,
+            name=name,
+            template=template,
+            pipeline=pipeline,
+            injectors=injectors,
+            schemes=schemes,
+            hostname=hostname,
+            methods=methods,
+            prefix=prefix,
+            template_folder=template_folder,
+            template_path=template_path,
+            cache=cache,
+            output=output
+        )
+
+    def websocket(
+        self, paths=None, name=None, pipeline=None, schemes=None,
+        hostname=None, prefix=None, output='auto'
+    ):
+        if callable(paths):
+            raise SyntaxError('Use @websocket(), not @websocket.')
+        return self._router_ws(
+            paths=paths,
+            name=name,
+            pipeline=pipeline,
+            schemes=schemes,
+            hostname=hostname,
+            prefix=prefix,
+            output=output
+        )
 
     def on_error(self, code):
         def decorator(f):

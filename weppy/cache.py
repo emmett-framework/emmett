@@ -20,6 +20,7 @@ from collections import OrderedDict
 from functools import wraps
 
 from ._shortcuts import hashlib_sha1
+from .ctx import current
 from .libs.portalocker import LockedFile
 
 __all__ = ['Cache']
@@ -216,8 +217,7 @@ class DiskCache(CacheHandler):
     def __init__(self, cache_dir='cache', threshold=500, default_expire=300):
         super(DiskCache, self).__init__(default_expire=default_expire)
         self._threshold = threshold
-        from .expose import Expose
-        self._path = os.path.join(Expose.application.root_path, cache_dir)
+        self._path = os.path.join(current.app.root_path, cache_dir)
         #: create required paths if needed
         if not os.path.exists(self._path):
             os.mkdir(self._path)
@@ -401,8 +401,8 @@ class RouteCacheRule(CacheHashMixin):
         return [data[key] for key in self.check_headers]
 
     def __call__(self, f):
-        from .expose import Expose
-        obj = Expose.exposing()
+        from .routing.router import Router
+        obj = Router.exposing()
         obj.cache_rule = self
         return f
 

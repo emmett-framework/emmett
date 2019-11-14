@@ -11,10 +11,10 @@
 
 from ...app import AppModule
 from ...ctx import request, session
-from ...expose import url
 from ...helpers import flash, stream_dbfile
 from ...http import redirect
 from ...pipeline import RequirePipe
+from ...routing.urls import url
 
 
 class AuthModule(AppModule):

@@ -67,6 +67,7 @@ setup(
         'weppy.language.plurals',
         'weppy.orm',
         'weppy.orm.migrations',
+        'weppy.routing',
         'weppy.templating',
         'weppy.testing',
         'weppy.tools',

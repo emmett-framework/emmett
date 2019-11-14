@@ -16,7 +16,6 @@ import time
 
 from .ctx import current, request, response
 from .datastructures import sdict, SessionData
-from .expose import Expose
 from .pipeline import Pipe
 from .security import secure_loads, secure_dumps, uuid
 
@@ -29,7 +28,7 @@ class SessionPipe(Pipe):
         self.secure = secure
         self.domain = domain
         self.cookie_name = (
-            cookie_name or 'wpp_session_data_%s' % Expose.application.name)
+            cookie_name or 'wpp_session_data_%s' % current.app.name)
 
     def _load_session(self):
         pass
@@ -139,7 +138,7 @@ class FileSessionPipe(BackendStoredSessionPipe):
             'filename templates cannot end with %s' % \
             self._fs_transaction_suffix
         self._filename_template = filename_template
-        self._path = os.path.join(Expose.application.root_path, 'sessions')
+        self._path = os.path.join(current.app.root_path, 'sessions')
         #: create required paths if needed
         if not os.path.exists(self._path):
             os.mkdir(self._path)

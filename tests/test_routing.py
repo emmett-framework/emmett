@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-    tests.expose
-    ----------------
+    tests.routing
+    -------------
 
-    Test weppy expose module
+    Test weppy routing module
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -15,17 +15,16 @@ import pytest
 from contextlib import contextmanager
 
 from helpers import FakeRequestContext
-from weppy import App, abort
+from weppy import App, abort, url
 from weppy.ctx import current
-from weppy.expose import url
 from weppy.http import HTTP
 from weppy.testing.env import ScopeBuilder
 
 
 @contextmanager
-def current_ctx(path):
+def current_ctx(app, path):
     builder = ScopeBuilder(path)
-    token = current._init_(FakeRequestContext, None, builder.get_data()[0])
+    token = current._init_(FakeRequestContext, app, builder.get_data()[0])
     yield current
     current._close_(token)
 
@@ -93,91 +92,93 @@ def app():
 
 
 def test_routing(app):
-    with current_ctx('/test_int') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_int') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_int/a') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_int/a') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_int/1.1') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_int/1.1') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_int/2000-01-01') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_int/2000-01-01') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_int/1') as ctx:
-        route, args = app.route.match(ctx.request)
-        assert route.name == 'test_expose.test_route_int'
+    with current_ctx(app, '/test_int/1') as ctx:
+        route, args = app._router_http.match(ctx.request)
+        assert route.name == 'test_routing.test_route_int'
 
-    with current_ctx('/test_float') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_float') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_float/a.a') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_float/a.a') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_float/1') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_float/1') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_float/1.1') as ctx:
-        route, args = app.route.match(ctx.request)
-        assert route.name == 'test_expose.test_route_float'
+    with current_ctx(app, '/test_float/1.1') as ctx:
+        route, args = app._router_http.match(ctx.request)
+        assert route.name == 'test_routing.test_route_float'
 
-    with current_ctx('/test_date') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_date') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_date/2000-01-01') as ctx:
-        route, args = app.route.match(ctx.request)
-        assert route.name == 'test_expose.test_route_date'
+    with current_ctx(app, '/test_date/2000-01-01') as ctx:
+        route, args = app._router_http.match(ctx.request)
+        assert route.name == 'test_routing.test_route_date'
 
-    with current_ctx('/test_alpha') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_alpha') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_alpha/a1') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_alpha/a1') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_alpha/a-a') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_alpha/a-a') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_alpha/a') as ctx:
-        route, args = app.route.match(ctx.request)
-        assert route.name == 'test_expose.test_route_alpha'
+    with current_ctx(app, '/test_alpha/a') as ctx:
+        route, args = app._router_http.match(ctx.request)
+        assert route.name == 'test_routing.test_route_alpha'
 
-    with current_ctx('/test_str') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_str') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_str/a/b') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_str/a/b') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_str/a1-') as ctx:
-        route, args = app.route.match(ctx.request)
-        assert route.name == 'test_expose.test_route_str'
+    with current_ctx(app, '/test_str/a1-') as ctx:
+        route, args = app._router_http.match(ctx.request)
+        assert route.name == 'test_routing.test_route_str'
 
-    with current_ctx('/test_any') as ctx:
-        route, args = app.route.match(ctx.request)
+    with current_ctx(app, '/test_any') as ctx:
+        route, args = app._router_http.match(ctx.request)
         assert not route
 
-    with current_ctx('/test_any/a/b') as ctx:
-        route, args = app.route.match(ctx.request)
-        assert route.name == 'test_expose.test_route_any'
+    with current_ctx(app, '/test_any/a/b') as ctx:
+        route, args = app._router_http.match(ctx.request)
+        assert route.name == 'test_routing.test_route_any'
 
 
 def test_route_args(app):
-    with current_ctx('/test_complex/1/1.2/2000-12-01/foo/foo1/bar/baz') as ctx:
-        route, args = app.route.match(ctx.request)
-        assert route.name == 'test_expose.test_route_complex'
+    with current_ctx(
+        app, '/test_complex/1/1.2/2000-12-01/foo/foo1/bar/baz'
+    ) as ctx:
+        route, args = app._router_http.match(ctx.request)
+        assert route.name == 'test_routing.test_route_complex'
         assert args['a'] == 1
         assert args['b'] == 1.2
         assert args['c'] == pendulum.datetime(2000, 12, 1)
@@ -187,28 +188,28 @@ def test_route_args(app):
 
 
 @pytest.mark.asyncio
-async def test_expose_valid_route(app):
-    with current_ctx('/it/test_route') as ctx:
-        response = await app.route.dispatch()
+async def test_routing_valid_route(app):
+    with current_ctx(app, '/it/test_route') as ctx:
+        response = await app._router_http.dispatch()
         assert response.status_code == ctx.response.status == 200
         assert response.body == 'Test Router'
         assert ctx.request.language == 'it'
 
 
 @pytest.mark.asyncio
-async def test_expose_not_found_route(app):
-    with current_ctx('/'):
+async def test_routing_not_found_route(app):
+    with current_ctx(app, '/'):
         with pytest.raises(HTTP) as excinfo:
-            await app.route.dispatch()
+            await app._router_http.dispatch()
         assert excinfo.value.status_code == 404
         assert excinfo.value.body == 'Resource not found\n'
 
 
 @pytest.mark.asyncio
-async def test_expose_exception_route(app):
-    with current_ctx('/test_404'):
+async def test_routing_exception_route(app):
+    with current_ctx(app, '/test_404'):
         with pytest.raises(HTTP) as excinfo:
-            await app.route.dispatch()
+            await app._router_http.dispatch()
         assert excinfo.value.status_code == 404
         assert excinfo.value.body == 'Not found, dude'
 
@@ -223,7 +224,7 @@ def test_static_url(app):
 
 
 def test_module_url(app):
-    with current_ctx('/') as ctx:
+    with current_ctx(app, '/') as ctx:
         ctx.request.language = 'it'
         link = url('test_route')
         assert link == '/it/test_route'
@@ -248,11 +249,11 @@ def test_module_url(app):
         assert lsplit[1] in ['foo=bar&bar=foo', 'bar=foo&foo=bar']
 
 
-@pytest.mark.asyncio
-async def test_global_url_prefix(app):
-    app.route._bind_app_(app, 'foo')
+def test_global_url_prefix(app):
+    app._router_http._prefix_main = '/foo'
+    app._router_http._prefix_main_len = 3
 
-    with current_ctx('/') as ctx:
+    with current_ctx(app, '/') as ctx:
         app.config.static_version_urls = False
         ctx.request.language = 'en'
 

@@ -9,7 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from ..expose import Expose
+from ..routing.router import Router
 
 
 class Decorator(object):
@@ -17,7 +17,7 @@ class Decorator(object):
         pass
 
     def __call__(self, func):
-        obj = Expose.exposing()
+        obj = Router.exposing()
         obj.pipeline.append(self.build_pipe())
         return func
 

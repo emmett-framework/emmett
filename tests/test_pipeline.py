@@ -174,7 +174,7 @@ async def test_ok_flow(app):
         linear_flow = [
             'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe',
             'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
-        await app.route.dispatch()
+        await app._router_http.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
@@ -189,7 +189,7 @@ async def test_httperror_flow(app):
             'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe',
             'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
         try:
-            await app.route.dispatch()
+            await app._router_http.dispatch()
         except HTTP:
             pass
         assert linear_flows_are_equal(linear_flow, ctx)
@@ -206,7 +206,7 @@ async def test_error_flow(app):
             'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe',
             'Pipe3.failure', 'Pipe2.failure', 'Pipe1.failure']
         try:
-            await app.route.dispatch()
+            await app._router_http.dispatch()
         except Exception:
             pass
         assert linear_flows_are_equal(linear_flow, ctx)
@@ -220,7 +220,7 @@ async def test_open_error(app):
             'Pipe1.open', 'Pipe2.open', 'Pipe3.open', 'Pipe4.open']
         linear_flow = []
         try:
-            await app.route.dispatch()
+            await app._router_http.dispatch()
         except PipeException as e:
             assert isinstance(e.pipe, ExcPipeOpen)
         assert linear_flows_are_equal(linear_flow, ctx)
@@ -240,7 +240,7 @@ async def test_close_error(app):
             'Pipe4.success', 'ExcPipeClose.success', 'Pipe3.success',
             'Pipe2.success', 'Pipe1.success']
         try:
-            await app.route.dispatch()
+            await app._router_http.dispatch()
         except PipeException as e:
             assert isinstance(e.pipe, ExcPipeClose)
         assert linear_flows_are_equal(linear_flow, ctx)
@@ -256,7 +256,7 @@ async def test_flow_interrupt(app):
         linear_flow = [
             'Pipe1.pipe', 'Pipe2.pipe',
             'Pipe2.success', 'Pipe1.success']
-        await app.route.dispatch()
+        await app._router_http.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
@@ -270,7 +270,7 @@ async def test_pipeline_composition(app):
         linear_flow = [
             'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe', 'Pipe4.pipe',
             'Pipe4.success', 'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
-        await app.route.dispatch()
+        await app._router_http.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
@@ -284,7 +284,7 @@ async def test_module_pipeline(app):
         linear_flow = [
             'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe', 'Pipe5.pipe',
             'Pipe5.success', 'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
-        await app.route.dispatch()
+        await app._router_http.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
@@ -302,6 +302,6 @@ async def test_module_pipeline_composition(app):
             'Pipe6.pipe',
             'Pipe6.success', 'Pipe5.success', 'Pipe3.success', 'Pipe2.success',
             'Pipe1.success']
-        await app.route.dispatch()
+        await app._router_http.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)

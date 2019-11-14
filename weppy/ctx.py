@@ -35,8 +35,8 @@ class Current(object):
         object.__setattr__(self, '_ctx', contextvars.ContextVar('ctx'))
         self._ctx.set(Context())
 
-    def _init_(self, ctx_cls, app, scope):
-        return self._ctx.set(ctx_cls(app, scope))
+    def _init_(self, ctx_cls, app, scope, *args, **kwargs):
+        return self._ctx.set(ctx_cls(app, scope, *args, **kwargs))
 
     def _close_(self, token):
         self._ctx.reset(token)
@@ -63,6 +63,7 @@ current = Current()
 request = ContextVarProxy(current._ctx, 'request')
 response = ContextVarProxy(current._ctx, 'response')
 session = ContextVarProxy(current._ctx, 'session')
+websocket = ContextVarProxy(current._ctx, 'websocket')
 
 
 def now():

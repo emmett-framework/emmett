@@ -14,9 +14,9 @@ from ..utils import cachedprop
 class Instance(object):
     @cachedprop
     def _t(self):
-        from ..expose import Expose
+        from ..ctx import current
         from .translator import Translator
-        return Translator(Expose.application)
+        return Translator(current.app)
 
     def T(self, *args, **kwargs):
         return self._t(*args, **kwargs)

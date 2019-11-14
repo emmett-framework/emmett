@@ -50,7 +50,7 @@ def test_helpers(app):
 
 
 def test_meta(app):
-    with current_ctx('/') as ctx:
+    with current_ctx('/', app) as ctx:
         ctx.response.meta.foo = "bar"
         ctx.response.meta_prop.foo = "bar"
         templater = app.templater
@@ -120,7 +120,7 @@ rendered_value = """
 
 
 def test_render(app):
-    with current_ctx('/') as ctx:
+    with current_ctx('/', app) as ctx:
         ctx.language = 'it'
         r = app.templater.render(
             app.template_path, 'test.html', {

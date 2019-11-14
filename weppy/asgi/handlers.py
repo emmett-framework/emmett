@@ -23,6 +23,7 @@ from ..language import _instance as _translator_instance
 from ..utils import cachedprop
 from ..wrappers.request import Body, Request
 from ..wrappers.response import Response
+from ..wrappers.websocket import Websocket
 
 REGEX_STATIC = re.compile(
     '^/static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
@@ -104,13 +105,13 @@ class RequestHandler(Handler):
         task_events = asyncio.create_task(
             self.handle_events(scope, receive, send))
         task_request = asyncio.create_task(
-            self.handle_request(scope, send))
+            self.handle_request(scope, receive, send))
         _, pending = await asyncio.wait(
             [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
         )
         await _cancel_tasks(pending)
 
-    async def handle_request(self, scope, send):
+    async def handle_request(self, scope, receive, send):
         raise NotImplementedError
 
 
@@ -129,7 +130,7 @@ class HTTPHandler(RequestHandler):
     @cachedprop
     def pre_handler(self):
         return (
-            self._prefix_handler if self.app.route._prefix_main else
+            self._prefix_handler if self.app._router_http._prefix_main else
             self.static_handler)
 
     @cachedprop
@@ -153,10 +154,10 @@ class HTTPHandler(RequestHandler):
     def exception_handler(self):
         return self.app.error_handlers.get(500, self._exception_handler)
 
-    async def handle_request(self, scope, send):
+    async def handle_request(self, scope, receive, send):
         ctx_token = current._init_(RequestContext, self.app, scope)
         try:
-            http = await self.pre_handler(scope, send)
+            http = await self.pre_handler(scope, receive, send)
         except Exception:
             self.app.log.exception('Application exception:')
             http = HTTP(
@@ -165,13 +166,13 @@ class HTTPHandler(RequestHandler):
         # TODO: timeout from app config/response
         await asyncio.wait_for(http.send(scope, send), None)
 
-    def _prefix_handler(self, scope, send):
+    def _prefix_handler(self, scope, receive, send):
         path = request.path
-        if not path.startswith(self.app.route._prefix_main):
+        if not path.startswith(self.app._router_http._prefix_main):
             return HTTP(404)
         request.path = scope['emt.path'] = (
-            path[self.app.route._prefix_main_len:] or '/')
-        return self.static_handler(scope, send)
+            path[self.app._router_http._prefix_main_len:] or '/')
+        return self.static_handler(scope, receive, send)
 
     def _static_lang_matcher(self, path):
         match = REGEX_STATIC_LANG.match(path)
@@ -195,7 +196,7 @@ class HTTPHandler(RequestHandler):
     async def _static_response(self, file_path):
         return HTTPFile(file_path)
 
-    def _static_handler(self, scope, send):
+    def _static_handler(self, scope, receive, send):
         path = scope['emt.path']
         #: handle weppy assets
         if path.startswith('/__weppy__'):
@@ -209,11 +210,11 @@ class HTTPHandler(RequestHandler):
         static_file, version = self.static_matcher(path)
         if static_file:
             return self._static_response(static_file)
-        return self.dynamic_handler(scope, send)
+        return self.dynamic_handler(scope, receive, send)
 
-    async def dynamic_handler(self, scope, send):
+    async def dynamic_handler(self, scope, receive, send):
         try:
-            http = await self.app.route.dispatch()
+            http = await self.app._router_http.dispatch()
         except HTTPResponse as http_exception:
             http = http_exception
             #: render error with handlers if in app
@@ -234,7 +235,62 @@ class HTTPHandler(RequestHandler):
 
 
 class WSHandler(RequestHandler):
-    pass
+    async def __call__(self, scope, receive, send):
+        scope['emt.wsqueue'] = asyncio.Queue()
+        scope['emt.path'] = scope['path'] or '/'
+        task_events = asyncio.create_task(
+            self.handle_events(scope, receive, send))
+        task_request = asyncio.create_task(
+            self.handle_request(scope, receive, send))
+        _, pending = await asyncio.wait(
+            [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
+        )
+        await _cancel_tasks(pending)
+
+    @Handler.on_event('websocket.disconnect')
+    async def event_disconnect(self, scope, receive, send, event):
+        return
+
+    @Handler.on_event('websocket.receive')
+    async def event_receive(self, scope, receive, send, event):
+        await scope['emt.wsqueue'].put(event.get('bytes') or event['text'])
+        return _event_looper
+
+    @cachedprop
+    def pre_handler(self):
+        return (
+            self._prefix_handler if self.app.route._prefix_main else
+            self.dynamic_handler)
+
+    # @cachedprop
+    # def error_handler(self):
+    #     return (
+    #         self._debug_handler if self.app.debug else self.exception_handler)
+
+    # @cachedprop
+    # def exception_handler(self):
+    #     return self.app.error_handlers.get(500, self._exception_handler)
+
+    async def handle_request(self, scope, receive, send):
+        ctx_token = current._init_(WSContext, self.app, scope, receive, send)
+        try:
+            await self.pre_handler(scope, receive, send)
+        except Exception:
+            self.app.log.exception('Application exception:')
+            # http = HTTP(
+            #     500, await self.error_handler(), headers=response.headers)
+        current._close_(ctx_token)
+
+    def _prefix_handler(self, scope, receive, send):
+        path = request.path
+        if not path.startswith(self.app.route._prefix_main):
+            return HTTP(404)
+        request.path = scope['emt.path'] = (
+            path[self.app.route._prefix_main_len:] or '/')
+        return self.dynamic_handler(scope, receive, send)
+
+    async def dynamic_handler(self, scope, receive, send):
+        await self.app._router_ws.dispatch()
 
 
 class RequestContext(object):
@@ -255,6 +311,25 @@ class RequestContext(object):
     @cachedprop
     def language(self):
         return self.request.accept_language.best_match(
+            list(_translator_instance._t.all_languages))
+
+
+class WSContext(object):
+    def __init__(self, app, scope, receive, send):
+        self.app = app
+        self.websocket = Websocket(
+            scope,
+            receive,
+            send
+            # app.config.request_max_content_length,
+            # app.config.request_body_timeout
+        )
+        # self.response = Response()
+        # self.session = None
+
+    @cachedprop
+    def language(self):
+        return self.websocket.accept_language.best_match(
             list(_translator_instance._t.all_languages))
 
 
