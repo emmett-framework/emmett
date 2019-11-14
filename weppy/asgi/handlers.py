@@ -259,7 +259,7 @@ class WSHandler(RequestHandler):
     @cachedprop
     def pre_handler(self):
         return (
-            self._prefix_handler if self.app.route._prefix_main else
+            self._prefix_handler if self.app._router_ws._prefix_main else
             self.dynamic_handler)
 
     # @cachedprop
@@ -283,10 +283,10 @@ class WSHandler(RequestHandler):
 
     def _prefix_handler(self, scope, receive, send):
         path = request.path
-        if not path.startswith(self.app.route._prefix_main):
+        if not path.startswith(self.app._router_ws._prefix_main):
             return HTTP(404)
         request.path = scope['emt.path'] = (
-            path[self.app.route._prefix_main_len:] or '/')
+            path[self.app._router_ws._prefix_main_len:] or '/')
         return self.dynamic_handler(scope, receive, send)
 
     async def dynamic_handler(self, scope, receive, send):

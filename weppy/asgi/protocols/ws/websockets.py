@@ -14,5 +14,7 @@ from . import ProtocolWrapper, protocols
 class WebsocketsProtocol(ProtocolWrapper):
     @classmethod
     def protocol_cls(cls):
-        from uvicorn.protocols.ws.websockets_impl import WebSocketProtocol
+        from uvicorn.protocols.websockets.websockets_impl import (
+            WebSocketProtocol
+        )
         return WebSocketProtocol

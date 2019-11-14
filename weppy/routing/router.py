@@ -24,7 +24,8 @@ from .rules import HTTPRoutingRule, WebsocketRoutingRule
 class Router:
     _outputs = {}
     _routing_rule_cls = None
-    _routing_signal = None
+    _routing_signal = 'before_routes'
+    _routing_started = False
     _routing_stack = []
     _re_components = re.compile(r'(\()?([^<\w]+)?<(\w+)\:(\w+)>(\)\?)?')
 
@@ -43,8 +44,6 @@ class Router:
                 main_prefix = ''
         self._prefix_main = main_prefix
         self._prefix_main_len = len(self._prefix_main)
-        # self._routing_stack = []
-        self._routing_started = False
         self._set_language_handling()
 
     def _set_language_handling(self):
@@ -120,8 +119,8 @@ class Router:
         raise NotImplementedError
 
     def __call__(self, *args, **kwargs):
-        if not self._routing_started:
-            self._routing_started = True
+        if not self.__class__._routing_started:
+            self.__class__._routing_started = True
             self.app.send_signal(self._routing_signal)
         return RoutingCtx(self, self._routing_rule_cls, *args, **kwargs)
 
@@ -134,12 +133,9 @@ class HTTPRouter(Router):
     __slots__ = (
         'app', 'routes_in', 'routes_out', '_routes_str',
         '_get_routes_in_for_host', '_match_lang',
-        '_prefix_main', '_prefix_main_len',
-        # '_routing_stack',
-        '_routing_started'
+        '_prefix_main', '_prefix_main_len'
     )
 
-    _routing_signal = 'before_routes'
     _routing_rule_cls = HTTPRoutingRule
     _outputs = {
         'auto': AutoResponseBuilder,
@@ -221,18 +217,15 @@ class WebsocketRouter(Router):
     __slots__ = (
         'app', 'routes_in', 'routes_out', '_routes_str',
         '_get_routes_in_for_host', '_match_lang',
-        '_prefix_main', '_prefix_main_len',
-        # '_routing_stack',
-        '_routing_started'
+        '_prefix_main', '_prefix_main_len'
     )
 
-    _routing_signal = 'before_websocket_routes'
     _routing_rule_cls = WebsocketRoutingRule
 
     @staticmethod
     def _build_routing_dict():
         rv = {}
-        for scheme in ['http', 'https']:
+        for scheme in ['ws', 'wss']:
             rv[scheme] = {'static': {}, 'match': OrderedDict()}
         return rv
 
@@ -264,7 +257,7 @@ class WebsocketRouter(Router):
 
     def match(self, websocket):
         path = self.remove_trailslash(websocket.path)
-        path = self.match_lang(websocket, path)
+        path = self._match_lang(websocket, path)
         for routing_dict in self._get_routes_in_for_host(websocket.host):
             sub_dict = routing_dict[websocket.scheme]
             route = sub_dict['static'].get(path)

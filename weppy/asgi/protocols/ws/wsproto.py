@@ -14,5 +14,5 @@ from . import ProtocolWrapper, protocols
 class WSProtoProtocol(ProtocolWrapper):
     @classmethod
     def protocol_cls(cls):
-        from uvicorn.protocols.ws.wsproto_impl import WSProtocol
+        from uvicorn.protocols.websockets.wsproto_impl import WSProtocol
         return WSProtocol

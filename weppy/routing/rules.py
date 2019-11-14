@@ -120,6 +120,11 @@ class HTTPRoutingRule(RoutingRule):
 
 
 class WebsocketRoutingRule(RoutingRule):
+    __slots__ = (
+        'router', 'name', 'f', 'output_type',
+        'paths', 'schemes', 'hostname', 'prefix'
+    )
+
     def __init__(
         self, router, paths=None, name=None, pipeline=None, schemes=None,
         hostname=None, prefix=None, output='auto'
@@ -131,7 +136,7 @@ class WebsocketRoutingRule(RoutingRule):
             self.paths = []
         if not isinstance(self.paths, (list, tuple)):
             self.paths = (self.paths,)
-        self.schemes = schemes or ('http', 'https')
+        self.schemes = schemes or ('ws', 'wss')
         if not isinstance(self.schemes, (list, tuple)):
             self.schemes = (self.schemes,)
         self.hostname = hostname or self.app.config.hostname_default
@@ -139,13 +144,13 @@ class WebsocketRoutingRule(RoutingRule):
             if not prefix.startswith('/'):
                 prefix = '/' + prefix
         self.prefix = prefix
-        if output not in self.router._outputs:
-            raise SyntaxError(
-                'Invalid output specified. Allowed values are: {}'.format(
-                    ', '.join(self.router._outputs.keys())))
+        # if output not in self.router._outputs:
+        #     raise SyntaxError(
+        #         'Invalid output specified. Allowed values are: {}'.format(
+        #             ', '.join(self.router._outputs.keys())))
         self.output_type = output
-        self.pipeline = self.router.pipeline + (pipeline or [])
-        self.cache_rule = None
+        # self.pipeline = self.router.pipeline + (pipeline or [])
+        self.pipeline = pipeline or []
         # check pipes are indeed valid pipes
         # if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
         #     raise RuntimeError('Invalid pipeline')

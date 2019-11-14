@@ -348,10 +348,9 @@ def shell_command(info):
 @pass_script_info
 def routes_command(info):
     app = info.load_app()
-    print("> HTTP routing table for weppy application %s:" % app.import_name)
+    print("> Routing table for weppy application %s:" % app.import_name)
     for route in app._router_http._routes_str.values():
         print(route)
-    print("> WS routing table for weppy application %s:" % app.import_name)
     for route in app._router_ws._routes_str.values():
         print(route)
 

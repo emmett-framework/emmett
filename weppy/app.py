@@ -422,6 +422,29 @@ class AppModule(object):
         kwargs['injectors'] = injectors
         kwargs['cache'] = kwargs.get('cache', self.cache)
         return self.app.route(
-            paths=paths, name=name, template=template, prefix=self.url_prefix,
+            paths=paths,
+            name=name,
+            template=template,
+            prefix=self.url_prefix,
             template_folder=self.template_folder,
-            template_path=self.template_path, hostname=self.hostname, **kwargs)
+            template_path=self.template_path,
+            hostname=self.hostname,
+            **kwargs
+        )
+
+    def websocket(self, paths=None, name=None, **kwargs):
+        if name is not None and "." in name:
+            raise RuntimeError(
+                "App modules' websocket names should not contains dots"
+            )
+        # pipeline = kwargs.get('pipeline', [])
+        # if self.pipeline:
+        #     pipeline = self.pipeline + pipeline
+        # kwargs['pipeline'] = pipeline
+        return self.app.websocket(
+            paths=paths,
+            name=name,
+            prefix=self.url_prefix,
+            hostname=self.hostname,
+            **kwargs
+        )
