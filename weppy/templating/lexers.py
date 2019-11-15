@@ -111,6 +111,12 @@ class ExtendLexer(WeppyLexer):
             del ctx.blocks_tree[key]
 
 
+class IgnoreLexer(WeppyLexer):
+    def process(self, ctx, value):
+        with ctx('__ignore__'):
+            ctx.ignore()
+
+
 class HelpersLexer(WeppyLexer):
     helpers = [
         '<script type="text/javascript" ' +
@@ -162,6 +168,7 @@ default_lexers = {
     'super': SuperLexer(),
     'include': IncludeLexer(),
     'extend': ExtendLexer(),
+    'asis': IgnoreLexer(),
     'include_helpers': HelpersLexer(),
     'include_meta': MetaLexer(),
     'include_static': StaticLexer()

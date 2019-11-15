@@ -225,6 +225,15 @@ class ParsingContext(object):
                 self.parser.parse_html_block(self, element)
             self.swap_block_type()
 
+    def ignore(self):
+        while self.elements:
+            element = self.elements.pop(0)
+            if self.state.in_python_block:
+                self.parser.ignore_block(self, element)
+            else:
+                self.parser.parse_html_block(self, element)
+            self.swap_block_type()
+
 
 class TemplateParser(object):
     _nodes_cls = {
@@ -330,6 +339,24 @@ class TemplateParser(object):
         lines = text.split('\n')
         for line in lines:
             self._parse_python_line(ctx, line.strip())
+
+    def _parse_plain_contents(self, ctx, stripped, original):
+        if stripped == 'end':
+            #: use appropriate lexer if available for current lex
+            lexer = self.lexers.get(stripped)
+            lexer(ctx, value=None)
+            return
+        #: otherwise add as a plain node
+        ctx.html(original)
+
+    def ignore_block(self, ctx, element):
+        #: get rid of delimiters
+        text = self._get_python_block_text(element)
+        if not text:
+            return
+        ctx.update_lines_count(len(text.split('\n')) - 1)
+        #: parse block lines
+        self._parse_plain_contents(ctx, text.strip(), element)
 
     def _build_ctx(self, text):
         return ParsingContext(
