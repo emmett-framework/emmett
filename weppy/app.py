@@ -30,11 +30,7 @@ from .utils import dict_to_sdict, cachedprop, read_file
 
 
 class Config(ConfigData):
-    __slots__ = (
-        '_app',
-        '_templates_auto_reload',
-        '_templates_encoding', '_templates_escape', '_templates_prettify'
-    )
+    __slots__ = ()
 
     def __init__(self, app):
         self._app = app
@@ -48,10 +44,16 @@ class Config(ConfigData):
             request_max_content_length=None,
             request_body_timeout=None
         )
-        self._templates_auto_reload = self._app.debug or False
+        self._templates_auto_reload = app.debug or False
         self._templates_encoding = 'utf8'
         self._templates_escape = 'common'
         self._templates_prettify = False
+
+    def __setattr__(self, key, value):
+        obj = getattr(self.__class__, key, None)
+        if isinstance(obj, property):
+            return obj.fset(self, value)
+        return super().__setattr__(key, value)
 
     @property
     def templates_auto_reload(self):
@@ -289,8 +291,7 @@ class App:
     #: Add an extension to application
     def use_extension(self, ext):
         if not issubclass(ext, Extension):
-            raise RuntimeError('%s is an invalid weppy extension' %
-                               ext.__name__)
+            raise RuntimeError(f'{ext.__name__} is an invalid weppy extension')
         ext_env, ext_config = self.__init_extension(ext)
         self.ext[ext.__name__] = ext(self, ext_env, ext_config)
         self.__register_extension_listeners(self.ext[ext.__name__])

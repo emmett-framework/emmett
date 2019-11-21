@@ -20,6 +20,7 @@ def app():
     app = App(__name__)
     app.config.templates_escape = 'all'
     app.config.templates_prettify = True
+    app.config.templates_auto_reload = True
     return app
 
 
