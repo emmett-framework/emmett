@@ -5,7 +5,7 @@
 
     Provides scripts interface for migrations.
 
-    :copyright: (c) 2014-2018 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
 
     Based on the code of Alembic (https://bitbucket.org/zzzeek/alembic)
     :copyright: (c) 2009-2015 by Michael Bayer
@@ -19,12 +19,13 @@ import sys
 
 from contextlib import contextmanager
 from datetime import datetime
+from renoir import Renoir
 
 from .base import Migration
 from .exceptions import (
     RangeNotAncestorError, MultipleHeads, ResolutionError, RevisionError
 )
-from .helpers import tuple_rev_as_scalar, render_template, format_with_comma
+from .helpers import tuple_rev_as_scalar, format_with_comma
 from .revisions import Revision, RevisionsMap
 
 
@@ -38,13 +39,13 @@ class ScriptDir(object):
             app.root_path, migrations_folder or 'migrations')
         if not os.path.exists(self.path):
             os.mkdir(self.path)
-        #self.cwd = os.path.join(os.path.dirname(__file__), 'migration.tmpl')
         self.cwd = os.path.dirname(__file__)
         self.file_template = self.app.config.migrations.file_template or \
             self._default_file_template
         self.truncate_slug_length = \
             self.app.config.migrations.filename_len or 40
         self.revision_map = RevisionsMap(self.app, self._load_revisions)
+        self.templater = Renoir(path=self.cwd, prettify=True)
 
     def _load_revisions(self):
         sys.path.insert(0, self.path)
@@ -144,7 +145,7 @@ class ScriptDir(object):
         return filename
 
     def _generate_template(self, filename, ctx):
-        rendered = render_template(self.cwd, 'migration.tmpl', ctx)
+        rendered = self.templater.render('migration.tmpl', ctx)
         with open(os.path.join(self.path, filename), 'w') as f:
             f.write(rendered)
 

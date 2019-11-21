@@ -5,7 +5,7 @@
 
     Provides the central application object.
 
-    :copyright: (c) 2014-2018 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -21,13 +21,77 @@ from .asgi.server import run as asgi_run
 from .ctx import current
 from .datastructures import sdict, ConfigData
 from .extensions import Extension, TemplateExtension
+from .helpers import load_component
+from .html import asis
 from .routing.router import HTTPRouter, WebsocketRouter
 from .routing.urls import url
-from .templating.core import Templater
+from .templating.templater import Templater
 from .utils import dict_to_sdict, cachedprop, read_file
 
 
-class App(object):
+class Config(ConfigData):
+    __slots__ = (
+        '_app',
+        '_templates_auto_reload',
+        '_templates_encoding', '_templates_escape', '_templates_prettify'
+    )
+
+    def __init__(self, app):
+        self._app = app
+        super().__init__(
+            modules_class=AppModule,
+            hostname_default=None,
+            static_version=None,
+            static_version_urls=False,
+            handle_static=True,
+            url_default_namespace=None,
+            request_max_content_length=None,
+            request_body_timeout=None
+        )
+        self._templates_auto_reload = self._app.debug or False
+        self._templates_encoding = 'utf8'
+        self._templates_escape = 'common'
+        self._templates_prettify = False
+
+    @property
+    def templates_auto_reload(self):
+        return self._templates_auto_reload
+
+    @templates_auto_reload.setter
+    def templates_auto_reload(self, value):
+        self._templates_auto_reload = value
+        self._app.templater._set_reload(value)
+
+    @property
+    def templates_encoding(self):
+        return self._templates_encoding
+
+    @templates_encoding.setter
+    def templates_encoding(self, value):
+        self._templates_encoding = value
+        self._app.templater._set_encoding(value)
+
+    @property
+    def templates_escape(self):
+        return self._templates_escape
+
+    @templates_escape.setter
+    def templates_escape(self, value):
+        self._templates_escape = value
+        self._app.templater._set_escape(value)
+
+    @property
+    def templates_prettify(self):
+        return self._templates_prettify
+
+    @templates_prettify.setter
+    def templates_prettify(self, value):
+        self._templates_prettify = value
+        self._app.templater._set_prettify(value)
+
+
+# TODO: update extensions
+class App:
     debug = None
     test_client_class = None
 
@@ -36,6 +100,8 @@ class App(object):
         template_folder='templates', config_folder='config'
     ):
         self.import_name = import_name
+        #: init debug var
+        self.debug = os.environ.get('WEPPY_RUN_ENV') == "true"
         #: set paths for the application
         if root_path is None:
             root_path = get_root_path(self.import_name)
@@ -46,19 +112,7 @@ class App(object):
         #: the click command line context for this application
         self.cli = click.Group(self)
         #: init the configuration
-        self.config = ConfigData()
-        self.config.modules_class = AppModule
-        self.config.hostname_default = None
-        self.config.static_version = None
-        self.config.static_version_urls = None
-        self.config.handle_static = True
-        self.config.url_default_namespace = None
-        self.config.request_max_content_length = None
-        self.config.request_body_timeout = None
-        self.config.templates_auto_reload = False
-        self.config.templates_escape = 'common'
-        self.config.templates_prettify = False
-        self.config.templates_encoding = 'utf8'
+        self.config = Config(self)
         #: try to create needed folders
         create_missing_app_folders(self)
         #: init languages
@@ -84,13 +138,14 @@ class App(object):
         self.ext = sdict()
         self._extensions_env = sdict()
         self._extensions_listeners = {key: [] for key in Extension._signals_}
-        self.template_extensions = []
-        self.template_preloaders = {}
-        self.template_lexers = {}
         #: init templater
-        self.templater = Templater(self)
-        #: init debug var
-        self.debug = os.environ.get('WEPPY_RUN_ENV') == "true"
+        self.templater = Templater(
+            path=self.template_path,
+            encoding=self.config.templates_encoding,
+            escape=self.config.templates_escape,
+            prettify=self.config.templates_prettify,
+            reload=self.config.templates_auto_reload
+        )
         #: store app in current
         current.app = self
 
@@ -204,8 +259,11 @@ class App(object):
             return rv
 
     def render_template(self, filename):
-        ctx = {'current': current, 'url': url}
-        return self.templater.render(self.template_path, filename, ctx)
+        ctx = {
+            'current': current, 'url': url, 'asis': asis,
+            'load_component': load_component
+        }
+        return self.templater.render(filename, ctx)
 
     def config_from_yaml(self, filename, namespace=None):
         #: import configuration from yaml files
@@ -239,20 +297,8 @@ class App(object):
         self.ext[ext.__name__].on_load()
 
     #: Add a template extension to application
-    def add_template_extension(self, ext):
-        if not issubclass(ext, TemplateExtension):
-            raise RuntimeError('%s is an invalid weppy template extension' %
-                               ext.__name__)
-        ext_env, ext_config = self.__init_extension(ext)
-        self.template_extensions.append(ext(ext_env, ext_config))
-        fext = self.template_extensions[-1].file_extension
-        if fext is not None and isinstance(fext, str):
-            if fext not in self.template_preloaders.keys():
-                self.template_preloaders[fext] = []
-            self.template_preloaders[fext].append(self.template_extensions[-1])
-        lexers = self.template_extensions[-1].lexers
-        for name, lexer in lexers.items():
-            self.template_lexers[name] = lexer(self.template_extensions[-1])
+    def use_template_extension(self, ext):
+        return self.templater.use_extension(ext)
 
     def send_signal(self, signal, *args, **kwargs):
         for listener in self._extensions_listeners[signal]:

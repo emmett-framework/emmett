@@ -5,15 +5,14 @@
 
     Provides helpers for migrations.
 
-    :copyright: (c) 2014-2018 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 from collections import Iterable
 from uuid import uuid4
 
-from ...datastructures import sdict, _unique_list
-from ...templating.core import Templater
+from ...datastructures import _unique_list
 
 
 DEFAULT_VALUE = lambda: None
@@ -52,22 +51,6 @@ class Dispatcher(object):
                 return self._registry[target]
         else:
             raise ValueError("no dispatch function for object: %s" % obj)
-
-
-def render_template(path, template, ctx):
-    _fakeapp = sdict(
-        template_preloaders=[],
-        template_extensions=[],
-        template_lexers=[],
-        debug=False,
-        config=sdict(
-            templates_auto_reload=False,
-            templates_prettify=True,
-            templates_encoding='utf8'
-        )
-    )
-    templater = Templater(_fakeapp)
-    return templater.render(path, template, ctx)
 
 
 def to_tuple(x, default=None):

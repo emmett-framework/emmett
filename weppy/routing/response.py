@@ -9,9 +9,12 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from renoir.errors import TemplateMissingError
+
 from ..ctx import current
+from ..helpers import load_component
+from ..html import asis
 from ..http import HTTP, HTTPBytes
-from ..templating.helpers import TemplateMissingError
 from .urls import url
 
 
@@ -40,13 +43,19 @@ class BytesResponseBuilder(ResponseBuilder):
 class TemplateResponseBuilder(ResponseProcessor):
     def process(self, output):
         if output is None:
-            output = {'current': current, 'url': url}
+            output = {
+                'current': current, 'url': url, 'asis': asis,
+                'load_component': load_component
+            }
         else:
             output['current'] = output.get('current', current)
             output['url'] = output.get('url', url)
+            output['asis'] = output.get('asis', asis)
+            output['load_component'] = output.get(
+                'load_component', load_component)
         try:
             return self.route.app.templater.render(
-                self.route.template_path, self.route.template, output)
+                self.route.template, output)
         except TemplateMissingError as exc:
             raise HTTP(404, body="{}\n".format(exc.message))
 
@@ -58,13 +67,19 @@ class AutoResponseBuilder(ResponseProcessor):
             is_template = True
             output['current'] = output.get('current', current)
             output['url'] = output.get('url', url)
+            output['asis'] = output.get('asis', asis)
+            output['load_component'] = output.get(
+                'load_component', load_component)
         elif output is None:
             is_template = True
-            output = {'current': current, 'url': url}
+            output = {
+                'current': current, 'url': url, 'asis': asis,
+                'load_component': load_component
+            }
         if is_template:
             try:
                 return self.route.app.templater.render(
-                    self.route.template_path, self.route.template, output)
+                    self.route.template, output)
             except TemplateMissingError as exc:
                 raise HTTP(404, body="{}\n".format(exc.message))
         elif isinstance(output, str) or hasattr(output, '__iter__'):
