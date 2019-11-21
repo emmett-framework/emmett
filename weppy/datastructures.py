@@ -39,6 +39,8 @@ class sdict(dict):
 class ConfigData(sdict):
     #: like sdict, except it autogrows creating sub-sdict attributes.
     #  Useful for configurations.
+    __slots__ = ()
+
     def _get(self, name):
         if name not in self.keys():
             self[name] = sdict()
@@ -53,8 +55,8 @@ class SessionData(sdict):
 
     def __init__(self, initial=None, sid=None, expires=None):
         sdict.__init__(self, initial or ())
-        object.__setattr__(self, '_SessionData__dump',
-                           pickle.dumps(sdict(self)))
+        object.__setattr__(
+            self, '_SessionData__dump', pickle.dumps(sdict(self)))
         h = hashlib.md5(self._dump).hexdigest()
         object.__setattr__(self, '_SessionData__sid', sid)
         object.__setattr__(self, '_SessionData__hash', h)
@@ -90,13 +92,10 @@ def _unique_list(seq, hashfunc=None):
     seen = set()
     seen_add = seen.add
     if not hashfunc:
-        return [x for x in seq
-                if x not in seen and
-                not seen_add(x)]
-    else:
-        return [x for x in seq
-                if hashfunc(x) not in seen and
-                not seen_add(hashfunc(x))]
+        return [x for x in seq if x not in seen and not seen_add(x)]
+    return [
+        x for x in seq if hashfunc(x) not in seen and not seen_add(hashfunc(x))
+    ]
 
 
 class OrderedSet(set):
