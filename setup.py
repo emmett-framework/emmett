@@ -34,7 +34,7 @@ _requirements_basic = [
     'pyDAL==17.3',
     'python-rapidjson~=0.8.0',
     'pyyaml',
-    'renoir',
+    'renoir==1.0.0b1',
     'uvicorn==0.9.1',
     'websockets>=8.0'
 ]
@@ -81,9 +81,6 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=requirements,
-    dependency_links=[
-        'git+ssh://git@github.com/emmett-framework/renoir@17847f6#egg=renoir'
-    ],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
