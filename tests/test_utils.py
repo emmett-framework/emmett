@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """
     tests.utils
-    ----------------
+    -----------
 
-    Test weppy utils engine
+    Test Emmett utils engine
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 import pytest
 
-from weppy.datastructures import sdict
-from weppy.utils import (
+from emmett.datastructures import sdict
+from emmett.utils import (
     cachedprop, _cached_prop_sync, _cached_prop_loop,
     dict_to_sdict, is_valid_ip_address)
 

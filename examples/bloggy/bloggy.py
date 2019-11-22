@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from weppy import App, session, now, url, redirect, abort
-from weppy.orm import Database, Model, Field, belongs_to, has_many
-from weppy.tools import requires
-from weppy.tools.auth import Auth, AuthUser
-from weppy.sessions import SessionManager
+from emmett import App, session, now, url, redirect, abort
+from emmett.orm import Database, Model, Field, belongs_to, has_many
+from emmett.tools import requires
+from emmett.tools.auth import Auth, AuthUser
+from emmett.sessions import SessionManager
 
 
 app = App(__name__)

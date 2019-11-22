@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
     tests.http
-    ----------------
+    ----------
 
-    Test weppy http module
+    Test Emmett http module
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 from helpers import current_ctx
-from weppy.http import HTTP, HTTPBytes, HTTPResponse, redirect
+from emmett.http import HTTP, HTTPBytes, HTTPResponse, redirect
 
 
 def test_http_default():

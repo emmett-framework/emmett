@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
+
 import pytest
-from weppy import response, session
+
+from emmett import response, session
 from bloggy import app, db, User, auth, setup_admin
 
 

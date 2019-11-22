@@ -3,16 +3,16 @@
     tests.templates
     ---------------
 
-    Test weppy templating module
+    Test Emmett templating module
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 import pytest
 
 from helpers import current_ctx
-from weppy import App
+from emmett import App
 
 
 @pytest.fixture(scope='module')
@@ -28,9 +28,9 @@ def test_helpers(app):
     templater = app.templater
     r = templater._render(source="{{include_helpers}}")
     assert r == '<script type="text/javascript" ' + \
-        'src="/__weppy__/jquery.min.js"></script>\n' + \
+        'src="/__emmett__/jquery.min.js"></script>\n' + \
         '<script type="text/javascript" ' + \
-        'src="/__weppy__/helpers.js"></script>'
+        'src="/__emmett__/helpers.js"></script>'
 
 
 def test_meta(app):
@@ -59,8 +59,8 @@ rendered_value = """
 <html>
     <head>
         <title>Test</title>
-        <script type="text/javascript" src="/__weppy__/jquery.min.js"></script>
-        <script type="text/javascript" src="/__weppy__/helpers.js"></script>
+        <script type="text/javascript" src="/__emmett__/jquery.min.js"></script>
+        <script type="text/javascript" src="/__emmett__/helpers.js"></script>
         <link rel="stylesheet" href="/static/style.css" type="text/css" />
     </head>
     <body>

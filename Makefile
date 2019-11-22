@@ -26,13 +26,13 @@ $(PYTHON):
 	$(VIRTUALENV) $(VENV)
 
 tests-once: install-dev
-	py.test --cov=weppy/
+	py.test --cov=emmett/
 
 tests: install-dev tox.ini
 	$(VENV)/bin/tox
 
 flake8: install-dev
-	$(VENV)/bin/flake8 weppy --ignore=E501,E402
+	$(VENV)/bin/flake8 emmett --ignore=E501,E402
 
 clean:
 	find . -name '*.pyc' -delete

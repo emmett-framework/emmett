@@ -3,17 +3,17 @@
     tests.wrappers
     --------------
 
-    Test weppy wrappers module
+    Test Emmett wrappers module
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 
 from helpers import current_ctx
-from weppy.testing.env import ScopeBuilder
-from weppy.wrappers.request import Request
-from weppy.wrappers.response import Response
+from emmett.testing.env import ScopeBuilder
+from emmett.wrappers.request import Request
+from emmett.wrappers.response import Response
 
 
 def test_request():

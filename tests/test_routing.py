@@ -3,7 +3,7 @@
     tests.routing
     -------------
 
-    Test weppy routing module
+    Test Emmett routing module
 
     :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
@@ -15,10 +15,10 @@ import pytest
 from contextlib import contextmanager
 
 from helpers import FakeRequestContext
-from weppy import App, abort, url
-from weppy.ctx import current
-from weppy.http import HTTP
-from weppy.testing.env import ScopeBuilder
+from emmett import App, abort, url
+from emmett.ctx import current
+from emmett.http import HTTP
+from emmett.testing.env import ScopeBuilder
 
 
 @contextmanager

@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 """
     tests.session
-    ----------------
+    -------------
 
-    Test weppy session module
+    Test Emmett session module
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 import pytest
 
-from weppy.asgi.handlers import RequestContext
-from weppy.sessions import SessionManager
-from weppy.testing.env import ScopeBuilder
-from weppy.wrappers.request import Request
-from weppy.wrappers.response import Response
+from emmett.asgi.handlers import RequestContext
+from emmett.ctx import current
+from emmett.sessions import SessionManager
+from emmett.testing.env import ScopeBuilder
+from emmett.wrappers.request import Request
+from emmett.wrappers.response import Response
 
 
 class FakeRequestContext(RequestContext):
@@ -26,8 +27,7 @@ class FakeRequestContext(RequestContext):
 
 
 @pytest.fixture(scope='module')
-def current():
-    from weppy.ctx import current
+def ctx():
     builder = ScopeBuilder()
     token = current._init_(FakeRequestContext, None, builder.get_data()[0])
     yield current
@@ -35,7 +35,7 @@ def current():
 
 
 @pytest.mark.asyncio
-async def test_session_cookie(current):
+async def test_session_cookie(ctx):
     session_cookie = SessionManager.cookies(
         key='sid',
         secure=True,
@@ -47,14 +47,14 @@ async def test_session_cookie(current):
     assert session_cookie.domain == 'localhost'
 
     await session_cookie.open()
-    assert current.session._expiration == 3600
+    assert ctx.session._expiration == 3600
 
     await session_cookie.close()
-    cookie = str(current.response.cookies)
+    cookie = str(ctx.response.cookies)
     assert 'foo_session' in cookie
     assert 'Domain=localhost;' in cookie
     assert 'secure' in cookie.lower()
 
-    current.request.cookies = current.response.cookies
+    ctx.request.cookies = ctx.response.cookies
     await session_cookie.open()
-    assert current.session._expiration == 3600
+    assert ctx.session._expiration == 3600

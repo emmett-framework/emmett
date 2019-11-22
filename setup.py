@@ -1,34 +1,27 @@
 """
-weppy is a full-stack python web framework designed with simplicity in mind.
+Emmett is a full-stack python web framework designed with simplicity in mind.
 
 
 Links
 -----
 
-* `website <http://weppy.org>`_
-* `documentation <http://weppy.org/docs>`_
-* `git repo <http://github.com/gi0baro/weppy>`_
+* `git repo <http://github.com/emmett-framework/emmett>`_
 
 """
 
-import ast
 import platform
 import re
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
-
-_version_re = re.compile(r'__version__\s+=\s+(.*)')
-
-with open('weppy/__init__.py', 'rb') as f:
-    version = str(ast.literal_eval(_version_re.search(
-        f.read().decode('utf-8')).group(1)))
+with open('emmett/__init__.py', 'r', encoding='utf8') as f:
+    version = re.search(r'__version__ = "(.*?)"', f.read(), re.M).group(1)
 
 
 _requirements_basic = [
     'aiofiles==0.4.0',
     'click>=0.6',
-    'h11',
+    'h11~=0.8.0',
     'pendulum>=2.0.0',
     'pyaes',
     'pyDAL==17.3',
@@ -49,37 +42,19 @@ else:
 
 
 setup(
-    name='weppy',
+    name='Emmett',
     version=version,
-    url='http://github.com/gi0baro/weppy/',
+    url='http://github.com/emmett-framework/emmett/',
     license='BSD',
     author='Giovanni Barillari',
     author_email='gi0baro@d4net.org',
-    description='The web framework for humans',
+    description='The web framework for inventors',
     long_description=__doc__,
-    packages=[
-        'weppy',
-        'weppy.asgi',
-        'weppy.asgi.loops',
-        'weppy.asgi.protocols',
-        'weppy.asgi.protocols.http',
-        'weppy.asgi.protocols.ws',
-        'weppy.language',
-        'weppy.language.plurals',
-        'weppy.orm',
-        'weppy.orm.migrations',
-        'weppy.routing',
-        'weppy.templating',
-        'weppy.testing',
-        'weppy.tools',
-        'weppy.tools.auth',
-        'weppy.validators',
-        'weppy.wrappers',
-        'weppy.libs'
-    ],
+    packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
     platforms='any',
+    python_requires='>=3.7',
     install_requires=requirements,
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -94,6 +69,6 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
     entry_points={
-        'console_scripts': ['weppy = weppy.cli:main']
+        'console_scripts': ['emmett = emmett.cli:main']
     }
 )

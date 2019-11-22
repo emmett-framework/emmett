@@ -3,23 +3,29 @@
     tests.orm
     ---------
 
-    Test pyDAL implementation over weppy.
+    Test pyDAL implementation over Emmett.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 import pytest
+
 from datetime import datetime, timedelta
 from pydal.objects import Table
 from pydal import Field as _Field
-
-from weppy import App, sdict
-from weppy.orm import Database, Field, Model, compute, before_insert, \
-    after_insert, before_update, after_update, before_delete, after_delete, \
-    rowattr, rowmethod, has_one, has_many, belongs_to, scope
-from weppy.validators import isntEmpty, hasLength
-# from weppy.validators._old import notInDb
+from emmett import App, sdict
+from emmett.orm import (
+    Database, Field, Model,
+    compute,
+    before_insert, after_insert,
+    before_update, after_update,
+    before_delete, after_delete,
+    rowattr, rowmethod,
+    has_one, has_many, belongs_to,
+    scope
+)
+from emmett.validators import isntEmpty, hasLength
 
 
 def _represent_f(value):
@@ -35,7 +41,7 @@ def _call_bi(fields):
 
 
 def _call_ai(fields, id):
-    return fields[:-1], id+1
+    return fields[:-1], id + 1
 
 
 def _call_u(set, fields):
@@ -87,7 +93,7 @@ class Stuff(Model):
 
     @compute('total')
     def eval_total(self, row):
-        return row.price*row.quantity
+        return row.price * row.quantity
 
     @before_insert
     def bi(self, fields):
@@ -115,11 +121,11 @@ class Stuff(Model):
 
     @rowattr('totalv')
     def eval_total_v(self, row):
-        return row.price*row.quantity
+        return row.price * row.quantity
 
     @rowmethod('totalm')
     def eval_total_m(self, row):
-        return row.price*row.quantity
+        return row.price * row.quantity
 
     @classmethod
     def method_test(cls, t):
@@ -232,7 +238,7 @@ class Animal(Model):
 
     @rowattr('doublename')
     def get_double_name(self, row):
-        return row.name*2
+        return row.name * 2
 
     @rowattr('pretty')
     def get_pretty(self, row):
@@ -253,7 +259,7 @@ class Elephant(Animal):
 
     @rowattr('pretty')
     def get_pretty(self, row):
-        return row.name+" "+row.color
+        return row.name + " " + row.color
 
     @before_insert
     def bi2(self, *args, **kwargs):
@@ -353,7 +359,7 @@ def test_widgets(db):
 def test_computations(db):
     row = sdict(price=12.95, quantity=3)
     rv = db.Stuff.total.compute(row)
-    assert rv == 12.95*3
+    assert rv == 12.95 * 3
 
 
 def test_callbacks(db):
@@ -362,7 +368,7 @@ def test_callbacks(db):
     rv = db.Stuff._before_insert[-1](fields)
     assert rv == fields[:-1]
     rv = db.Stuff._after_insert[-1](fields, id)
-    assert rv[0] == fields[:-1] and rv[1] == id+1
+    assert rv[0] == fields[:-1] and rv[1] == id + 1
     set = {"a": "b"}
     rv = db.Stuff._before_update[-1](set, fields)
     assert rv[0] == set and rv[1] == fields[:-1]
@@ -380,12 +386,12 @@ def test_rowattrs(db):
     db.Stuff.insert(a="foo", b="bar", price=12.95, quantity=3)
     db.commit()
     row = db(db.Stuff).select().first()
-    assert row.totalv == 12.95*3
+    assert row.totalv == 12.95 * 3
 
 
 def test_rowmethods(db):
     row = db(db.Stuff).select().first()
-    assert row.totalm() == 12.95*3
+    assert row.totalm() == 12.95 * 3
 
 
 def test_modelmethods(db):
@@ -470,13 +476,13 @@ def test_inheritance(db):
 def test_scopes(db):
     p = db.Person.insert(name="Walter", age=50)
     s = db.Subscription.insert(
-        name="a", expires_at=datetime.now()-timedelta(hours=20), person=p,
+        name="a", expires_at=datetime.now() - timedelta(hours=20), person=p,
         status=1)
     s2 = db.Subscription.insert(
-        name="b", expires_at=datetime.now()+timedelta(hours=20), person=p,
+        name="b", expires_at=datetime.now() + timedelta(hours=20), person=p,
         status=2)
     db.Subscription.insert(
-        name="c", expires_at=datetime.now()+timedelta(hours=20), person=p,
+        name="c", expires_at=datetime.now() + timedelta(hours=20), person=p,
         status=3)
     rows = db(db.Subscription).expired().select()
     assert len(rows) == 1 and rows[0].id == s

@@ -2,11 +2,11 @@
 
 from contextlib import contextmanager
 
-from weppy.asgi.handlers import RequestContext
-from weppy.ctx import current
-from weppy.testing.env import ScopeBuilder
-from weppy.wrappers.request import Request
-from weppy.wrappers.response import Response
+from emmett.asgi.handlers import RequestContext
+from emmett.ctx import current
+from emmett.testing.env import ScopeBuilder
+from emmett.wrappers.request import Request
+from emmett.wrappers.response import Response
 
 
 class FakeRequestContext(RequestContext):

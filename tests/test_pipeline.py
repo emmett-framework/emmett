@@ -3,9 +3,9 @@
     tests.pipeline
     --------------
 
-    Test weppy pipeline
+    Test Emmett pipeline
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -15,10 +15,10 @@ import pytest
 from contextlib import contextmanager
 
 from helpers import current_ctx as _current_ctx
-from weppy import App, request, abort
-from weppy.ctx import current
-from weppy.http import HTTP
-from weppy.pipeline import Pipe
+from emmett import App, request, abort
+from emmett.ctx import current
+from emmett.http import HTTP
+from emmett.pipeline import Pipe
 
 
 class PipeException(Exception):

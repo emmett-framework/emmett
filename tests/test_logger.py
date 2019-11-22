@@ -1,10 +1,19 @@
 # -*- coding: utf-8 -*-
+"""
+    tests.logger
+    ------------
+
+    Test Emmett logging module
+
+    :copyright: (c) 2014-2019 by Giovanni Barillari
+    :license: BSD, see LICENSE for more details.
+"""
+
 import os
 import shutil
 import logging
 
-import pytest
-from weppy import App, logger, sdict
+from emmett import App, logger, sdict
 
 
 def teardown_module():

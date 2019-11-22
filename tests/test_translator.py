@@ -3,17 +3,18 @@
     tests.translator
     ----------------
 
-    Test weppy translator module
+    Test Emmett translator module
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 import os
 import pytest
-from weppy import App, T
-from weppy.ctx import current
-from weppy.language import _instance as Tinstance
+
+from emmett import App, T
+from emmett.ctx import current
+from emmett.language import _instance as Tinstance
 
 
 @pytest.fixture(scope='module')
