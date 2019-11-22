@@ -1,0 +1,24 @@
+"""{{=message}}
+
+Migration ID: {{=up_migration}}
+Revises: {{=down_migration_str}}
+Creation Date: {{=creation_date}}
+
+"""
+
+from emmett.orm import migrations
+
+
+class Migration(migrations.Migration):
+    revision = {{=asis("%r" % up_migration)}}
+    revises = {{=asis(down_migration)}}
+
+    def up(self):
+        {{for upgrade in upgrades:}}
+        {{=asis(upgrade)}}
+        {{pass}}
+
+    def down(self):
+        {{for downgrade in downgrades:}}
+        {{=asis(downgrade)}}
+        {{pass}}

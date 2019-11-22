@@ -1,38 +1,32 @@
 # -*- coding: utf-8 -*-
 """
     tests.http
-    ----------------
+    ----------
 
-    Test weppy http module
+    Test Emmett http module
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
-from datetime import datetime
-from weppy.globals import current
-from weppy.http import HTTP, redirect
+from helpers import current_ctx
+from emmett.http import HTTP, HTTPBytes, HTTPResponse, redirect
 
 
-def _get_response_headers():
-    return list(
-        getattr(current, 'response', {'headers': {}})['headers'].items())
+def test_http_default():
+    http = HTTP(200)
 
-
-def test_http_body_none():
-    http = HTTP(200, body=None)
-
-    assert http.body == []
+    assert http.encoded_body is b''
     assert http.status_code == 200
-    assert set(http.headers) == set(_get_response_headers())
+    assert http.headers == [(b'Content-Type', b'text/plain')]
 
 
-def test_http_body_list():
-    http = HTTP(200, body=[b'Test list'])
+def test_http_bytes():
+    http = HTTPBytes(200)
 
-    assert http.body == [b'Test list']
+    assert http.body == b''
     assert http.status_code == 200
-    assert set(http.headers) == set(_get_response_headers())
+    assert http.headers == [(b'Content-Type', b'text/plain')]
 
 
 def test_http():
@@ -47,29 +41,17 @@ def test_http():
                 headers={'X-Test': 'Hello Header'},
                 cookies={'cookie_test': 'hello cookie'})
 
-    assert http.body == [b'Hello World']
+    assert http.encoded_body == b'Hello World'
     assert http.status_code == 200
-    assert http.headers == [('X-Test', 'Hello Header'), ('Set-Cookie', 'e')]
-
-    assert http.to({'REQUEST_METHOD': 'HEAD'}, start_response) == [b'']
-    assert http.to({'REQUEST_METHOD': 'GET'}, start_response) == [b'Hello World']
+    assert http.headers == [
+        (b'X-Test', b'Hello Header'), (b'Set-Cookie', b'e')]
 
 
 def test_redirect():
-    from weppy.globals import current
-    current.initialize({
-        'PATH_INFO': '/',
-        'REQUEST_METHOD': 'GET',
-        'HTTP_HOST': 'localhost',
-        'wsgi.url_scheme': 'http',
-        'wpp.now': datetime.utcnow(),
-        'wpp.application': 'test',
-        'wpp.path_info': '/'
-    })
-
-    try:
-        redirect('/redirect', 302)
-    except HTTP as http_redirect:
-        assert current.response.status == 302
-        assert http_redirect.status_code == 302
-        assert http_redirect.headers == [('Location', '/redirect')]
+    with current_ctx('/') as ctx:
+        try:
+            redirect('/redirect', 302)
+        except HTTPResponse as http_redirect:
+            assert ctx.response.status == 302
+            assert http_redirect.status_code == 302
+            assert http_redirect.headers == [(b'Location', b'/redirect')]

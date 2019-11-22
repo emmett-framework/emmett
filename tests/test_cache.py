@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
     tests.cache
-    ----------------
+    -----------
 
-    Test weppy cache module
+    Test Emmett cache module
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 
-from weppy.cache import CacheHandler, RamCache, DiskCache, Cache
+from emmett.cache import CacheHandler, RamCache, DiskCache, Cache
 
 
 def test_basecache():

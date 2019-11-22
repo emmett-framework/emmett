@@ -1,29 +1,41 @@
 # -*- coding: utf-8 -*-
 """
     tests.session
-    ----------------
+    -------------
 
-    Test weppy session module
+    Test Emmett session module
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 import pytest
 
-from weppy.testing.env import EnvironBuilder
-from weppy.sessions import SessionManager
+from emmett.asgi.handlers import RequestContext
+from emmett.ctx import current
+from emmett.sessions import SessionManager
+from emmett.testing.env import ScopeBuilder
+from emmett.wrappers.request import Request
+from emmett.wrappers.response import Response
+
+
+class FakeRequestContext(RequestContext):
+    def __init__(self, app, scope):
+        self.request = Request(scope)
+        self.response = Response()
+        self.session = None
 
 
 @pytest.fixture(scope='module')
-def current():
-    from weppy.globals import current
-    builder = EnvironBuilder()
-    current.initialize(builder.get_environ())
-    return current
+def ctx():
+    builder = ScopeBuilder()
+    token = current._init_(FakeRequestContext, None, builder.get_data()[0])
+    yield current
+    current._close_(token)
 
 
-def test_session_cookie(current):
+@pytest.mark.asyncio
+async def test_session_cookie(ctx):
     session_cookie = SessionManager.cookies(
         key='sid',
         secure=True,
@@ -34,15 +46,15 @@ def test_session_cookie(current):
     assert session_cookie.secure is True
     assert session_cookie.domain == 'localhost'
 
-    session_cookie.open()
-    assert current.session._expiration == 3600
+    await session_cookie.open()
+    assert ctx.session._expiration == 3600
 
-    session_cookie.close()
-    cookie = str(current.response.cookies)
+    await session_cookie.close()
+    cookie = str(ctx.response.cookies)
     assert 'foo_session' in cookie
     assert 'Domain=localhost;' in cookie
     assert 'secure' in cookie.lower()
 
-    current.request.cookies = current.response.cookies
-    session_cookie.open()
-    assert current.session._expiration == 3600
+    ctx.request.cookies = ctx.response.cookies
+    await session_cookie.open()
+    assert ctx.session._expiration == 3600

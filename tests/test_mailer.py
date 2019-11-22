@@ -3,9 +3,9 @@
     tests.mailer
     ------------
 
-    Test weppy mailer
+    Test Emmett mailer
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
@@ -14,9 +14,10 @@ import email
 import pytest
 import re
 import time
+
 from email.header import Header
-from weppy import App
-from weppy.tools.mailer import Mailer, sanitize_address
+from emmett import App
+from emmett.tools.mailer import Mailer, sanitize_address
 
 
 @pytest.fixture(scope='module')

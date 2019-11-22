@@ -3,15 +3,16 @@
     tests.orm_transactions
     ----------------------
 
-    Test pyDAL transactions implementation over weppy.
+    Test pyDAL transactions implementation over Emmett.
 
-    :copyright: (c) 2014-2016 by Giovanni Barillari
+    :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
 """
 
 import pytest
-from weppy import App, sdict
-from weppy.orm import Database, Field, Model
+
+from emmett import App, sdict
+from emmett.orm import Database, Field, Model
 
 
 class Register(Model):

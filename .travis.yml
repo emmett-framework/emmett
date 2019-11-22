@@ -1,5 +1,4 @@
 language: python
-sudo: required
 dist: xenial
 
 cache:
@@ -7,26 +6,13 @@ cache:
     - $HOME/.pip-cache/
 
 python:
-  - "2.7"
-  # - "pypy2.7"
-  - "3.4"
-  - "3.5"
-  - "3.6"
   - "3.7"
-  # - "pypy3.5"
 
 install:
-  - pip install tox>=1.8 flake8
-
-before_script:
-  - flake8 weppy --exit-zero
+  - pip install tox>=1.8
 
 script:
   - tox -e $(echo py$TRAVIS_PYTHON_VERSION | tr -d . | tr -d "\-dev" | sed -e 's/pypypy/pypy/')
-
-after_success:
-  - pip install coveralls
-  - coveralls
 
 notifications:
   email: false

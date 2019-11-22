@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from weppy import App, session, now, url, redirect, abort
-from weppy.orm import Database, Model, Field, belongs_to, has_many
-from weppy.tools import requires
-from weppy.tools.auth import Auth, AuthUser
-from weppy.sessions import SessionManager
+from emmett import App, session, now, url, redirect, abort
+from emmett.orm import Database, Model, Field, belongs_to, has_many
+from emmett.tools import requires
+from emmett.tools.auth import Auth, AuthUser
+from emmett.sessions import SessionManager
 
 
 app = App(__name__)
@@ -69,18 +69,19 @@ db.define_models(Post, Comment)
 
 #: setup helping function
 def setup_admin():
-    # create the user
-    user = User.create(
-        email="walter@massivedynamics.com",
-        first_name="Walter",
-        last_name="Bishop",
-        password="pocketuniverse"
-    )
-    # create an admin group
-    admins = auth.create_group("admin")
-    # add user to admins group
-    auth.add_membership(admins, user.id)
-    db.commit()
+    with db.connection():
+        # create the user
+        user = User.create(
+            email="walter@massivedynamics.com",
+            first_name="Walter",
+            last_name="Bishop",
+            password="pocketuniverse"
+        )
+        # create an admin group
+        admins = auth.create_group("admin")
+        # add user to admins group
+        auth.add_membership(admins, user.id)
+        db.commit()
 
 
 @app.command('setup')
@@ -96,13 +97,13 @@ app.pipeline = [
 
 #: exposing functions
 @app.route("/")
-def index():
+async def index():
     posts = Post.all().select(orderby=~Post.date)
     return dict(posts=posts)
 
 
 @app.route("/post/<int:pid>")
-def one(pid):
+async def one(pid):
     def _validate_comment(form):
         # manually set post id in comment form
         form.params.post = pid
@@ -112,7 +113,7 @@ def one(pid):
         abort(404)
     # get comments and create a form for commenting
     comments = post.comments(orderby=~Comment.date)
-    form = Comment.form(onvalidation=_validate_comment)
+    form = await Comment.form(onvalidation=_validate_comment)
     if form.accepted:
         redirect(url('one', pid))
     return locals()
@@ -120,8 +121,8 @@ def one(pid):
 
 @app.route("/new")
 @requires(lambda: auth.has_membership('admin'), url('index'))
-def new_post():
-    form = Post.form()
+async def new_post():
+    form = await Post.form()
     if form.accepted:
         redirect(url('one', form.params.id))
     return dict(form=form)

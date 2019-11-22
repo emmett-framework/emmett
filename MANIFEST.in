@@ -1,6 +1,6 @@
-include CHANGES LICENSE
-include weppy/orm/migrations/migration.tmpl
-recursive-include weppy/assets *
+include CHANGES.md LICENSE
+include emmett/orm/migrations/migration.tmpl
+recursive-include emmett/assets *
 recursive-include docs *
 recursive-include tests *
 recursive-include examples *
