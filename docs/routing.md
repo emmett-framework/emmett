@@ -1,7 +1,7 @@
 Routing system
 ==============
 
-As introduced in the [Getting Started](./quickstart) chapter, the weppy routing
+As introduced in the [Getting Started](./quickstart) chapter, the Emmett routing
 system doesn't use a table or separated file logic, but it's explicit indeed, 
 using the `route` decorator on your functions.
 
@@ -25,7 +25,7 @@ Let's see them in detail.
 ### Path
 
 The `path` parameter is the first and the most important parameter you can
-pass to `route`. In fact, it tells weppy which URL should the function been
+pass to `route`. In fact, it tells Emmett which URL should the function been
 exposed on; still, you've seen from the code that `path` is `None` by default.
 What does this mean? Simply, when you don't pass the `path` parameter to route,
 it will route your function on the URL with the same name of your function.
@@ -33,7 +33,7 @@ So if you write:
 
 ```python
 @app.route()
-def user():
+async def user():
     # code
 ```
 
@@ -45,11 +45,11 @@ to your functions. Let's see some examples:
 
 ```python
 @app.route('/user/<str:username>')
-def user(username):
+async def user(username):
     return "Hello %s" % username
 
 @app.route('/double/<int:number>')
-def double(number):
+async def double(number):
     return "%d * 2 = %d" % (number, number*2)
 ```
 
@@ -66,18 +66,18 @@ you can use:
 | any | accepts any path (also with slashes) |
 
 So, basically, if we try to open the URL for the `double` function of the last
-example with a string, like '/double/foo', it won't match and weppy will 
+example with a string, like '/double/foo', it won't match and Emmett will 
 return a 404 error.
 
 > **Note:** the *int*, *float* and *date* variables are casted to the relevant objects, so the parameters passed to your function will be of tipe `int`, `float` and `pendulum.Datetime`.
 
 Sometimes you also need your variable rules to be conditional, and accept
 requests on the same function with, for example, */profile/123432* and */profile*. 
-weppy allows you to do that using conditional regex notation:
+Emmett allows you to do that using conditional regex notation:
 
 ```python
 @app.route("/profile(/<int:user_id>)?")
-def profile(user_id):
+async def profile(user_id):
     if user_id:
         # get requested user
     else:
@@ -91,34 +91,34 @@ Now, it's time to see the `methods` parameter of `route()`
 
 ### Methods
 
-HTTP knows different methods for accessing URLs. By default, a weppy route only
+HTTP knows different methods for accessing URLs. By default, an Emmett route only
 answers to GET and POST requests, but that can be changed easily. Use a list if
 you want to accept more than one kind of list:
 
 ```python
 @app.route("/onlyget", methods="get")
-def f():
+async def f():
     # code
 
 @app.route("/post", methods=["post", "delete"])
-def g():
+async def g():
     # code
 ```
 
 ### Template
 
 The `template` parameter allows you to set a specific template for the function 
-you're exposing. By default, weppy searches for a template with the same 
+you're exposing. By default, Emmett searches for a template with the same 
 name as the function:
 
 ```python
 @app.route()
-def profile():
+async def profile():
     # code
 ```
 
 will search for the *profile.html* template in your application's *templates* 
-folder. When you need to use a different template name, just tell weppy to load it:
+folder. When you need to use a different template name, just tell Emmett to load it:
 
 ```python
 @app.route(template="mytemplate.html")
@@ -126,9 +126,9 @@ folder. When you need to use a different template name, just tell weppy to load 
 
 ### Other parameters
 
-weppy provides the *Pipe* class to perform operations during requests. The `pipeline` and `injectors` parameters of `route()` allows you to bind them on the exposed function.
+Emmett provides the *Pipe* class to perform operations during requests. The `pipeline` and `injectors` parameters of `route()` allows you to bind them on the exposed function.
 
-Similar to the `methods` parameter, `schemes` allows you to tell weppy
+Similar to the `methods` parameter, `schemes` allows you to tell Emmett
 on which HTTP schemes the function should answer. By default, both *HTTP* and
 *HTTPS* methods are allowed. If you need to bind the exposed function to
 a specific host, you can use the `hostname` parameter.
@@ -137,15 +137,16 @@ The `prefix`, `template_path`, and `template_folder` parameters are specific to 
 
 The url() function
 ------------------
-weppy provides a useful method to create URLs for your exposed functions. Let's
+Emmett provides a useful method to create URLs for your exposed functions. Let's
 see how it works:
 
 ```python
-from weppy import App, url
+from emmett import App, url
+
 app = App(__name__)
 
 @app.route("/")
-def index():
+async def index():
     # code
 
 @app.route("/anotherurl")
@@ -191,8 +192,8 @@ Here is the complete list of `url` accepted parameters:
 
 ### URLs with application modules
 As we seen in the [Application modules](./app_and_modules#application-modules)
-chapter, above, the `name` parameter of the `AppModule` object is used by weppy for
-the *namespacing* of the URLs. What does this mean? When you call the weppy
+chapter, above, the `name` parameter of the `AppModule` object is used by Emmett for
+the *namespacing* of the URLs. What does this mean? When you call the Emmett
 `url()` helper, you send the name of the function you have exposed as the first 
 parameter. However, if you have an `index` function in your main application file,
 and another `index` function in your module, what will you pass to the `url()`?
@@ -204,7 +205,7 @@ for the `url()` function:
 
 | call | end point |
 | --- | --- |
-| `url('index')` | `index function in the main application file |
+| `url('index')` | index function in the main application file |
 | `url('blog.index')` | index function in the module with `name="blog"` |
 | `url('.index')` | index function of the same module where you call `url()` |
 
@@ -227,13 +228,13 @@ url('static', 'js/common.js')
 that will point to the file in *static/js/common.js*
 
 Calling `url()` for static files instead of manually write the URL for the file
-is useful because you can enable the static *versioning* in your weppy application.
+is useful because you can enable the static *versioning* in your Emmett application.
 
 When an application is in development, static files can change often, but when 
 your application goes to *production* static files tend to be stable. You may
 want to serve static files with cache headers to prevent un-necessary downloads,
 saving bandwidth and load. However, browsers should load the latest versions
-and not the old cached ones. weppy solves the problem for you, 
+and not the old cached ones. Emmett solves the problem for you, 
 allowing you to configure your application with a `static_version`:
 
 ```python
@@ -258,7 +259,7 @@ Let's say, for example, you need to route a method that expose the comments of y
 
 ```python
 @app.route(['/comments', '/post/<int:pid>/comments'])
-def comments(pid=None):
+async def comments(pid=None):
     if pid:
         # code to fetch the post comments
     else:
@@ -267,7 +268,7 @@ def comments(pid=None):
 
 > **Note:** mind that both the paths will have the same routing pipeline.
 
-Under the default behavior, weppy will use the first path for building urls, while the other ones are accessible with a dot notation and the array position. For instance, for the example route we just defined above, you can build these urls:
+Under the default behavior, Emmett will use the first path for building urls, while the other ones are accessible with a dot notation and the array position. For instance, for the example route we just defined above, you can build these urls:
 
 ```python
 >>> url('comments')

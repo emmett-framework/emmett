@@ -1,7 +1,7 @@
-Patterns for weppy
-==================
+Patterns for Emmett
+===================
 
-weppy is crafted to fit the needs of many applications, from the smallest to the
+Emmett is crafted to fit the needs of many applications, from the smallest to the
 largest ones. Due to this, your application can be built up from a single Python
 file and scale to a better organized structure.
 
@@ -52,19 +52,20 @@ and we can move the routed functions to it. For example, your *\__init__.py* fil
 can look like this:
 
 ```python
-from weppy import App
+from emmett import App
 
 app = App(__name__)
-import myapp.views
+
+from . import views
 ```
 
 and your *views.py* could look like:
 
 ```python
-from myapp import app
+from . import app
 
 @app.route("/")
-def index():
+async def index():
     # some code
 ```
 
@@ -86,10 +87,10 @@ Your final structure would be like this:
 
 > – That's nice, but how can I run my application now?
 
-You can use the weppy command inside the original directory of your application:
+You can use the Emmett command inside the original directory of your application:
 
 ```bash
-$ weppy --app myapp run
+$ emmett -a myapp develop
 ```
 
 or you can create a *run.py* file inside your tree:
@@ -122,7 +123,7 @@ app.run()
 
 MVC pattern
 -----------
-The **MVC** (Model-View-Controller) pattern, used widely in web applications, is well structured and becomes handy when you have big applications. weppy does not provide controllers, but you can implement an MVC pattern using application modules. An MVC structure for a weppy application can look something like this:
+The **MVC** (Model-View-Controller) pattern, used widely in web applications, is well structured and becomes handy when you have big applications. Emmett does not provide controllers, but you can implement an MVC pattern using application modules. An MVC structure for an Emmett application can look something like this:
 
 ```
 /myapp
@@ -148,8 +149,8 @@ two sub-packages *controllers* and *models*, each with an empty *\_\_init\_\_.py
 With this structure, your application's *\_\_init\_\_.py* would look like this:
 
 ```python
-from weppy import App
-from weppy.orm import Database
+from emmett import App
+from emmett.orm import Database
 
 app = App(__name__)
 app.config.url_default_namespace = "main"
@@ -157,33 +158,33 @@ app.config.url_default_namespace = "main"
 db = Database()
 
 from .models.user import User
-form .models.article import Post
+from .models.article import Post
 db.define_models(User, Post)
 
 from .controllers import main, api
 ```
 
-We told weppy to use the *main.py* controller as default for urls, so we can just
+We told Emmett to use the *main.py* controller as default for urls, so we can just
 call `url('index')` instead of `url('main.function')` in our application.
 
 The main controller can look like this:
 
 ```python
-from myapp import app
+from .. import app
 
 @app.route("/")
-def index():
+async def index():
     # code
 ```
 
 and the *api.py* controller can look like this:
 
 ```python
-from myapp import app
+from .. import app
 
 api = app.module(__name__, 'api', url_prefix='api')
 
 @api.route()
-def a():
+async def a():
     # code
 ```

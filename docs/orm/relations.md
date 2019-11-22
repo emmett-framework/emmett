@@ -3,7 +3,7 @@ Relations
 *New in version 0.4*
 
 One of the big advantages of using a relational database is, indeed, the ability of establishing relations between data.    
-weppy provides some helpers to simplify the definition of those relations and to perform operations with related entities. Let's see a quick example in order to have an idea on how they work:
+Emmett provides some helpers to simplify the definition of those relations and to perform operations with related entities. Let's see a quick example in order to have an idea on how they work:
 
 ```python
 class Doctor(Model):
@@ -39,9 +39,9 @@ patient = db.Patient(name="Pinkman")
 doctor_name = patient.doctor.name
 ```
 
-In weppy `belongs_to` has a real *belonging* meaning, and when we use it we're implicitly making an assertion: a patient cannot exists without a doctor. Actually this is correct also under a logical point of view: to name "patient" someone, he or she has to be in cure by some doctor, otherwise we won't call it a "patient".
+In Emmett `belongs_to` has a real *belonging* meaning, and when we use it we're implicitly making an assertion: a patient cannot exists without a doctor. Actually this is correct also under a logical point of view: to name "patient" someone, he or she has to be in cure by some doctor, otherwise we won't call it a "patient".
 
-This assertion has some consequences on the validation and on the deletion policies, in fact weppy will:
+This assertion has some consequences on the validation and on the deletion policies, in fact Emmett will:
 
 - set the `notnull`  option of `doctor` field of `Patient` and add a `{'presence': True}` validation policy on it, ensuring that this attribute is present and points to an existing record in doctors table
 - use a `cascade` rule on the relations, so when a doctor is deleted, also its patient follows the same destiny
@@ -69,9 +69,9 @@ class Todo(Model):
 
 In the same way happened with `belongs_to`, the todos table will have a column containing the id of the referred row from the notes table, but in this case, we allow this value to be empty.
 
-In fact, `refers_to` in weppy has a *reference without need* meaning, meaning that reflects in the idea (in this specific case) that a todo can exists even if doesn't have a note attached to it.
+In fact, `refers_to` in Emmett has a *reference without need* meaning, meaning that reflects in the idea (in this specific case) that a todo can exists even if doesn't have a note attached to it.
 
-Due to this concept, in this case weppy will:
+Due to this concept, in this case Emmett will:
 
 - add a `{'presence': True, 'allow': 'empty'}` validation policy on the `note` attribute of `Todo`, allowing the value to be empty, and when it's not, ensuring that the attribute points to an existing record in notes table
 - use a `nullify` rule on the relations, so when a note is deleted, all the todos which had a relation with it will still exist with removed relation
@@ -143,9 +143,9 @@ The `has_one` helper is useful for your application code, since you can directly
 
 Many to many relations and "via" option
 ---------------------------------------
-In order to create a many-to-many relationship, you have to use a *join table*. Some frameworks will hide to you this by generating those tables for you, but weppy won't do hidden operations on you database, and, as a consequence of a *design decision*, requires you to write down the model of the join table too, and to be conscious of what happening.
+In order to create a many-to-many relationship, you have to use a *join table*. Some frameworks will hide to you this by generating those tables for you, but Emmett won't do hidden operations on you database, and, as a consequence of a *design decision*, requires you to write down the model of the join table too, and to be conscious of what happening.
 
-A quite common many-to-many relations is the one between users and groups, where an user can have many groups and a group have many users. In weppy we can write down these models:
+A quite common many-to-many relations is the one between users and groups, where an user can have many groups and a group have many users. In Emmett we can write down these models:
 
 ```python
 class User(Model):
@@ -163,7 +163,7 @@ class Membership(Model):
 This will reflect our tables: we have a users table, a groups table, and a memberships table which maps the belonging of a user into a group from the other two tables.
 
 This is quite correct, but we missing the advantage here, since we don't have any direct access to users from a specific group or to the groups of a specific users, since we should pass through the memberships and then use these to gain the result-set we want.    
-This is why weppy has a `via` option with the `has_many` helper so that we can rewrite the upper example like this:
+This is why Emmett has a `via` option with the `has_many` helper so that we can rewrite the upper example like this:
 
 ```python
 class User(Model):
@@ -241,7 +241,7 @@ belongs_to({'owner': 'User'})
 has_one({'owner': 'User'})
 ```
 
-The same thing becomes necessary when you're working with model names that are not *regular plurals* in english. In fact, as we seen for the table naming, weppy doesn't have a *real pluralization engine*, so for example, if you have a `Mouse` model, and a many relation with it, you need to manually specify the attribute and the model names:
+The same thing becomes necessary when you're working with model names that are not *regular plurals* in english. In fact, as we seen for the table naming, Emmett doesn't have a *real pluralization engine*, so for example, if you have a `Mouse` model, and a many relation with it, you need to manually specify the attribute and the model names:
 
 ```python
 has_many({'mice': 'Mouse'})
@@ -282,7 +282,7 @@ class Person(Model):
     has_many({'children': 'self.father'})
 ```
 
-As you can see, we defined a model `Person` which can have a relation with another record of the same table: father is a `Person` too. In order to achieve this result, we simply used the keyword `self`. You can also use the model name for the relation, changing `'self'` with `'Person'`, and weppy will understand that too, but we think this way is more self-explanatory.
+As you can see, we defined a model `Person` which can have a relation with another record of the same table: father is a `Person` too. In order to achieve this result, we simply used the keyword `self`. You can also use the model name for the relation, changing `'self'` with `'Person'`, and Emmett will understand that too, but we think this way is more self-explanatory.
 
 ### Scoped relations
 *New in version 0.7*
@@ -304,9 +304,9 @@ class Todo(Model):
         return self.is_deleted == False
 ```
 
-As you can see, we have that the `Todo` model has an `is_deleted` field and a scope `not_deleted` that filters out the records we have set as deleted. Using the `scope` option in the `has_many` relation of the `User` model, weppy will returns only those records when selecting rows from a specific user, and, also, will set the fields with the correct values from the scope query when we add or create new records related to a specific user.
+As you can see, we have that the `Todo` model has an `is_deleted` field and a scope `not_deleted` that filters out the records we have set as deleted. Using the `scope` option in the `has_many` relation of the `User` model, Emmett will returns only those records when selecting rows from a specific user, and, also, will set the fields with the correct values from the scope query when we add or create new records related to a specific user.
 
-Whenever you have to specify the reference field using the `scope` option, weppy requires you to combine it with the `target` one:
+Whenever you have to specify the reference field using the `scope` option, Emmett requires you to combine it with the `target` one:
 
 ```python
 class User(Model):
@@ -321,7 +321,7 @@ class Todo(Model):
 ### Where condition on relations
 *New in version 0.7*
 
-Similarly to the `scope` option, you can use the `where` option to specify queries that should be applied by weppy when building the relation: this is handy when you need the condition just one and you don't need to write a scope for that.
+Similarly to the `scope` option, you can use the `where` option to specify queries that should be applied by Emmett when building the relation: this is handy when you need the condition just one and you don't need to write a scope for that.
 
 For example, we can change the upper example and rewrite it as:
 
@@ -336,7 +336,7 @@ class Todo(Model):
     is_deleted = Field.bool()
 ```
 
-As you can see the `where` value must be a `lambda` function accepting just one parameter: the model you're referring to. The condition can be any valid expression in the weppy query language.
+As you can see the `where` value must be a `lambda` function accepting just one parameter: the model you're referring to. The condition can be any valid expression in the Emmett query language.
 
 > **Hint:** you can also specify `where` conditions on existing `scope` relations, to combine the queries.
 
@@ -363,7 +363,7 @@ we can access the doctor of a certain patient directly from this last one:
 'Bishop'
 ```
 
-but you can see that accessing `patient.doctor` will return you the `id` of the referred record, not the record itself. This is because weppy won't load the relations immediately, and the attribute `doctor` of the selected patient is, indeed, not a `Row` object:
+but you can see that accessing `patient.doctor` will return you the `id` of the referred record, not the record itself. This is because Emmett won't load the relations immediately, and the attribute `doctor` of the selected patient is, indeed, not a `Row` object:
 
 ```python
 >>> type(patient.doctor)
@@ -464,7 +464,7 @@ The `create` method of the `has_many` sets behaves quite like the ones built wit
 It will perform a validation and then insert a new record referred to the `doctor` row.
 
 Note that this method is available only if your `has_many` relation is not a `via` one; in fact, for sets produced with `has_many` relations and `via` option the `create` method will raise a `RuntimeError`.    
-This is a consequence of the fact that weppy doesn't know if you have additional columns in your join table. In fact, if you consider this example:
+This is a consequence of the fact that Emmett doesn't know if you have additional columns in your join table. In fact, if you consider this example:
 
 ```python
 class User(Model):
@@ -534,7 +534,7 @@ In cases of an `has_many` relation without the `via` option, the `remove` method
 
 and the returning value is the number of deleted records.
 
-On the contrary, if your opposite relation is a `refers_to` relation, the `remove` record will nullify the reference, keeping the other record in the database (the reference of the other record will be `None` in weppy and NULL in the database).
+On the contrary, if your opposite relation is a `refers_to` relation, the `remove` record will nullify the reference, keeping the other record in the database (the reference of the other record will be `None` in Emmett and NULL in the database).
 
 When you have `has_many` relations defined with `via` options, the `remove` method will instead remove the record responsible of the relation in the join table. For instance, writing this:
 
@@ -572,11 +572,11 @@ for user in users:
         print("  %s" % post.name)
 ```
 
-but this will make weppy to perform a select operation to your database every time you call `user.posts()`, causing the problem called "N+1 queries".
+but this will make Emmett to perform a select operation to your database every time you call `user.posts()`, causing the problem called "N+1 queries".
 
 #### The join method
 
-To avoid the problem we just exposed, weppy provides a `join` method over the sets. In fact, if you rewrite the example above like this: 
+To avoid the problem we just exposed, Emmett provides a `join` method over the sets. In fact, if you rewrite the example above like this: 
 
 ```python
 users = User.all().join('posts').select()
@@ -586,7 +586,7 @@ for user in users:
         print("  %s" % post.name)
 ```
 
-weppy will perform a *JOIN* operation on the database and the posts will be directly available on the users without any additional selects.
+Emmett will perform a *JOIN* operation on the database and the posts will be directly available on the users without any additional selects.
 
 As you probably understood, the `join` method accepts one or more relations to join in the select operation, and you can just write down these relations with their names as strings.
 
@@ -612,7 +612,7 @@ Note that, the `join` method will returns only those rows matching the joins, so
 User.all().join('posts').select()
 ```
 
-weppy won't return users that don't have posts. When you need this behavior, you should use the `including` option of the `select` method instead.
+Emmett won't return users that don't have posts. When you need this behavior, you should use the `including` option of the `select` method instead.
 
 #### Select with including option
 
@@ -628,7 +628,7 @@ will return all the users in your database with their posts, if any, with the sa
 
 #### Manual joins
 
-If you need that, you can use also a lower level method to perform joins with weppy:
+If you need that, you can use also a lower level method to perform joins with Emmett:
 
 ```python
 db(Post.user == User.id).select(db.User.ALL, db.Post.ALL)

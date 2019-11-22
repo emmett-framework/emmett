@@ -1,23 +1,22 @@
 Upgrading to newer releases
 ===========================
 
-Just like any software, weppy is changing over time, and most of these changes we introduce don't require you to change anything into your application code to profit from a new release.
+Just like any software, Emmett is changing over time, and most of these changes we introduce don't require you to change anything into your application code to profit from a new release.
 
-Sometimes, indeed, there are changes in weppy source code that do require some changes or there are possibilities for you to improve your own code quality, taking advantage of new features in weppy.
+Sometimes, indeed, there are changes in Emmett source code that do require some changes or there are possibilities for you to improve your own code quality, taking advantage of new features in Emmett.
 
-This section of the documentation reports all the main changes in weppy from one release to the next and how you can (or you *should*) update your application's code to have the less painful upgrade experience.
+This section of the documentation reports all the main changes in Emmett from one release to the next and how you can (or you *should*) update your application's code to have the less painful upgrade experience.
 
-Just as a remind, you can update weppy using *easy_install*:
-
-```bash
-$ easy_install -U weppy
-```
-
-or *pip*:
+Just as a remind, you can update Emmett using *pip*:
 
 ```bash
-$ pip install -U weppy
+$ pip install -U emmett
 ```
+
+Version 2.0
+-----------
+
+*Section under development*
 
 Version 1.3
 -----------

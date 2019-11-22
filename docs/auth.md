@@ -1,15 +1,15 @@
 The Authorization System
 ========================
 
-Since authorizations and authentications are a very important part of almost every application, weppy includes an useful module to deal with them. With a few lines of code, you will be able to create any required database tables and generate forms for access control in your application.
+Since authorizations and authentications are a very important part of almost every application, Emmett includes an useful module to deal with them. With a few lines of code, you will be able to create any required database tables and generate forms for access control in your application.
 
 So, how do you use it? Let's find out with an example:
 
 ```python
-from weppy import App
-from weppy.orm import Database
-from weppy.tools.auth import Auth, AuthUser
-from weppy.sessions import SessionManager
+from emmett import App
+from emmett.orm import Database
+from emmett.tools.auth import Auth, AuthUser
+from emmett.sessions import SessionManager
 
 app = App(__name__)
 app.config.db.uri = "sqlite://storage.sqlite"
@@ -33,13 +33,13 @@ auth_routes = auth.module(__name__)
 
 That's it.
 
-Write a template page for the auth module (that should be placed in *templates/auth/auth.html*) to render the `form` variable returned by the module, and open [http://127.0.0.1:8000/auth/login](http://127.0.0.1:8000/auth/login) in your browser. weppy should show you a login page with the appropriate form.
+Write a template page for the auth module (that should be placed in *templates/auth/auth.html*) to render the `form` variable returned by the module, and open [http://127.0.0.1:8000/auth/login](http://127.0.0.1:8000/auth/login) in your browser. Emmett should show you a login page with the appropriate form.
 
-> **Note:** weppy's `Auth` module requires session handling and a `Database` instance activated on your application in order to work properly.
+> **Note:** Emmett's `Auth` module requires session handling and a `Database` instance activated on your application in order to work properly.
 
 As you've figured out, the `auth_routes` module will be responsible for
 your app's authorization flow. With the default settings, the `Auth` module 
-of weppy exposes the following:
+of Emmett exposes the following:
 
 * http://.../{url\_prefix}/login
 * http://.../{url\_prefix}/logout
@@ -73,7 +73,7 @@ Here is the complete list of parameters that you can change:
 | hmac\_alg | pbkdf2(2000,20,sha512) | the algorithm that will be used to crypt users' password |
 | inject\_pipe | `False` | configure the module to automatically inject its pipe on the application |
 | log\_events | `True` | store in the module events table events regarding auth |
-| flash\_messages | `True` | use the weppy flashing system to display messages |
+| flash\_messages | `True` | use the Emmett flashing system to display messages |
 | csrf | `True` | use CSRF protection logic on forms |
 | single\_template | `False` | decide if every route exposed by the module should use a single template |
 | password\_min\_length | 6 | minimum length for users password |
@@ -98,7 +98,7 @@ The auth module is also pre-configured with quite a few standard messages that w
 and you can obviously configure them with the application configuration:
 
 ```python
-from weppy import T
+from emmett import T
 
 app.config.auth.messages.profile_button = T("Update profile")
 ```
@@ -130,7 +130,7 @@ app.config.auth.routes_paths = {
 The auth module has an *after* callback for every route exposed by the module. This is useful, for example, if you want to change the default redirects after a certain action has occurred. In fact, under the default behaviour, the user will be redirected to its own profile after the login, while you may want to redirect him/her to a *dashboard* route you defined:
 
 ```python
-from weppy import url, redirect
+from emmett import url, redirect
 
 @auth_routes.after_login
 def after_login(form):
@@ -198,20 +198,20 @@ Access control with "requires"
 
 One of the strengths of the authorization module is that it is simple to
 introduce access controls to your application. Let's say that you need to allow
-access to a specific zone to only users who are logged in. With weppy,
+access to a specific zone to only users who are logged in. With Emmett,
 you can do that with one line of code:
 
 ```python
-from weppy.tools import requires
+from emmett.tools import requires
 
 @app.route()
 @requires(auth.is_logged, url('unauthorized_page'))
-def my_protected_page():
+async def my_protected_page():
     #some code
 ```
 
 As you probably figured out, the `requires` helper will determine if the condition 
-in the first parameter passed as and if that is not so, weppy will redirect 
+in the first parameter passed as and if that is not so, Emmett will redirect 
 the client to the URL in the second parameter.
 
 You can also pass a function to be invoked as with the second parameter, for example:
@@ -222,7 +222,7 @@ def not_auth():
 
 @app.route()
 @requires(lambda: auth.has_membership('admins'), not_auth)
-def admin():
+async def admin():
     # code
 ```
 
@@ -236,7 +236,7 @@ Sometimes you may need to return specific contents on missing authorization.
 In that case, you can write:
 
 ```python
-from weppy.tools import service
+from emmett.tools import service
 
 def not_authorized():
     return dict(error="Not authorized")
@@ -244,7 +244,7 @@ def not_authorized():
 @app.route()
 @requires(auth.is_logged, not_authorized)
 @service.json
-def protected():
+async def protected():
     return dict(data="Some data here")
 ```
 
@@ -257,7 +257,7 @@ You can use the `RequirePipe` instead of decorating any function
 of your module:
 
 ```python
-from weppy.pipeline import RequirePipe
+from emmett.pipeline import RequirePipe
 
 mymodule = app.module(__name__, "mymodule")
 mymodule.pipeline = [RequirePipe(some_condition, otherwise)]
@@ -285,8 +285,8 @@ Now, you can customize the models by creating subclasses, and the thing you'll w
 You could define your `User` model like so:
 
 ```python
-from weppy.orm import Field
-from weppy.tools.auth import AuthUser
+from emmett.orm import Field
+from emmett.tools.auth import AuthUser
 
 class User(AuthUser):
     avatar = Field.upload(uploadfolder="uploads")
@@ -299,7 +299,7 @@ class User(AuthUser):
 and pass it to the `Auth` instance:
 
 ```python
-from weppy.tools import Auth
+from emmett.tools import Auth
 auth = Auth(app, db, user_model=User)
 ```
 
@@ -318,7 +318,7 @@ plus some other columns need by the system and hidden to the users.
 
 If you don't want to have the `first_name` and `last_name` fields inside your
 user model (they are set to be not-null), you can subclass the `AuthUserBasic`
-model instead, available under `weppy.tools.auth.models`, which doesn't include them.
+model instead, available under `emmett.tools.auth.models`, which doesn't include them.
 
 Before seeing how to customize the remaining auth models, let's see which
 relations are available as default.
@@ -414,7 +414,7 @@ and you can obviously get all the groups a user is a member of by using relation
 user.auth_groups()
 ```
 
-Nonetheless, weppy's `Auth` module also have a finer management for users,
+Nonetheless, Emmett's `Auth` module also have a finer management for users,
 considering permissions:
 
 ```python
@@ -433,7 +433,7 @@ auth.has_permission('ban_users', user=admin)
 auth.has_permission('ban_users', group=admins)
 ```
 
-weppy's `Auth` permissions also support more details, like a model name and a record:
+Emmett's `Auth` permissions also support more details, like a model name and a record:
 
 ```python
 maintenance = db.Preference(name='maintenance').first()

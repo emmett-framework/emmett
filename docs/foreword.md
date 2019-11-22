@@ -65,10 +65,10 @@ than without it. Now, I've found many frameworks – and I'm sure you can easily
 find them, too – where you have to deal with learning *a lot* of "how to do
 that" with the framework itself instead of focusing on the application.
 
-This is the first principle I've based *weppy* on: **it's easy to use and learn,
+This is the first principle I've based *Emmett* on: **it's easy to use and learn,
 so that you can focus on *your* product.**   
 
-Another key principle of *weppy* is the *preservation of your control* over the
+Another key principle of *Emmett* is the *preservation of your control* over the
 flow. What do I mean? There are several frameworks that do too much *magic* behind
 the scenes. I know that may sound weird because I've just talked about simplicity,
 but, if you think about it, you will find that a framework that is simple to use
@@ -95,10 +95,10 @@ Acknowledgments
 
 I would like to thank:
 
-* All the **weppy contributors**
+* All the **Emmett contributors**
 * **Guido Van Rossum**, for the Python language
 * **Massimo Di Pierro** and **web2py's developers**, for what I learned from
-them and for their framework on which I based weppy
+them and for their framework on which I based Emmett
 * **Armin Ronacher**, who really inspired me with the Flask framework
 * **Marco Stagni**, **Michael Genesini** and **Filippo Zanella** for their
 advices and continuous support

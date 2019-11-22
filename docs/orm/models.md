@@ -3,10 +3,10 @@ Models
 
 A model is the single, definitive source of information about your data. It contains the essential all the informations and behaviors of the data you’re storing. Practically speaking, a model maps a database table and define what should happen to the data it contains.
 
-So, how a weppy model looks like? Thinking of a post inside a blog, an example model would be like this:
+So, how an Emmett model looks like? Thinking of a post inside a blog, an example model would be like this:
 
 ```python
-from weppy.orm import Field, Model
+from emmett.orm import Field, Model
 
 class Post(Model):
     author = Field()
@@ -19,14 +19,14 @@ class Post(Model):
     }
 ```
 
-As you can see, we defined three fields for our model, two of type string (is the default type in weppy) and one of type text, which will map the corresponding columns in the table, and added some validation rules for them, so that we avoid to store posts missing titles or bodies.
+As you can see, we defined three fields for our model, two of type string (is the default type in Emmett) and one of type text, which will map the corresponding columns in the table, and added some validation rules for them, so that we avoid to store posts missing titles or bodies.
 
-As you will see in the next paragraphs, weppy models have some reserved attributes, like `validation` which define some options for the fields inside your models. All the options listed in the next sections are available also as parameters of the `Field` class, and you can choose how to organize your code depending on your needs.
+As you will see in the next paragraphs, Emmett models have some reserved attributes, like `validation` which define some options for the fields inside your models. All the options listed in the next sections are available also as parameters of the `Field` class, and you can choose how to organize your code depending on your needs.
 
-In order to use the model just defined in your application you must register it using the `define_models()` method of the `Database` class of weppy, as we seen in the [first example](./):
+In order to use the model just defined in your application you must register it using the `define_models()` method of the `Database` class of Emmett, as we seen in the [first example](./):
 
 ```python
-from weppy.orm import Database
+from emmett.orm import Database
 db = Database(app)
 db.define_models(Post)
 ```
@@ -43,7 +43,7 @@ db.posts
 
 
 ### Tables naming
-Under default behavior, weppy will create the table using the name of the class and making it plural, so that the class `Post` will create the table *posts*, `Comment` will create table *comments* and so on.   
+Under default behavior, Emmett will create the table using the name of the class and making it plural, so that the class `Post` will create the table *posts*, `Comment` will create table *comments* and so on.   
 If you want to customize the name of the table, you can use the `tablename` attribute inside your model:
 
 ```python
@@ -54,7 +54,7 @@ class Post(Model):
 just ensure the name is valid for the DBMS you're using.
 
 > **Warning:**    
-> weppy doesn't have a *real* pluralization system to evaluate names, so in case the name you've chosen for your model doesn't have a *regular* plural in english, you should write down the correct plural with the `tablename` attribute. Just as an example, a model named `Mouse` will be translated in the *horrible* `"mouses"` tablename, so you should assign:   
+> Emmett doesn't have a *real* pluralization system to evaluate names, so in case the name you've chosen for your model doesn't have a *regular* plural in english, you should write down the correct plural with the `tablename` attribute. Just as an example, a model named `Mouse` will be translated in the *horrible* `"mouses"` tablename, so you should assign:   
 > `tablename = "mice"`
 
 Fields
@@ -87,7 +87,7 @@ Available type methods for Field definition are:
 
 If you don't specify a type for the `Field` class, and create an instance directly, it will be set as *string* as default value.
 
-Using the right field type ensure the right columns types inside your tables, and allows you to benefit from the default validation implemented by weppy.
+Using the right field type ensure the right columns types inside your tables, and allows you to benefit from the default validation implemented by Emmett.
 
 Validation
 ----------
@@ -106,7 +106,7 @@ validation = {
 ```
 
 The validation rules you define will be used to validate the forms created from the models on the user input and inserts.   
-While you can find the complete list of available validators in the [appropriate chapter](../validation) of the documentation, here we list the default validation implemented by weppy on fields:
+While you can find the complete list of available validators in the [appropriate chapter](../validation) of the documentation, here we list the default validation implemented by Emmett on fields:
 
 | Field type | default validation | allow blank value |
 | --- | --- | --- |
@@ -128,7 +128,7 @@ While you can find the complete list of available validators in the [appropriate
 > `{'allow': 'blank'}` or `{'allow': 'empty'}`
 
 ### Disable default validation
-Sometimes you may want to disable the default validation implemented by weppy. Depending on your needs, you have two different ways.   
+Sometimes you may want to disable the default validation implemented by Emmett. Depending on your needs, you have two different ways.   
 When you need to disable the default validation on a single `Field`, you can use the `auto_validation` parameter:
 
 ```python
@@ -144,7 +144,7 @@ class MyModel(Model):
 
 Default values
 --------------
-weppy models have a `default_values` attribute that helps you to set the default value for the field on record insertions:
+Emmett models have a `default_values` attribute that helps you to set the default value for the field on record insertions:
 
 ```python
 default_values = {
@@ -205,7 +205,7 @@ Indexes
 
 *New in version 0.7*
 
-weppy provides an `indexes` attribute on models which helps you define indexes on your tables:
+Emmett provides an `indexes` attribute on models which helps you define indexes on your tables:
 
 ```python
 indexes = {
@@ -217,18 +217,18 @@ indexes = {
 
 > **Note:** indexes are available only when using Database with [migrations](./migrations) enabled.
 
-As you can see, weppy supports different formats for indexes, since we defined:
+As you can see, Emmett supports different formats for indexes, since we defined:
 
 - an index on the field *field1*
 - a combined index on fields *field1* and *field2*
 - a combined index on fields *fields3* and *fields4* with a custom name
 
-Practically speaking, the rules weppy apply on the indexes definition are:
+Practically speaking, the rules Emmett apply on the indexes definition are:
 
 - when the value is a `bool`, the key must be a field of your model or a tuple of fields of your model
 - when the value is a `dict`, the key will be the name of the index
 
-> **Note:** every index defined in weppy models will have its name starting with `modelname_widx__name`.
+> **Note:** every index defined in Emmett models will have its name starting with `modelname_widx__name`.
 
 When using the `dict` notation, you can also specify the `unique` option as a boolean, which is `False` on default behavior.
 
@@ -260,7 +260,7 @@ Forms helpers
 -------------
 The `Model` attributes listed in this section are intended to be used for forms generation.
 
-###Form labels
+### Form labels
 Labels are useful to produce good titles for your fields in forms:
 
 ```python
@@ -268,7 +268,7 @@ form_labels = {
     'started': T("Opening date:")
 }
 ```
-Labels will decorate the input fields in your forms. In this example we used the [weppy translator](./languages) object to automatically translate the string in the correct language.
+Labels will decorate the input fields in your forms. In this example we used the [Emmett translator](./languages) object to automatically translate the string in the correct language.
 
 You can also use the `label` parameter of `Field` class:
 
@@ -276,7 +276,7 @@ You can also use the `label` parameter of `Field` class:
 started = Field.datetime(label=T("Opening date:"))
 ```
 
-###Form info
+### Form info
 As for the labels, `form_info` attribute is useful to produce hints or helping blocks for your fields in forms:
 
 ```python
@@ -329,14 +329,14 @@ def setup(self):
 
 Model methods
 -------------
-You can also define methods that will be available on the Model class itself. For instance, every weppy model comes with some pre-defined methods, for example:
+You can also define methods that will be available on the Model class itself. For instance, every Emmett model comes with some pre-defined methods, for example:
 
 ```python
 MyModel.form()
 ```
 will create the form for the entity defined in your model.
 
-Other methods pre-defined in weppy are:
+Other methods pre-defined in Emmett are:
 
 | method | description |
 | --- | --- |

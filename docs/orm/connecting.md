@@ -1,10 +1,10 @@
 Connections and transactions
 ============================
 
-In order to start using a database in weppy, you have to initialize an instance of the `Database` class:
+In order to start using a database in Emmett, you have to initialize an instance of the `Database` class:
 
 ```python
-from weppy.orm import Database
+from emmett.orm import Database
 
 db = Database(app)
 ```
@@ -111,9 +111,9 @@ db2 = Database(app, app.config.db2)
 | adapter\_args | `{}` | specific options for the pyDAL adapter |
 | driver\_args | `{}` | specific options for the driver |
 
-Note that when you don't specify any `pool_size` value, weppy won't use any pool when connecting to the database, but just one connection.
+Note that when you don't specify any `pool_size` value, Emmett won't use any pool when connecting to the database, but just one connection.
 
-Also, when the `auto_migrate` option is set to `False`, weppy won't migrate your data when you will made changes to your models, and requires you to generate migrations with the appropriate command or write down your own migrations. Please checkout the [appropriate section](./migrations) of the documentation for additional details.
+Also, when the `auto_migrate` option is set to `False`, Emmett won't migrate your data when you will made changes to your models, and requires you to generate migrations with the appropriate command or write down your own migrations. Please checkout the [appropriate section](./migrations) of the documentation for additional details.
 
 Transactions
 ------------
@@ -136,7 +136,7 @@ You can obviously use them also in the application code during the request in or
 
 *New in version 1.2*
 
-weppy also supports working with nested transactions. A few methods are available for the purpose, and the most general is `atomic`. These blocks will be run in a transaction or in a savepoint, depending on the nesting level:
+Emmett also supports working with nested transactions. A few methods are available for the purpose, and the most general is `atomic`. These blocks will be run in a transaction or in a savepoint, depending on the nesting level:
 
 ```python
 # This code runs in a transaction
@@ -152,7 +152,7 @@ db.commit()
 
 At the last commit, the outer transaction is committed. At that point there will be two users, "walter" and "william".
 
-> **Note:** remember that weppy `Database` class will automatically start a transaction after connection.
+> **Note:** remember that Emmett `Database` class will automatically start a transaction after connection.
 
 In the case you want to explicitly use a transaction or a savepoint, you may also use the specific methods `transaction` and `savepoint`:
 

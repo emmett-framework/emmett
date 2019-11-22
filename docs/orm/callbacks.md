@@ -3,7 +3,7 @@ Callbacks
 
 Callbacks are methods that get called when specific database operations are performed on your data.
 
-When you need to perform actions on one of these specific conditions, weppy helps you with six different callbacks decorators that you can use inside your models, corresponding to the moments before and after a database insert, update and delete operations. The methods you decorate using these helpers will be invoked automatically when the database operation is performed.
+When you need to perform actions on one of these specific conditions, Emmett helps you with six different callbacks decorators that you can use inside your models, corresponding to the moments before and after a database insert, update and delete operations. The methods you decorate using these helpers will be invoked automatically when the database operation is performed.
 
 All the callbacks method should return `None` or `False` (not returning anything in python is the same of returning `None`) otherwise returning `True` will abort the current operation.
 
@@ -16,7 +16,8 @@ The `before_insert` decorator is called just before the insertion of a new recor
 Here is a quick example:
 
 ```python
-from weppy.orm import Model, before_insert
+from emmett.orm import Model, before_insert
+
 class Thing(Model):
     name = Field()
 
@@ -39,7 +40,8 @@ The `after_insert` decorator is called just after the insertion of a new record 
 Here is a quick example:
 
 ```python
-from weppy.orm import Model, after_insert
+from emmett.orm import Model, after_insert
+
 class Thing(Model):
     name = Field()
 
@@ -79,7 +81,8 @@ As the `before_insert` callbacks is called just before a record insertion, the `
 Here is a quick example:
 
 ```python
-from weppy.orm import Model, before_update
+from emmett.orm import Model, before_update
+
 class Thing(Model):
     name = Field()
 
@@ -104,7 +107,8 @@ The `after_update` decorator is called just after the update of the set of recor
 Here is a quick example:
 
 ```python
-from weppy.orm import Model, after_update
+from emmett.orm import Model, after_update
+
 class Thing(Model):
     name = Field()
 
@@ -127,7 +131,8 @@ The `before_delete` decorator is called just before the deletion of a set of rec
 Here is a quick example:
 
 ```python
-from weppy.orm import Model, before_delete
+from emmett.orm import Model, before_delete
+
 class Thing(Model):
     name = Field()
 
@@ -150,7 +155,8 @@ The `after_delete` decorator is called just after the deletion of a set of recor
 Here is a quick example:
 
 ```python
-from weppy.orm import Model, after_delete
+from emmett.orm import Model, after_delete
+
 class Thing(Model):
     name = Field()
 

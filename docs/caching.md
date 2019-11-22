@@ -9,27 +9,27 @@ That's where caching comes in.
 
 The main idea behind cache is simple: we store the result of an expensive calculation somewhere to avoid repeating the calculation if we can. But, sincerely speaking, designing a good caching scheme is mainly a *PITA*, since it involves many complex evaluations about what you should store, where to store it, and so on.
 
-So how can weppy help you with this? It provides some tools out of the box that let you focus your development energy on *what* to cache and not on *how* you should do that.
+So how can Emmett help you with this? It provides some tools out of the box that let you focus your development energy on *what* to cache and not on *how* you should do that.
 
 Configuring cache
 -----------------
 
-The caching system in weppy consist of a single class named `Cache`. Consequentially, the first step in configuring cache in your application is to create an instance of this cache in your application:
+The caching system in Emmett consist of a single class named `Cache`. Consequentially, the first step in configuring cache in your application is to create an instance of this cache in your application:
 
 ```python
-from weppy.cache import Cache
+from emmett.cache import Cache
 
 cache = Cache()
 ```
 
-By default, weppy stores your cached content into the RAM of your machine, but you can also use the disk or redis as your storage system. Let's see these three handlers in detail.
+By default, Emmett stores your cached content into the RAM of your machine, but you can also use the disk or redis as your storage system. Let's see these three handlers in detail.
 
 ### RAM cache
 
-As we just saw, this is the default cache mechanism of weppy. Initializing a `Cache` instance without arguments would be the same of using the `RamCache` handler:
+As we just saw, this is the default cache mechanism of Emmett. Initializing a `Cache` instance without arguments would be the same of using the `RamCache` handler:
 
 ```python
-from weppy.cache import Cache, RamCache
+from emmett.cache import Cache, RamCache
 
 cache = Cache(ram=RamCache())
 ```
@@ -51,7 +51,7 @@ The `RamCache` also accepts some parameters you might take advantage of:
 The disk cache is actually slower than the RAM or the redis ones, but if you need to cache large amounts of data, it fits the role perfectly. Here is how to use it:
 
 ```python
-from weppy.cache import Cache, DiskCache
+from emmett.cache import Cache, DiskCache
 
 cache = Cache(disk=DiskCache())
 ```
@@ -69,7 +69,7 @@ The `DiskCache` class accepts some parameters too:
 [Redis](http://redis.io) is quite a good system for caching: is really fast – *really* – and if you're running your application with several workers, your data will be shared between your processes. To use it, you just initialize the `Cache` class with the `RedisCache` handler:
 
 ```python
-from weppy.cache import Cache, RedisCache
+from emmett.cache import Cache, RedisCache
 
 cache = Cache(redis=RedisCache(host='localhost', port=6379))
 ```
@@ -89,7 +89,7 @@ As we saw with the other handlers, `RedisCache` class accepts some parameters to
 As you probably supposed, you can use multiple caching system together. Let's say you want to use the three systems we just described. You can do it simply:
 
 ```python
-from weppy.cache import Cache, RamCache, DiskCache, RedisCache
+from emmett.cache import Cache, RamCache, DiskCache, RedisCache
 
 cache = Cache(
     ram=RamCache(),
@@ -98,7 +98,7 @@ cache = Cache(
 )
 ```
 
-You can also tells to weppy what handler should be used when not specified, thanks to the `default` parameter:
+You can also tells to Emmett what handler should be used when not specified, thanks to the `default` parameter:
 
 ```python
 cache = Cache(m=RamCache(), r=RedisCache(), default='r')
@@ -111,7 +111,7 @@ The quickier usage of cache is to just apply it on a simple *action*, such as a 
 
 ```python
 @app.route("/last")
-def last():
+async def last():
     rows = Post.all().select(orderby=~Post.date, limitby=(0, 10))
     return dict(posts=rows)
 ``` 
@@ -120,18 +120,18 @@ Now, since the performance bottleneck here is the call to the database, you can 
 
 ```python
 @app.route("/last")
-def last():
+async def last():
     def _get():
         return Post.all().select(orderby=~Post.date, limitby=(0, 10))
     return dict(posts=cache('last_posts', _get, 30))
 ```
 
-Here's how it works: you encapsulate the action you want to cache into a function, and then call your `cache` instance with a key, the function, and the amount of time in seconds you want to store the result of your function. weppy will take care of the rest.
+Here's how it works: you encapsulate the action you want to cache into a function, and then call your `cache` instance with a key, the function, and the amount of time in seconds you want to store the result of your function. Emmett will take care of the rest.
 
-> – OK, dude. What if I have multiple handlers? where does weppy store the result?   
+> – OK, dude. What if I have multiple handlers? where does Emmett store the result?   
 > – *you can choose that*
 
-As we saw before, by default weppy stores your cached content into the handler chosen as default. But you can choose on which handler you want to store data:
+As we saw before, by default Emmett stores your cached content into the handler chosen as default. But you can choose on which handler you want to store data:
 
 ```python
 cache = Cache(
@@ -151,7 +151,7 @@ Decorating methods
 
 *New in version 1.2*
 
-weppy's cache can also be used as a decorator. For example, we can rewrite the above example as follows:
+Emmett's cache can also be used as a decorator. For example, we can rewrite the above example as follows:
 
 ```python
 @cache(duration=30)
@@ -159,7 +159,7 @@ def last_posts():
     return Post.all().select(orderby=~Post.date, limitby=(0, 10))
 
 @app.route("/last")
-def last():
+async def last():
     return dict(posts=last_posts())
 ```
 
@@ -172,7 +172,7 @@ and the result would be the same. The notation, in the case you want to specify 
 @cache.ram()
 ```
 
-When using the decorator notation, weppy will use the arguments you pass to the decorated method to build different results. This means that if we decorate a method that accepts arguments like:
+When using the decorator notation, Emmett will use the arguments you pass to the decorated method to build different results. This means that if we decorate a method that accepts arguments like:
 
 ```python
 @cache()
@@ -180,38 +180,38 @@ def cached_method(a, b, c='foo', d='bar'):
     # some code
 ```
 
-then weppy will cache different contents in case you call `cached_method(1, 2, c='a')` and `cached_method(1, 3, c='b')`.
+then Emmett will cache different contents in case you call `cached_method(1, 2, c='a')` and `cached_method(1, 3, c='b')`.
 
 Caching routes
 --------------
 
 *New in version 1.2*
 
-Sometimes you would need to cache an entire response from your application. weppy provides the `Cache.response` decorator for that. Let's rewrite the example we used above: this time, instead of caching just the database selection, we will cache the entire page that weppy will produce from our route:
+Sometimes you would need to cache an entire response from your application. Emmett provides the `Cache.response` decorator for that. Let's rewrite the example we used above: this time, instead of caching just the database selection, we will cache the entire page that Emmett will produce from our route:
 
 ```python
 @app.route("/last")
 @cache.response()
-def last():
+async def last():
     posts = Post.all().select(orderby=~Post.date, limitby=(0, 10))
     return dict(posts=posts)
 ```
 
-The main difference from the above examples is that, in case of available cached content, everything that would happened inside your route and template code won't be executed; instead, weppy will return the final response body and its headers from the ones available in the cache.
+The main difference from the above examples is that, in case of available cached content, everything that would happened inside your route and template code won't be executed; instead, Emmett will return the final response body and its headers from the ones available in the cache.
 
 > **Note:** this means that also nothing contained in the `pipe`, `on_pipe_success` and `on_pipe_failure` methods of the pipes in your route pipeline won't be executed. In case you need execution of code on cached routes you should use the `open` and `close` methods of the pipes.
 
-Mind that weppy will cache only contents on *GET* and *HEAD* requests that returns a 200 response code. This is intended to avoid unwanted cached mechanism on your application.
+Mind that Emmett will cache only contents on *GET* and *HEAD* requests that returns a 200 response code. This is intended to avoid unwanted cached mechanism on your application.
 
 The `Cache.response` method accepts also some parameters you might want to use:
 
 | parameter | default value | description |
 | --- | --- | --- |
 | duration | `'default'` | the duration (in seconds) the cached content should be considered valid |
-| query\_params | `True` | tells weppy to consider the request's query parameters to generate different cached contents |
-| language | `True` | tells weppy to consider the clients language to generate different cached contents |
-| hostname | `False` | tells weppy to consider the path hostname to generate different cached contents |
-| headers | `[]` | an additional list of headers weppy should use to generate different cached contents |
+| query\_params | `True` | tells Emmett to consider the request's query parameters to generate different cached contents |
+| language | `True` | tells Emmett to consider the clients language to generate different cached contents |
+| hostname | `False` | tells Emmett to consider the path hostname to generate different cached contents |
+| headers | `[]` | an additional list of headers Emmett should use to generate different cached contents |
 
 ### Caching entire modules
 

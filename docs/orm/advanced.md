@@ -8,7 +8,7 @@ Model inheritance and subclassing
 
 The `Model` class can be subclassed and extended by design in many different ways. You can also define models without creating a table for them in the database and use them as meta classes for common fields, validations and other needs.
 
-In fact, even if some properties regarding your model are bound dictionaries of the class itself, weppy will *hack* these attributes in order to make them inherit and extend the ones from the upper models.
+In fact, even if some properties regarding your model are bound dictionaries of the class itself, Emmett will *hack* these attributes in order to make them inherit and extend the ones from the upper models.
 
 For instance, if you have a lot of models where you want to store the creation and update timestamps, you can write down a simple model for that:
 
@@ -51,7 +51,7 @@ db.define_models(Post, Comment)
 
 you will find the `created_at` and `updated_at` fields on these tables and the default and update values set for them.
 
-As you can see, the `Post` model has its own `default_values` dictionary that defines the default value for the `status` field, but the resulting dictionary will contains also the values of the `TimeStampModel` dictionary. This behavior is injected by weppy and is intended to avoid you the pain of rewriting the whole dictionaries when extending models.
+As you can see, the `Post` model has its own `default_values` dictionary that defines the default value for the `status` field, but the resulting dictionary will contains also the values of the `TimeStampModel` dictionary. This behavior is injected by Emmett and is intended to avoid you the pain of rewriting the whole dictionaries when extending models.
 
 You can obviosly override a value from the super model, in fact if you write something like this in the `Post` model:
 
@@ -66,7 +66,7 @@ it will change the default value defined from `TimeStampModel` for the `updated_
 
 This is true for all the reserved properties related to the fields we seen in the [models](./models) part of the documentation, and all the other attributes of the `Model` class will follow the normal inheritance behavior in the python language.
 
-Models in weppy also inherits all the properties decorated with the helper functions we seen in the previus chapters, and all the relations too.
+Models in Emmett also inherits all the properties decorated with the helper functions we seen in the previus chapters, and all the relations too.
 
 In fact, if you defined scopes in `TimeStampModel`:
 
@@ -82,7 +82,7 @@ def filter_update_period(self, start, end):
 
 you will be able to use them on the `Post` and `Comment` classes.
 
-You can also use multiple models as base classes for inheritance, and weppy will merge the relevant properties with the order of the base classes. For example if we define another base model:
+You can also use multiple models as base classes for inheritance, and Emmett will merge the relevant properties with the order of the base classes. For example if we define another base model:
 
 ```python
 class Hidden(Model):
@@ -117,12 +117,12 @@ you will have the fields, default values and scopes from this model too.
 Customize has\_one and has\_many sets
 -------------------------------------
 
-Sometimes you will need to customize the way weppy generates relations sets for `has_one` and `has_many` relations.
+Sometimes you will need to customize the way Emmett generates relations sets for `has_one` and `has_many` relations.
 
 For example, you may want to change the behavior of a relation depending on some conditions:
 
 ```python
-from weppy import session
+from emmett import session
 
 class User(Model):
     @has_many()
@@ -160,7 +160,7 @@ class Truck(Model):
         return Photo.where(lambda m: m.entity_type == 'Truck')
 ```
 
-As you can see, in this case we also specified the field weppy should use as the foreign key for the relation – if not specified this field is the name of the downcase name of the model.
+As you can see, in this case we also specified the field Emmett should use as the foreign key for the relation – if not specified this field is the name of the downcase name of the model.
 
 You can use *polimorphic* relations also for many-to-many relations, for example for a tagging system like this:
 
@@ -219,7 +219,7 @@ Advanced indexes
 
 > **Note:** support for expressions in indexes depends on the DBMS in use.
 
-weppy supports expressions on indexes definition, which can be useful when you want to *coalesce* values from your rows:
+Emmett supports expressions on indexes definition, which can be useful when you want to *coalesce* values from your rows:
 
 ```python
 class Post(Model):
@@ -235,13 +235,13 @@ class Post(Model):
     }
 ```
 
-As you can see the `expressions` option accepts one or a list of lambda functions, that should accept just one parameter: the model. The returning value should by any weppy valid sql expression on a field of the model itself.
+As you can see the `expressions` option accepts one or a list of lambda functions, that should accept just one parameter: the model. The returning value should by any Emmett valid sql expression on a field of the model itself.
 
 ### Conditional indexes
 
 > **Note:** support for conditional indexes depends on the DBMS in use.
 
-weppy supports a `where` option on indexes definition, which can be used to define conditional indexes:
+Emmett supports a `where` option on indexes definition, which can be used to define conditional indexes:
 
 ```python
 class Post(Model):
@@ -256,4 +256,4 @@ class Post(Model):
     }
 ```
 
-The `where` option accepts a lambda function that should accept the model as first parameter and should return any valid query using the weppy query language.
+The `where` option accepts a lambda function that should accept the model as first parameter and should return any valid query using the Emmett query language.

@@ -1,13 +1,13 @@
 Sessions
 ========
 
-An essential feature for a web application is the ability to store specific informations about the client from a request to the next one. Accordingly to this need, weppy provides another object beside the `request` and the `response` ones called `session`.
+An essential feature for a web application is the ability to store specific informations about the client from a request to the next one. Accordingly to this need, Emmett provides another object beside the `request` and the `response` ones called `session`.
 
 ```python
-from weppy import session
+from emmett import session
 
 @app.route("/counter")
-def count():
+async def count():
     session.counter = (session.counter or 0) + 1
     return "This is your %d visit" % session.counter
 ```
@@ -17,11 +17,11 @@ Basically, you can use `session` object to store and retrieve data, but before y
 
 Storing sessions in cookies
 ---------------------------
-You can store session contents directly in the cookies of the client using the weppy's `SessionManager.cookies` pipe:
+You can store session contents directly in the cookies of the client using the Emmett's `SessionManager.cookies` pipe:
 
 ```python
-from weppy import App, session
-from weppy.sessions import SessionManager
+from emmett import App, session
+from emmett.sessions import SessionManager
 
 app = App(__name__)
 app.pipeline = [SessionManager.cookies('myverysecretkey')]
@@ -43,11 +43,11 @@ Storing sessions on filesystem
 ------------------------------
 *New in version 0.2*
 
-You can store session contents on the server's filesystem using the weppy's `SessionManager.files` pipe:
+You can store session contents on the server's filesystem using the Emmett's `SessionManager.files` pipe:
 
 ```python
-from weppy import App, session
-from weppy.sessions import SessionManager
+from emmett import App, session
+from emmett.sessions import SessionManager
 
 app = App(__name__)
 app.pipeline = [SessionManager.files()]
@@ -64,16 +64,16 @@ As you can see, `SessionManager.files` doesn't require specific parameters, but 
 | secure | `False` | tells the manager to allow sessions only on *https* protocol |
 | domain | | allows you to set a specific domain for the cookie |
 | cookie\_name | | allows you to set a specific name for the cookie |
-| filename_template | `'weppy_%s.sess'` | allows you to set a specific format for the files created to store the data |
+| filename_template | `'emt_%s.sess'` | allows you to set a specific format for the files created to store the data |
 
 Storing sessions using redis
 ----------------------------
-You can store session contents using *redis* – you obviously need the redis package for python – with the weppy's `SessionManager.redis` pipe:
+You can store session contents using *redis* – you obviously need the redis package for python – with the Emmett's `SessionManager.redis` pipe:
 
 ```python
 from redis import Redis
-from weppy import App, session
-from weppy.sessions import SessionManager
+from emmett import App, session
+from emmett.sessions import SessionManager
 
 app = App(__name__)
 red = Redis(host='127.0.0.1', port=6379)
@@ -87,7 +87,7 @@ As you can see `SessionManager.redis` needs a redis connection as first paramete
 
 | parameter | default | description |
 | --- | --- | --- |
-| prefix | `'wppsess:'` | the prefix for the redis keys (default set to |
+| prefix | `'emtsess:'` | the prefix for the redis keys (default set to |
 | expire | 3600 | the duration in seconds after which the session will expire |
 | secure | `False` | tells the manager to allow sessions only on *https* protocol |
 | domain | | allows you to set a specific domain for the cookie |

@@ -1,21 +1,21 @@
 Languages and internationalization
 ==================================
 
-weppy provides a powerful, integrated system for managing multiple languages
+Emmett provides a powerful, integrated system for managing multiple languages
 in your application, based on the *web2py's*. How does it work?
 
 ```python
-from weppy import App, T
+from emmett import App, T
 app = App(__name__)
 
 @app.route("/")
-def index():
+async def index():
     hello = T('Hello, my dear!')
     return dict(hello=hello)
 ```
 
-As you can see, weppy provides a language translator with the `T` object.
-It tells weppy to translate the string depending on clients locale,
+As you can see, Emmett provides a language translator with the `T` object.
+It tells Emmett to translate the string depending on clients locale,
 and is also available in the templating environment.
 
 So what you should do with the other languages' text? You can just leave it
@@ -25,17 +25,17 @@ an Italian translation should be stored as *languages/it.py*:
 
 ```python
 {
-"Hello, my dear!": "Ciao, mio caro!"
+    "Hello, my dear!": "Ciao, mio caro!"
 }
 ```
 
 and the hello message will be translated when the user request the Italian language. 
 
-> – awesome. Though, how does weppy decides which language should be loaded for
+> – awesome. Though, how does Emmett decides which language should be loaded for
 a specific client?   
 > – *actually, you can choose that*
 
-weppy has two different ways to handle languages in your application:
+Emmett has two different ways to handle languages in your application:
 
 * using clients' HTTP headers
 * using URLs
@@ -92,14 +92,14 @@ to separate contents based on the language.
 
 Let's say again you have your application with English as the default language
 and you provide a supplementary Italian version; to achieve the routing translation
-behavior under weppy, you should write:
+behavior under Emmett, you should write:
 
 ```python
 app.languages = ['en', 'it']
 app.language_default = 'en'
 app.language_force_on_url = True
 ```
-and weppy will automatically add the support for language on your routing rules
+and Emmett will automatically add the support for language on your routing rules
 to the follow:
 
 | requested URL | behaviour |
@@ -107,6 +107,6 @@ to the follow:
 | /anexampleurl | shows up the contents with the default language |
 | /it/anexampleurl | shows up the contents with the italian language |
 
-As you can see, the *routing* way requires that you to explicitly tell to weppy
+As you can see, the *routing* way requires that you to explicitly tell to Emmett
 which languages should be available into your application, so it can build the
 routing tables.

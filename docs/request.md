@@ -1,16 +1,16 @@
 Handling requests
 =================
 
-weppy provides several instruments to help you dealing with requests in your
+Emmett provides several instruments to help you dealing with requests in your
 application. Let's see them. 
 
 The request object
 ------------------
-When a request comes from a client, weppy binds useful informations about it
+When a request comes from a client, Emmett binds useful informations about it
 within the `request` object, which can be accessed just with an import:
 
 ```python
-from weppy import request
+from emmett import request
 ```
 
 It contains useful information about the current processing request, in particular:
@@ -41,26 +41,25 @@ Now, let's see how to deal with request variables.
 
 ### Request variables
 
-weppy's `request` object also provides three important attributes about the
+Emmett's `request` object also provides three important attributes about the
 active request:
 
-| attribute | description |
-| --- | --- |
-| query_params | contains the URL query parameters |
-| body_params | contains parameters passed into the request body |
-| params | contains both the query parameters and the body parameters |
+| attribute | awaitable | description |
+| --- | --- | --- |
+| query_params | no | contains the URL query parameters |
+| body_params | yes | contains parameters passed into the request body |
+| params | yes | contains both the query parameters and the body parameters |
 
-All three attributes work in the same way, and an example may help you
-understand their dynamic:
+All three attributes work in the same way, within the exception of requiring `await` or not, and an example may help you understand their dynamic:
 
 ```python
-from weppy import App, request
+from emmett import App, request
 
 app = App(__name__)
 
 @app.route("/post/<int:id>")
-def post(id):
-    editor = request.params.editor
+async def post(id):
+    editor = (await request.params).editor
     if editor == "markdown":
         # code
     elif editor == "html":
@@ -102,9 +101,9 @@ Pipeline
 
 *Changed in 1.0*
 
-Quite often, you will need to perform operations during the request flow, for example you might need to verify certain authorization conditions before your exposed method is invoked by weppy when the request is routed trough it, or you may want to close a database connection once the request flow is ended and the response is ready to be transmitted to the client.
+Quite often, you will need to perform operations during the request flow, for example you might need to verify certain authorization conditions before your exposed method is invoked by Emmett when the request is routed trough it, or you may want to close a database connection once the request flow is ended and the response is ready to be transmitted to the client.
 
-weppy uses a *pipeline* to handle the request flow trough your application, and like a water pipeline is composed of several pipes. You've already encountered some of them in the tutorial, the database and the auth ones. But how this pipes works inside the pipeline?
+Emmett uses a *pipeline* to handle the request flow trough your application, and like a water pipeline is composed of several pipes. You've already encountered some of them in the tutorial, the database and the auth ones. But how this pipes works inside the pipeline?
 
 You can imagine the pipeline as a real water pipeline, composed of several pipes one after another:
 
@@ -120,11 +119,11 @@ The request will *flow* trough the pipeline, which means will flow trough every 
 > – Ok dude. So the pipeline is just an array of functions that will perform some actions on the request?   
 > – *Not really.*
 
-The pipes are not just functions but actually objects. In fact, these pipes won't just *pipe* the request trough the pipeline flow, but will have several options and responsibilities on the pipeline. weppy will use several functions on these objects during the request, so the application can customize the request flow based on its needs.
+The pipes are not just functions but actually objects. In fact, these pipes won't just *pipe* the request trough the pipeline flow, but will have several options and responsibilities on the pipeline. Emmett will use several functions on these objects during the request, so the application can customize the request flow based on its needs.
 
-Any pipe can, in fact, perform operations before the request will be piped, during the flow, or after the flow has been completed. This is because any request in weppy can be sketched in several steps above the pipeline.
+Any pipe can, in fact, perform operations before the request will be piped, during the flow, or after the flow has been completed. This is because any request in Emmett can be sketched in several steps above the pipeline.
 
-First of all, weppy will open up all the pipes in the pipeline:
+First of all, Emmett will open up all the pipes in the pipeline:
 
 ```
          open   open   open
@@ -135,7 +134,7 @@ First of all, weppy will open up all the pipes in the pipeline:
 
 You can imagine the pipes have *bulkheads* on their *entrance* and before the request is actually processed all these bulkheads are opened so that the request can flow trough the pipes.
 
-After this first step, weppy will push the request trough the pipeline:
+After this first step, Emmett will push the request trough the pipeline:
 
 ```
          ->     ->     ->     ->
@@ -157,7 +156,7 @@ Then the route method will compose a response, that will flow back trough the pi
 
 So the pipeline is actually walked by both sides and the pipes have access to the response as well.
 
-Finally, weppy will close all the pipes and send the response to the client:
+Finally, Emmett will close all the pipes and send the response to the client:
 
 ```
           close  close  close  
@@ -171,24 +170,24 @@ The *bulkheads* we imagined on the first step will be closed since the request *
 All these steps lead to have this `Pipe` class that you can extend to build your custom pipelines:
 
 ```python
-from weppy import Pipe
+from emmett import Pipe
 
 class MyPipe(Pipe):
-    def open(self):
+    async def open(self):
         pass
-    def close(self):
+    async def close(self):
         pass
-    def pipe(self, next_pipe, **kwargs):
-        return next_pipe(**kwargs)
-    def on_pipe_success(self):
+    async def pipe(self, next_pipe, **kwargs):
+        return await next_pipe(**kwargs)
+    async def on_pipe_success(self):
         pass
-    def on_pipe_failure(self):
+    async def on_pipe_failure(self):
         pass
 ```
 
 As we seen in the steps, the `open` and `close` method will be called before the request will flow trough the pipeline and after the response is built.
 
-The `pipe` method is the one called by weppy to *pipe* the request trough the pipeline: this means that every pipe is actually responsible to build the flow to the next pipe. And, this also means every pipe can alter the normal flow of the pipeline if needed.
+The `pipe` method is the one called by Emmett to *pipe* the request trough the pipeline: this means that every pipe is actually responsible to build the flow to the next pipe. And, this also means every pipe can alter the normal flow of the pipeline if needed.
 
 The `on_pipe_success` and `on_pipe_failure` will be called as soon as the flow gets back to the pipe: the failure one will be invoked in case of an exception in any subsequent point of the pipeline, otherwise the success one will be invoked.
 
@@ -202,9 +201,9 @@ A pipe responsible of connecting to the database will need to open the connectio
 class DBPipe(Pipe):
     def __init__(self, db):
         self.db = db
-    def open(self):
+    async def open(self):
         self.db.open_connection()
-    def close(self):
+    async def close(self):
         self.db.close_connection()
 ```
 
@@ -214,13 +213,13 @@ But we also can make it more smart, and have it commit what happened on the data
 class DBPipe(Pipe):
     def __init__(self, db):
         self.db = db
-    def open(self):
+    async def open(self):
         self.db.open_connection()
-    def close(self):
+    async def close(self):
         self.db.close_connection()
-    def on_pipe_success(self):
+    async def on_pipe_success(self):
         self.db.commit()
-    def on_pipe_failure(self):
+    async def on_pipe_failure(self):
         self.db.rollback()
 ```
 
@@ -228,7 +227,7 @@ Then we can add this pipe to a single route:
 
 ```python
 @app.route(pipeline=[DBPipe(db)])
-def foo():
+async def foo():
     #code
 ```
 
@@ -243,16 +242,16 @@ This makes you sure every request that have this pipeline will have a correct be
 A second example could be a pipe that verifies the request authorization checking the value of a specific header. In this case we want to break the request flow if the client is not authorized and return an error instead of the content of the route. We can modify the `pipe` method for this:
 
 ```python
-from weppy import Pipe, request, abort
+from emmett import Pipe, request, abort
 
 class AuthPipe(Pipe):
-    def pipe(self, next_pipe, **kwargs):
+    async def pipe(self, next_pipe, **kwargs):
         if self.valid_header():
-            return next_pipe(**kwargs)
+            return await next_pipe(**kwargs)
         return "Bad auth"
         
     def valid_header(self):
-        return request.environ.get("HTTP_MY_HEADER", "") == "MY_KEY"
+        return request.headers.get("my-header", "") == "MY_KEY"
 ```
 
 Adding this pipe to a route pipeline will make you sure the request will never flow trough the next pipe unless the condition is verified. In case of an abort the response that will be available to the pipes before the one interrupting the flow will be the content returned by this pipe.
@@ -286,18 +285,16 @@ The last example is about the use of a pipe in order to change the parameters pa
 
 ```python
 @app.route("/foo/<date:start>")
-def foo(start):
+async def foo(start):
     # code
 ```
 
 and you often need to build a strict period starting from the `start` parameter, so your code looks like this:
 
 ```python
-from datetime import timedelta
-
 @app.route("/foo/<date:start>")
-def foo(start):
-    end = start + timedelta(days=7)
+async def foo(start):
+    end = start.add(days=7)
 ```
 
 Then you can easily inject this to your routes writing a pipe:
@@ -306,24 +303,25 @@ Then you can easily inject this to your routes writing a pipe:
 class PeriodPipe(Pipe):
     def __init__(self, days):
         self.dt = timedelta(days=days)
-    def pipe(self, next_pipe, **kwargs):
+
+    async def pipe(self, next_pipe, **kwargs):
         kwargs['end'] = kwargs['start'] + self.dt
-        return next_pipe(**kwargs)
+        return await next_pipe(**kwargs)
 ```
 
 and using it on every route you need:
 
 ```python
 @app.route("/foo/daily/<date:start>", pipeline=[PeriodPipe(1)])
-def foo_daily(start, end):
+async def foo_daily(start, end):
     # code
     
 @app.route("/foo/weekly/<date:start>", pipeline=[PeriodPipe(7)])
-def foo_weekly(start, end):
+async def foo_weekly(start, end):
     # code
     
 @app.route("/foo/monthly/<date:start>", pipeline=[PeriodPipe(30)])
-def foo_monthly(start, end):
+async def foo_monthly(start, end):
     # code
 ```
 
@@ -343,18 +341,18 @@ For example, let's say you have a function that makes your datetimes objects pre
 And you want to use it in your templates:
 
 ```html
-{{for post in posts:}}
+{{ for post in posts: }}
 <div class="post">
-    <div class="post-date">{{=prettydate(post.date)}}</div>
-    <div class="post-content">{{=post.text}}</div>
+  <div class="post-date">{{ =prettydate(post.date) }}</div>
+  <div class="post-content">{{ =post.text }}</div>
 </div>
-{{pass}}
+{{ pass }}
 ```
 
 Instead of adding `prettydate` to every exposed function, you can write down an injector:
 
 ```python
-from weppy import Injector
+from emmett import Injector
 
 class DateInjector(Injector):
     @staticmethod
@@ -366,7 +364,7 @@ app.injectors = [DateInjector()]
 
 and you can access your `prettydate` function in every template.
 
-So, basically, the `Injector` class of weppy adds everything you define inside it (functions and attributes) into your exposed functions' returning dictionary.
+So, basically, the `Injector` class of Emmett adds everything you define inside it (functions and attributes) into your exposed functions' returning dictionary.
 
 Errors and redirects
 --------------------
@@ -378,11 +376,11 @@ the user calls the URL without passing the `editor` query parameter?
 Maybe you want to redirect the client with a default parameter:
 
 ```python
-from weppy import redirect, url
+from emmett import redirect, url
 
 @app.route("/post/<int:id>")
-def post(id):
-    editor = request.params.editor
+async def post(id):
+    editor = (await request.params).editor
     if editor == "markdown":
         # code
     elif editor == "html":
@@ -393,20 +391,20 @@ def post(id):
 
 which means that, when the `editor` var is missing, we force the user to markdown.
 
-The `redirect` function of weppy accepts a string for the URL, and acts like
+The `redirect` function of Emmett accepts a string for the URL, and acts like
 an exception, interrupting the execution of your code.
 
 Maybe, you prefer to show your 404 page:
 
 ```python
-from weppy import abort
+from emmett import abort
 
 @app.on_error(404)
-def not_found():
+async def not_found():
     return app.render_template("404.html")
 
 @app.route("/post/<int:id>")
-def post(id):
+async def post(id):
     editor = request.params.editor
     if editor == "markdown":
         # code
@@ -418,7 +416,7 @@ def post(id):
 
 That's all it takes.
 
-So you've just learned three handy aspects of weppy:
+So you've just learned three handy aspects of Emmett:
 
 * `redirect` and `abort` allow you to stop the execution of your code;
 * you can set specific actions for your application to perform when it encounters a particular HTTP error code with `app.on_error()`;

@@ -5,24 +5,24 @@ Migrations
 
 Migrations are the basic instrument needed to propagate changes you make to your models into your database schema.
 
-While the `Database` class in weppy can be initialized to automatically migrate your schema, under the default behaviour weppy encourage the adoption of its migration system. In fact, while automatic migration can be handy for small applications that won't frequently change the structure of their models, whenever your application evolves and requires a lot of changes on the models, or you need a fine control on the migration process for the production side, this feature may produce unwanted side effects, as the migration data has to be stored in the *databases* directory of your application and migrations will be performed every time you push new code in your models.
+While the `Database` class in Emmett can be initialized to automatically migrate your schema, under the default behaviour Emmett encourage the adoption of its migration system. In fact, while automatic migration can be handy for small applications that won't frequently change the structure of their models, whenever your application evolves and requires a lot of changes on the models, or you need a fine control on the migration process for the production side, this feature may produce unwanted side effects, as the migration data has to be stored in the *databases* directory of your application and migrations will be performed every time you push new code in your models.
 
 The migration engine is instead based on *revisions*: this will use migration files containing the instructions to be performed on the database side and will store the current migration status on the database itself, fact that prevents inconsistencies on the migration status of your application if you are running the code from several machines.
 
-weppu provides different migration commands, that can be used in order to generate, apply and revert migrations on your database. Moreover, to avoid you the pain of writing a lot of migration code aside with your models, weppy will automatically generate the migration scripts for you starting from your models' code.    
+weppu provides different migration commands, that can be used in order to generate, apply and revert migrations on your database. Moreover, to avoid you the pain of writing a lot of migration code aside with your models, Emmett will automatically generate the migration scripts for you starting from your models' code.    
 In the next sections we will describe all of this using the *bloggy* application we saw in the [tutorial chapter](././tutorial) as an example.
 
-> **Note:** we **strongly reccomend** you to not enable automatic migrations on applications that run on production environments. The automatic migrations and the ones performed by the migration engine have some slight differences; while we will document operations supported by the second system, the detection performed by the automatic one depends on the [pydal](https://github.com/web2py/pydal) library, and are not officially supported by the weppy development. If you need more informations about this you should check the [web2py docs](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Migrations).
+> **Note:** we **strongly reccomend** you to not enable automatic migrations on applications that run on production environments. The automatic migrations and the ones performed by the migration engine have some slight differences; while we will document operations supported by the second system, the detection performed by the automatic one depends on the [pydal](https://github.com/web2py/pydal) library, and are not officially supported by the Emmett development. If you need more informations about this you should check the [web2py docs](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Migrations).
 
 Generating your first migration
 -------------------------------
 
 Once you have written your models, you will need to create the relevant tables on the database to start performing operations.
 
-In the bloggy example we defined three models, and since we turned off automatic migrations, we need to create a migration that will add the relevant tables to the database. This can be quite immediate if you use the weppy generation command:
+In the bloggy example we defined three models, and since we turned off automatic migrations, we need to create a migration that will add the relevant tables to the database. This can be quite immediate if you use the Emmett generation command:
 
 ```
-$ weppy -a bloggy.py migrations generate -m "First migration"
+$ emmett -a bloggy.py migrations generate -m "First migration"
 > Generated migration for revision fe68547ce244
 ```
 
@@ -39,7 +39,7 @@ Creation Date: 2017-03-09 16:31:24.333823
 
 """
 
-from weppy.orm import migrations
+from emmett.orm import migrations
 
 
 class Migration(migrations.Migration):
@@ -120,15 +120,15 @@ As you can see, every migration file contains a `Migration` class that has the `
 
 The `Migration` class also has two methods, the `up` and `down` ones, that will specify the operations that should be run when we apply the migration and the ones that should be performed when we want to rollback the migration changes and return to the previous state. In this case, we have seven `create_table` operations for the `up` section, and the seven *opposite* `drop_table` operations in the `down` ones.
 
-`create_table` and `drop_table` are directives of the weppy migration engine. We will see that the `Migration` class have several methods like these that can be used to alter tables and columns in your database.
+`create_table` and `drop_table` are directives of the Emmett migration engine. We will see that the `Migration` class have several methods like these that can be used to alter tables and columns in your database.
 
 Running your fist migration
 ---------------------------
 
-Once we generated our first migration, we need to run it in order to apply the canges to the database. We can use the *up* command of weppy migrations:
+Once we generated our first migration, we need to run it in order to apply the canges to the database. We can use the *up* command of Emmett migrations:
 
 ```
-$ weppy -a bloggy.py migrations up
+$ emmett -a bloggy.py migrations up
 > Performing upgrades against sqlite://dummy.db
 > Performing upgrade: <base> -> 4ceb82ecd8e4 (head), First migration
 > Adding revision 4ceb82ecd8e4 to schema
@@ -138,7 +138,7 @@ $ weppy -a bloggy.py migrations up
 As you can see, the command prints out some information regarding the operations it runs: it says on which database the operations are performed, which migrations are used to upgrade the database and which revision is stored on the schema. In this case the migration was performed successfully, in fact we can check the current revision of the database:
 
 ```
-$ weppy -a bloggy.py migrations status
+$ emmett -a bloggy.py migrations status
 > Current revision(s) for sqlite://dummy.db
 4ceb82ecd8e4 (head)
 ```
@@ -164,7 +164,7 @@ db.define_models(Post, Comment, Tag)
 we can run the *generate* command again:
 
 ```
-$ weppy -a bloggy.py migrations generate -m "Add tags"
+$ emmett -a bloggy.py migrations generate -m "Add tags"
 > Generated migration for revision 4dee31071bf8
 ```
 
@@ -179,7 +179,7 @@ Creation Date: 2016-01-24 14:43:16.963860
 
 """
 
-from weppy.orm import migrations
+from emmett.orm import migrations
 
 
 class Migration(migrations.Migration):
@@ -199,7 +199,7 @@ class Migration(migrations.Migration):
 As you can see the engine found that the change to perform is just the one of creating the *tags* table. Now we can upgrade our database to this revision as we did for the first migration:
 
 ```
-$ weppy -a bloggy.py migrations up
+$ emmett -a bloggy.py migrations up
 > Performing upgrades against sqlite://dummy.db
 > Performing upgrade: 4ceb82ecd8e4 -> 4dee31071bf8 (head), Add tags
 > Updating schema revision from 4ceb82ecd8e4 to 4dee31071bf8
@@ -209,7 +209,7 @@ $ weppy -a bloggy.py migrations up
 As we increase the number of migrations for our application, the *history* command can be useful to check out them as an ordered list:
 
 ```
-$ weppy -a bloggy.py migrations history
+$ emmett -a bloggy.py migrations history
 > Migrations history
 4ceb82ecd8e4 -> 4dee31071bf8 (head), Add tags
 <base> -> 4ceb82ecd8e4, First migration
@@ -223,7 +223,7 @@ Downgrading migrations
 Whenever you need to rollback to a previous revision of your schema, you can use the *down* command:
 
 ```
-$ weppy -a bloggy.py migrations down -r base
+$ emmett -a bloggy.py migrations down -r base
 > Performing downgrades against sqlite://dummy.db
 > Performing downgrade: 4ceb82ecd8e4 -> 4dee31071bf8 (head), Add tags
 > Updating schema revision from 4dee31071bf8 to 4ceb82ecd8e4
@@ -233,11 +233,11 @@ $ weppy -a bloggy.py migrations down -r base
 > Succesfully downgraded from revision 4ceb82ecd8e4: First migration
 ```
 
-The `-r` option is required and has to be the revision to be downgraded. Whenever you specify a revision identifier that is not the current *head* state, weppy will downgrade every revision applied after the revision you specified and the one you specified too.    
-When this parameter is set to `base`, weppy will use the first migration in history: in our case we returned the database back to the beginning. In fact, if we run the status command:
+The `-r` option is required and has to be the revision to be downgraded. Whenever you specify a revision identifier that is not the current *head* state, Emmett will downgrade every revision applied after the revision you specified and the one you specified too.    
+When this parameter is set to `base`, Emmett will use the first migration in history: in our case we returned the database back to the beginning. In fact, if we run the status command:
 
 ```
-$ weppy -a bloggy.py migrations status
+$ emmett -a bloggy.py migrations status
 > Current revision(s) for sqlite://dummy.db
 No revision state found on the schema.
 ```
@@ -247,7 +247,7 @@ we can see that no revision is loaded on it.
 Generation and changes detection
 --------------------------------
 
-Unfortunately, the migration generator shipped with weppy is not able to detect all the changes you might make on the models. Here we list what the generator can detect and what it cannot, but, please, consider that this list may change on new releases.
+Unfortunately, the migration generator shipped with Emmett is not able to detect all the changes you might make on the models. Here we list what the generator can detect and what it cannot, but, please, consider that this list may change on new releases.
 
 The generator detects:
 
@@ -269,7 +269,7 @@ Empty migrations and operations
 Aside with the generated migrations, you can obviously generate new empty migration files and write down the operations on your own. In fact, if you run the *new* command:
 
 ```
-$ weppy -a bloggy.py migrations new -m "Custom migration"
+$ emmett -a bloggy.py migrations new -m "Custom migration"
 > Created new migration with revision 57f23e051fa3
 ```
 
@@ -284,7 +284,7 @@ Creation Date: 2016-01-24 19:17:24.773448
 
 """
 
-from weppy.orm import migrations
+from emmett.orm import migrations
 
 
 class Migration(migrations.Migration):
@@ -311,7 +311,7 @@ self.create_table(
     migrations.Column('name', 'string', length=512))
 ```
 
-The `Column` class behaves quite like the `Field` one, except that it has the column name as first parameter. Also the types are quite different, since you will have *boolean* instead of *bool* and *integer* in place of *int*. The first column of a table should always be the one with name *id* and type *id*, since it's used by weppy in order to perform operations on the tables.
+The `Column` class behaves quite like the `Field` one, except that it has the column name as first parameter. Also the types are quite different, since you will have *boolean* instead of *bool* and *integer* in place of *int*. The first column of a table should always be the one with name *id* and type *id*, since it's used by Emmett in order to perform operations on the tables.
 
 ### drop\_table
 
@@ -408,7 +408,7 @@ def up(self):
     db(db.things.value == 3).update(value=5)
 ```
 
-As you can se we added a custom update command inside the upgrade function; and obviously you can add operations to the weppy generated migrations too.
+As you can se we added a custom update command inside the upgrade function; and obviously you can add operations to the Emmett generated migrations too.
 
 
 Using custom migration folders
@@ -419,7 +419,7 @@ Using custom migration folders
 When you need to manage multiple databases with migrations, or if you prefer a different folder for migrations storage, you can use the `migrations_folder` option in the database configuration:
 
 ```python
-from weppy.orm import Database
+from emmett.orm import Database
 
 app.config.db1.migrations_folder = 'db1_migrations'
 app.config.db2.migrations_folder = 'db2_migrations'
@@ -432,7 +432,7 @@ db2 = Database(app, app.config.db2)
 DBMS support
 ------------
 
-The weppy migration engine is designed to support all the DBMS supported by pyDAL. Still, due to limitations in some engines, some operations are partially or totally not supported. In this section we will list these limitations for every DBMS.
+The Emmett migration engine is designed to support all the DBMS supported by pyDAL. Still, due to limitations in some engines, some operations are partially or totally not supported. In this section we will list these limitations for every DBMS.
 
 ### SQLite
 

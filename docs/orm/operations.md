@@ -42,7 +42,7 @@ and we try to insert a dog without specifying a name:
 
 we have the `name` field in the errors and the `id` set as `None`, meaning that no record has been created at all.
 
-weppy has also a more *low level* method to create records, that will skip the validation and insert the record directly into the database:
+Emmett has also a more *low level* method to create records, that will skip the validation and insert the record directly into the database:
 
 ```python
 >>> db.Dog.insert(name="Peggy")
@@ -56,7 +56,7 @@ As you can see, the `insert` method of the table defined by the model will retur
 
 ### Accessing the created record
 
-As we just seen from the above methods, when you create a new record, weppy returns just the integer corresponding to the `id` of the database row. If you look deeply, you will find that actually the return value is not just an integer:
+As we just seen from the above methods, when you create a new record, Emmett returns just the integer corresponding to the `id` of the database row. If you look deeply, you will find that actually the return value is not just an integer:
 
 ```python
 >>> rv = Dog.create("Penny")
@@ -78,9 +78,9 @@ We will see more about the `as_dict` method in the next paragraphs.
 Making queries
 --------------
 
-As soon as you have rows in your tables, you need to query them to fetch the data you want. weppy provides a very efficient way to write queries using python language, since you will use your model fields and their methods.
+As soon as you have rows in your tables, you need to query them to fetch the data you want. Emmett provides a very efficient way to write queries using python language, since you will use your model fields and their methods.
 
-But, before we proceed learning the syntax to make queries, we have to understand the main principle behind weppy querying: the sets. Every time you work with the database to filter data, you're actually using a `Set` of rows corresponding to your query. The `Set` class is fundamental in weppy and allows you to make all the operations on the records corresponding to your query, as we will see in the next paragraphs .
+But, before we proceed learning the syntax to make queries, we have to understand the main principle behind Emmett querying: the sets. Every time you work with the database to filter data, you're actually using a `Set` of rows corresponding to your query. The `Set` class is fundamental in Emmett and allows you to make all the operations on the records corresponding to your query, as we will see in the next paragraphs .
 
 So, how you make queries on your database? Let's say, for example, that you have a table containing events, defined by the model:
 
@@ -133,7 +133,7 @@ db(Event.participants >= 200)
 > – Ok dude, what if I want to combine multiple *where* conditions?    
 > – *just use the operators for the **and**, **or** and **not** conditions*
 
-weppy provides the `&`, `|` and `~` operators for the *and*, *or* and *not* conditions, in order to combine multiple conditions on the same query.
+Emmett provides the `&`, `|` and `~` operators for the *and*, *or* and *not* conditions, in order to combine multiple conditions on the same query.
 
 For example, you may want all the events in New York that have less than 200 participants:
 
@@ -164,7 +164,7 @@ db(
 
 ### Model where method
 
-In all the examples we've seen above, we applied multiple where conditions on the same table. weppy offers also a more compact way to write these queries using directly the `Model.where` method and a `lambda` notation:
+In all the examples we've seen above, we applied multiple where conditions on the same table. Emmett offers also a more compact way to write these queries using directly the `Model.where` method and a `lambda` notation:
 
 ```python
 Event.where(lambda e: 
@@ -206,7 +206,7 @@ Both the methods will return the `Set` corresponding to all the records of the t
 
 ### Additional query operators
 
-weppy also provides additional query operators that might be useful when you need particular conditions or for specific field types. Let's see them in detail.
+Emmett also provides additional query operators that might be useful when you need particular conditions or for specific field types. Let's see them in detail.
 
 #### belongs for the IN condition
 
@@ -229,7 +229,7 @@ db(Event.name.like("party%"))
 
 where the *%* character is a wild-card meaning *any sequence of characters*, so the query will find any event starting with "party".
 
-But weppy provides also some shortcuts for the `like` operator with wild-card:
+But Emmett provides also some shortcuts for the `like` operator with wild-card:
 
 ```python
 db(Event.name.startswith("party"))
@@ -257,11 +257,11 @@ You can also use the `upper` and `lower` helpers:
 db(Event.name.upper().startswith("PARTY"))
 ```
 
-weppy provides also a `regexp` method on fields that works in the same way of the `like` one but allows regular expressions syntax for the look-up expression. Just remember that only some DBMS support it (PostgreSQL, MySQL, Oracle and SQLite).
+Emmett provides also a `regexp` method on fields that works in the same way of the `like` one but allows regular expressions syntax for the look-up expression. Just remember that only some DBMS support it (PostgreSQL, MySQL, Oracle and SQLite).
 
 #### Date and time operators
 
-weppy provides some additional operators for date, time and datetime fields, in particular:
+Emmett provides some additional operators for date, time and datetime fields, in particular:
 
 * *date* and *datetime* fields have the `day`, `month` and `year` methods
 * *time* and *datetime* fields have the `hour`, `minutes` and `seconds` methods
@@ -347,7 +347,7 @@ Now, let's proceed with the options of the `select` method. It accepts unnamed a
 <Row {'id': 1, 'name': 'Awesome party'}>
 ```
 
-If you don't specify arguments, weppy will select all the fields for all the tables involved in the query. In fact, the explicit argument for the first example is:
+If you don't specify arguments, Emmett will select all the fields for all the tables involved in the query. In fact, the explicit argument for the first example is:
 
 ```python
 db(Event.location == "New York").select(db.Event.ALL)
@@ -361,7 +361,7 @@ The `ALL` attribute of `Table` is, indeed, a special attribute that will select 
 
 *Changed in version 0.6*
 
-weppy provides some shortcuts that might be useful when you want to select single records. For example, you can select a single record using the `Model.get` method with the query:
+Emmett provides some shortcuts that might be useful when you want to select single records. For example, you can select a single record using the `Model.get` method with the query:
 
 ```python
 event = Event.get(name="Secret party")
@@ -440,7 +440,7 @@ will return the second page, with 25 events per page.
 
 > **Note:** remember that `paginate` will always consider the first page number as 1, not 0
 
-weppy provides also a more sql-like option for limiting the results, the `limitby` one, that has the same syntax of the sql *LIMIT BY* instruction:
+Emmett provides also a more sql-like option for limiting the results, the `limitby` one, that has the same syntax of the sql *LIMIT BY* instruction:
 
 ```python
 Event.all().select(limitby=(25, 50))
@@ -514,7 +514,7 @@ Chicago 1
 New York 2
 ```
 
-As you can see, you can access the *count* value using the variable as item of the row. Also notice that weppy moved the *location* field into the *events* dictionary. This is done because you added elements that don't belongs to the events table itself, and weppy wants to make this very explicit, grouping all the elements belonging to the table into a separated key of the rows.
+As you can see, you can access the *count* value using the variable as item of the row. Also notice that Emmett moved the *location* field into the *events* dictionary. This is done because you added elements that don't belongs to the events table itself, and Emmett wants to make this very explicit, grouping all the elements belonging to the table into a separated key of the rows.
 
 Beside the `count` method, fields also have other methods useful to compute values from the records: the `sum`, `avg`, `min`, and `max` methods. They work all the same, like the `count` one. Let's say for example that you want to have the sum of all the participants to events in 1955 grouped by their locations:
 
@@ -554,7 +554,7 @@ As we've just seen, the `update` method is built on top of the `Set` object, so 
 db(Event.id == 1).update(participants=3)
 ```
 
-But this is not the only option, in fact the `Row` object has an `update_record` method, which is the second method in weppy to update an existing record. In order to use this method, you should have a selected row with the `id` included in the selected fields.
+But this is not the only option, in fact the `Row` object has an `update_record` method, which is the second method in Emmett to update an existing record. In order to use this method, you should have a selected row with the `id` included in the selected fields.
 
 This will produce the same result of the last example:
 
@@ -579,7 +579,7 @@ won't produce an atomic update on the record, but will just write to the databas
 
 ### Validation on updates
 
-Now, since `update` and `update_record` **won't trigger validations** before effectively update the records in the database, weppy also provides a `validate_and_update` method on the `Set` object, which works pretty the same of the `update` one:
+Now, since `update` and `update_record` **won't trigger validations** before effectively update the records in the database, Emmett also provides a `validate_and_update` method on the `Set` object, which works pretty the same of the `update` one:
 
 ```python
 >>> db(Event.id == 1).validate_and_update(location="New York")
@@ -592,7 +592,7 @@ As you can see the return value of the `validate_and_update` method will be a `R
 Deleting records
 ----------------
 
-Like for the update of records, weppy provides two different methods to delete records:
+Like for the update of records, Emmett provides two different methods to delete records:
 
 - the `delete` method on the `Set` object
 - the `delete_record` method of the `Row` object

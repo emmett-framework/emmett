@@ -1,11 +1,11 @@
 Filter data with scopes
 =======================
 
-As we saw in the [previous chapter](./operations), weppy allows you to write queries easily using python objects.
+As we saw in the [previous chapter](./operations), Emmett allows you to write queries easily using python objects.
 
 Still, sometimes, it might be handy to have some shortcuts for the queries we write more often in our application, or to have some helpers that allow us to write less code.
 
-In order to address this need, weppy implements *scopes*, special methods inside models that will be bound to models themselves and to sets matching the involved tables.
+In order to address this need, Emmett implements *scopes*, special methods inside models that will be bound to models themselves and to sets matching the involved tables.
 
 But how do they work?    
 Let's say, for example, that you're writing some blog application, where every post can be in a different state, like when is just a draft, or is published, or maybe retired. Let's say that you're mapping this *state* with an *integer* column, and you're ending up with a model like this:
@@ -38,7 +38,7 @@ db(Post.state == Post.STATES['published']).where(...)
 And since this can be quite annoying, you can write a scope in your model:
 
 ```python
-from weppy.orm import scope
+from emmett.orm import scope
 
 class Post(Model):
     @scope('published')
@@ -107,7 +107,7 @@ Then we can add to our model:
 
 ```python
 from datetime import timedelta
-from weppy import request
+from emmett import request
 
 class Todo(Model):
     permitted_filters = ['done', 'overdue', 'upcoming']
@@ -127,13 +127,13 @@ class Todo(Model):
 and write down a routing function like this:
 
 ```python
-from weppy import request
+from emmett import request
 
 @app.route()
-def todos():
+async def todos():
     dbset = Todo.all()
-    if request.params.filter in Todo.permitted_filters:
-        dbset = dbset.with_state(request.params.filter)
+    if request.query_params.filter in Todo.permitted_filters:
+        dbset = dbset.with_state(request.query_params.filter)
     return {'todos': dbset.select(paginate=1)}
 ```
 
