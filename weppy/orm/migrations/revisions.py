@@ -331,7 +331,7 @@ class RevisionsMap(object):
         uppers = dedupe_tuple(self.get_revisions(upper))
 
         if not uppers and not requested_lowers:
-            raise StopIteration()
+            return
 
         upper_ancestors = set(self._get_ancestor_nodes(uppers, check=True))
 
