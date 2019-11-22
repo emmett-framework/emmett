@@ -1,5 +1,23 @@
-weppy changelog
-===============
+Emmett changelog
+================
+
+Next
+----
+
+(Release date to be defined, codename to be selected)
+
+- Dropped Python 2 support, requiring Python 3.7 minimum version
+- Changed package name to `emmett`
+- Moved from WSGI to ASGI
+- Moved to `async` syntax
+- Moved `globals` module to `ctx`
+- Added `output` optional param to `route` definition
+- Introduced `develop` and `serve` command in place of `run`
+- Pipeline `open` and `close` flows are now handled concurrently
+- Rewritten router, optimized request flow
+- Introduced basic websockets support
+- Added `after_loop` signal
+- Decoupled templating engine
 
 Version 1.3
 -----------
