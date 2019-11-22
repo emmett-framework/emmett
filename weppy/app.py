@@ -13,7 +13,7 @@ import click
 import os
 import sys
 
-from yaml import load as ymlload
+from yaml import SafeLoader as ymlLoader, load as ymlload
 
 from ._internal import get_root_path, create_missing_app_folders
 from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
@@ -270,7 +270,7 @@ class App:
     def config_from_yaml(self, filename, namespace=None):
         #: import configuration from yaml files
         rc = read_file(os.path.join(self.config_path, filename))
-        rc = ymlload(rc)
+        rc = ymlload(rc, Loader=ymlLoader)
         c = self.config if namespace is None else self.config[namespace]
         for key, val in rc.items():
             c[key] = dict_to_sdict(val)

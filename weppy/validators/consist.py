@@ -589,16 +589,19 @@ class isIPv4(Validator):
     private = ((2886729728, 2886795263), (3232235520, 3232301055))
     automatic = (2851995648, 2852061183)
 
-    def __init__(self, min='0.0.0.0', max='255.255.255.255', invert=False,
-                 localhost=None, private=None, auto=None, message=None):
+    def __init__(
+        self, min='0.0.0.0', max='255.255.255.255', invert=False,
+        localhost=None, private=None, auto=None, message=None
+    ):
         Validator.__init__(self, message)
         for n, value in enumerate((min, max)):
             temp = []
             if isinstance(value, str):
                 temp.append(value.split('.'))
             elif isinstance(value, (list, tuple)):
-                if len(value) == len(filter(
-                        lambda item: isinstance(item, int), value)) == 4:
+                if len(value) == len(
+                    list(filter(lambda item: isinstance(item, int), value))
+                ) == 4:
                     temp.append(value)
                 else:
                     for item in value:
@@ -630,16 +633,27 @@ class isIPv4(Validator):
             for bottom, top in zip(self.minip, self.maxip):
                 if self.invert != (bottom <= number <= top):
                     ok = True
-            if not (self.is_localhost is None or self.is_localhost ==
-                    (number == self.localhost)):
-                    ok = False
-            if not (self.is_private is None or self.is_private ==
-                    (sum([number[0] <= number <= number[1]
-                     for number in self.private]) > 0)):  # NOQA
-                    ok = False
-            if not (self.is_automatic is None or self.is_automatic ==
-                    (self.automatic[0] <= number <= self.automatic[1])):
-                    ok = False
+            if not (
+                self.is_localhost is None or self.is_localhost == (
+                    number == self.localhost
+                )
+            ):
+                ok = False
+            if not (
+                self.is_private is None or self.is_private == (
+                    sum([
+                        el[0] <= number <= el[1]
+                        for el in self.private
+                    ]) > 0
+                )
+            ):
+                ok = False
+            if not (
+                self.is_automatic is None or self.is_automatic == (
+                    self.automatic[0] <= number <= self.automatic[1]
+                )
+            ):
+                ok = False
             if ok:
                 return value, None
         return value, translate(self.message)
@@ -711,23 +725,26 @@ class isIPv6(Validator):
             self.is_reserved = False
             self.is_multicast = False
 
-        if not (self.is_private is None or self.is_private ==
-                ip.is_private):
+        if not (
+            self.is_private is None or self.is_private == ip.is_private
+        ):
             ok = False
-        if not (self.is_link_local is None or self.is_link_local ==
-                ip.is_link_local):
+        if not (
+            self.is_link_local is None or
+            self.is_link_local == ip.is_link_local
+        ):
             ok = False
-        if not (self.is_reserved is None or self.is_reserved ==
-                ip.is_reserved):
+        if not (
+            self.is_reserved is None or self.is_reserved == ip.is_reserved
+        ):
             ok = False
-        if not (self.is_multicast is None or self.is_multicast ==
-                ip.is_multicast):
+        if not (
+            self.is_multicast is None or self.is_multicast == ip.is_multicast
+        ):
             ok = False
-        if not (self.is_6to4 is None or self.is_6to4 ==
-                ip.is_6to4):
+        if not (self.is_6to4 is None or self.is_6to4 == ip.is_6to4):
             ok = False
-        if not (self.is_teredo is None or self.is_teredo ==
-                ip.is_teredo):
+        if not (self.is_teredo is None or self.is_teredo == ip.is_teredo):
             ok = False
 
         if ok:
@@ -746,18 +763,20 @@ class isIP(Validator):
     """
     message = 'Invalid IP address'
 
-    def __init__(self, min='0.0.0.0', max='255.255.255.255', invert=False,
-                 localhost=None, private=None, automatic=None, ipv4=None,
-                 link_local=None, reserved=None, multicast=None,
-                 routeable=None, to4=None, teredo=None, subnets=None,
-                 ipv6=None, message=None):
+    def __init__(
+        self, min='0.0.0.0', max='255.255.255.255', invert=False,
+        localhost=None, private=None, auto=None, ipv4=None,
+        link_local=None, reserved=None, multicast=None,
+        routeable=None, to4=None, teredo=None, subnets=None,
+        ipv6=None, message=None
+    ):
         Validator.__init__(self, message)
         self.minip = min,
         self.maxip = max,
         self.invert = invert
         self.is_localhost = localhost
         self.is_private = private
-        self.is_automatic = automatic
+        self.is_automatic = auto
         self.is_ipv4 = ipv4
         self.is_private = private
         self.is_link_local = link_local
@@ -793,7 +812,7 @@ class isIP(Validator):
                 invert=self.invert,
                 localhost=self.is_localhost,
                 private=self.is_private,
-                automatic=self.is_automatic,
+                auto=self.is_automatic,
                 message=self.message
             )(value)
         elif self.is_ipv6 or isinstance(ip, ipaddress.IPv6Address):
