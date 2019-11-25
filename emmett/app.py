@@ -289,18 +289,18 @@ class App:
             self._extensions_listeners[signal].append(listener)
 
     #: Add an extension to application
-    def use_extension(self, ext):
-        if not issubclass(ext, Extension):
+    def use_extension(self, ext_cls):
+        if not issubclass(ext_cls, Extension):
             raise RuntimeError(
-                f'{ext.__name__} is an invalid emmett extension')
-        ext_env, ext_config = self.__init_extension(ext)
-        self.ext[ext.__name__] = ext(self, ext_env, ext_config)
-        self.__register_extension_listeners(self.ext[ext.__name__])
-        self.ext[ext.__name__].on_load()
+                f'{ext_cls.__name__} is an invalid emmett extension')
+        ext_env, ext_config = self.__init_extension(ext_cls)
+        self.ext[ext_cls.__name__] = ext_cls(self, ext_env, ext_config)
+        self.__register_extension_listeners(self.ext[ext_cls.__name__])
+        self.ext[ext_cls.__name__].on_load()
 
     #: Add a template extension to application
-    def use_template_extension(self, ext):
-        return self.templater.use_extension(ext)
+    def use_template_extension(self, ext_cls, **config):
+        return self.templater.use_extension(ext_cls, **config)
 
     def send_signal(self, signal, *args, **kwargs):
         for listener in self._extensions_listeners[signal]:
