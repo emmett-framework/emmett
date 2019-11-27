@@ -21,7 +21,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from renoir import Renoir
 
-from ..html import asis
+from ...html import asis
 from .base import Migration
 from .exceptions import (
     RangeNotAncestorError, MultipleHeads, ResolutionError, RevisionError
