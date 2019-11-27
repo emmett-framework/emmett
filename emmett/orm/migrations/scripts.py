@@ -21,6 +21,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from renoir import Renoir
 
+from ..html import asis
 from .base import Migration
 from .exceptions import (
     RangeNotAncestorError, MultipleHeads, ResolutionError, RevisionError
@@ -198,6 +199,7 @@ class ScriptDir(object):
             down_migration_var = str(down_migration_var)
 
         template_ctx = dict(
+            asis=asis,
             up_migration=revid,
             down_migration=down_migration_var,
             creation_date=creation_date,
