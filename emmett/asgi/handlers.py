@@ -200,7 +200,7 @@ class HTTPHandler(RequestHandler):
         path = scope['emt.path']
         #: handle internal assets
         if path.startswith('/__emmett__'):
-            file_name = path[11:]
+            file_name = path[12:]
             static_file = os.path.join(
                 os.path.dirname(__file__), '..', 'assets', file_name)
             if os.path.splitext(static_file)[1] == 'html':
