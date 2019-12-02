@@ -109,6 +109,7 @@ class RequestHandler(Handler):
         _, pending = await asyncio.wait(
             [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
         )
+        scope['emt._flow_cancel'] = True
         await _cancel_tasks(pending)
 
     async def handle_request(self, scope, receive, send):
@@ -158,6 +159,14 @@ class HTTPHandler(RequestHandler):
         ctx_token = current._init_(RequestContext, self.app, scope)
         try:
             http = await self.pre_handler(scope, receive, send)
+        except asyncio.CancelledError:
+            if not scope.get('emt._flow_cancel', False):
+                self.app.log.exception('Application exception:')
+                http = HTTP(
+                    500, await self.error_handler(), headers=response.headers)
+            else:
+                current._close_(ctx_token)
+                return
         except Exception:
             self.app.log.exception('Application exception:')
             http = HTTP(
@@ -245,6 +254,7 @@ class WSHandler(RequestHandler):
         _, pending = await asyncio.wait(
             [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
         )
+        scope['emt._flow_cancel'] = True
         await _cancel_tasks(pending)
 
     @Handler.on_event('websocket.disconnect')
@@ -275,6 +285,9 @@ class WSHandler(RequestHandler):
         ctx_token = current._init_(WSContext, self.app, scope, receive, send)
         try:
             await self.pre_handler(scope, receive, send)
+        except asyncio.CancelledError:
+            if not scope.get('emt._flow_cancel', False):
+                self.app.log.exception('Application exception:')
         except Exception:
             self.app.log.exception('Application exception:')
             # http = HTTP(
@@ -291,6 +304,8 @@ class WSHandler(RequestHandler):
 
     async def dynamic_handler(self, scope, receive, send):
         await self.app._router_ws.dispatch()
+        if current.websocket._accepted:
+            await send({'type': 'websocket.close', 'code': 1000})
 
 
 class RequestContext(object):
