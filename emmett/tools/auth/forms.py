@@ -72,6 +72,7 @@ def registration_fields(auth):
             break
     rv = {}
     for i, (field_name, field) in enumerate(all_fields):
+        field.writable = True
         rv[field_name] = field
         rv[field_name]._inst_count_ = i
     return rv
