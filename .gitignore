@@ -4,6 +4,7 @@ __pycache__
 
 *.sublime-*
 .venv
+.vscode
 
 build/*
 dist/*
