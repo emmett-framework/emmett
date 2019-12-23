@@ -1,4 +1,4 @@
-# Emmett
+![Emmett](./logo/logo-bw-xb-xl.png)
 
 Emmett is a full-stack Python web framework designed with simplicity in mind.
 
