@@ -38,14 +38,6 @@ async def todo():
     return {'tasks': tasks}
 ```
 
-## Installation
-
-You can install Emmett using pip:
-
-```
-$ pip install emmett
-```
-
 ## Documentation
 
 The documentations is available under the *docs* folder.
