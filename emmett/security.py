@@ -69,7 +69,7 @@ def simple_hash(text, key='', salt='', digest_alg='md5'):
             get_digest(alg))
     elif key:  # use hmac
         digest_alg = get_digest(digest_alg)
-        h = hmac.new(to_bytes(key + salt), to_bytes(text), digest_alg)
+        h = hmac.new(to_bytes(key + salt), msg=to_bytes(text), digestmod=digest_alg)
     else:  # compatible with third party systems
         h = hashlib.new(digest_alg)
         h.update(to_bytes(text + salt))
@@ -124,7 +124,7 @@ def secure_dumps(data, encryption_key, hash_key=None, compression_level=None):
     key = _pad(to_bytes(encryption_key[:32]))
     aes = pyaes.AESModeOfOperationCFB(key, iv=key[:16], segment_size=8)
     encrypted_data = base64.urlsafe_b64encode(aes.encrypt(_pad(dump)))
-    signature = hmac.new(to_bytes(hash_key), encrypted_data).hexdigest()
+    signature = hmac.new(to_bytes(hash_key), msg=encrypted_data, digestmod='md5').hexdigest()
     return signature + ':' + encrypted_data.decode('utf8')
 
 
@@ -135,7 +135,7 @@ def secure_loads(data, encryption_key, hash_key=None, compression_level=None):
         hash_key = hashlib_sha1(encryption_key).hexdigest()
     signature, encrypted_data = data.split(':', 1)
     actual_signature = hmac.new(
-        to_bytes(hash_key), to_bytes(encrypted_data)).hexdigest()
+        to_bytes(hash_key), msg=to_bytes(encrypted_data), digestmod='md5').hexdigest()
     if signature != actual_signature:
         return None
     key = _pad(to_bytes(encryption_key[:32]))
