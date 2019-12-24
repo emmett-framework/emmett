@@ -37,7 +37,7 @@ if platform.system() == 'Windows' or platform.system().startswith('CYGWIN'):
 else:
     requirements = sorted(_requirements_basic + [
         'httptools~=0.0.13',
-        'uvloop~=0.13.0'
+        'uvloop~=0.14.0'
     ])
 
 
