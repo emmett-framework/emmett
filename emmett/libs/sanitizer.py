@@ -10,7 +10,7 @@
 
 """
 
-from cgi import escape
+from html import escape
 from formatter import AbstractFormatter
 from html.entities import entitydefs
 from html.parser import HTMLParser
