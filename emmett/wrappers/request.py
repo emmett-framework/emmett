@@ -24,7 +24,7 @@ from ..language.helpers import LanguageAccept
 from ..parsers import Parsers
 from ..utils import cachedprop
 from . import Wrapper
-from .helpers import Headers
+from .helpers import FileStorage, Headers
 
 _regex_accept = re.compile(r'''
     ([^\s;,]+(?:[ \t]*;[ \t]*(?:[^\s;,q][^\s;,]*|q[^\s;,=][^\s;,]*))*)
@@ -32,7 +32,7 @@ _regex_accept = re.compile(r'''
 _regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
 
 
-class Body(object):
+class Body:
     __slots__ = ('_data', '_complete', '_max_content_length')
 
     def __init__(self, max_content_length=None):
@@ -62,6 +62,11 @@ class Body(object):
 
 
 class Request(Wrapper):
+    __slots__ = (
+        '_scope', '_input',
+        'scheme', 'method', 'path', 'headers', 'host'
+    )
+
     def __init__(self, scope, max_content_length=None, body_timeout=None):
         self._scope = scope
         self.max_content_length = max_content_length
@@ -137,21 +142,30 @@ class Request(Wrapper):
     _empty_body_methods = {v: v for v in ['GET', 'HEAD', 'OPTIONS']}
 
     @cachedprop
-    async def body_params(self):
+    async def _input_params(self):
         if self._empty_body_methods.get(self.method) or not self.content_type:
-            return sdict()
+            return sdict(), sdict()
         return await self._load_params()
 
-    @staticmethod
+    @cachedprop
+    async def body_params(self):
+        rv, _ = await self._input_params
+        return rv
+
+    @cachedprop
+    async def files(self):
+        _, rv = await self._input_params
+        return rv
+
     def _load_params_missing(self, data):
-        return sdict()
+        return sdict(), sdict()
 
     def _load_params_json(self, data):
         try:
             params = Parsers.get_for('json')(data)
         except Exception:
             params = {}
-        return sdict(params)
+        return sdict(params), sdict()
 
     def _load_params_form_urlencoded(self, data):
         rv = sdict()
@@ -162,13 +176,13 @@ class Request(Wrapper):
                 rv[key] = values[0]
                 continue
             rv[key] = values
-        return rv
+        return rv, sdict()
 
-    # TODO: files
     def _load_params_form_multipart(self, data):
-        rv = sdict()
+        params, files = sdict(), sdict()
         field_storage = FieldStorage(
-            BytesIO(data), headers=self.headers,
+            BytesIO(data), 
+            headers=self.headers,
             environ={'REQUEST_METHOD': self.method},
             keep_blank_values=True
         )
@@ -176,23 +190,26 @@ class Request(Wrapper):
             field = field_storage[key]
             if isinstance(field, list):
                 if len(field) > 1:
-                    rv[key] = []
+                    params[key] = []
                     for element in field:
-                        rv[key].append(element.value)
+                        params[key].append(element.value)
                 else:
-                    rv[key] = field[0].value
+                    params[key] = field[0].value
             elif (
                 isinstance(field, FieldStorage) and
                 field.filename is not None
             ):
-                # self._files[key] = FileStorage(  # type: ignore
-                #     io.BytesIO(field.file.read()), field.filename,
-                #     field.name, field.type, field.headers,  # type: ignore # noqa: E501
-                # )
+                files[key] = FileStorage(
+                    BytesIO(field.file.read()),
+                    field.filename,
+                    field.name,
+                    field.type,
+                    field.headers
+                )
                 continue
             else:
-                rv[key] = field.value
-        return rv
+                params[key] = field.value
+        return params, files
 
     _params_loaders = {
         'application/json': _load_params_json,
