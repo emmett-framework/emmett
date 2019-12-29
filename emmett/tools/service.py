@@ -10,30 +10,53 @@
 """
 
 from ..ctx import response
+from ..parsers import Parsers
 from ..pipeline import Pipe
 from ..serializers import Serializers
 
 
-class ServicePipe(Pipe):
+class JSONServicePipe(Pipe):
+    __slots__ = ['decoder', 'encoder']
     output = 'str'
 
-    def __init__(self, procedure):
-        if not hasattr(self, procedure):
-            raise RuntimeError(
-                'Emmett cannot handle the service you requested: %s' %
-                procedure
-            )
-        self.procedure = getattr(self, procedure)
-        self.json_encoder = Serializers.get_for('json')
-        self.xml_encoder = Serializers.get_for('xml')
+    def __init__(self):
+        self.decoder = Parsers.get_for('json')
+        self.encoder = Serializers.get_for('json')
 
-    async def json(self, next_pipe, kwargs):
+    async def pipe(self, next_pipe, kwargs):
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
-        return self.json_encoder(await next_pipe(**kwargs))
+        return self.encoder(await next_pipe(**kwargs))
 
-    async def xml(self, next_pipe, kwargs):
+    def receive(self, data):
+        return self.decoder(data)
+
+    def send(self, data):
+        return self.encoder(data)
+
+
+class XMLServicePipe(Pipe):
+    __slots__ = ['encoder']
+    output = 'str'
+
+    def __init__(self):
+        self.encoder = Serializers.get_for('xml')
+    
+    async def pipe(self, next_pipe, kwargs):
         response.headers['Content-Type'] = 'text/xml'
-        return self.xml_encoder(await next_pipe(**kwargs))
+        return self.encoder(await next_pipe(**kwargs))
 
-    def pipe(self, next_pipe, **kwargs):
-        return self.procedure(next_pipe, kwargs)
+    def send(self, data):
+        return self.encoder(data)
+
+
+def ServicePipe(procedure: str) -> Pipe:
+    pipe_cls = {
+        'json': JSONServicePipe,
+        'xml': XMLServicePipe
+    }.get(procedure)
+    if not pipe_cls:
+        raise RuntimeError(
+            'Emmett cannot handle the service you requested: %s' %
+            procedure
+        )
+    return pipe_cls()

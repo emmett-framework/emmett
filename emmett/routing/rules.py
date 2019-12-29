@@ -13,7 +13,7 @@ import os
 
 from ..cache import RouteCacheRule
 from ..http import HTTPResponse
-from ..pipeline import Pipeline, Pipe
+from ..pipeline import RequestPipeline, WebsocketPipeline, Pipe
 from .routes import HTTPRoute, WebsocketRoute
 
 
@@ -102,7 +102,7 @@ class HTTPRoutingRule(RoutingRule):
             self.template = f.__name__ + self.app.template_default_extension
         if self.template_folder:
             self.template = os.path.join(self.template_folder, self.template)
-        pipeline_obj = Pipeline(self.pipeline)
+        pipeline_obj = RequestPipeline(self.pipeline)
         wrapped_f = pipeline_obj(f)
         self.pipeline_flow_open = pipeline_obj._flow_open()
         self.pipeline_flow_close = pipeline_obj._flow_close()
@@ -122,7 +122,8 @@ class HTTPRoutingRule(RoutingRule):
 class WebsocketRoutingRule(RoutingRule):
     __slots__ = (
         'router', 'name', 'f', 'output_type',
-        'paths', 'schemes', 'hostname', 'prefix'
+        'paths', 'schemes', 'hostname', 'prefix',
+        'pipeline', 'pipeline_flow_receive', 'pipeline_flow_send'
     )
 
     def __init__(
@@ -149,11 +150,10 @@ class WebsocketRoutingRule(RoutingRule):
         #         'Invalid output specified. Allowed values are: {}'.format(
         #             ', '.join(self.router._outputs.keys())))
         self.output_type = output
-        # self.pipeline = self.router.pipeline + (pipeline or [])
-        self.pipeline = pipeline or []
+        self.pipeline = self.router.pipeline + (pipeline or [])
         # check pipes are indeed valid pipes
-        # if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
-        #     raise RuntimeError('Invalid pipeline')
+        if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
+            raise RuntimeError('Invalid pipeline')
 
     def __call__(self, f):
         if not self.paths:
@@ -164,12 +164,13 @@ class WebsocketRoutingRule(RoutingRule):
         if self.name.endswith("."):
             self.name = self.name + f.__name__
         #
-        # pipeline_obj = Pipeline(self.pipeline)
-        # wrapped_f = pipeline_obj(f)
+        pipeline_obj = WebsocketPipeline(self.pipeline)
+        wrapped_f = pipeline_obj(f)
         # self.pipeline_flow_open = pipeline_obj._flow_open()
         # self.pipeline_flow_close = pipeline_obj._flow_close()
-        # self.f = wrapped_f
-        self.f = f
+        self.pipeline_flow_receive = pipeline_obj._flow_receive()
+        self.pipeline_flow_send = pipeline_obj._flow_send()
+        self.f = wrapped_f
         # output_type = pipeline_obj._output_type() or self.output_type
         # self.response_builders = {
         #     method.upper(): self.router._outputs[output_type](self)
