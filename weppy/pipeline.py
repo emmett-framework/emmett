@@ -178,6 +178,8 @@ def _wrap_flow_failure(pipe, f):
     def flow(**kwargs):
         try:
             return pipe.pipe(f, **kwargs)
+        except HTTP:
+            raise
         except Exception:
             pipe.on_pipe_failure()
             raise
