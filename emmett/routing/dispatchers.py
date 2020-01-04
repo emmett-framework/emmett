@@ -3,7 +3,7 @@
     emmett.routing.dispatchers
     --------------------------
 
-    Provides pipeline dispatchers for http routes.
+    Provides pipeline dispatchers for routes.
 
     :copyright: (c) 2014-2019 by Giovanni Barillari
     :license: BSD, see LICENSE for more details.
@@ -15,13 +15,12 @@ from ..ctx import current
 
 
 class Dispatcher:
-    __slots__ = ('f', 'flow_open', 'flow_close', 'response_builders')
+    __slots__ = ['f', 'flow_open', 'flow_close']
 
-    def __init__(self, route, rule):
+    def __init__(self, route):
         self.f = route.f
         self.flow_open = route.pipeline_flow_open
         self.flow_close = route.pipeline_flow_close
-        self.response_builders = rule.response_builders
 
     async def _parallel_flow(self, flow):
         tasks = [asyncio.create_task(method()) for method in flow]
@@ -30,59 +29,104 @@ class Dispatcher:
             if task.exception():
                 raise task.exception()
 
-    def before_dispatch(self):
-        return self._parallel_flow(self.flow_open)
-
-    def after_dispatch(self):
-        return self._parallel_flow(self.flow_close)
-
-    def build_response(self, request, output):
-        return self.response_builders[request.method](output)
-
-    async def get_response(self, request, reqargs):
-        return self.build_response(request, await self.f(**reqargs))
-
-    def dispatch(self, request, reqargs):
-        return self.get_response(request, reqargs)
+    def dispatch(self, wrapper, reqargs):
+        raise NotImplementedError
 
 
-class BeforeDispatcher(Dispatcher):
-    __slots__ = ()
+class RequestDispatcher(Dispatcher):
+    __slots__ = ['response_builders']
 
-    async def dispatch(self, request, reqargs):
-        await self.before_dispatch()
-        return await self.get_response(request, reqargs)
+    def __init__(self, route, rule):
+        super().__init__(route)
+        self.response_builders = rule.response_builders
+
+    def build_response(self, wrapper, output):
+        return self.response_builders[wrapper.method](output)
+
+    async def get_response(self, wrapper, reqargs):
+        return self.build_response(wrapper, await self.f(**reqargs))
+
+    def dispatch(self, wrapper, reqargs):
+        return self.get_response(wrapper, reqargs)
 
 
-class AfterDispatcher(Dispatcher):
-    __slots__ = ()
+class RequestOpenDispatcher(RequestDispatcher):
+    __slots__ = []
 
-    async def dispatch(self, request, reqargs):
+    async def dispatch(self, wrapper, reqargs):
+        await self._parallel_flow(self.flow_open)
+        return await self.get_response(wrapper, reqargs)
+
+
+class RequestCloseDispatcher(RequestDispatcher):
+    __slots__ = []
+
+    async def dispatch(self, wrapper, reqargs):
         try:
-            rv = await self.get_response(request, reqargs)
+            rv = await self.get_response(wrapper, reqargs)
         except Exception:
-            await self.after_dispatch()
+            await self._parallel_flow(self.flow_close)
             raise
-        await self.after_dispatch()
+        await self._parallel_flow(self.flow_close)
         return rv
 
 
-class CompleteDispatcher(Dispatcher):
-    __slots__ = ()
+class RequestFlowDispatcher(RequestDispatcher):
+    __slots__ = []
 
-    async def dispatch(self, request, reqargs):
-        await self.before_dispatch()
+    async def dispatch(self, wrapper, reqargs):
+        await self._parallel_flow(self.flow_open)
         try:
-            rv = await self.get_response(request, reqargs)
+            rv = await self.get_response(wrapper, reqargs)
         except Exception:
-            await self.after_dispatch()
+            await self._parallel_flow(self.flow_close)
             raise
-        await self.after_dispatch()
+        await self._parallel_flow(self.flow_close)
         return rv
+
+
+class WSDispatcher(Dispatcher):
+    __slots__ = []
+
+    def dispatch(self, wrapper, reqargs):
+        return self.f(**reqargs)
+
+
+class WSOpenDispatcher(WSDispatcher):
+    __slots__ = []
+
+    async def dispatch(self, wrapper, reqargs):
+        await self._parallel_flow(self.flow_open)
+        await self.f(**reqargs)
+
+
+class WSCloseDispatcher(WSDispatcher):
+    __slots__ = []
+
+    async def dispatch(self, wrapper, reqargs):
+        try:
+            await self.f(**reqargs)
+        except Exception:
+            await self._parallel_flow(self.flow_close)
+            raise
+        await self._parallel_flow(self.flow_close)
+
+
+class WSFlowDispatcher(WSDispatcher):
+    __slots__ = []
+
+    async def dispatch(self, wrapper, reqargs):
+        await self._parallel_flow(self.flow_open)
+        try:
+            await self.f(**reqargs)
+        except Exception:
+            await self._parallel_flow(self.flow_close)
+            raise
+        await self._parallel_flow(self.flow_close)
 
 
 class DispatcherCacheMixin:
-    __slots__ = ()
+    __slots__ = []
     _allowed_methods = {'GET', 'HEAD'}
 
     def __init__(self, route, rule):
@@ -90,9 +134,9 @@ class DispatcherCacheMixin:
         self.route = route
         self.cache_rule = rule.cache_rule
 
-    async def get_response(self, request, reqargs):
-        if request.method not in self._allowed_methods:
-            return await super().get_response(request, reqargs)
+    async def get_response(self, wrapper, reqargs):
+        if wrapper.method not in self._allowed_methods:
+            return await super().get_response(wrapper, reqargs)
         response = current.response
         key = self.cache_rule._build_ctx_key(
             self.route, **self.cache_rule._build_ctx(
@@ -101,7 +145,7 @@ class DispatcherCacheMixin:
         if data is not None:
             response.headers.update(data['headers'])
             return data['http_cls'], data['content']
-        http_cls, output = await super().get_response(request, reqargs)
+        http_cls, output = await super().get_response(wrapper, reqargs)
         if response.status == 200:
             self.cache_rule.cache.set(
                 key, {
@@ -112,17 +156,17 @@ class DispatcherCacheMixin:
         return http_cls, output
 
 
-class CacheDispatcher(DispatcherCacheMixin, Dispatcher):
+class CacheDispatcher(DispatcherCacheMixin, RequestDispatcher):
     __slots__ = ('route', 'cache_rule')
 
 
-class BeforeCacheDispatcher(DispatcherCacheMixin, BeforeDispatcher):
+class CacheOpenDispatcher(DispatcherCacheMixin, RequestOpenDispatcher):
     __slots__ = ('route', 'cache_rule')
 
 
-class AfterCacheDispatcher(DispatcherCacheMixin, AfterDispatcher):
+class CacheCloseDispatcher(DispatcherCacheMixin, RequestCloseDispatcher):
     __slots__ = ('route', 'cache_rule')
 
 
-class CompleteCacheDispatcher(DispatcherCacheMixin, CompleteDispatcher):
+class CacheFlowDispatcher(DispatcherCacheMixin, RequestFlowDispatcher):
     __slots__ = ('route', 'cache_rule')

@@ -18,6 +18,11 @@ from .routes import HTTPRoute, WebsocketRoute
 
 
 class RoutingRule:
+    __slots__ = ['router']
+
+    def __init__(self, router):
+        self.router = router
+
     @property
     def app(self):
         return self.router.app
@@ -29,27 +34,27 @@ class RoutingRule:
             short = filename.rsplit('.', 1)[0]
         if short == "__init__":
             short = self.app.root_path.rsplit('/', 1)[-1]
-        # allow only one level of naming if name is builded
+        #: allow only one naming level if name is not provided
         if len(short.split(os.sep)) > 1:
             short = short.split(os.sep)[-1]
         return '.'.join(short.split(os.sep) + [f.__name__])
 
 
 class HTTPRoutingRule(RoutingRule):
-    __slots__ = (
-        'router', 'name', 'f', 'output_type',
+    __slots__ = [
+        'name', 'f', 'output_type',
         'paths', 'schemes', 'methods', 'hostname', 'prefix',
         'template', 'template_folder', 'template_path',
         'pipeline', 'pipeline_flow_open', 'pipeline_flow_close',
         'response_builders', 'cache_rule'
-    )
+    ]
 
     def __init__(
         self, router, paths=None, name=None, template=None, pipeline=None,
         injectors=None, schemes=None, hostname=None, methods=None, prefix=None,
         template_folder=None, template_path=None, cache=None, output='auto'
     ):
-        self.router = router
+        super().__init__(router)
         self.name = name
         self.paths = paths
         if self.paths is None:
@@ -120,17 +125,18 @@ class HTTPRoutingRule(RoutingRule):
 
 
 class WebsocketRoutingRule(RoutingRule):
-    __slots__ = (
-        'router', 'name', 'f', 'output_type',
+    __slots__ = [
+        'name', 'f',
         'paths', 'schemes', 'hostname', 'prefix',
-        'pipeline', 'pipeline_flow_receive', 'pipeline_flow_send'
-    )
+        'pipeline', 'pipeline_flow_open', 'pipeline_flow_close',
+        'pipeline_flow_receive', 'pipeline_flow_send'
+    ]
 
     def __init__(
         self, router, paths=None, name=None, pipeline=None, schemes=None,
-        hostname=None, prefix=None, output='auto'
+        hostname=None, prefix=None
     ):
-        self.router = router
+        super().__init__(router)
         self.name = name
         self.paths = paths
         if self.paths is None:
@@ -145,11 +151,6 @@ class WebsocketRoutingRule(RoutingRule):
             if not prefix.startswith('/'):
                 prefix = '/' + prefix
         self.prefix = prefix
-        # if output not in self.router._outputs:
-        #     raise SyntaxError(
-        #         'Invalid output specified. Allowed values are: {}'.format(
-        #             ', '.join(self.router._outputs.keys())))
-        self.output_type = output
         self.pipeline = self.router.pipeline + (pipeline or [])
         # check pipes are indeed valid pipes
         if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
@@ -166,16 +167,11 @@ class WebsocketRoutingRule(RoutingRule):
         #
         pipeline_obj = WebsocketPipeline(self.pipeline)
         wrapped_f = pipeline_obj(f)
-        # self.pipeline_flow_open = pipeline_obj._flow_open()
-        # self.pipeline_flow_close = pipeline_obj._flow_close()
+        self.pipeline_flow_open = pipeline_obj._flow_open()
+        self.pipeline_flow_close = pipeline_obj._flow_close()
         self.pipeline_flow_receive = pipeline_obj._flow_receive()
         self.pipeline_flow_send = pipeline_obj._flow_send()
         self.f = wrapped_f
-        # output_type = pipeline_obj._output_type() or self.output_type
-        # self.response_builders = {
-        #     method.upper(): self.router._outputs[output_type](self)
-        #     for method in self.methods
-        # }
         for idx, path in enumerate(self.paths):
             self.router.add_route(WebsocketRoute(self, path, idx))
         return f

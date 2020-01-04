@@ -245,12 +245,12 @@ class HTTPHandler(RequestHandler):
 
 class WSHandler(RequestHandler):
     async def __call__(self, scope, receive, send):
-        scope['emt.wsqueue'] = asyncio.Queue()
+        queue = asyncio.Queue()
         scope['emt.path'] = scope['path'] or '/'
         task_events = asyncio.create_task(
             self.handle_events(scope, receive, send))
         task_request = asyncio.create_task(
-            self.handle_request(scope, receive, send))
+            self.handle_request(scope, queue.get, send))
         _, pending = await asyncio.wait(
             [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
         )

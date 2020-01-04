@@ -16,9 +16,11 @@ from functools import wraps
 
 from ..http import HTTP
 from .dispatchers import (
-    Dispatcher, BeforeDispatcher, AfterDispatcher, CompleteDispatcher,
-    CacheDispatcher, BeforeCacheDispatcher,
-    AfterCacheDispatcher, CompleteCacheDispatcher
+    RequestDispatcher, RequestOpenDispatcher,
+    RequestCloseDispatcher, RequestFlowDispatcher,
+    WSDispatcher, WSOpenDispatcher, WSCloseDispatcher, WSFlowDispatcher,
+    CacheDispatcher, CacheOpenDispatcher,
+    CacheCloseDispatcher, CacheFlowDispatcher
 )
 
 REGEX_INT = re.compile(r'<int\:(\w+)>')
@@ -195,11 +197,15 @@ class HTTPRoute(Route):
 
     def build_dispatcher(self, rule):
         dispatchers = {
-            'base': Dispatcher, 'open': BeforeDispatcher,
-            'close': AfterDispatcher, 'flow': CompleteDispatcher
+            'base': RequestDispatcher,
+            'open': RequestOpenDispatcher,
+            'close': RequestCloseDispatcher,
+            'flow': RequestFlowDispatcher
         } if not rule.cache_rule else {
-            'base': CacheDispatcher, 'open': BeforeCacheDispatcher,
-            'close': AfterCacheDispatcher, 'flow': CompleteCacheDispatcher
+            'base': CacheDispatcher,
+            'open': CacheOpenDispatcher,
+            'close': CacheCloseDispatcher,
+            'flow': CacheFlowDispatcher
         }
         if self.pipeline_flow_open and self.pipeline_flow_close:
             dispatcher = dispatchers['flow']
@@ -218,8 +224,36 @@ class HTTPRoute(Route):
 class WebsocketRoute(Route):
     __slots__ = (
         'name', 'f', 'regex', 'match', 'is_static', 'parse_reqargs',
-        'path', 'schemes', 'hostname'
+        'path', 'schemes', 'hostname',
+        'pipeline_flow_open', 'pipeline_flow_close',
+        'pipeline_flow_receive', 'pipeline_flow_send',
+        'dispatcher'
     )
 
+    def __init__(self, rule, path, idx):
+        super().__init__(rule, path, idx)
+        self.pipeline_flow_open = rule.pipeline_flow_open
+        self.pipeline_flow_close = rule.pipeline_flow_close
+        self.pipeline_flow_receive = rule.pipeline_flow_receive
+        self.pipeline_flow_send = rule.pipeline_flow_send
+        self.build_dispatcher(rule)
+
+    def build_dispatcher(self, rule):
+        dispatchers = {
+            'base': WSDispatcher,
+            'open': WSOpenDispatcher,
+            'close': WSCloseDispatcher,
+            'flow': WSFlowDispatcher
+        }
+        if self.pipeline_flow_open and self.pipeline_flow_close:
+            dispatcher = dispatchers['flow']
+        elif self.pipeline_flow_open and not self.pipeline_flow_close:
+            dispatcher = dispatchers['open']
+        elif not self.pipeline_flow_open and self.pipeline_flow_close:
+            dispatcher = dispatchers['close']
+        else:
+            dispatcher = dispatchers['base']
+        self.dispatcher = dispatcher(self)
+
     def dispatch(self, wrapper, reqargs):
-        return self.f(**reqargs)
+        return self.dispatcher.dispatch(wrapper, reqargs)

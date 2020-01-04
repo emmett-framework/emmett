@@ -32,6 +32,22 @@ class Pipeline:
     def __call__(self, f):
         raise NotImplementedError
 
+    def _flow_open(self):
+        rv = []
+        for pipe in self.pipes:
+            if 'open' not in pipe._pipeline_all_methods_:
+                continue
+            rv.append(pipe.open)
+        return rv
+
+    def _flow_close(self):
+        rv = []
+        for pipe in reversed(self.pipes):
+            if 'close' not in pipe._pipeline_all_methods_:
+                continue
+            rv.append(pipe.close)
+        return rv
+
 
 class RequestPipeline(Pipeline):
     __slots__ = []
@@ -61,22 +77,6 @@ class RequestPipeline(Pipeline):
             f = wrapper(pipe, f)
         return f
 
-    def _flow_open(self):
-        rv = []
-        for pipe in self.pipes:
-            if 'open' not in pipe._pipeline_all_methods_:
-                continue
-            rv.append(pipe.open)
-        return rv
-
-    def _flow_close(self):
-        rv = []
-        for pipe in reversed(self.pipes):
-            if 'close' not in pipe._pipeline_all_methods_:
-                continue
-            rv.append(pipe.close)
-        return rv
-
     def _output_type(self):
         rv = None
         for pipe in reversed(self.pipes):
@@ -101,7 +101,7 @@ class WebsocketPipeline(Pipeline):
         else:
             rv = _wrap_flow_ws_basic
         return rv
-    
+
     def __call__(self, f):
         if not asyncio.iscoroutinefunction(f):
             f = self._awaitable_wrap(f)

@@ -23,8 +23,8 @@ from ..http import HTTP
 from ..language.helpers import LanguageAccept
 from ..parsers import Parsers
 from ..utils import cachedprop
-from . import Wrapper
-from .helpers import FileStorage, Headers
+from . import ScopeWrapper
+from .helpers import FileStorage
 
 _regex_accept = re.compile(r'''
     ([^\s;,]+(?:[ \t]*;[ \t]*(?:[^\s;,q][^\s;,]*|q[^\s;,=][^\s;,]*))*)
@@ -61,22 +61,15 @@ class Body:
         self._complete.set()
 
 
-class Request(Wrapper):
-    __slots__ = (
-        '_scope', '_input',
-        'scheme', 'method', 'path', 'headers', 'host'
-    )
+class Request(ScopeWrapper):
+    __slots__ = ('_input', 'method')
 
     def __init__(self, scope, max_content_length=None, body_timeout=None):
-        self._scope = scope
+        super().__init__(scope)
         self.max_content_length = max_content_length
         self.body_timeout = body_timeout
-        self.scheme = scope['scheme']
         self.method = scope['method']
-        self.path = scope['emt.path']
         self._input = scope['emt.input']
-        self.headers = Headers(scope)
-        self.host = self.headers.get('host')
 
     def __parse_accept_header(self, value, cls=Accept):
         if not value:
@@ -119,18 +112,6 @@ class Request(Wrapper):
     @cachedprop
     def content_length(self):
         return self.headers.get('content_length', 0, cast=int)
-
-    @cachedprop
-    def query_params(self):
-        rv = sdict()
-        for key, values in parse_qs(
-            self._scope['query_string'].decode('ascii'), keep_blank_values=True
-        ).items():
-            if len(values) == 1:
-                rv[key] = values[0]
-                continue
-            rv[key] = values
-        return rv
 
     @cachedprop
     def cookies(self):
@@ -181,7 +162,7 @@ class Request(Wrapper):
     def _load_params_form_multipart(self, data):
         params, files = sdict(), sdict()
         field_storage = FieldStorage(
-            BytesIO(data), 
+            BytesIO(data),
             headers=self.headers,
             environ={'REQUEST_METHOD': self.method},
             keep_blank_values=True

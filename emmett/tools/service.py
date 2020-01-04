@@ -40,7 +40,7 @@ class XMLServicePipe(Pipe):
 
     def __init__(self):
         self.encoder = Serializers.get_for('xml')
-    
+
     async def pipe(self, next_pipe, kwargs):
         response.headers['Content-Type'] = 'text/xml'
         return self.encoder(await next_pipe(**kwargs))

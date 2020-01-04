@@ -64,7 +64,7 @@ class FileStorage:
     __slots__ = ('stream', 'filename', 'name', 'headers', 'content_type')
 
     def __init__(
-        self, 
+        self,
         stream: BinaryIO,
         filename: str,
         name: str = None,

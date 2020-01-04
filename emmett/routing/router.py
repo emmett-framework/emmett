@@ -222,6 +222,10 @@ class WebsocketRouter(Router):
 
     _routing_rule_cls = WebsocketRoutingRule
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pipeline = []
+
     @staticmethod
     def _build_routing_dict():
         rv = {}
@@ -275,6 +279,8 @@ class WebsocketRouter(Router):
         if not route:
             raise HTTP(404, body="Resource not found\n")
         websocket.name = route.name
+        websocket._bind_flow(
+            route.pipeline_flow_receive, route.pipeline_flow_send)
         await route.dispatch(websocket, reqargs)
 
 
