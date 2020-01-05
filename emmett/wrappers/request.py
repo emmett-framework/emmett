@@ -14,21 +14,16 @@ import pendulum
 import re
 
 from cgi import FieldStorage, parse_header
-from http.cookies import SimpleCookie
 from io import BytesIO
 from urllib.parse import parse_qs
 
-from ..datastructures import Accept, sdict
+from ..datastructures import sdict
 from ..http import HTTP
-from ..language.helpers import LanguageAccept
 from ..parsers import Parsers
 from ..utils import cachedprop
 from . import ScopeWrapper
 from .helpers import FileStorage
 
-_regex_accept = re.compile(r'''
-    ([^\s;,]+(?:[ \t]*;[ \t]*(?:[^\s;,q][^\s;,]*|q[^\s;,=][^\s;,]*))*)
-    (?:[ \t]*;[ \t]*q=(\d*(?:\.\d+)?)[^,]*)?''', re.VERBOSE)
 _regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
 
 
@@ -71,19 +66,6 @@ class Request(ScopeWrapper):
         self.method = scope['method']
         self._input = scope['emt.input']
 
-    def __parse_accept_header(self, value, cls=Accept):
-        if not value:
-            return cls(None)
-        result = []
-        for match in _regex_accept.finditer(value):
-            quality = match.group(2)
-            if not quality:
-                quality = 1
-            else:
-                quality = max(min(float(quality), 1), 0)
-            result.append((match.group(1), quality))
-        return cls(result)
-
     @cachedprop
     async def body(self):
         if (
@@ -112,13 +94,6 @@ class Request(ScopeWrapper):
     @cachedprop
     def content_length(self):
         return self.headers.get('content_length', 0, cast=int)
-
-    @cachedprop
-    def cookies(self):
-        cookies = SimpleCookie()
-        for cookie in self.headers.get('cookie', '').split(';'):
-            cookies.load(cookie)
-        return cookies
 
     _empty_body_methods = {v: v for v in ['GET', 'HEAD', 'OPTIONS']}
 
@@ -202,11 +177,6 @@ class Request(ScopeWrapper):
         loader = self._params_loaders.get(
             self.content_type, self._load_params_missing)
         return loader(self, await self.body)
-
-    @cachedprop
-    def accept_language(self):
-        return self.__parse_accept_header(
-            self.headers.get('accept-language'), LanguageAccept)
 
     @cachedprop
     def client(self):

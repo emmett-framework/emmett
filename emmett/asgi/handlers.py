@@ -336,11 +336,8 @@ class WSContext(object):
             scope,
             receive,
             send
-            # app.config.request_max_content_length,
-            # app.config.request_body_timeout
         )
-        # self.response = Response()
-        # self.session = None
+        self.session = None
 
     @cachedprop
     def language(self):

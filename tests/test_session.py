@@ -46,15 +46,15 @@ async def test_session_cookie(ctx):
     assert session_cookie.secure is True
     assert session_cookie.domain == 'localhost'
 
-    await session_cookie.open()
+    await session_cookie.open_request()
     assert ctx.session._expiration == 3600
 
-    await session_cookie.close()
+    await session_cookie.close_request()
     cookie = str(ctx.response.cookies)
     assert 'foo_session' in cookie
     assert 'Domain=localhost;' in cookie
     assert 'secure' in cookie.lower()
 
     ctx.request.cookies = ctx.response.cookies
-    await session_cookie.open()
+    await session_cookie.open_request()
     assert ctx.session._expiration == 3600
