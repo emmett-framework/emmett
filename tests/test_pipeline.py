@@ -19,6 +19,11 @@ from emmett import App, request, websocket, abort
 from emmett.ctx import current
 from emmett.http import HTTP
 from emmett.pipeline import Pipe
+from emmett.parsers import Parsers
+from emmett.serializers import Serializers
+
+json_load = Parsers.get_for('json')
+json_dump = Serializers.get_for('json')
 
 
 class PipeException(Exception):
@@ -46,14 +51,6 @@ class FlowStorePipe(Pipe):
 
     async def on_pipe_failure(self):
         self.store_linear('failure')
-
-    def on_receive(self, data):
-        self.store_linear('receive')
-        return data
-
-    def on_send(self, data):
-        self.store_linear('send')
-        return data
 
 
 class FlowStorePipeCommon(FlowStorePipe):
@@ -138,6 +135,23 @@ class ExcPipeClose(FlowStorePipeCommon):
         raise PipeException(self)
 
 
+class PipeSR1(FlowStorePipeSplit):
+    def on_receive(self, data):
+        data = json_load(data)
+        return dict(pipe1r='receive_inject', **data)
+
+    def on_send(self, data):
+        return json_dump(dict(pipe1s='send_inject', **data))
+
+
+class PipeSR2(FlowStorePipeSplit):
+    def on_receive(self, data):
+        return dict(pipe2r='receive_inject', **data)
+
+    def on_send(self, data):
+        return dict(pipe2s='send_inject', **data)
+
+
 @contextmanager
 def request_ctx(path):
     with _current_ctx(path) as ctx:
@@ -216,6 +230,12 @@ def app():
     @app.websocket(pipeline=[Pipe4()])
     def ws_pipe4():
         return
+
+    @app.websocket(pipeline=[PipeSR1(), PipeSR2()])
+    async def ws_inject():
+        data = await websocket.receive()
+        current._receive_storage.append(data)
+        await websocket.send(data)
 
     mod = app.module(__name__, 'mod', url_prefix='mod')
     mod.pipeline = [Pipe5()]
@@ -480,3 +500,31 @@ async def test_module_pipeline_composition(app):
         await app._router_ws.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
+
+
+@pytest.mark.asyncio
+async def test_receive_send_flow(app):
+    with ws_ctx('/ws_inject') as ctx:
+        parallel_flow = [
+            'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open',
+            'PipeSR1.open_ws', 'PipeSR2.open_ws',
+            'PipeSR2.close_ws', 'PipeSR1.close_ws',
+            'Pipe3.close', 'Pipe2.close_ws', 'Pipe1.close']
+        linear_flow = [
+            'Pipe1.pipe', 'Pipe2.pipe_ws', 'Pipe3.pipe',
+            'PipeSR1.pipe_ws', 'PipeSR2.pipe_ws',
+            'PipeSR2.success', 'PipeSR1.success',
+            'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
+        await app._router_ws.dispatch()
+        assert linear_flows_are_equal(linear_flow, ctx)
+        assert parallel_flows_are_equal(parallel_flow, ctx)
+
+        assert ctx._receive_storage[-1] == {
+            'foo': 'bar',
+            'pipe1r': 'receive_inject', 'pipe2r': 'receive_inject'
+        }
+        assert json_load(ctx._send_storage[-1]['text']) == {
+            'foo': 'bar',
+            'pipe1r': 'receive_inject', 'pipe2r': 'receive_inject',
+            'pipe1s': 'send_inject', 'pipe2s': 'send_inject'
+        }

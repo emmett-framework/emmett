@@ -4,10 +4,13 @@ from contextlib import contextmanager
 
 from emmett.asgi.handlers import RequestContext, WSContext
 from emmett.ctx import current
+from emmett.serializers import Serializers
 from emmett.testing.env import ScopeBuilder
 from emmett.wrappers.request import Request
 from emmett.wrappers.response import Response
 from emmett.wrappers.websocket import Websocket
+
+json_dump = Serializers.get_for('json')
 
 
 class FakeRequestContext(RequestContext):
@@ -26,10 +29,11 @@ class FakeWSContext(WSContext):
             self.receive,
             self.send
         )
+        self._receive_storage = []
         self._send_storage = []
 
     async def receive(self):
-        return b'test'
+        return json_dump({'foo': 'bar'})
 
     async def send(self, data):
         self._send_storage.append(data)

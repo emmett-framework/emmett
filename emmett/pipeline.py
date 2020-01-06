@@ -149,17 +149,17 @@ class WebsocketPipeline(Pipeline):
     def _flow_receive(self):
         rv = []
         for pipe in self.pipes:
-            if 'receive' not in pipe._pipeline_all_methods_:
+            if 'on_receive' not in pipe._pipeline_all_methods_:
                 continue
-            rv.append(pipe.receive)
+            rv.append(pipe.on_receive)
         return rv
 
     def _flow_send(self):
         rv = []
         for pipe in reversed(self.pipes):
-            if 'send' not in pipe._pipeline_all_methods_:
+            if 'on_send' not in pipe._pipeline_all_methods_:
                 continue
-            rv.append(pipe.send)
+            rv.append(pipe.on_send)
         return rv
 
 
