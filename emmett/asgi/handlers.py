@@ -31,8 +31,8 @@ REGEX_STATIC_LANG = re.compile(
     '^/(?P<l>\w+/)?static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
 
 
-class HandlerEvent(object):
-    __slots__ = ('event', 'f')
+class HandlerEvent:
+    __slots__ = ['event', 'f']
 
     def __init__(self, event, f):
         self.event = event
@@ -65,6 +65,8 @@ class MetaHandler(type):
 
 
 class Handler(metaclass=MetaHandler):
+    __slots__ = ['app']
+
     def __init__(self, app):
         self.app = app
 
@@ -98,6 +100,37 @@ class LifeSpanHandler(Handler):
 
 
 class RequestHandler(Handler):
+    __slots__ = ['router']
+
+    def __init__(self, app):
+        super().__init__(app)
+        self._bind_router()
+        self._configure_methods()
+
+    def _bind_router(self):
+        raise NotImplementedError
+
+    def _configure_methods(self):
+        raise NotImplementedError
+
+
+class HTTPHandler(RequestHandler):
+    __slots__ = ['pre_handler', 'static_handler', 'static_matcher', '__dict__']
+
+    def _bind_router(self):
+        self.router = self.app._router_http
+
+    def _configure_methods(self):
+        self.static_matcher = (
+            self._static_lang_matcher if self.app.language_force_on_url else
+            self._static_nolang_matcher)
+        self.static_handler = (
+            self._static_handler if self.app.config.handle_static else
+            self.dynamic_handler)
+        self.pre_handler = (
+            self._prefix_handler if self.router._prefix_main else
+            self.static_handler)
+
     async def __call__(self, scope, receive, send):
         scope['emt.now'] = datetime.utcnow()
         scope['emt.path'] = scope['path'] or '/'
@@ -112,11 +145,6 @@ class RequestHandler(Handler):
         scope['emt._flow_cancel'] = True
         await _cancel_tasks(pending)
 
-    async def handle_request(self, scope, receive, send):
-        raise NotImplementedError
-
-
-class HTTPHandler(RequestHandler):
     @Handler.on_event('http.disconnect')
     async def event_disconnect(self, scope, receive, send, event):
         return
@@ -127,24 +155,6 @@ class HTTPHandler(RequestHandler):
         if not event.get('more_body', False):
             scope['emt.input'].set_complete()
         return _event_looper
-
-    @cachedprop
-    def pre_handler(self):
-        return (
-            self._prefix_handler if self.app._router_http._prefix_main else
-            self.static_handler)
-
-    @cachedprop
-    def static_handler(self):
-        return (
-            self._static_handler if self.app.config.handle_static else
-            self.dynamic_handler)
-
-    @cachedprop
-    def static_matcher(self):
-        return (
-            self._static_lang_matcher if self.app.language_force_on_url else
-            self._static_nolang_matcher)
 
     @cachedprop
     def error_handler(self):
@@ -177,10 +187,10 @@ class HTTPHandler(RequestHandler):
 
     def _prefix_handler(self, scope, receive, send):
         path = request.path
-        if not path.startswith(self.app._router_http._prefix_main):
+        if not path.startswith(self.router._prefix_main):
             return HTTP(404)
         request.path = scope['emt.path'] = (
-            path[self.app._router_http._prefix_main_len:] or '/')
+            path[self.router._prefix_main_len:] or '/')
         return self.static_handler(scope, receive, send)
 
     def _static_lang_matcher(self, path):
@@ -223,7 +233,7 @@ class HTTPHandler(RequestHandler):
 
     async def dynamic_handler(self, scope, receive, send):
         try:
-            http = await self.app._router_http.dispatch()
+            http = await self.router.dispatch()
         except HTTPResponse as http_exception:
             http = http_exception
             #: render error with handlers if in app
@@ -244,11 +254,21 @@ class HTTPHandler(RequestHandler):
 
 
 class WSHandler(RequestHandler):
+    __slots__ = ['pre_handler']
+
+    def _bind_router(self):
+        self.router = self.app._router_ws
+
+    def _configure_methods(self):
+        self.pre_handler = (
+            self._prefix_handler if self.router._prefix_main else
+            self.dynamic_handler)
+
     async def __call__(self, scope, receive, send):
         queue = asyncio.Queue()
         scope['emt.path'] = scope['path'] or '/'
         task_events = asyncio.create_task(
-            self.handle_events(scope, receive, send))
+            self.handle_events(scope, queue.put, send))
         task_request = asyncio.create_task(
             self.handle_request(scope, queue.get, send))
         _, pending = await asyncio.wait(
@@ -263,23 +283,8 @@ class WSHandler(RequestHandler):
 
     @Handler.on_event('websocket.receive')
     async def event_receive(self, scope, receive, send, event):
-        await scope['emt.wsqueue'].put(event.get('bytes') or event['text'])
+        await receive(event.get('bytes') or event['text'])
         return _event_looper
-
-    @cachedprop
-    def pre_handler(self):
-        return (
-            self._prefix_handler if self.app._router_ws._prefix_main else
-            self.dynamic_handler)
-
-    # @cachedprop
-    # def error_handler(self):
-    #     return (
-    #         self._debug_handler if self.app.debug else self.exception_handler)
-
-    # @cachedprop
-    # def exception_handler(self):
-    #     return self.app.error_handlers.get(500, self._exception_handler)
 
     async def handle_request(self, scope, receive, send):
         ctx_token = current._init_(WSContext, self.app, scope, receive, send)
@@ -296,14 +301,14 @@ class WSHandler(RequestHandler):
 
     def _prefix_handler(self, scope, receive, send):
         path = request.path
-        if not path.startswith(self.app._router_ws._prefix_main):
+        if not path.startswith(self.router._prefix_main):
             return HTTP(404)
         request.path = scope['emt.path'] = (
-            path[self.app._router_ws._prefix_main_len:] or '/')
+            path[self.router._prefix_main_len:] or '/')
         return self.dynamic_handler(scope, receive, send)
 
     async def dynamic_handler(self, scope, receive, send):
-        await self.app._router_ws.dispatch()
+        await self.router.dispatch()
         if current.websocket._accepted:
             await send({'type': 'websocket.close', 'code': 1000})
 

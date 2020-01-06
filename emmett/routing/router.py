@@ -22,6 +22,12 @@ from .rules import HTTPRoutingRule, WebsocketRoutingRule
 
 
 class Router:
+    __slots__ = [
+        'app', 'routes_in', 'routes_out', '_routes_str',
+        '_get_routes_in_for_host', '_prefix_main', '_prefix_main_len',
+        '_match_lang'
+    ]
+
     _outputs = {}
     _routing_rule_cls = None
     _routing_signal = 'before_routes'
@@ -130,11 +136,7 @@ class Router:
 
 
 class HTTPRouter(Router):
-    __slots__ = (
-        'app', 'routes_in', 'routes_out', '_routes_str',
-        '_get_routes_in_for_host', '_match_lang',
-        '_prefix_main', '_prefix_main_len'
-    )
+    __slots__ = ['pipeline', 'injectors']
 
     _routing_rule_cls = HTTPRoutingRule
     _outputs = {
@@ -214,11 +216,7 @@ class HTTPRouter(Router):
 
 
 class WebsocketRouter(Router):
-    __slots__ = (
-        'app', 'routes_in', 'routes_out', '_routes_str',
-        '_get_routes_in_for_host', '_match_lang',
-        '_prefix_main', '_prefix_main_len'
-    )
+    __slots__ = ['pipeline']
 
     _routing_rule_cls = WebsocketRoutingRule
 
@@ -285,7 +283,7 @@ class WebsocketRouter(Router):
 
 
 class RoutingCtx:
-    __slots__ = ('router', 'rule')
+    __slots__ = ['router', 'rule']
 
     def __init__(self, router, rule_cls, *args, **kwargs):
         self.router = router

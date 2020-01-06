@@ -39,11 +39,11 @@ class Config(ConfigData):
             hostname_default=None,
             static_version=None,
             static_version_urls=False,
-            handle_static=True,
             url_default_namespace=None,
             request_max_content_length=None,
             request_body_timeout=None
         )
+        self._handle_static = True
         self._templates_auto_reload = app.debug or False
         self._templates_encoding = 'utf8'
         self._templates_escape = 'common'
@@ -54,6 +54,15 @@ class Config(ConfigData):
         if isinstance(obj, property):
             return obj.fset(self, value)
         return super().__setattr__(key, value)
+
+    @property
+    def handle_static(self):
+        return self._handle_static
+
+    @handle_static.setter
+    def handle_static(self, value):
+        self._handle_static = value
+        self._app._configure_asgi_handlers()
 
     @property
     def templates_auto_reload(self):
@@ -124,8 +133,8 @@ class App:
         self.language_write = False
         #: init routing
         self._pipeline = []
-        self._router_http = HTTPRouter(self)
-        self._router_ws = WebsocketRouter(self)
+        self._router_http = HTTPRouter(self, url_prefix=url_prefix)
+        self._router_ws = WebsocketRouter(self, url_prefix=url_prefix)
         self._asgi_handlers = {
             'http': HTTPHandler(self),
             'lifespan': LifeSpanHandler(self),
@@ -150,6 +159,9 @@ class App:
         )
         #: store app in current
         current.app = self
+
+    def _configure_asgi_handlers(self):
+        self._asgi_handlers['http']._configure_methods()
 
     @cachedprop
     def name(self):
@@ -181,6 +193,7 @@ class App:
         self._language_force_on_url = value
         self._router_http._set_language_handling()
         self._router_ws._set_language_handling()
+        self._configure_asgi_handlers()
 
     @property
     def pipeline(self):
