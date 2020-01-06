@@ -20,7 +20,7 @@ from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
 from .asgi.server import run as asgi_run
 from .ctx import current
 from .datastructures import sdict, ConfigData
-from .extensions import Extension, TemplateExtension
+from .extensions import Extension
 from .helpers import load_component
 from .html import asis
 from .routing.router import HTTPRouter, WebsocketRouter
@@ -92,7 +92,6 @@ class Config(ConfigData):
         self._app.templater._set_prettify(value)
 
 
-# TODO: update extensions
 class App:
     debug = None
     test_client_class = None
@@ -226,7 +225,7 @@ class App:
 
     def websocket(
         self, paths=None, name=None, pipeline=None, schemes=None,
-        hostname=None, prefix=None, output='auto'
+        hostname=None, prefix=None
     ):
         if callable(paths):
             raise SyntaxError('Use @websocket(), not @websocket.')
@@ -236,8 +235,7 @@ class App:
             pipeline=pipeline,
             schemes=schemes,
             hostname=hostname,
-            prefix=prefix,
-            # output=output
+            prefix=prefix
         )
 
     def on_error(self, code):
@@ -370,7 +368,7 @@ class App:
         )
 
 
-class AppModule(object):
+class AppModule:
     @classmethod
     def from_app(
         cls, app, import_name, name, template_folder, template_path,

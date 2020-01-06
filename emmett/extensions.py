@@ -79,40 +79,6 @@ class Extension(metaclass=MetaExtension):
         pass
 
 
-class TemplateExtension(object):
-    namespace = None
-    file_extension = None
-    lexers = {}
-
-    def __init__(self, env, config):
-        self.env = env
-        self.config = config
-
-    def preload(self, path, name):
-        return path, name
-
-    def preprocess(self, source, name):
-        return source
-
-    def inject(self, context):
-        pass
-
-
-class TemplateLexer(object):
-    evaluate_value = True
-
-    def __init__(self, extension):
-        self.ext = extension
-
-    def __call__(self, ctx, value=None):
-        if self.evaluate_value and value is not None:
-            value = eval(value, ctx.scope)
-        self.process(ctx, value)
-
-    def process(self, ctx, value):
-        pass
-
-
 def _wrap_listener(ext, f):
     @wraps(f)
     def wrapped(*args, **kwargs):
