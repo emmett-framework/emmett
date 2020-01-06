@@ -211,7 +211,7 @@ class AuthPipe(Pipe):
         if self.auth.session and self.auth.session.remember:
             session._expires_after(self.auth.session.expiration)
 
-    async def wrap(self, next_pipe, **kwargs):
+    async def pipe(self, next_pipe, **kwargs):
         self.session_open()
         return await next_pipe(**kwargs)
 

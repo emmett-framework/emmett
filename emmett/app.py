@@ -124,6 +124,7 @@ class App:
         self.language_default = None
         self.language_write = False
         #: init routing
+        self._pipeline = []
         self._router_http = HTTPRouter(self)
         self._router_ws = WebsocketRouter(self)
         self._asgi_handlers = {
@@ -184,13 +185,13 @@ class App:
 
     @property
     def pipeline(self):
-        # return self.route._pipeline
-        return self._router_http.pipeline
+        return self._pipeline
 
     @pipeline.setter
     def pipeline(self, pipes):
-        # self.route._pipeline = pipes
-        self._router_http.pipeline = pipes
+        self._pipeline = pipes
+        self._router_http.pipeline = self._pipeline
+        self._router_ws.pipeline = self._pipeline
 
     @property
     def injectors(self):
@@ -236,7 +237,7 @@ class App:
             schemes=schemes,
             hostname=hostname,
             prefix=prefix,
-            output=output
+            # output=output
         )
 
     def on_error(self, code):
@@ -485,10 +486,11 @@ class AppModule(object):
             raise RuntimeError(
                 "App modules' websocket names should not contains dots"
             )
-        # pipeline = kwargs.get('pipeline', [])
-        # if self.pipeline:
-        #     pipeline = self.pipeline + pipeline
-        # kwargs['pipeline'] = pipeline
+        name = self.name + "." + (name or "")
+        pipeline = kwargs.get('pipeline', [])
+        if self.pipeline:
+            pipeline = self.pipeline + pipeline
+        kwargs['pipeline'] = pipeline
         return self.app.websocket(
             paths=paths,
             name=name,

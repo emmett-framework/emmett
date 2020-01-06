@@ -14,11 +14,16 @@ import pytest
 
 from contextlib import contextmanager
 
-from helpers import current_ctx as _current_ctx
-from emmett import App, request, abort
+from helpers import current_ctx as _current_ctx, ws_ctx as _ws_ctx
+from emmett import App, request, websocket, abort
 from emmett.ctx import current
 from emmett.http import HTTP
 from emmett.pipeline import Pipe
+from emmett.parsers import Parsers
+from emmett.serializers import Serializers
+
+json_load = Parsers.get_for('json')
+json_dump = Serializers.get_for('json')
 
 
 class PipeException(Exception):
@@ -41,68 +46,123 @@ class FlowStorePipe(Pipe):
     def store_parallel(self, status):
         self.parallel_storage.append(self.__class__.__name__ + "." + status)
 
-    async def open(self):
-        self.store_parallel('open')
-
-    async def pipe(self, next_pipe, **kwargs):
-        self.store_linear('pipe')
-        return await next_pipe(**kwargs)
-
     async def on_pipe_success(self):
         self.store_linear('success')
 
     async def on_pipe_failure(self):
         self.store_linear('failure')
 
+
+class FlowStorePipeCommon(FlowStorePipe):
+    async def open(self):
+        self.store_parallel('open')
+
     async def close(self):
         self.store_parallel('close')
 
+    async def pipe(self, next_pipe, **kwargs):
+        self.store_linear('pipe')
+        return await next_pipe(**kwargs)
 
-class Pipe1(FlowStorePipe):
+
+class FlowStorePipeSplit(FlowStorePipe):
+    async def open_request(self):
+        self.store_parallel('open_request')
+
+    async def open_ws(self):
+        self.store_parallel('open_ws')
+
+    async def close_request(self):
+        self.store_parallel('close_request')
+
+    async def close_ws(self):
+        self.store_parallel('close_ws')
+
+    async def pipe_request(self, next_pipe, **kwargs):
+        self.store_linear('pipe_request')
+        return await next_pipe(**kwargs)
+
+    async def pipe_ws(self, next_pipe, **kwargs):
+        self.store_linear('pipe_ws')
+        return await next_pipe(**kwargs)
+
+
+class Pipe1(FlowStorePipeCommon):
     pass
 
 
-class Pipe2(FlowStorePipe):
-    async def pipe(self, next_pipe, **kwargs):
-        self.store_linear('pipe')
+class Pipe2(FlowStorePipeSplit):
+    async def pipe_request(self, next_pipe, **kwargs):
+        self.store_linear('pipe_request')
         if request.query_params.skip:
             return "block"
         return await next_pipe(**kwargs)
 
+    async def pipe_ws(self, next_pipe, **kwargs):
+        self.store_linear('pipe_ws')
+        if websocket.query_params.skip:
+            return
+        await next_pipe(**kwargs)
 
-class Pipe3(FlowStorePipe):
+
+class Pipe3(FlowStorePipeCommon):
     async def open(self):
         await asyncio.sleep(0.05)
         await super().open()
 
 
-class Pipe4(FlowStorePipe):
+class Pipe4(FlowStorePipeCommon):
     async def close(self):
         await asyncio.sleep(0.05)
         await super().close()
 
 
-class Pipe5(FlowStorePipe):
+class Pipe5(FlowStorePipeCommon):
     pass
 
 
-class Pipe6(FlowStorePipe):
+class Pipe6(FlowStorePipeCommon):
     pass
 
 
-class ExcPipeOpen(FlowStorePipe):
+class ExcPipeOpen(FlowStorePipeCommon):
     async def open(self):
         raise PipeException(self)
 
 
-class ExcPipeClose(FlowStorePipe):
+class ExcPipeClose(FlowStorePipeCommon):
     async def close(self):
         raise PipeException(self)
 
 
+class PipeSR1(FlowStorePipeSplit):
+    def on_receive(self, data):
+        data = json_load(data)
+        return dict(pipe1r='receive_inject', **data)
+
+    def on_send(self, data):
+        return json_dump(dict(pipe1s='send_inject', **data))
+
+
+class PipeSR2(FlowStorePipeSplit):
+    def on_receive(self, data):
+        return dict(pipe2r='receive_inject', **data)
+
+    def on_send(self, data):
+        return dict(pipe2s='send_inject', **data)
+
+
 @contextmanager
-def current_ctx(path):
+def request_ctx(path):
     with _current_ctx(path) as ctx:
+        ctx._pipeline_linear_storage = []
+        ctx._pipeline_parallel_storage = []
+        yield ctx
+
+
+@contextmanager
+def ws_ctx(path):
+    with _ws_ctx(path) as ctx:
         ctx._pipeline_linear_storage = []
         ctx._pipeline_parallel_storage = []
         yield ctx
@@ -151,6 +211,32 @@ def app():
     def pipe4():
         return "4"
 
+    @app.websocket()
+    async def ws_ok():
+        await websocket.send('ok')
+
+    @app.websocket()
+    def ws_error():
+        raise Exception
+
+    @app.websocket(pipeline=[ExcPipeOpen(), Pipe4()])
+    def ws_open_error():
+        return
+
+    @app.websocket(pipeline=[ExcPipeClose(), Pipe4()])
+    def ws_close_error():
+        return
+
+    @app.websocket(pipeline=[Pipe4()])
+    def ws_pipe4():
+        return
+
+    @app.websocket(pipeline=[PipeSR1(), PipeSR2()])
+    async def ws_inject():
+        data = await websocket.receive()
+        current._receive_storage.append(data)
+        await websocket.send(data)
+
     mod = app.module(__name__, 'mod', url_prefix='mod')
     mod.pipeline = [Pipe5()]
 
@@ -162,31 +248,50 @@ def app():
     def pipe6():
         return "6"
 
+    @mod.websocket()
+    def ws_pipe5():
+        return
+
+    @mod.websocket(pipeline=[Pipe6()])
+    def ws_pipe6():
+        return
+
     return app
 
 
 @pytest.mark.asyncio
 async def test_ok_flow(app):
-    with current_ctx('/ok') as ctx:
+    with request_ctx('/ok') as ctx:
         parallel_flow = [
-            'Pipe1.open', 'Pipe2.open', 'Pipe3.open',
-            'Pipe3.close', 'Pipe2.close', 'Pipe1.close']
+            'Pipe1.open', 'Pipe2.open_request', 'Pipe3.open',
+            'Pipe3.close', 'Pipe2.close_request', 'Pipe1.close']
         linear_flow = [
-            'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe',
+            'Pipe1.pipe', 'Pipe2.pipe_request', 'Pipe3.pipe',
             'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
         await app._router_http.dispatch()
+        assert linear_flows_are_equal(linear_flow, ctx)
+        assert parallel_flows_are_equal(parallel_flow, ctx)
+
+    with ws_ctx('/ws_ok') as ctx:
+        parallel_flow = [
+            'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open',
+            'Pipe3.close', 'Pipe2.close_ws', 'Pipe1.close']
+        linear_flow = [
+            'Pipe1.pipe', 'Pipe2.pipe_ws', 'Pipe3.pipe',
+            'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
+        await app._router_ws.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
 
 @pytest.mark.asyncio
 async def test_httperror_flow(app):
-    with current_ctx('/http_error') as ctx:
+    with request_ctx('/http_error') as ctx:
         parallel_flow = [
-            'Pipe1.open', 'Pipe2.open', 'Pipe3.open',
-            'Pipe3.close', 'Pipe2.close', 'Pipe1.close']
+            'Pipe1.open', 'Pipe2.open_request', 'Pipe3.open',
+            'Pipe3.close', 'Pipe2.close_request', 'Pipe1.close']
         linear_flow = [
-            'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe',
+            'Pipe1.pipe', 'Pipe2.pipe_request', 'Pipe3.pipe',
             'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
         try:
             await app._router_http.dispatch()
@@ -198,12 +303,12 @@ async def test_httperror_flow(app):
 
 @pytest.mark.asyncio
 async def test_error_flow(app):
-    with current_ctx('/error') as ctx:
+    with request_ctx('/error') as ctx:
         parallel_flow = [
-            'Pipe1.open', 'Pipe2.open', 'Pipe3.open',
-            'Pipe3.close', 'Pipe2.close', 'Pipe1.close']
+            'Pipe1.open', 'Pipe2.open_request', 'Pipe3.open',
+            'Pipe3.close', 'Pipe2.close_request', 'Pipe1.close']
         linear_flow = [
-            'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe',
+            'Pipe1.pipe', 'Pipe2.pipe_request', 'Pipe3.pipe',
             'Pipe3.failure', 'Pipe2.failure', 'Pipe1.failure']
         try:
             await app._router_http.dispatch()
@@ -212,12 +317,26 @@ async def test_error_flow(app):
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
+    with ws_ctx('/ws_error') as ctx:
+        parallel_flow = [
+            'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open',
+            'Pipe3.close', 'Pipe2.close_ws', 'Pipe1.close']
+        linear_flow = [
+            'Pipe1.pipe', 'Pipe2.pipe_ws', 'Pipe3.pipe',
+            'Pipe3.failure', 'Pipe2.failure', 'Pipe1.failure']
+        try:
+            await app._router_ws.dispatch()
+        except Exception:
+            pass
+        assert linear_flows_are_equal(linear_flow, ctx)
+        assert parallel_flows_are_equal(parallel_flow, ctx)
+
 
 @pytest.mark.asyncio
 async def test_open_error(app):
-    with current_ctx('/open_error') as ctx:
+    with request_ctx('/open_error') as ctx:
         parallel_flow = [
-            'Pipe1.open', 'Pipe2.open', 'Pipe3.open', 'Pipe4.open']
+            'Pipe1.open', 'Pipe2.open_request', 'Pipe3.open', 'Pipe4.open']
         linear_flow = []
         try:
             await app._router_http.dispatch()
@@ -226,17 +345,28 @@ async def test_open_error(app):
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
+    with ws_ctx('/ws_open_error') as ctx:
+        parallel_flow = [
+            'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open', 'Pipe4.open']
+        linear_flow = []
+        try:
+            await app._router_ws.dispatch()
+        except PipeException as e:
+            assert isinstance(e.pipe, ExcPipeOpen)
+        assert linear_flows_are_equal(linear_flow, ctx)
+        assert parallel_flows_are_equal(parallel_flow, ctx)
+
 
 @pytest.mark.asyncio
 async def test_close_error(app):
-    with current_ctx('/close_error') as ctx:
+    with request_ctx('/close_error') as ctx:
         parallel_flow = [
-            'Pipe1.open', 'Pipe2.open', 'Pipe3.open', 'ExcPipeClose.open',
-            'Pipe4.open',
-            'Pipe4.close', 'Pipe3.close', 'Pipe2.close', 'Pipe1.close']
+            'Pipe1.open', 'Pipe2.open_request', 'Pipe3.open',
+            'ExcPipeClose.open', 'Pipe4.open',
+            'Pipe4.close', 'Pipe3.close', 'Pipe2.close_request', 'Pipe1.close']
         linear_flow = [
-            'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe', 'ExcPipeClose.pipe',
-            'Pipe4.pipe',
+            'Pipe1.pipe', 'Pipe2.pipe_request', 'Pipe3.pipe',
+            'ExcPipeClose.pipe', 'Pipe4.pipe',
             'Pipe4.success', 'ExcPipeClose.success', 'Pipe3.success',
             'Pipe2.success', 'Pipe1.success']
         try:
@@ -246,62 +376,155 @@ async def test_close_error(app):
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
+    with ws_ctx('/ws_close_error') as ctx:
+        parallel_flow = [
+            'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open',
+            'ExcPipeClose.open', 'Pipe4.open',
+            'Pipe4.close', 'Pipe3.close', 'Pipe2.close_ws', 'Pipe1.close']
+        linear_flow = [
+            'Pipe1.pipe', 'Pipe2.pipe_ws', 'Pipe3.pipe',
+            'ExcPipeClose.pipe', 'Pipe4.pipe',
+            'Pipe4.success', 'ExcPipeClose.success', 'Pipe3.success',
+            'Pipe2.success', 'Pipe1.success']
+        try:
+            await app._router_ws.dispatch()
+        except PipeException as e:
+            assert isinstance(e.pipe, ExcPipeClose)
+        assert linear_flows_are_equal(linear_flow, ctx)
+        assert parallel_flows_are_equal(parallel_flow, ctx)
+
 
 @pytest.mark.asyncio
 async def test_flow_interrupt(app):
-    with current_ctx('/ok?skip=yes') as ctx:
+    with request_ctx('/ok?skip=yes') as ctx:
         parallel_flow = [
-            'Pipe1.open', 'Pipe2.open', 'Pipe3.open',
-            'Pipe3.close', 'Pipe2.close', 'Pipe1.close']
+            'Pipe1.open', 'Pipe2.open_request', 'Pipe3.open',
+            'Pipe3.close', 'Pipe2.close_request', 'Pipe1.close']
         linear_flow = [
-            'Pipe1.pipe', 'Pipe2.pipe',
+            'Pipe1.pipe', 'Pipe2.pipe_request',
             'Pipe2.success', 'Pipe1.success']
         await app._router_http.dispatch()
+        assert linear_flows_are_equal(linear_flow, ctx)
+        assert parallel_flows_are_equal(parallel_flow, ctx)
+
+    with ws_ctx('/ws_ok?skip=yes') as ctx:
+        parallel_flow = [
+            'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open',
+            'Pipe3.close', 'Pipe2.close_ws', 'Pipe1.close']
+        linear_flow = [
+            'Pipe1.pipe', 'Pipe2.pipe_ws',
+            'Pipe2.success', 'Pipe1.success']
+        await app._router_ws.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
 
 @pytest.mark.asyncio
 async def test_pipeline_composition(app):
-    with current_ctx('/pipe4') as ctx:
+    with request_ctx('/pipe4') as ctx:
         parallel_flow = [
-            'Pipe1.open', 'Pipe2.open', 'Pipe3.open', 'Pipe4.open',
-            'Pipe4.close', 'Pipe3.close', 'Pipe2.close', 'Pipe1.close']
+            'Pipe1.open', 'Pipe2.open_request', 'Pipe3.open', 'Pipe4.open',
+            'Pipe4.close', 'Pipe3.close', 'Pipe2.close_request', 'Pipe1.close']
         linear_flow = [
-            'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe', 'Pipe4.pipe',
+            'Pipe1.pipe', 'Pipe2.pipe_request', 'Pipe3.pipe', 'Pipe4.pipe',
             'Pipe4.success', 'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
         await app._router_http.dispatch()
+        assert linear_flows_are_equal(linear_flow, ctx)
+        assert parallel_flows_are_equal(parallel_flow, ctx)
+
+    with ws_ctx('/ws_pipe4') as ctx:
+        parallel_flow = [
+            'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open', 'Pipe4.open',
+            'Pipe4.close', 'Pipe3.close', 'Pipe2.close_ws', 'Pipe1.close']
+        linear_flow = [
+            'Pipe1.pipe', 'Pipe2.pipe_ws', 'Pipe3.pipe', 'Pipe4.pipe',
+            'Pipe4.success', 'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
+        await app._router_ws.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
 
 @pytest.mark.asyncio
 async def test_module_pipeline(app):
-    with current_ctx('/mod/pipe5') as ctx:
+    with request_ctx('/mod/pipe5') as ctx:
         parallel_flow = [
-            'Pipe1.open', 'Pipe2.open', 'Pipe3.open', 'Pipe5.open',
-            'Pipe5.close', 'Pipe3.close', 'Pipe2.close', 'Pipe1.close']
+            'Pipe1.open', 'Pipe2.open_request', 'Pipe3.open', 'Pipe5.open',
+            'Pipe5.close', 'Pipe3.close', 'Pipe2.close_request', 'Pipe1.close']
         linear_flow = [
-            'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe', 'Pipe5.pipe',
+            'Pipe1.pipe', 'Pipe2.pipe_request', 'Pipe3.pipe', 'Pipe5.pipe',
             'Pipe5.success', 'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
         await app._router_http.dispatch()
+        assert linear_flows_are_equal(linear_flow, ctx)
+        assert parallel_flows_are_equal(parallel_flow, ctx)
+
+    with ws_ctx('/mod/ws_pipe5') as ctx:
+        parallel_flow = [
+            'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open', 'Pipe5.open',
+            'Pipe5.close', 'Pipe3.close', 'Pipe2.close_ws', 'Pipe1.close']
+        linear_flow = [
+            'Pipe1.pipe', 'Pipe2.pipe_ws', 'Pipe3.pipe', 'Pipe5.pipe',
+            'Pipe5.success', 'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
+        await app._router_ws.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
 
 
 @pytest.mark.asyncio
 async def test_module_pipeline_composition(app):
-    with current_ctx('/mod/pipe6') as ctx:
+    with request_ctx('/mod/pipe6') as ctx:
         parallel_flow = [
-            'Pipe1.open', 'Pipe2.open', 'Pipe3.open', 'Pipe5.open',
+            'Pipe1.open', 'Pipe2.open_request', 'Pipe3.open', 'Pipe5.open',
             'Pipe6.open',
-            'Pipe6.close', 'Pipe5.close', 'Pipe3.close', 'Pipe2.close',
+            'Pipe6.close', 'Pipe5.close', 'Pipe3.close', 'Pipe2.close_request',
             'Pipe1.close']
         linear_flow = [
-            'Pipe1.pipe', 'Pipe2.pipe', 'Pipe3.pipe', 'Pipe5.pipe',
+            'Pipe1.pipe', 'Pipe2.pipe_request', 'Pipe3.pipe', 'Pipe5.pipe',
             'Pipe6.pipe',
             'Pipe6.success', 'Pipe5.success', 'Pipe3.success', 'Pipe2.success',
             'Pipe1.success']
         await app._router_http.dispatch()
         assert linear_flows_are_equal(linear_flow, ctx)
         assert parallel_flows_are_equal(parallel_flow, ctx)
+
+    with ws_ctx('/mod/ws_pipe6') as ctx:
+        parallel_flow = [
+            'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open', 'Pipe5.open',
+            'Pipe6.open',
+            'Pipe6.close', 'Pipe5.close', 'Pipe3.close', 'Pipe2.close_ws',
+            'Pipe1.close']
+        linear_flow = [
+            'Pipe1.pipe', 'Pipe2.pipe_ws', 'Pipe3.pipe', 'Pipe5.pipe',
+            'Pipe6.pipe',
+            'Pipe6.success', 'Pipe5.success', 'Pipe3.success', 'Pipe2.success',
+            'Pipe1.success']
+        await app._router_ws.dispatch()
+        assert linear_flows_are_equal(linear_flow, ctx)
+        assert parallel_flows_are_equal(parallel_flow, ctx)
+
+
+@pytest.mark.asyncio
+async def test_receive_send_flow(app):
+    with ws_ctx('/ws_inject') as ctx:
+        parallel_flow = [
+            'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open',
+            'PipeSR1.open_ws', 'PipeSR2.open_ws',
+            'PipeSR2.close_ws', 'PipeSR1.close_ws',
+            'Pipe3.close', 'Pipe2.close_ws', 'Pipe1.close']
+        linear_flow = [
+            'Pipe1.pipe', 'Pipe2.pipe_ws', 'Pipe3.pipe',
+            'PipeSR1.pipe_ws', 'PipeSR2.pipe_ws',
+            'PipeSR2.success', 'PipeSR1.success',
+            'Pipe3.success', 'Pipe2.success', 'Pipe1.success']
+        await app._router_ws.dispatch()
+        assert linear_flows_are_equal(linear_flow, ctx)
+        assert parallel_flows_are_equal(parallel_flow, ctx)
+
+        assert ctx._receive_storage[-1] == {
+            'foo': 'bar',
+            'pipe1r': 'receive_inject', 'pipe2r': 'receive_inject'
+        }
+        assert json_load(ctx._send_storage[-1]['text']) == {
+            'foo': 'bar',
+            'pipe1r': 'receive_inject', 'pipe2r': 'receive_inject',
+            'pipe1s': 'send_inject', 'pipe2s': 'send_inject'
+        }

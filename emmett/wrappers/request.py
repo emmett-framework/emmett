@@ -14,21 +14,16 @@ import pendulum
 import re
 
 from cgi import FieldStorage, parse_header
-from http.cookies import SimpleCookie
 from io import BytesIO
 from urllib.parse import parse_qs
 
-from ..datastructures import Accept, sdict
+from ..datastructures import sdict
 from ..http import HTTP
-from ..language.helpers import LanguageAccept
 from ..parsers import Parsers
 from ..utils import cachedprop
-from . import Wrapper
-from .helpers import FileStorage, Headers
+from . import ScopeWrapper
+from .helpers import FileStorage
 
-_regex_accept = re.compile(r'''
-    ([^\s;,]+(?:[ \t]*;[ \t]*(?:[^\s;,q][^\s;,]*|q[^\s;,=][^\s;,]*))*)
-    (?:[ \t]*;[ \t]*q=(\d*(?:\.\d+)?)[^,]*)?''', re.VERBOSE)
 _regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
 
 
@@ -61,35 +56,15 @@ class Body:
         self._complete.set()
 
 
-class Request(Wrapper):
-    __slots__ = (
-        '_scope', '_input',
-        'scheme', 'method', 'path', 'headers', 'host'
-    )
+class Request(ScopeWrapper):
+    __slots__ = ('_input', 'method')
 
     def __init__(self, scope, max_content_length=None, body_timeout=None):
-        self._scope = scope
+        super().__init__(scope)
         self.max_content_length = max_content_length
         self.body_timeout = body_timeout
-        self.scheme = scope['scheme']
         self.method = scope['method']
-        self.path = scope['emt.path']
         self._input = scope['emt.input']
-        self.headers = Headers(scope)
-        self.host = self.headers.get('host')
-
-    def __parse_accept_header(self, value, cls=Accept):
-        if not value:
-            return cls(None)
-        result = []
-        for match in _regex_accept.finditer(value):
-            quality = match.group(2)
-            if not quality:
-                quality = 1
-            else:
-                quality = max(min(float(quality), 1), 0)
-            result.append((match.group(1), quality))
-        return cls(result)
 
     @cachedprop
     async def body(self):
@@ -119,25 +94,6 @@ class Request(Wrapper):
     @cachedprop
     def content_length(self):
         return self.headers.get('content_length', 0, cast=int)
-
-    @cachedprop
-    def query_params(self):
-        rv = sdict()
-        for key, values in parse_qs(
-            self._scope['query_string'].decode('ascii'), keep_blank_values=True
-        ).items():
-            if len(values) == 1:
-                rv[key] = values[0]
-                continue
-            rv[key] = values
-        return rv
-
-    @cachedprop
-    def cookies(self):
-        cookies = SimpleCookie()
-        for cookie in self.headers.get('cookie', '').split(';'):
-            cookies.load(cookie)
-        return cookies
 
     _empty_body_methods = {v: v for v in ['GET', 'HEAD', 'OPTIONS']}
 
@@ -181,7 +137,7 @@ class Request(Wrapper):
     def _load_params_form_multipart(self, data):
         params, files = sdict(), sdict()
         field_storage = FieldStorage(
-            BytesIO(data), 
+            BytesIO(data),
             headers=self.headers,
             environ={'REQUEST_METHOD': self.method},
             keep_blank_values=True
@@ -221,11 +177,6 @@ class Request(Wrapper):
         loader = self._params_loaders.get(
             self.content_type, self._load_params_missing)
         return loader(self, await self.body)
-
-    @cachedprop
-    def accept_language(self):
-        return self.__parse_accept_header(
-            self.headers.get('accept-language'), LanguageAccept)
 
     @cachedprop
     def client(self):

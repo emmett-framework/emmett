@@ -14,7 +14,7 @@ import pickle
 import tempfile
 import time
 
-from .ctx import current, request, response
+from .ctx import current, request, response, websocket
 from .datastructures import sdict, SessionData
 from .pipeline import Pipe
 from .security import secure_loads, secure_dumps, uuid
@@ -48,13 +48,19 @@ class SessionPipe(Pipe):
     def _session_cookie_data(self):
         pass
 
-    async def open(self):
+    async def open_request(self):
         if self.cookie_name in request.cookies:
             current.session = self._load_session()
         if not current.session:
             current.session = self._new_session()
 
-    async def close(self):
+    async def open_ws(self):
+        if self.cookie_name in websocket.cookies:
+            current.session = self._load_session()
+        if not current.session:
+            current.session = self._new_session()
+
+    async def close_request(self):
         expiration = current.session._expiration or self.expire
         self._pack_session(expiration)
 
@@ -111,7 +117,7 @@ class BackendStoredSessionPipe(SessionPipe):
     def _load(self, sid):
         return None
 
-    async def close(self):
+    async def close_request(self):
         if not current.session:
             self._delete_session()
             if current.session._modified:
