@@ -102,6 +102,19 @@ class Config(ConfigData):
 
 
 class App:
+    __slots__ = [
+        'import_name', 'cli', 'config',
+        'root_path', 'static_path', 'template_path', 'config_path',
+        '_languages', '_languages_set', '_language_force_on_url',
+        'language_default', 'language_write',
+        '_pipeline', '_router_http', '_router_ws', '_asgi_handlers',
+        'error_handlers',
+        '_logger', 'logger_name',
+        'ext', '_extensions_env', '_extensions_listeners',
+        'templater', 'template_default_extension',
+        '__dict__'
+    ]
+
     debug = None
     test_client_class = None
 
