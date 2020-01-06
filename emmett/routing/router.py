@@ -208,7 +208,7 @@ class HTTPRouter(Router):
         if not route:
             raise HTTP(404, body="Resource not found\n")
         request.name = route.name
-        http_cls, output = await route.dispatch(request, reqargs)
+        http_cls, output = await route.dispatcher.dispatch(request, reqargs)
         return http_cls(
             response.status, output, response.headers, response.cookies)
 
@@ -281,7 +281,7 @@ class WebsocketRouter(Router):
         websocket.name = route.name
         websocket._bind_flow(
             route.pipeline_flow_receive, route.pipeline_flow_send)
-        await route.dispatch(websocket, reqargs)
+        await route.dispatcher.dispatch(websocket, reqargs)
 
 
 class RoutingCtx:

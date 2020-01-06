@@ -64,10 +64,6 @@ class SessionPipe(Pipe):
         expiration = current.session._expiration or self.expire
         self._pack_session(expiration)
 
-    async def close_ws(self):
-        # TODO: warn about impossibility to store
-        pass
-
     def clear(self):
         pass
 

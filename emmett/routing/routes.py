@@ -32,11 +32,18 @@ REGEX_FLOAT = re.compile(r'<float\:(\w+)>')
 
 
 class Route:
+    __slots__ = [
+        'name', 'f', 'regex', 'match', 'is_static', 'parse_reqargs',
+        'path', 'schemes', 'hostname',
+        'pipeline_flow_open', 'pipeline_flow_close',
+        'dispatcher'
+    ]
     _re_condl = re.compile(r'\(.*\)\?')
     _re_param = re.compile(r'<(\w+)\:(\w+)>')
 
     def __init__(self, rule, path, idx):
         self.name = rule.name if idx == 0 else f"{rule.name}.{idx}"
+        self.f = rule.f
         if not path.startswith('/'):
             path = '/' + path
         if rule.prefix:
@@ -45,9 +52,11 @@ class Route:
         self.schemes = tuple(rule.schemes)
         self.hostname = rule.hostname
         self.regex = re.compile(self.build_regex(self.path))
-        self.f = rule.f
+        self.pipeline_flow_open = rule.pipeline_flow_open
+        self.pipeline_flow_close = rule.pipeline_flow_close
         self.build_matcher()
         self.build_argparser()
+        self.build_dispatcher(rule)
 
     @staticmethod
     def build_regex(path):
@@ -176,24 +185,16 @@ class Route:
             return route_args
         return wrapped
 
-    def dispatch(self, wrapper, reqargs):
+    def build_dispatcher(self, rule):
         raise NotImplementedError
 
 
 class HTTPRoute(Route):
-    __slots__ = (
-        'name', 'f', 'regex', 'match', 'is_static', 'parse_reqargs',
-        'path', 'schemes', 'methods', 'hostname',
-        'pipeline_flow_open', 'pipeline_flow_close',
-        'dispatcher'
-    )
+    __slots__ = ['methods']
 
     def __init__(self, rule, path, idx):
         super().__init__(rule, path, idx)
         self.methods = tuple(rule.methods)
-        self.pipeline_flow_open = rule.pipeline_flow_open
-        self.pipeline_flow_close = rule.pipeline_flow_close
-        self.build_dispatcher(rule)
 
     def build_dispatcher(self, rule):
         dispatchers = {
@@ -217,26 +218,14 @@ class HTTPRoute(Route):
             dispatcher = dispatchers['base']
         self.dispatcher = dispatcher(self, rule)
 
-    def dispatch(self, wrapper, reqargs):
-        return self.dispatcher.dispatch(wrapper, reqargs)
-
 
 class WebsocketRoute(Route):
-    __slots__ = (
-        'name', 'f', 'regex', 'match', 'is_static', 'parse_reqargs',
-        'path', 'schemes', 'hostname',
-        'pipeline_flow_open', 'pipeline_flow_close',
-        'pipeline_flow_receive', 'pipeline_flow_send',
-        'dispatcher'
-    )
+    __slots__ = ['pipeline_flow_receive', 'pipeline_flow_send']
 
     def __init__(self, rule, path, idx):
         super().__init__(rule, path, idx)
-        self.pipeline_flow_open = rule.pipeline_flow_open
-        self.pipeline_flow_close = rule.pipeline_flow_close
         self.pipeline_flow_receive = rule.pipeline_flow_receive
         self.pipeline_flow_send = rule.pipeline_flow_send
-        self.build_dispatcher(rule)
 
     def build_dispatcher(self, rule):
         dispatchers = {
@@ -254,6 +243,3 @@ class WebsocketRoute(Route):
         else:
             dispatcher = dispatchers['base']
         self.dispatcher = dispatcher(self)
-
-    def dispatch(self, wrapper, reqargs):
-        return self.dispatcher.dispatch(wrapper, reqargs)

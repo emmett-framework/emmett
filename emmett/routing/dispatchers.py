@@ -40,11 +40,8 @@ class RequestDispatcher(Dispatcher):
         super().__init__(route)
         self.response_builders = rule.response_builders
 
-    def build_response(self, wrapper, output):
-        return self.response_builders[wrapper.method](output)
-
     async def get_response(self, wrapper, reqargs):
-        return self.build_response(wrapper, await self.f(**reqargs))
+        return self.response_builders[wrapper.method](await self.f(**reqargs))
 
     def dispatch(self, wrapper, reqargs):
         return self.get_response(wrapper, reqargs)
