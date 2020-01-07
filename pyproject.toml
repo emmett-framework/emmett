@@ -55,7 +55,7 @@ uvicorn = "0.9.1"
 websockets = ">=8.0"
 
 httptools = { version = "~0.0.13", markers = "sys_platform != 'win32'" }
-uvloop = { version = "~0.14.0", markers = "sys_platform == 'win32'" }
+uvloop = { version = "~0.14.0", markers = "sys_platform != 'win32'" }
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.3"
