@@ -15,9 +15,10 @@ Next
 - Introduced `develop` and `serve` command in place of `run`
 - Pipeline `open` and `close` flows are now handled concurrently
 - Rewritten router, optimized request flow
-- Introduced basic websockets support
+- Introduced websockets support
 - Added `after_loop` signal
 - Decoupled templating engine
+- Added `async` support in `cache` module
 
 Version 1.3
 -----------
