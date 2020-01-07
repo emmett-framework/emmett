@@ -38,6 +38,8 @@ async def todo():
     return {'tasks': tasks}
 ```
 
+![Tests Status](https://github.com/emmett-framework/emmett/workflows/Tests/badge.svg)
+
 ## Documentation
 
 The documentations is available under the *docs* folder.
