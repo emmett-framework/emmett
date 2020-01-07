@@ -1,5 +1,3 @@
-__version__ = "2.0.0a0.dev0"
-
 from .app import App, AppModule
 from .cache import Cache
 from .ctx import current, request, response, session, websocket, now
