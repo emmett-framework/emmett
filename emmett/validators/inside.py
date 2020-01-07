@@ -5,7 +5,7 @@
 
     Validators that check presence/absence of given value in a set.
 
-    :copyright: (c) 2014-2019 by Giovanni Barillari
+    :copyright: 2014 Giovanni Barillari
 
     Based on the web2py's validators (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>

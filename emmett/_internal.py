@@ -5,12 +5,12 @@
 
     Provides internally used helpers and objects.
 
-    :copyright: (c) 2014-2019 by Giovanni Barillari
+    :copyright: 2014 Giovanni Barillari
 
     Several parts of this code comes from Flask and Werkzeug.
     :copyright: (c) 2014 by Armin Ronacher.
 
-    :license: BSD, see LICENSE for more details.
+    :license: BSD-3-Clause
 """
 
 import datetime

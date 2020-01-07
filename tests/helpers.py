@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+"""
+    tests.helpers
+    -------------
+
+    Tests helpers
+"""
 
 from contextlib import contextmanager
 

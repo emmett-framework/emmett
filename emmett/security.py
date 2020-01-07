@@ -5,7 +5,7 @@
 
     Miscellaneous security helpers.
 
-    :copyright: (c) 2014-2019 by Giovanni Barillari
+    :copyright: 2014 Giovanni Barillari
 
     Based on the code of web2py (http://www.web2py.com)
     :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>

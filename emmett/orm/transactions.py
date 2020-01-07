@@ -5,12 +5,12 @@
 
     Provides pyDAL advanced transactions implementation for Emmett.
 
-    :copyright: (c) 2014-2019 by Giovanni Barillari
+    :copyright: 2014 Giovanni Barillari
 
     Parts of this code are inspired to peewee
     :copyright: (c) 2010 by Charles Leifer
 
-    :license: BSD, see LICENSE for more details.
+    :license: BSD-3-Clause
 """
 
 import uuid

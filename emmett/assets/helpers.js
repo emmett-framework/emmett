@@ -5,7 +5,7 @@
     Javascript helpers for the emmett project.
 
     :copyright: (c) 2014-2018 by Marco Stagni
-    :license: BSD, see LICENSE for more details.
+    :license: BSD-3-Clause
 */
 (function($,undefined) {
 

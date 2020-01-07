@@ -38,7 +38,7 @@
 
 
     :copyright: (c) Copyright 2011 by Armin Ronacher.
-    :license: BSD, see LICENSE for more details.
+    :license: BSD-3-Clause
 """
 import codecs
 import sys

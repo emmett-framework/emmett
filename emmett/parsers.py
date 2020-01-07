@@ -3,8 +3,8 @@
     emmett.parsers
     --------------
 
-    :copyright: (c) 2014-2019 by Giovanni Barillari
-    :license: BSD, see LICENSE for more details.
+    :copyright: 2014 Giovanni Barillari
+    :license: BSD-3-Clause
 """
 
 from rapidjson import DM_ISO8601, NM_NATIVE, loads as _json_loads

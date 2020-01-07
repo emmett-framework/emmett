@@ -5,12 +5,12 @@
 
     Provides auto-reloading utilities.
 
-    :copyright: (c) 2014-2019 by Giovanni Barillari
+    :copyright: 2014 Giovanni Barillari
 
     Adapted from werkzeug code (http://werkzeug.pocoo.org)
     :copyright: (c) 2015 by Armin Ronacher.
 
-    :license: BSD, see LICENSE for more details.
+    :license: BSD-3-Clause
 """
 
 import multiprocessing

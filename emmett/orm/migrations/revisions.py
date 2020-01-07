@@ -5,12 +5,12 @@
 
     Provides revisions logic for migrations.
 
-    :copyright: (c) 2014-2019 by Giovanni Barillari
+    :copyright: 2014 Giovanni Barillari
 
     Based on the code of Alembic (https://bitbucket.org/zzzeek/alembic)
     :copyright: (c) 2009-2015 by Michael Bayer
 
-    :license: BSD, see LICENSE for more details.
+    :license: BSD-3-Clause
 """
 
 from collections import deque

@@ -5,12 +5,12 @@
 
     Provides mail facilities for Emmett.
 
-    :copyright: (c) 2014-2019 by Giovanni Barillari
+    :copyright: 2014 Giovanni Barillari
 
     Based on the code of flask-mail
     :copyright: (c) 2010 by Dan Jacob.
 
-    :license: BSD, see LICENSE for more details.
+    :license: BSD-3-Clause
 """
 
 import smtplib
