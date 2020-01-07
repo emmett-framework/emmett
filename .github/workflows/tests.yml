@@ -28,7 +28,7 @@ jobs:
     - name: Test
       run: |
         source $HOME/.poetry/env
-        poetry run -- pytest -v tests
+        poetry run pytest -v tests
 
   MacOS:
     runs-on: macos-latest
@@ -55,7 +55,7 @@ jobs:
     - name: Test
       run: |
         source $HOME/.poetry/env
-        poetry run -- pytest -v tests
+        poetry run pytest -v tests
 
   Windows:
     runs-on: windows-latest
@@ -82,4 +82,4 @@ jobs:
     - name: Test
       run: |
         $env:Path += ";$env:Userprofile\.poetry\bin"
-        poetry run -- pytest -v tests
+        poetry run pytest -v tests
