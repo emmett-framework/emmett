@@ -18,7 +18,7 @@ import os
 import sys
 import types
 
-from . import __version__ as fw_version
+from .__version__ import __version__ as fw_version
 from ._internal import warn_of_deprecation
 from .asgi.loops import loops
 from .asgi.protocols import protocols_http, protocols_ws
