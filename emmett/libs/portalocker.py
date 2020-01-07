@@ -111,7 +111,8 @@ class LockedFile(object):
         self.mode = mode
         self.file = None
         if 'r' in mode:
-            self.file = open(filename, mode, encoding='utf8')
+            kwargs = {'encoding': 'utf8'} if 'b' not in mode else {}
+            self.file = open(filename, mode, **kwargs)
             lock(self.file, LOCK_SH)
         elif 'w' in mode or 'a' in mode:
             self.file = open(filename, mode.replace('w', 'a'))

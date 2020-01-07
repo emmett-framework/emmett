@@ -40,7 +40,7 @@ def test_write(app):
     current.language = 'en'
     #: get original content
     translated_file = os.path.join(app.root_path, 'languages', 'ru.py')
-    with open(translated_file) as f:
+    with open(translated_file, encoding='utf8') as f:
         ocontents = f.read()
     #: write to file
     assert str(T('perché', language='ru')) == 'perché'
@@ -48,7 +48,7 @@ def test_write(app):
     with open(translated_file) as f:
         contents = f.read()
     with open(translated_file, 'w') as f:
-        f.write(ocontents)
+        f.write(ocontents, encoding='utf8')
     #: verify
     assert '"%s": "%s"' % ('perché', 'perché') in contents
 
