@@ -16,12 +16,6 @@ import logging
 from emmett import App, logger, sdict
 
 
-def teardown_module():
-    root = os.path.dirname(__file__)
-    shutil.rmtree(os.path.join(root, 'logs'))
-    shutil.rmtree(os.path.join(root, 'static'))
-
-
 def _call_create_logger(app):
     return logger.create_logger(app)
 

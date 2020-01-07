@@ -343,8 +343,11 @@ class DiskCache(CacheHandler):
     @CacheHandler._convert_duration_
     def set(self, key: str, value: Any, **kwargs):
         filename = self._get_filename(key)
+        filepath = os.path.join(self._path, filename)
         with self.lock:
             self._prune()
+            if os.path.exists(filepath):
+                self._del_file(filepath)
             try:
                 fd, tmp = tempfile.mkstemp(
                     suffix=self._fs_transaction_suffix, dir=self._path)
