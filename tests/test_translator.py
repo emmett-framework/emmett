@@ -45,7 +45,7 @@ def test_write(app):
     #: write to file
     assert str(T('perché', language='ru')) == 'perché'
     #: get new contents and write back the original
-    with open(translated_file) as f:
+    with open(translated_file, encoding='utf8') as f:
         contents = f.read()
     with open(translated_file, 'w') as f:
         f.write(ocontents)
