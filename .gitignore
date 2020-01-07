@@ -9,6 +9,7 @@ __pycache__
 build/*
 dist/*
 Emmett.egg-info/*
+poetry.lock
 
 examples/*/databases
 examples/*/logs
