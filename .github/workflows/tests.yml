@@ -21,11 +21,6 @@ jobs:
         python get-poetry.py -y
         source $HOME/.poetry/env
         poetry config virtualenvs.in-project true
-    - name: Set up cache
-      uses: actions/cache@v1
-      with:
-        path: .venv
-        key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
     - name: Install dependencies
       run: |
         source $HOME/.poetry/env
@@ -53,11 +48,6 @@ jobs:
         python get-poetry.py -y
         source $HOME/.poetry/env
         poetry config virtualenvs.in-project true
-    - name: Set up cache
-      uses: actions/cache@v1
-      with:
-        path: .venv
-        key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
     - name: Install dependencies
       run: |
         source $HOME/.poetry/env
@@ -85,11 +75,6 @@ jobs:
         python get-poetry.py -y
         $env:Path += ";$env:Userprofile\.poetry\bin"
         poetry config virtualenvs.in-project true
-    - name: Set up cache
-      uses: actions/cache@v1
-      with:
-        path: .venv
-        key: ${{ runner.os }}-venv-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
     - name: Install dependencies
       run: |
         $env:Path += ";$env:Userprofile\.poetry\bin"
