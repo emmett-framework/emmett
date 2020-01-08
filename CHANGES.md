@@ -9,16 +9,19 @@ Next
 - Dropped Python 2 support, requiring Python 3.7 minimum version
 - Changed package name to `emmett`
 - Moved from WSGI to ASGI
-- Moved to `async` syntax
+- Moved to async syntax
 - Moved `globals` module to `ctx`
 - Added `output` optional param to `route` definition
-- Introduced `develop` and `serve` command in place of `run`
+- Introduced `develop` and `serve` commands in place of `run`
 - Pipeline `open` and `close` flows are now handled concurrently
 - Rewritten router, optimized request flow
 - Introduced websockets support
 - Added `after_loop` signal
 - Decoupled templating engine
-- Added `async` support in `cache` module
+- Added `Request.files`
+- Added `request_max_content_length` to `App.config`
+- Added `request_body_timeout` to `App.config`
+- Added async support in `cache` module
 
 Version 1.3
 -----------
