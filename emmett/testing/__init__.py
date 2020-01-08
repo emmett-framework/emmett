@@ -1,1 +1,1 @@
-from .client import WeppyTestClient
+from .client import EmmettTestClient

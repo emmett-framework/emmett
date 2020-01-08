@@ -91,7 +91,7 @@ class ReloaderLoop(object):
             print('> Restarting (%s mode)' % self.name)
             args = _get_args_for_reloading()
             new_environ = os.environ.copy()
-            new_environ['WEPPY_RUN_MAIN'] = 'true'
+            new_environ['EMMETT_RUN_MAIN'] = 'true'
 
             # a weird bug on windows. sometimes unicode strings end up in the
             # environment and subprocess.call does not like this, encode them
@@ -148,7 +148,7 @@ def run_with_reloader(
     reloader = reloader_loops[reloader_type](extra_files, interval)
     signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
     try:
-        if os.environ.get('WEPPY_RUN_MAIN') == 'true':
+        if os.environ.get('EMMETT_RUN_MAIN') == 'true':
             process = multiprocessing.Process(
                 target=app._run, args=(host, port))
             process.start()

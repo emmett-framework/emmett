@@ -131,7 +131,7 @@ class BackendStoredSessionPipe(SessionPipe):
 
 
 class FileSessionPipe(BackendStoredSessionPipe):
-    _fs_transaction_suffix = '.__wp_sess'
+    _fs_transaction_suffix = '.__emt_sess'
     _fs_mode = 0o600
 
     def __init__(

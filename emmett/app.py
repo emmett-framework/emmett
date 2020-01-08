@@ -124,7 +124,7 @@ class App:
     ):
         self.import_name = import_name
         #: init debug var
-        self.debug = os.environ.get('WEPPY_RUN_ENV') == "true"
+        self.debug = os.environ.get('EMMETT_RUN_ENV') == "true"
         #: set paths for the application
         if root_path is None:
             root_path = get_root_path(self.import_name)
@@ -360,7 +360,7 @@ class App:
         if port is None:
             port = 8000
         self.debug = debug
-        if os.environ.get('WEPPY_RUN_MAIN') != 'true':
+        if os.environ.get('EMMETT_RUN_MAIN') != 'true':
             quit_msg = "(press CTRL+C to quit)"
             self.log.info(
                 f"> Emmett application {self.import_name} running on "
@@ -375,8 +375,8 @@ class App:
     def test_client(self, use_cookies=True, **kwargs):
         tclass = self.test_client_class
         if tclass is None:
-            from .testing import WeppyTestClient
-            tclass = WeppyTestClient
+            from .testing import EmmettTestClient
+            tclass = EmmettTestClient
         return tclass(self, use_cookies=use_cookies, **kwargs)
 
     def __call__(self, scope, receive, send):

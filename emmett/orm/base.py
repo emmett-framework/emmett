@@ -110,7 +110,7 @@ class Database(_pyDAL):
         if self._auto_connect is not None:
             kwargs['do_connect'] = self._auto_connect
         else:
-            kwargs['do_connect'] = os.environ.get('WEPPY_CLI_ENV') == 'true'
+            kwargs['do_connect'] = os.environ.get('EMMETT_CLI_ENV') == 'true'
         if self._use_bigint_on_id_fields:
             kwargs['bigint_id'] = True
         #: set directory

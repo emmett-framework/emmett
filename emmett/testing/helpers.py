@@ -329,7 +329,7 @@ def stream_encode_multipart(values, threshold=1024 * 500, boundary=None,
     if boundary is None:
         from time import time
         from random import random
-        boundary = '---------------WeppyFormPart_%s%s' % (time(), random())
+        boundary = '---------------EmmettFormPart_%s%s' % (time(), random())
     _closure = [BytesIO(), 0, False]
 
     write_binary = _closure[0].write

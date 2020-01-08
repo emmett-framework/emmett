@@ -110,7 +110,7 @@ class ClientResponse(object):
                 yield item
 
 
-class WeppyTestClient(object):
+class EmmettTestClient(object):
     """This class allows to send requests to a wrapped application."""
 
     def __init__(

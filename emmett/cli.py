@@ -113,7 +113,7 @@ def locate_app(app_id):
 
 
 class ScriptInfo(object):
-    """Help object to deal with Weppy applications.  This is usually not
+    """Help object to deal with Emmett applications.  This is usually not
     necessary to interface with as it's used internally in the dispatching
     to click.
     """
@@ -132,7 +132,7 @@ class ScriptInfo(object):
         self.db_var_name = None
         #: Set environment flag
         # TODO: custom commands?
-        # os.environ['WEPPY_CLI_ENV'] = 'true'
+        # os.environ['EMMETT_CLI_ENV'] = 'true'
 
     def load_appctx(self):
         if self._loaded_ctx is not None:
@@ -189,7 +189,7 @@ app_option = click.Option(
 )
 
 
-class WeppyGroup(click.Group):
+class EmmettGroup(click.Group):
     def __init__(self, add_default_commands=True, add_app_option=True,
                  add_debug_option=True, **extra):
         params = list(extra.pop('params', None) or ())
@@ -209,7 +209,7 @@ class WeppyGroup(click.Group):
             self.add_command(serve_command)
 
     def list_commands(self, ctx):
-        rv = super(WeppyGroup, self).list_commands(ctx)
+        rv = super(EmmettGroup, self).list_commands(ctx)
         info = ctx.ensure_object(ScriptInfo)
         try:
             rv = rv + info.load_app().cli.list_commands(ctx)
@@ -271,10 +271,10 @@ def run_command(ctx, host, port, reloader, debug):
     '--debug', type=bool, default=True, help='Runs in debug mode.')
 @pass_script_info
 def develop_command(info, host, port, reloader, debug):
-    os.environ["WEPPY_RUN_ENV"] = 'true'
+    os.environ["EMMETT_RUN_ENV"] = 'true'
     app = info.load_app()
     app.debug = debug
-    if os.environ.get('WEPPY_RUN_MAIN') != 'true':
+    if os.environ.get('EMMETT_RUN_MAIN') != 'true':
         print(f"> Serving Emmett application {app.import_name}")
         quit_msg = "(press CTRL+C to quit)"
         print(
@@ -332,7 +332,7 @@ def serve_command(
 @pass_script_info
 def shell_command(info):
     import code
-    os.environ['WEPPY_CLI_ENV'] = 'true'
+    os.environ['EMMETT_CLI_ENV'] = 'true'
     ctx = info.load_appctx()
     app = info.load_app()
     banner = 'Python %s on %s\nEmmett %s shell on app: %s' % (
@@ -355,7 +355,7 @@ def routes_command(info):
         print(route)
 
 
-cli = WeppyGroup(help="")
+cli = EmmettGroup(help="")
 
 
 def set_db_value(ctx, param, value):
