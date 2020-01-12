@@ -19,7 +19,7 @@ from ._internal import ContextVarProxy
 from .language import T
 
 
-class Context(object):
+class Context:
     def __init__(self):
         self.language = None
 
@@ -28,8 +28,8 @@ class Context(object):
         return pendulum.instance(datetime.utcnow())
 
 
-class Current(object):
-    __slots__ = ('_ctx',)
+class Current:
+    __slots__ = ['_ctx']
 
     def __init__(self):
         object.__setattr__(self, '_ctx', contextvars.ContextVar('ctx'))

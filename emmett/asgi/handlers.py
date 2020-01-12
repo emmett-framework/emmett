@@ -16,7 +16,7 @@ import re
 from collections import OrderedDict
 from datetime import datetime
 
-from ..ctx import current, request, response
+from ..ctx import Context, current, request, response
 from ..debug import smart_traceback, debug_handler
 from ..http import HTTPResponse, HTTPFile, HTTP
 from ..language import _instance as _translator_instance
@@ -313,7 +313,7 @@ class WSHandler(RequestHandler):
             await send({'type': 'websocket.close', 'code': 1000})
 
 
-class RequestContext(object):
+class RequestContext:
     def __init__(self, app, scope):
         self.app = app
         self.request = Request(
@@ -334,7 +334,7 @@ class RequestContext(object):
             list(_translator_instance._t.all_languages))
 
 
-class WSContext(object):
+class WSContext(Context):
     def __init__(self, app, scope, receive, send):
         self.app = app
         self.websocket = Websocket(
