@@ -18,7 +18,7 @@ from ...ctx import session, now
 from ...datastructures import sdict
 from ...extensions import Extension, listen_signal
 from ...language import T
-from ...language.translator import TElement
+from ...language.helpers import Tstr
 from ...orm.helpers import decamelize
 from ...security import uuid
 from .forms import AuthForms
@@ -87,24 +87,24 @@ class AuthExtension(Extension):
         'password_retrieval_button': 'Retrieve password',
         'password_reset_button': 'Reset password',
         'password_change_button': 'Change password',
-        'login_log': 'User %(id)s logged in',
-        'logout_log': 'User %(id)s logged out',
-        'registration_log': 'User %(id)s registered',
-        'profile_log': 'User %(id)s updated profile',
-        'email_verification_log': 'Verification email sent to user %(id)s',
-        'password_retrieval_log': 'User %(id)s asked for password retrieval',
-        'password_reset_log': 'User %(id)s reset the password',
-        'password_change_log': 'User %(id)s changed the password',
+        'login_log': 'User {id} logged in',
+        'logout_log': 'User {id} logged out',
+        'registration_log': 'User {id} registered',
+        'profile_log': 'User {id} updated profile',
+        'email_verification_log': 'Verification email sent to user {id}',
+        'password_retrieval_log': 'User {id} asked for password retrieval',
+        'password_reset_log': 'User {id} reset the password',
+        'password_change_log': 'User {id} changed the password',
         'old_password': 'Current password',
         'new_password': 'New password',
         'verify_password': 'Confirm password',
         'registration_email_subject': 'Email verification',
         'registration_email_text':
-            'Hello %(email)s! Click on the link %(link)s to verify your email',
+            'Hello {email}! Click on the link {link} to verify your email',
         'reset_password_email_subject': 'Password reset requested',
         'reset_password_email_text':
             'A password reset was requested for your account, '
-            'click on the link %(link)s to proceed'
+            'click on the link {link} to proceed'
     }
 
     def __init__(self, app, env, config):
@@ -309,8 +309,8 @@ class AuthExtension(Extension):
         except Exception:
             user_id = None
         # log messages should not be translated
-        if isinstance(description, TElement):
-            description = description.m
+        if isinstance(description, Tstr):
+            description = description.text
         self.config.models['event'].table.insert(
             description=str(description % data),
             origin=origin, user=user_id)

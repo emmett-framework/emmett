@@ -19,7 +19,7 @@ from datetime import datetime
 from ..ctx import Context, current, request, response
 from ..debug import smart_traceback, debug_handler
 from ..http import HTTPResponse, HTTPFile, HTTP
-from ..language import _instance as _translator_instance
+from ..language import T
 from ..utils import cachedprop
 from ..wrappers.request import Body, Request
 from ..wrappers.response import Response
@@ -330,8 +330,7 @@ class RequestContext:
 
     @cachedprop
     def language(self):
-        return self.request.accept_language.best_match(
-            list(_translator_instance._t.all_languages))
+        return self.request.accept_language.best_match(list(T._langmap))
 
 
 class WSContext(Context):
@@ -346,8 +345,7 @@ class WSContext(Context):
 
     @cachedprop
     def language(self):
-        return self.websocket.accept_language.best_match(
-            list(_translator_instance._t.all_languages))
+        return self.websocket.accept_language.best_match(list(T._langmap))
 
 
 async def _event_looper(handler, scope, receive, send, event):

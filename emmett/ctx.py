@@ -16,7 +16,6 @@ import pendulum
 from datetime import datetime
 
 from ._internal import ContextVarProxy
-from .language import T
 
 
 class Context:
@@ -56,7 +55,7 @@ class Current:
 
     @property
     def T(self):
-        return T
+        return self.ctx.app.translator
 
 
 current = Current()

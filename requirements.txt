@@ -10,6 +10,7 @@ python-rapidjson==0.8.0
 pytzdata==2019.3
 pyyaml==5.3
 renoir==1.0.0b3
+severus==1.0.0b1
 six==1.13.0
 uvicorn==0.9.1
 uvloop==0.14.0; sys_platform != "win32" and sys_platform != "cygwin" and platform_python_implementation != "pypy" or sys_platform != "win32"

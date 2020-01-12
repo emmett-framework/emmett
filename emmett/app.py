@@ -23,6 +23,8 @@ from .datastructures import sdict, ConfigData
 from .extensions import Extension
 from .helpers import load_component
 from .html import asis
+from .language.helpers import Tstr
+from .language.translator import Translator
 from .routing.router import HTTPRouter, WebsocketRouter
 from .routing.urls import url
 from .templating.templater import Templater
@@ -105,6 +107,7 @@ class App:
     __slots__ = [
         'import_name', 'cli', 'config',
         'root_path', 'static_path', 'template_path', 'config_path',
+        'translator',
         '_languages', '_languages_set', '_language_force_on_url',
         'language_default', 'language_write',
         '_pipeline', '_router_http', '_router_ws', '_asgi_handlers',
@@ -144,6 +147,12 @@ class App:
         self._language_force_on_url = False
         self.language_default = None
         self.language_write = False
+        self.translator = Translator(
+            os.path.join(self.root_path, 'languages'),
+            default_language=self.language_default or 'en',
+            watch_changes=self.debug,
+            str_class=Tstr
+        )
         #: init routing
         self._pipeline = []
         self._router_http = HTTPRouter(self, url_prefix=url_prefix)

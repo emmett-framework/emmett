@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
+
 import io
-import platform
 import re
 
 from setuptools import find_packages, setup
