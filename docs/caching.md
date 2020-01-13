@@ -107,6 +107,8 @@ cache = Cache(m=RamCache(), r=RedisCache(), default='r')
 Basic usage
 -----------
 
+*Changed in version 2.0*
+
 The quickier usage of cache is to just apply it on a simple *action*, such as a select on the database or a computation. Let's say, for example, that you have a blog and a certain function that exposes the last ten posts:
 
 ```python
@@ -127,6 +129,17 @@ async def last():
 ```
 
 Here's how it works: you encapsulate the action you want to cache into a function, and then call your `cache` instance with a key, the function, and the amount of time in seconds you want to store the result of your function. Emmett will take care of the rest.
+
+You can also put in cache results coming from `async` operations, you just need to be sure to pass a coroutine function to the cache call. In this case the syntax will be preserved, and you need to `await` the cache call:
+
+```python
+async def _get():
+    return 'value'
+
+@app.route()
+async def data():
+    return dict(data=await cache('last_data', _get, 30))
+```
 
 > – OK, dude. What if I have multiple handlers? where does Emmett store the result?   
 > – *you can choose that*
@@ -149,7 +162,7 @@ v_redis = cache.redis('my_key', my_f, my_time)
 Decorating methods
 ------------------
 
-*New in version 1.2*
+*Changed in version 2.0*
 
 Emmett's cache can also be used as a decorator. For example, we can rewrite the above example as follows:
 
@@ -181,6 +194,18 @@ def cached_method(a, b, c='foo', d='bar'):
 ```
 
 then Emmett will cache different contents in case you call `cached_method(1, 2, c='a')` and `cached_method(1, 3, c='b')`.
+
+The cache decorator also supports `async` methods:
+
+```python
+@cache()
+async def get_data(page=1):
+    await some_data(page)
+
+@app.routes()
+async def data():
+    return dict(data=await get_data(request.query_params.page or 1))
+```
 
 Caching routes
 --------------
@@ -268,6 +293,19 @@ value = cache.get_or_set('key', 'somevalue', duration=300)
 ```
 
 > **Note:** as we saw for the `set` method, if you want to store the result of a callable object, you should invoke it yourself.
+
+### Async get or set
+
+*New in version 2.0*
+
+The `get_or_set` behaviour can also be used with awaitable functions and objects, just use the provided `get_or_set_loop` method for that:
+
+```python
+async def somefunction():
+    return 'value'
+
+value = await cache.get_or_set_loop('key', somefunction, duration=300)
+```
 
 ### Clearing contents
 
