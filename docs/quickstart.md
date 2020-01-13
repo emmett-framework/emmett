@@ -486,11 +486,10 @@ database tables created with the integrated [ORM](./orm).
 Check out the [Forms chapter](./forms) of the documentation and the 
 [BS3 extension](#) which adds the Bootstrap 3 style to your forms.
 
-Languages and translation
--------------------------
+Languages and internationalization
+----------------------------------
 
-Emmett provides an powerful, integrated multi-language system, based on *web2py's*,
-which helps you to write applications supporting different languages.   
+Emmett provides *Severus* as its integrated internationalization engine, which helps you to write applications supporting different languages.   
 But how does it work?
 
 ```python
@@ -503,11 +502,10 @@ async def index():
     return dict(hello=hello)
 ```
 
-As you can see, Emmett provides a language translator with the `T` object.   
-So what you should do with languages? You can just write your translation in a
-file within your application called *languages/it.py*. That's "it" for Italian.
+As you can see, Emmett expose a language translator with the `T` object.   
+So what you should do with languages? You can just write your translation in a *json* or *yaml* file within your application *languages* folder, naming it for the language code you want to use. That's "it" for Italian, so our *it.json* file will look like:
 
-```python
+```json
 {
     "Hello, my dear!": "Ciao, mio caro!"
 }
@@ -515,17 +513,13 @@ file within your application called *languages/it.py*. That's "it" for Italian.
 
 The "hello" message will be translated when the user requests the Italian language.
 
-On default settings, the user's requested language is determined by the
-"Accept-Language" field in the HTTP header, but the translation system has
-another way to behave, in fact if we put this line in the prior example:
+On default settings, the user's requested language is determined by the "Accept-Language" field in the HTTP header, but the translation engine has another way to behave, in fact if we put this line in the prior example:
 
 ```python
 app.language_force_on_url = True
 ```
 
-Emmett uses the URL to determine the language instead of the HTTP "Accept-Language"
-header. This means that Emmett will automatically add the support for language on
-your routing rules.
+Emmett uses the URL to determine the language instead of the HTTP "Accept-Language" header. This means that Emmett will automatically add the support for language on your routing rules.
 
 To see more about languages and dive into translator features, read the complete
 documentation available in the [Languages chapter](./languages).
