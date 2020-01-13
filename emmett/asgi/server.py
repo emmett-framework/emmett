@@ -24,6 +24,9 @@ class Config(UvicornConfig):
     def setup_event_loop(self):
         pass
 
+    def configure_logging(self):
+        pass
+
     def load(self):
         assert not self.loaded
 
@@ -58,19 +61,6 @@ class Config(UvicornConfig):
         self.loaded = True
 
 
-def _build_server_logger(app, level=None):
-    level = (
-        LOG_LEVELS[level] if level else (
-            logging.DEBUG if app.debug else logging.WARNING))
-    log_format = '[SERVER] %(levelname)s %(message)s'
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter(log_format))
-    logger = logging.getLogger("uvicorn")
-    logger.setLevel(level)
-    logger.addHandler(handler)
-    return logger
-
-
 def run(
     app,
     host='127.0.0.1', port=8000, uds=None, fd=None,
@@ -91,6 +81,10 @@ def run(
     if access_log is None:
         access_log = bool(app.debug)
 
+    log_level = (
+        LOG_LEVELS[log_level] if log_level else (
+            logging.DEBUG if app.debug else logging.WARNING))
+
     uvicorn_config = Config(
         app=app,
         host=host,
@@ -100,9 +94,10 @@ def run(
         loop=loop,
         http=protocol_cls_http,
         ws=protocol_cls_ws,
-        logger=_build_server_logger(app, log_level),
+        log_level=log_level,
         access_log=access_log,
         debug=bool(app.debug),
+        proxy_headers=False,
         limit_concurrency=limit_concurrency,
         # limit_max_requests=limit_max_requests,
         timeout_keep_alive=timeout_keep_alive,
