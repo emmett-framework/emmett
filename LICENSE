@@ -35,7 +35,6 @@ and contains the original copyright credits:
 Due to the original license limitations, some of these components are
 distributed under LGPLv3 license, in particular:
 
-  * emmett/language
   * emmett/security.py
   * emmett/validators
 
