@@ -22,6 +22,7 @@ Next
 - Added `request_max_content_length` to `App.config`
 - Added `request_body_timeout` to `App.config`
 - Added async support in `cache` module
+- Decoupled internationalization engine
 
 Version 1.3
 -----------
