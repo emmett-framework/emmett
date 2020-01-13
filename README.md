@@ -38,11 +38,12 @@ async def todo():
     return {'tasks': tasks}
 ```
 
+[![pip version](https://img.shields.io/pypi/v/emmett.svg?style=flat)](https://pypi.python.org/pypi/emmett)
 ![Tests Status](https://github.com/emmett-framework/emmett/workflows/Tests/badge.svg)
 
 ## Documentation
 
-The documentations is available under the *docs* folder.
+The documentations is available under the [docs folder](https://github.com/emmett-framework/emmett/tree/master/docs) folder.
 
 ## Examples
 
