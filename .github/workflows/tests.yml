@@ -1,0 +1,85 @@
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  Linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install and set up Poetry
+      run: |
+        curl -fsS -o get-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py
+        python get-poetry.py -y
+        source $HOME/.poetry/env
+        poetry config virtualenvs.in-project true
+    - name: Install dependencies
+      run: |
+        source $HOME/.poetry/env
+        poetry install -v
+    - name: Test
+      run: |
+        source $HOME/.poetry/env
+        poetry run pytest -v tests
+
+  MacOS:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install and set up Poetry
+      run: |
+        curl -fsS -o get-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py
+        python get-poetry.py -y
+        source $HOME/.poetry/env
+        poetry config virtualenvs.in-project true
+    - name: Install dependencies
+      run: |
+        source $HOME/.poetry/env
+        poetry install -v
+    - name: Test
+      run: |
+        source $HOME/.poetry/env
+        poetry run pytest -v tests
+
+  Windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install and setup Poetry
+      run: |
+        curl -fsS -o get-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py
+        python get-poetry.py -y
+        $env:Path += ";$env:Userprofile\.poetry\bin"
+        poetry config virtualenvs.in-project true
+    - name: Install dependencies
+      run: |
+        $env:Path += ";$env:Userprofile\.poetry\bin"
+        poetry install -v
+    - name: Test
+      run: |
+        $env:Path += ";$env:Userprofile\.poetry\bin"
+        poetry run pytest -v tests

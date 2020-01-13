@@ -5,15 +5,15 @@ Debug and logging
 
 So, what can we do to face all this necessary complexity?   
 
-weppy provides two facilities to track and debug errors on your application:
+Emmett provides two facilities to track and debug errors on your application:
 a *debugger* for your development process, and a simple logging configuration
 for your production environment.
 
 Debugger
 --------
 When you run your application with the built-in server, using the `run()` method,
-with the *weppy* command shell, or by setting your `App.debug` attribute to `True`,
-weppy will use its internal debugger when an exception occurs to show you
+with the *emmett* command shell, or by setting your `App.debug` attribute to `True`,
+Emmett will use its internal debugger when an exception occurs to show you
 some useful information. What does that look like?
 
 ![debugger](http://weppy.org/static/debug.png)
@@ -34,7 +34,7 @@ tell you a lot about what happened during an exception.
 
 ![debugger](http://weppy.org/static/debug_frames.png)
 
-As you can see, for every step of the full traceback, weppy collects – 
+As you can see, for every step of the full traceback, Emmett collects – 
 when is possible – all the variables' contents and reports them as shown
 in the above screen.
 
@@ -50,14 +50,14 @@ that was not *passed*.
 
 Logging application errors
 --------------------------
-When your application runs on production, weppy – obviously – 
+When your application runs on production, Emmett – obviously – 
 won't display the debug page, but will collect the full traceback 
 and store it in logs. In fact, with the default configuration, 
 a file called *production.log* will be created in the *logs* folder 
 inside your application folder. It will log every message labeled as 
 *warning* level or more severe.
 
-But how does weppy logging works?   
+But how does Emmett logging works?   
 
 It uses the standard Python logging module, and provides a shortcut
 that you can use with the `log` attribute of your `App`. This becomes handy when
@@ -70,14 +70,14 @@ app.log.warning('This is a warning message')
 ```
 
 Basically, the `log` attribute of your app is a Python `Logger` with some handlers
-configured. As we said above, weppy automatically logs exceptions calling your `app.log.exception()`.
+configured. As we said above, Emmett automatically logs exceptions calling your `app.log.exception()`.
 
 ### Configuring application logs
 You probably want to configure logging for your application to fit your needs.
 To do that, just use your `app.config` object:
 
 ```python
-from weppy import App, sdict
+from emmett import App, sdict
 
 app = App(__name__)
 
@@ -97,6 +97,6 @@ list of parameters you can set for a logging file:
 | file_no | number of old files to keep with rotation (default `4`) |
 | level | logging level (default `'warning'`) |
 | format | format for messages (default `'[%(asctime)s] %(levelname)s in %(module)s: %(message)s'`) |
-| on\_app\_debug | tells weppy to log the messages also when application is in debug mode (default `False`) |
+| on\_app\_debug | tells Emmett to log the messages also when application is in debug mode (default `False`) |
 
 That's it.

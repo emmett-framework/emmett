@@ -3,20 +3,17 @@
     tests.auth
     ----------
 
-    Test weppy Auth module
-
-    :copyright: (c) 2014-2016 by Giovanni Barillari
-    :license: BSD, see LICENSE for more details.
+    Test Emmett Auth module
 """
 
 import os
 import pytest
 import shutil
-from weppy import App
-from weppy.orm import Database, Field, Model, has_many, belongs_to
-from weppy.sessions import SessionManager
-from weppy.tools import Auth, Mailer
-from weppy.tools.auth.models import AuthUser
+from emmett import App
+from emmett.orm import Database, Field, Model, has_many, belongs_to
+from emmett.sessions import SessionManager
+from emmett.tools import Auth, Mailer
+from emmett.tools.auth.models import AuthUser
 
 
 class User(AuthUser):

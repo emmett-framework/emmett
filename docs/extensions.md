@@ -1,7 +1,7 @@
 Extensions
 ==========
 
-weppy extensions extend the functionality of weppy in various different ways.
+Emmett extensions extend the functionality of Emmett in various different ways.
 
 Extensions are listed on the [Extension Registry](#) and can be downloaded with
 `easy_install` or `pip`. When adding extensions to your application, it is a
@@ -12,14 +12,14 @@ Using extensions
 ----------------
 
 An extension typically has accompanying documentation that shows how to use it
-correctly. In general, weppy extensions should be named with the format `weppy-foo`
-and have a package-name like `weppy_foo`, replacing foo with the desired name.
+correctly. In general, Emmett extensions should be named with the format `emmett-foo`
+and have a package-name like `emmett_foo`, replacing foo with the desired name.
 If the extension is written according to the suggested pattern, using it in your 
 application will be quite easy:
 
 ```python
-from weppy import App
-from weppy_foo import Foo
+from emmett import App
+from emmett_foo import Foo
 
 app = App(__name__)
 
@@ -41,10 +41,10 @@ method, you can access the extension instance at `app.ext.<extension_name>`.
 Building extensions
 -------------------
 
-The first step in creating a new extension for weppy is writing an `Extension` subclass:
+The first step in creating a new extension for Emmett is writing an `Extension` subclass:
 
 ```python
-from weppy.extensions import Extension
+from emmett.extensions import Extension
 
 class Awesomeness(Extension):
     default_config = {}
@@ -55,7 +55,7 @@ class Awesomeness(Extension):
 
 As you can see, the `Extension` class in actually quite simple, since you just have to write down the default configuration (if needed) and override the `on_load` method, that will be called by the framework when the extension will be initialised.
 
-You can access three attributes of the extension instance, that are injected by weppy before calling the `on_load` method, in particular you will have:
+You can access three attributes of the extension instance, that are injected by Emmett before calling the `on_load` method, in particular you will have:
 
 | attribute | description |
 | --- | --- |
@@ -65,7 +65,7 @@ You can access three attributes of the extension instance, that are injected by 
 
 The `config` attribute will contain the configuration defined by the developer using the extension, with the default attributes you defined in the `default_config` if not specified differently.
 
-The developer will access `app.config.Awesomeness` in order configure the extension, in fact weppy uses the name of your class as namespace for the configuration and environment objects. If you want to specify a different namespace, you can use the relevant attribute:
+The developer will access `app.config.Awesomeness` in order configure the extension, in fact Emmett uses the name of your class as namespace for the configuration and environment objects. If you want to specify a different namespace, you can use the relevant attribute:
 
 ```python
 class Awesomeness(Extension):
@@ -81,7 +81,7 @@ class Awesomeness(Extension):
     def on_load(self):
         self.app.route('/awesome')(awesome_route)
 
-def awesome_route():
+async def awesome_route():
     return {'message': 'Awesome!'}
 ```
 
@@ -89,7 +89,7 @@ def awesome_route():
 
 *New in version 1.0*
 
-Whenever you need to perform more specific actions depending on the status of the application, and the `on_load` method is not enough, you can use signals. weppy provides these signal for extensions:
+Whenever you need to perform more specific actions depending on the status of the application, and the `on_load` method is not enough, you can use signals. Emmett provides these signal for extensions:
 
 | signal name | parameters | description |
 | --- | --- | --- |
@@ -106,8 +106,8 @@ Note that the `after_database` pass the database instance as parameter, the `bef
 All these signals can be quite handy for specific operations. For example, let's say your extension wants to add a pipe into the application pipeline. Doing this within the `on_load` won't be safe, since you don't know if the developer will change the pipeline after the load of your extension on the application. It's, instead, more appropriate using the `before_routes` signal for this: 
 
 ```python
-from weppy.pipeline import Pipe
-from weppy.extensions import Extension, listen_signal
+from emmett.pipeline import Pipe
+from emmett.extensions import Extension, listen_signal
 
 class AwesomePipe(Pipe):
     # some code
@@ -133,16 +133,16 @@ class Awesomeness(Extension):
 
 ### Template extensions
 
-*Changed in version 1.2*
+*Won't be here, moved to Renoir*
 
-Whenever you want to extend something related to the weppy templating system, you can take advantage of another class provided by the framework: the `TemplateExtension` one.
+Whenever you want to extend something related to the Emmett templating system, you can take advantage of another class provided by the framework: the `TemplateExtension` one.
 
 This class provides some useful methods when dealing with templates, and has to be used on conjunction with the `Extension` one. Let's see this with an example.
 
-Let's say we want to build an extension that adds [Haml](http://weppy.org/extensions/haml) support to weppy. Then we need to write a template extension that interact with templates with an *.haml* file extension and that provides the compiled html source in order to let weppy understand the templates. We can start by writing:
+Let's say we want to build an extension that adds [Haml](http://weppy.org/extensions/haml) support to Emmett. Then we need to write a template extension that interact with templates with an *.haml* file extension and that provides the compiled html source in order to let Emmett understand the templates. We can start by writing:
 
 ```python
-from weppy.extensions import TemplateExtension
+from emmett.extensions import TemplateExtension
 
 class HamlTemplates(TemplateExtension):
     file_extension = '.haml' 
@@ -150,14 +150,14 @@ class HamlTemplates(TemplateExtension):
 
 Then we can use three different methods provided by the `TemplateExtension` class:
 
-- the `preload` method, that should accept a path and a filename and return the same tuple, and is useful to alter the standard template names weppy looks for;
-- the `preprocess` method, that should accept the source code and file name variables and return the source code that should be used by weppy;
+- the `preload` method, that should accept a path and a filename and return the same tuple, and is useful to alter the standard template names Emmett looks for;
+- the `preprocess` method, that should accept the source code and file name variables and return the source code that should be used by Emmett;
 - the `inject` method, that should accept a context dictionary and can add methods and variable to it.
 
-Let's say we want to compile the haml templates in html ones on application start, then just tell weppy to use the generated html files one. The simplest way to do that is to override the `preload` method in order to change the extension of the file:
+Let's say we want to compile the haml templates in html ones on application start, then just tell Emmett to use the generated html files one. The simplest way to do that is to override the `preload` method in order to change the extension of the file:
 
 ```python
-from weppy.extensions import TemplateExtension
+from emmett.extensions import TemplateExtension
 
 class HamlTemplates(TemplateExtension):
     file_extension = '.haml'
@@ -180,7 +180,7 @@ class Haml(Extension):
                     self.compile(path, fname)
 ```
 
-where `compile` method will be the one responsible to parse the haml code and produce compatible html for weppy.
+where `compile` method will be the one responsible to parse the haml code and produce compatible html for Emmett.
 
 Given this, we also want to register the template extension when the user activate the main extension, and to share the same context, so that the final code will look like this:
 
@@ -219,9 +219,9 @@ class HamlTemplates(TemplateExtension):
             # some code
 ```
 
-Template extensions can also register *lexers*, which are the keyword used by weppy in templates to render specific contents. For example, the standard `include_static` keyword is a lexer that produce the appropriate `<link>` or `<script>` html objects.
+Template extensions can also register *lexers*, which are the keyword used by Emmett in templates to render specific contents. For example, the standard `include_static` keyword is a lexer that produce the appropriate `<link>` or `<script>` html objects.
 
-In order to create a new lexer, you have to use the `TemplateLexer` class provided by weppy. Let's say we want to create a shortcut to include images from the static folder using this notation:
+In order to create a new lexer, you have to use the `TemplateLexer` class provided by Emmett. Let's say we want to create a shortcut to include images from the static folder using this notation:
 
 ```html
 <div>
@@ -232,7 +232,7 @@ In order to create a new lexer, you have to use the `TemplateLexer` class provid
 To do this, we first need a method that produce the final html code and add it to the template context so we can invoke it:
 
 ```python
-from weppy import url
+from emmett import url
 
 class ImgTemplateExtension(TemplateExtension):
     def gen_img_string(self, name):
@@ -247,7 +247,7 @@ class ImgTemplateExtension(TemplateExtension):
 then we should write a lexer that converts the *img* notation to a call to our method and add it as a *python node* to the template tree:
 
 ```python
-from weppy.extensions import TemplateLexer
+from emmett.extensions import TemplateLexer
 
 class ImgLexer(TemplateLexer):
     def process(self, ctx, value):
@@ -259,8 +259,8 @@ The above code tells the template parser to add a python node to the current tem
 The last things we need is to register the lexer and the template extension, so the final code will look like this:
 
 ```python
-from weppy import url
-from weppy.extensions import Extension, TemplateExtension, TemplateLexer
+from emmett import url
+from emmett.extensions import Extension, TemplateExtension, TemplateLexer
 
 class ImgExtension(Extension):
     namespace = "TemplateImg"

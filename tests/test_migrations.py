@@ -3,17 +3,15 @@
     tests.migrations
     ----------------
 
-    Test weppy migrations engine
-
-    :copyright: (c) 2014-2016 by Giovanni Barillari
-    :license: BSD, see LICENSE for more details.
+    Test Emmett migrations engine
 """
 
 import pytest
-from weppy import App
-from weppy.orm import Database, Model, Field
-from weppy.orm.migrations.engine import MetaEngine, Engine
-from weppy.orm.migrations.generation import MetaData, Comparator
+
+from emmett import App
+from emmett.orm import Database, Model, Field
+from emmett.orm.migrations.engine import MetaEngine, Engine
+from emmett.orm.migrations.generation import MetaData, Comparator
 
 
 class FakeEngine(Engine):

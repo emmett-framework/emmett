@@ -1,17 +1,18 @@
 Applications and modules
 ========================
 
-weppy applications are based on the `App` core class. Let's focus on this fundamental component and on the convenient application modules.
+Emmett applications are based on the `App` core class. Let's focus on this fundamental component and on the convenient application modules.
 
 The App object
 --------------
 
 *Changed in version 1.3*
 
-As you learned from the [Getting Started](./quickstart) chapter, your application is defined using weppy's `App` class:
+As you learned from the [Getting Started](./quickstart) chapter, your application is defined using Emmett's `App` class:
 
 ```python
-from weppy import App
+from emmett import App
+
 app = App(__name__)
 ```
 
@@ -29,10 +30,10 @@ Let's see the full parameters list in detail:
 
 | parameter | explanation |
 | --- | --- |
-| import_name | gives weppy an idea of what belongs to your application, usually using `__name__` will work out of the box, but you can hardcode the name of your application package if you wish |
+| import_name | gives Emmett an idea of what belongs to your application, usually using `__name__` will work out of the box, but you can hardcode the name of your application package if you wish |
 | root_path | allows you to set a custom root path for your application, which is usually unnecessary |
 | url_prefix | allows you to set a global url prefix for routing |
-| template_folder | allows you to set a different folder for your application's templates (by default weppy uses the *templates* folder |
+| template_folder | allows you to set a different folder for your application's templates (by default Emmett uses the *templates* folder |
 | config_folder | allows you to set a different configuration folder for your application, if you wish to load your configuration from files |
 
 Since we introduced the `config_folder` parameter, let's see some details
@@ -50,7 +51,7 @@ You can simply write:
 
 ```python
 
-from weppy import App
+from emmett import App
 app = App(__name__)
 
 app.config.foo = "bar"
@@ -95,7 +96,7 @@ app.config_from_yaml('db.yml', 'db')
 
 and your configuration will be loaded. As you can see, 
 when calling `config_from_yaml()`, you can pass the name
-of the namespace under which weppy should load the configuration.
+of the namespace under which Emmett should load the configuration.
 
 
 Application modules
@@ -105,7 +106,7 @@ Application modules
 
 When your app's structure starts to come together, you might benefit of packing routes together in common structures, so you can use the same route prefix or hostname, or to have a common pipeline.
 
-weppy provides application modules for this. You can create new modules using the `module` method of your application object. For example, let's say you have a minimal blog into your application. Then might be convenient create a module for it:
+Emmett provides application modules for this. You can create new modules using the `module` method of your application object. For example, let's say you have a minimal blog into your application. Then might be convenient create a module for it:
 
 ```python
 blog = app.module(__name__, name="blog", url_prefix="blog")
@@ -115,7 +116,7 @@ With this single line we created a new module for our blogging system, that will
 
 ```python
 @blog.route("/")
-def index():
+async def index():
     # code
 ```
 
@@ -123,7 +124,7 @@ The resulting route will respond to the */blog* path, since the module have a de
 
 ```python
 @blog.route()
-def archive():
+async def archive():
     # code
 ```
 
@@ -134,7 +135,7 @@ A part from the prefix, you can use several parameters when creating modules. He
 | parameter | explaination |
 | --- | --- |
 | import_name | same as we seen for the `App` object |
-| name | name for the module, will be used by weppy as the namespace for internal routing |
+| name | name for the module, will be used by Emmett as the namespace for internal routing |
 | template_folder | allows you to set a specific sub-folder of your application template path for module templates |
 | template_path | allows you to set a specific folder inside your module root path for module templates |
 | url_prefix | allows you to set a prefix path for module URLs |
@@ -143,7 +144,7 @@ A part from the prefix, you can use several parameters when creating modules. He
 
 As you can see, we can bind the module to a specific host with the `hostname` parameter, instead of using `url_prefix`. Considering our blog example, we can bind it to *blog.ourhost.tld*.
 
-We mentioned that the `name` parameter of the application modules is instead used by weppy for the URLs *namespacing*. To completely understand this 
+We mentioned that the `name` parameter of the application modules is instead used by Emmett for the URLs *namespacing*. To completely understand this 
 and to dive into subsequent considerations, you can read the 
 [Routing](./routing) chapter.
 
@@ -169,7 +170,7 @@ apis = app.module(__name__, 'apis', url_prefix='apis')
 Also, since you're using JSON as serialization, you can add the appropriate [service pipe](./services) to the pipeline:
 
 ```python
-from weppy.tools import ServicePipe
+from emmett.tools import ServicePipe
 
 apis.pipeline = [ServicePipe('json')]
 ```
@@ -186,11 +187,11 @@ Then you can create an endpoint for a specific entity, let's say you want to mak
 users = v1_apis.module(__name__, 'users', url_prefix='users')
 
 @users.route('/')
-def index():
+async def index():
     # code to return a list of users
     
 @users.route('/<int:user_id>', methods='put')
-def update(user_id):
+async def update(user_id):
     # code to edit a user
 ```
 
@@ -201,7 +202,7 @@ All the submodule inherit the properties of the parent module, so all the prefix
 Every submodule can have its pipeline, that will be added consequentially to the parent one. For example, you might have different authorization systems between the first version of your apis and a new one:
 
 ```python
-from weppy.tools import ServicePipe
+from emmett.tools import ServicePipe
 
 apis = app.module(__name__, 'apis', url_prefix='apis')
 apis.pipeline = [ServicePipe('json')]

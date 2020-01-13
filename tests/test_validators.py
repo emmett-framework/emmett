@@ -3,20 +3,19 @@
     tests.validators
     ----------------
 
-    Test weppy validators over pyDAL.
-
-    :copyright: (c) 2014-2016 by Giovanni Barillari
-    :license: BSD, see LICENSE for more details.
+    Test Emmett validators over pyDAL.
 """
 
 import pytest
+
 from datetime import datetime, timedelta
-from weppy import App, sdict
-from weppy.orm import Database, Model, Field, has_many, belongs_to
-from weppy.validators import isEmptyOr, hasLength, isInt, isFloat, isDate, \
-    isTime, isDatetime, isJSON, isntEmpty, inSet, inDB, isEmail, isUrl, isIP, \
-    isImage, inRange, Equals, Lower, Upper, Cleanup, Urlify, Crypt, notInDB, \
-    Allow, Not, Matches, Any, isList
+from emmett import App, sdict
+from emmett.orm import Database, Model, Field, has_many, belongs_to
+from emmett.validators import (
+    isEmptyOr, hasLength, isInt, isFloat, isDate, isTime, isDatetime, isJSON,
+    isntEmpty, inSet, inDB, isEmail, isUrl, isIP, isImage, inRange, Equals,
+    Lower, Upper, Cleanup, Urlify, Crypt, notInDB, Allow, Not, Matches, Any,
+    isList)
 
 
 class A(Model):
@@ -578,8 +577,6 @@ def test_validation(db):
 
 
 def test_multi(db):
-    from weppy.globals import current
-    current.language = 'en'
     p = db.Person(name="mario")
     base_data = {
         'date': '{0:%d/%m/%Y}'.format(datetime.utcnow()+timedelta(days=1)),

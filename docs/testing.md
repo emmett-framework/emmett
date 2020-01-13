@@ -1,12 +1,12 @@
-Testing weppy application
-=========================
+Testing Emmett applications
+===========================
 *New in version 0.6*
 
 > Untested code is broken code
 
 The origin of this quote is unknown and, even if it may not be entirely correct, it's not far from the truth. Developing applications without testing makes it hard to improve existing code and developers of untested applications tend to become pretty paranoid. On the contrary, if an application has automated tests, you can make changes and instantly know if anything breaks.
 
-weppy provides an integrated test client that lets you send requests to your application and test your routes with your favorite testing suite. In this documentation chapter we will use the *pytest* package, but you can obviously use *unittest* or whatever package you prefer.
+Emmett provides an integrated test client that lets you send requests to your application and test your routes with your favorite testing suite. In this documentation chapter we will use the *pytest* package, but you can obviously use *unittest* or whatever package you prefer.
 
 
 Your first test
@@ -16,6 +16,7 @@ In order to learn how to use the test client, let's return to the *bloggy* examp
 
 ```python
 import pytest
+
 from bloggy import app
 
 @pytest.fixture()
@@ -74,13 +75,13 @@ Using the application context
 
 Quite often, you will need to perform tests that depend on the client status. In particular, you may need to access the client session or perform operations depending on the last request. One typical example is the one where you need the client to login before performing other operations.
 
-You have several ways to access the weppy context objects when running tests. In fact, when you make a request with the test client, you can access the `request`, `response`, `session` and `T` objects referred to the client in the same way you use them in your application:
+You have several ways to access the Emmett context objects when running tests. In fact, when you make a request with the test client, you can access the `request`, `response`, `session` and `T` objects referred to the client in the same way you use them in your application:
 
 ```python
-from weppy import request, response, session, T
+from emmett import request, response, session, T
 ```
 
-All these objects will be the real objects of the weppy context, and will change their values every time you make a request with the client.
+All these objects will be the real objects of the Emmett context, and will change their values every time you make a request with the client.
 
 When you need to preserve those objects between multiple requests, you can use the `context` property of the `ClientResponse` object. This property will return an object with `request`, `response`, `session` and `T` attributes from the request context:
 
@@ -89,7 +90,7 @@ r = client.get('/')
 last_session = r.context.session
 ```
 
-The test client and its return value both support the `with` notation. weppy won't do any action on entering and exiting the code block, but you may like to use this notation:
+The test client and its return value both support the `with` notation. Emmett won't do any action on entering and exiting the code block, but you may like to use this notation:
 
 ```python
 with client.get('/').context as ctx:
@@ -128,7 +129,7 @@ def logged_client():
 
 ### Database connection
 
-The default database pipe in weppy will reconnect the database when the request starts and closes the connection when the request ends.
+The default database pipe in Emmett will reconnect the database when the request starts and closes the connection when the request ends.
 
 Due to this, if you need to run database operations, you should manually re-establish the connection:
 

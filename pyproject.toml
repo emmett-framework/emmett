@@ -1,0 +1,68 @@
+[tool.poetry]
+name = "Emmett"
+version = "2.0.0a1"
+description = "The web framework for inventors"
+authors = ["Giovanni Barillari <gi0baro@d4net.org>"]
+license = "BSD-3-Clause"
+
+readme = "README.md"
+# homepage = "https://github.com/emmett-framework/emmett"
+repository = "https://github.com/emmett-framework/emmett"
+# documentation = "https://github.com/emmett-framework/emmett"
+
+keywords = ["web", "asyncio"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+packages = [
+    {include = "emmett"},
+    {include = "tests", format = "sdist"}
+]
+include = [
+    "CHANGES.md",
+    "LICENSE",
+    "emmett/orm/migrations/migration.tmpl",
+    "emmett/assets/**/*",
+    "docs/**/*"
+]
+
+[tool.poetry.scripts]
+emmett = 'emmett.cli:main'
+
+[tool.poetry.dependencies]
+python = "^3.7"
+aiofiles = "~0.4.0"
+click = ">=0.6"
+h11 = "~0.9.0"
+pendulum = ">=2.0.0"
+pyaes = "~1.6.0"
+pyDAL = "17.3"
+python-rapidjson = "~0.9.1"
+pyyaml = "~5.3.0"
+renoir = "~1.0.1"
+severus = "1.0.0b2"
+uvicorn = "~0.11.1"
+websockets = ">=8.0"
+
+httptools = { version = "~0.0.13", markers = "sys_platform != 'win32'" }
+uvloop = { version = "~0.14.0", markers = "sys_platform != 'win32'" }
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.3"
+pytest-asyncio = "^0.10"
+ipaddress = "^1.0"
+
+[build-system]
+requires = ["poetry>=1.0.0"]
+build-backend = "poetry.masonry.api"

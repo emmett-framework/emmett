@@ -1,15 +1,15 @@
 Tutorial
 ========
 
-So, you want to develop an application with Python and weppy, huh? We should
+So, you want to develop an application with Python and Emmett, huh? We should
 start with an example. 
 
-We will create a simple microblog application, using weppy and a database.
+We will create a simple microblog application, using Emmett and a database.
 SQLite comes out of the box with Python, so you won't need to download anything
-other than weppy.
+other than Emmett.
 
-If you want the full source code in advance, check out the [example 
-source](https://github.com/gi0baro/weppy/tree/release/examples/bloggy).
+If you want the full source code in advance, check out the 
+[example source](https://github.com/emmett-framework/emmett/tree/master/examples/bloggy).
 
 Bloggy: a micro blog
 --------------------
@@ -23,7 +23,7 @@ the following things:
 * show the entire post on a specific page and allow registered users to comment
 
 > – hem, dude.. seems like quite a lot of stuff for a "micro" blogging application   
-> – *relax! you'll see that every feature will be short work with weppy*
+> – *relax! you'll see that every feature will be short work with Emmett*
 
 Application structure
 ---------------------
@@ -47,7 +47,7 @@ After you create the above folders, create a *bloggy.py* file inside your
 *bloggy* application:
 
 ```python
-from weppy import App
+from emmett import App
 
 app = App(__name__)
 ```
@@ -65,7 +65,7 @@ Now you can test your application simply issuing the following command (inside
 the *bloggy* folder):
 
 ```bash
-> weppy --app bloggy.py run
+> emmett -a bloggy.py develop
 ```
 
 and you will see a message telling you that the server has started, along with
@@ -88,7 +88,7 @@ In bloggy, we need at least 4 tables:
 * The comments table
 
 Now, this might sounds complicated, but it's actually not. In fact, we can skip
-all the schema about users since weppy includes an authorization module that
+all the schema about users since Emmett includes an authorization module that
 creates the tables we need automatically.
 
 So, how will we build our schema? We will use the default `AuthUser` class for
@@ -96,9 +96,9 @@ the users table and authorization system, and the `Model` class for the other
 tables:
 
 ```python
-from weppy import session, now
-from weppy.orm import Model, Field, belongs_to, has_many
-from weppy.tools.auth import AuthUser
+from emmett import session, now
+from emmett.orm import Model, Field, belongs_to, has_many
+from emmett.tools.auth import AuthUser
 
 class User(AuthUser):
     # will create "users" table and groups/permissions ones
@@ -154,7 +154,7 @@ which will be a relationships between the tables, so we have these conditions:
 * a comment always have one author and always refers to one post,
 and a post can have many comments
 
-Moreover, we have set some *default* values (like the dates and the authors) and we have hidden some fields in forms to the users using the `fields_rw` attribute: it would be pointless to have an *user* field if the user could set this value to whatever he or she wanted. Accordingly, we're telling to weppy to auto-set those values to the right ones.
+Moreover, we have set some *default* values (like the dates and the authors) and we have hidden some fields in forms to the users using the `fields_rw` attribute: it would be pointless to have an *user* field if the user could set this value to whatever he or she wanted. Accordingly, we're telling to Emmett to auto-set those values to the right ones.
 
 We've also added some validation, so we can prevent users from sending empty
 posts or comments.
@@ -177,15 +177,15 @@ These options allow us to use a single template file for everything regarding th
 Now, we can write down the code to use the database and the auth. Just the next few lines are enough:
 
 ```python
-from weppy.orm import Database
-from weppy.tools import Auth
+from emmett.orm import Database
+from emmett.tools import Auth
 
 db = Database(app, auto_migrate=True)
 auth = Auth(app, db, user_model=User)
 db.define_models(Post, Comment)
 ```
 
-As you can see we configured the database to peform automatic migration of the schema – otherwise we need to [generate a migration](./dal/migrations) – and passed our `User` model to the auth module.
+As you can see we configured the database to peform automatic migration of the schema – otherwise we need to [generate a migration](./orm/migrations) – and passed our `User` model to the auth module.
 
 But, wait, how do we add an admin user who can write posts? We can write a `setup` function which allows us to do that. Let's write:
 
@@ -208,10 +208,10 @@ def setup():
 
 The code is quite self-explanatory: it will add an user who can sign in with the *walter@massivedynamics.com* email and *pocketuniverse* password, then it creates an admin group and adds the *Walter* user to this group.
 
-Also, notice that we added the `@app.command` decorator, which allow us to run our setup function using the *weppy* command shell:
+Also, notice that we added the `@app.command` decorator, which allow us to run our setup function using the *emmett* command shell:
 
 ```bash
-> weppy --app bloggy.py setup
+> emmett -a bloggy.py setup
 ```
 
 Now that the backend is ready, we can prepare to write and *expose* our functions.
@@ -224,7 +224,7 @@ Before we can start writing the functions that will handle the clients' requests
 Moreover, to use the authorization module, we need to add a **session manager** to the application's pipeline, too. In this tutorial, cookie support for session will be enough, and we will use *Walternate* as a secret key for encrypting cookies.
 
 ```python
-from weppy.sessions import SessionManager
+from emmett.sessions import SessionManager
 app.pipeline = [
     SessionManager.cookies('Walternate'),
     db.pipe,
@@ -237,7 +237,7 @@ the posts in reverse chronological order.
 
 ```python
 @app.route("/")
-def index():
+async def index():
     posts = Post.all().select(orderby=~Post.date)
     return dict(posts=posts)
 ```
@@ -246,10 +246,10 @@ Since this list will only show up the posts' titles, we also write a function
 to retrieve details for a single post:
 
 ```python
-from weppy import abort
+from emmett import abort
 
 @app.route("/post/<int:pid>")
-def one(pid):
+async def one(pid):
     def _validate_comment(form):
         # manually set post id in comment form
         form.params.post = pid
@@ -259,10 +259,10 @@ def one(pid):
         abort(404)
     # get comments and create a form
     comments = post.comments(orderby=~Comment.date)
-    form = Comment.form(onvalidation=_validate_comment)
+    form = await Comment.form(onvalidation=_validate_comment)
     if form.accepted:
         redirect(url('one', pid))
-    return locals()
+    return {'post': post, 'comments': comments, 'form': form}
 ```
 
 As you can see, the `one` function will show the post text, the comments users
@@ -272,19 +272,19 @@ We also need to expose a function to write posts, and it will be available only
 to users in the "admin" group, thanks to the `requires` decorator:
 
 ```python
-from weppy import redirect, url
-from weppy.tools import requires
+from emmett import redirect, url
+from emmett.tools import requires
 
 @app.route("/new")
 @requires(lambda: auth.has_membership('admin'), url('index'))
-def new_post():
-    form = Post.form()
+async def new_post():
+    form = await Post.form()
     if form.accepted:
         redirect(url('one', form.params.id))
-    return dict(form=form)
+    return {'form': form}
 ```
 
-If a user tries to open the "/new" address without being a member of the *admin* group, weppy will redirect them to the index page.
+If a user tries to open the "/new" address without being a member of the *admin* group, Emmett will redirect them to the index page.
 
 Finally, we should expose the auth module routes, in order to let users sign up and sign in on bloggy. Since the auth module provides a convenient application module, we can just initialize it:
 
@@ -300,34 +300,34 @@ The templates
 -------------
 
 We should create a template for every function we exposed. However, since the
-weppy templating system supports blocks and nesting, and we don't really want 
+Renoir templating system supports blocks and nesting, and we don't really want 
 to repeat ourselves when writing code, we will start with a main layout file
 under *templates/layout.html*, and we will extend it with the functions' templates:
 
 ```html
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>Bloggy</title>
-        {{include_meta}}
-        {{include_helpers}}
-        {{include_static 'style.css'}}
-    </head>
-    <body>
-        <div class="page">
-            <a href="/" class="title"><h1>Bloggy</h1></a>
-            <div class="nav">
-            {{if not current.session.auth:}}
-                <a href="{{=url('auth.login')}}">log in</a>
-            {{else:}}
-                <a href="{{=url('auth.logout')}}">log out</a>
-            {{pass}}
-            </div>
-            {{block main}}
-            {{include}}
-            {{end}}
-        </div>
-    </body>
+  <head>
+    <title>Bloggy</title>
+    {{include_meta}}
+    {{include_helpers}}
+    {{include_static 'style.css'}}
+  </head>
+  <body>
+    <div class="page">
+      <a href="/" class="title"><h1>Bloggy</h1></a>
+      <div class="nav">
+        {{if not current.session.auth:}}
+        <a href="{{=url('auth.login')}}">log in</a>
+        {{else:}}
+        <a href="{{=url('auth.logout')}}">log out</a>
+        {{pass}}
+      </div>
+      {{block main}}
+      {{include}}
+      {{end}}
+    </div>
+  </body>
 </html>
 ```
 
@@ -341,16 +341,16 @@ Starting with *index.html* (which will be used with our `index` function):
 
 <a href="{{=url('new_post')}}">Create a new post</a>
 <ul class="posts">
-{{for post in posts:}}
-    <li>
-        <h2>{{=post.title}}</h2>
-        <a href="{{=url('one', post.id)}}">Read more</a>
-        <hr />
-    </li>
-{{pass}}
-{{if not posts:}}
-    <li><em>No posts here so far.</em></li>
-{{pass}}
+  {{for post in posts:}}
+  <li>
+    <h2>{{=post.title}}</h2>
+    <a href="{{=url('one', post.id)}}">Read more</a>
+    <hr />
+  </li>
+  {{pass}}
+  {{if not posts:}}
+  <li><em>No posts here so far.</em></li>
+  {{pass}}
 </ul>
 ```
 
@@ -365,20 +365,20 @@ Then, the *one.html* template which, is the most complex:
 <hr />
 <h4>Comments</h4>
 {{if current.session.auth:}}
-    <h5>Write a comment:</h5>
-    {{=form}}
+<h5>Write a comment:</h5>
+{{=form}}
 {{pass}}
 <ul class="comments">
-{{for comment in comments:}}
-    <li>
-        {{=comment.text}}
-        <br />
-        <em>by {{=comment.user.first_name}} on {{=comment.date}}</em>
-    </li>
-{{pass}}
-{{if not comments:}}
-    <li><em>No comments here so far.</em></li>
-{{pass}}
+  {{for comment in comments:}}
+  <li>
+    {{=comment.text}}
+    <br />
+    <em>by {{=comment.user.first_name}} on {{=comment.date}}</em>
+  </li>
+  {{pass}}
+  {{if not comments:}}
+  <li><em>No comments here so far.</em></li>
+  {{pass}}
 </ul>
 ```
 
@@ -437,9 +437,9 @@ Go ahead
 
 You've completed the tutorial, with a new blogging application
 written in very few lines, and simple ones at that. You should be more confident
-with the weppy workflow and its syntax, so feel free to start writing your own applications!
+with the Emmett workflow and its syntax, so feel free to start writing your own applications!
 
-To explore all the features of weppy, and better understand what you've done in
+To explore all the features of Emmett, and better understand what you've done in
 this tutorial, you should read the [complete documentation](./),
 and try to expand this simple application with more features,
 so that it can better meet your needs.

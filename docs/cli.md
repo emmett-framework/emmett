@@ -1,35 +1,35 @@
 Command Line Interface
 ======================
 
-weppy provides a built-in integration of the [click](http://click.pocoo.org)
+Emmett provides a built-in integration of the [click](http://click.pocoo.org)
 command line interface, to implement and allow customization of command line scripts.
 
 Basic Usage
 -----------
 
-weppy automatically installs a command `weppy` inside your virtualenv. The way
-this helper works is by providing access to all the commands on your weppy
+Emmett automatically installs a command `emmett` inside your virtualenv. The way
+this helper works is by providing access to all the commands on your Emmett
 application's instance, as well as some built-in commands that are included
-out of the box. weppy extensions can also register more commands there if they
+out of the box. Emmett extensions can also register more commands there if they
 desire to do so.
 
-For the `weppy` command to work, an application needs to be discovered. To tell
-weppy which application it should inspect, use the `--app` / `-a` parameter.
+For the `emmett` command to work, an application needs to be discovered. To tell
+Emmett which application it should inspect, use the `--app` / `-a` parameter.
 It should be the import path for your application or the path to a Python file.
-In the latter case, weppy will attempt to setup the Python path for you automatically
+In the latter case, Emmett will attempt to setup the Python path for you automatically
 and discover the module name, but there is a chance this may fail.
 
 Given that, to run a development server for your application, you can just write
 in your command line:
 
 ```bash
-> weppy --app=myapp run
+> emmett -a myapp develop
 ```
 
 or, in the case of a single-file app:
 
 ```bash
-> weppy --app=myapp.py run
+> emmett -a myapp.py develop
 ```
 
 Running a Shell
@@ -38,7 +38,7 @@ Running a Shell
 To run an interactive Python shell, you can use the `shell` command:
 
 ```bash
-> weppy --app=myapp shell
+> emmett -a myapp shell
 ```
 
 This will start up an interactive Python shell, setup the correct application
@@ -52,7 +52,7 @@ If you want to add more commands to the shell script, you can do this easily.
 In fact, if you want a shell command to setup your application, you can write:
 
 ```python
-from weppy import App
+from emmett import App
 
 app = App(__name__)
 
@@ -64,5 +64,5 @@ def setup():
 The command will then be available on the command line:
 
 ```bash
-> weppy --app=myapp setup
+> emmett -a myapp setup
 ```

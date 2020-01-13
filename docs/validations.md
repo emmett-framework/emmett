@@ -8,7 +8,7 @@ forms and user interactions. For example, it may be important to your
 application that every user provides a valid email address, or that an
 input field contains a valid number, or that a date has the right format.
 
-There is one validation mechanism in weppy, suitable whether you're using independent
+There is one validation mechanism in Emmett, suitable whether you're using independent
 forms or one from a model. It is built to be easy to use, providing built-in helpers
 for common needs, and it also allows you to create your own validation methods
 if you need more customation.
@@ -18,7 +18,7 @@ submitted or when you invoke the `Model` methods `validate` and `create`. But
 how you define validations for your entities and forms?
 
 The quick way is to use the `validation` parameter of the `Field` class, which
-is used by the `Model` and `Form` classes in weppy. It accepts a `dict` of
+is used by the `Model` and `Form` classes in Emmett. It accepts a `dict` of
 instructions:
 
 ```python
@@ -52,7 +52,7 @@ Now, let's see the available built-in validation helpers.
 Presence and absence of input
 -----------------------------
 
-weppy provides two helpers when you just need to ensure that a specific field is
+Emmett provides two helpers when you just need to ensure that a specific field is
 not blank or is blank: `'presence'` and `'empty'`.
 
 In fact, when you need to ensure a field is not empty, you can use the
@@ -131,9 +131,8 @@ type, it's like an implicit `{'presence': True}`, so you don't need to add
 
 Also remember that `Field` comes with a default `'is'` validator (unless you
 disabled it with the `auto_validation` parameter) depending on its type. An
-*int* field will have an `{'is': 'int'}` validator, since weppy guess you want
-the input to be valid. We described that in the [\`Field\`
-chapter](./dal#fields).
+*int* field will have an `{'is': 'int'}` validator, since Emmett guess you want
+the input to be valid. We described that in the [Field chapter](./orm#fields).
 
 Specific values allowance
 -------------------------
@@ -281,7 +280,7 @@ num_c = Field.int(validation={'gte': 1, 'lte': 10})
 Validate only a specific value
 ------------------------------
 
-Sometimes you need to validate only a specific value for a field. weppy provides
+Sometimes you need to validate only a specific value for a field. Emmett provides
 the `'equals'` validator to help you:
 
 ```python
@@ -359,11 +358,11 @@ validates if any of the child validations pass.
 Transformations
 ---------------
 
-weppy provides several validation helpers that let you transform the input value
+Emmett provides several validation helpers that let you transform the input value
 of the field on validation. For example, you may want your *string* field to
 always being lowercase, or you need your *password* field to be encrypted.
 
-Here is the complete list of *transformation* helpers built into weppy:
+Here is the complete list of *transformation* helpers built into Emmett:
 
 ### lower
 
@@ -443,7 +442,7 @@ you can create your own `Validator` subclass, and pass an instance of it to the
 `validation` parameter:
 
 ```python
-from weppy.validators import Validator
+from emmett.validators import Validator
 
 class MyValidator(Validator):
     message = "Invalid value"
@@ -490,7 +489,7 @@ class FloatValidator(Validator):
 
 *New in version 1.0*
 
-You can also use custom validators we just saw in combination with the standard ones provided by weppy. Just use the `custom` helper:
+You can also use custom validators we just saw in combination with the standard ones provided by Emmett. Just use the `custom` helper:
 
 ```python
 class OddValidator(Validator):

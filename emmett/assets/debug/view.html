@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Error</title>
+        <meta content='width=device-width, initial-scale=1' name='viewport' />
+        <link rel="stylesheet" href="/__emmett__/debug/view.css" type="text/css" />
+        <link rel="stylesheet" href="/__emmett__/debug/shCore.css" type="text/css" />
+        <link rel="stylesheet" href="/__emmett__/debug/shTheme.css" type="text/css" />
+        <script type="text/javascript" src="/__emmett__/debug/shCore.js"></script>
+        <script type="text/javascript" src="/__emmett__/debug/shBrushPython.js"></script>
+    </head>
+    <body>
+        <div class="header">
+            {{=tb.exception_type}} in {{=tb.frames[-1].rendered_filename}}
+        </div>
+        <div class="container">
+            <h3>{{=tb.exception}}</h3>
+            <div class="codeblock">
+                <pre class="brush: python; first-line: {{=tb.frames[-1].first_line_no}}; highlight: {{=tb.frames[-1].lineno}}">{{=tb.frames[-1].sourceblock}}</pre>
+            </div>
+            <div id="controls">
+                <a id="tb_app_control" href="#" onclick="javascript:handleClick('tb_app')">Application traceback</a> |
+                <a id="tb_full_control" href="#" onclick="javascript:handleClick('tb_full')">Full traceback</a> |
+                <a id="frames_control" href="#" onclick="javascript:handleClick('frames')">Frames</a>
+            </div>
+            <div id="tb_full" class="traceback">
+                <pre class="brush: python; gutter: false;">{{=tb.full_tb}}</pre>
+            </div>
+            <div id="tb_app" class="traceback">
+                <pre class="brush: python; gutter: false;">{{=tb.app_tb}}</pre>
+            </div>
+            <div id="frames">
+                <ul class="frameList">
+                {{for i, frame in enumerate(tb.frames):}}
+                    <li>
+                        {{is_hidden = (i != len(tb.frames)-1)}}
+                        <div class="framefile">
+                            <p>
+                                File <b>{{=frame.filename}}</b>, in function <b>{{=frame.function_name}}</b> at line <b>{{=frame.lineno}}</b>
+                            </p>
+                            <div id="{{='%s_code_inner' % i}}" class="{{=is_hidden}}" style="width:100%;overflow:auto;">
+                                <h5>Code</h5>
+                                <pre class="brush: python; first-line: {{=frame.first_line_no}}; highlight: {{=frame.lineno}}">{{=frame.sourceblock}}</pre>
+                            </div>
+                            <div id="{{='%s_vars_inner' % i}}" class="{{=is_hidden}}" style="width:100%;">
+                                <h5>Variables</h5>
+                                <table>
+                                    <tbody>
+                                    {{for k,v in frame.render_locals.items():}}
+                                        <tr>
+                                            <th class="frameth">{{=k}}</th>
+                                            <td class="frametd">{{=v}}</td>
+                                        </tr>
+                                    {{pass}}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </li>
+                {{pass}}
+                </ul>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            function handleClick(section) {
+                switch(section) {
+                    case "tb_app":
+                        hideElement("frames");
+                        hideElement("tb_full");
+                    case "tb_full":
+                        hideElement("tb_app");
+                        hideElement("frames");
+                    case "frames":
+                        hideElement("tb_app");
+                        hideElement("tb_full");
+                    default: break;
+                }
+                showElement(section);
+            }
+
+            function hideElement(id) {
+                document.getElementById(id+"_control").style.color = "#000";
+                document.getElementById(id).style.display = "none";
+            }
+
+            function showElement(id) {
+                document.getElementById(id+"_control").style.color = "orange";
+                document.getElementById(id).style.display = "block";;
+            }
+
+            document.getElementById("tb_app_control").style.color = "orange";
+            hideElement("tb_full");
+            hideElement("frames");
+            SyntaxHighlighter.all();
+        </script>
+    </body>
+</html>

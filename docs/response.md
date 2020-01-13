@@ -1,22 +1,22 @@
 Building responses
 ==================
 
-As we saw in the [Request chapter](./request), weppy provides several tools
+As we saw in the [Request chapter](./request), Emmett provides several tools
 for handling requests from clients.
 
 However, since your application has to produce responses to these requests,
-weppy also supplies some tools for that.
+Emmett also supplies some tools for that.
 
 The response object
 -------------------
-As for the `request` object, weppy stores some data in the `response` object,
+As for the `request` object, Emmett stores some data in the `response` object,
 data which will be used when the request has been processed and the output
 is pushed back to the client. 
 
 Accessing the `response` object is as simple as accessing a `request`:
 
 ```python
-from weppy import response
+from emmett import response
 ```
 
 and this is the list of attributes you can deal with:
@@ -59,7 +59,7 @@ and we want to automatically add our meta tags on a single post:
 
 ```python
 @app.route("/p/<int:post_id>")
-def single(post_id):
+async def single(post_id):
     post = somedb.findmypost(post_id)
     response.meta.title = "MyBlog - "+post.title
     response.meta.keywords = ",".join(key for key in post.keywords)
@@ -70,10 +70,10 @@ Then, in your template, you can just write:
 
 ```html
 <html>
-    <head>
-        <title>{{=current.response.meta.title}}</title>
-        {{include_meta}}
-    </head>
+  <head>
+    <title>{{ =current.response.meta.title }}</title>
+    {{ include_meta }}
+  </head>
 ```
 
 and you will have all the meta tags included in your HTML.
@@ -82,18 +82,18 @@ Message flashing
 ----------------
 
 When you need to store a message at the end of one request, and access it
-during the next one, weppy's `response.alerts()` become quite handy.
+during the next one, Emmett's `response.alerts()` become quite handy.
 
 For example, you may want to send a success alert to the user. Let's say 
 you have function which exposes a form, you can use message flashing to
 alert the user the form was accepted:
 
 ```python
-from weppy.helpers import flash
+from emmett.helpers import flash
 
 @app.route("/someurl")
-def myform():
-    form = Form()
+async def myform():
+    form = await Form()
     if form.accepted:
         flash("We stored your question!")
     return dict(form=form)
@@ -103,9 +103,9 @@ then, in your template, you can access the flashed messages using `response`:
 
 ```html
 <div class="container">
-    {{for flash in current.response.alerts():}}
-    <div class="myflashstyle">{{=flash}}</div>
-    {{pass}}
+  {{ for flash in current.response.alerts(): }}
+  <div class="myflashstyle">{{ =flash }}</div>
+  {{ pass }}
 </div>
 ```
 

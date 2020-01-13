@@ -1,8 +1,7 @@
 The templating system
 =====================
 
-weppy provides the same templating system used by *web2py*, which means you can
-insert Python code in your HTML files directly.   
+Emmett provides the *Renoir* templating engine, which means you can insert Python code in your HTML files directly.   
 
 Let's see it with an example. We can make a new application with this structure:
 
@@ -15,11 +14,11 @@ Let's see it with an example. We can make a new application with this structure:
 with *myapp.py* looking like this:
 
 ```python
-from weppy import App
+from emmett import App
 app = App(__name__)
 
 @app.route("/<str:msg>")
-def echo(msg):
+async def echo(msg):
     return dict(message=msg)
 ```
 
@@ -27,9 +26,9 @@ and *echo.html*:
 
 ```html
 <html>
-    <body>
-        {{=message}}
-    </body>
+  <body>
+    {{ =message }}
+  </body>
 </html>
 ```
 
@@ -41,17 +40,17 @@ as normal Python code, you can easily generate HTML with conditions and cycles:
 
 ```html
 <div class="container">
-{{for post in posts:}}
-    <div class="post">{{=post.text}}</div>
-{{pass}}
+  {{ for post in posts: }}
+  <div class="post">{{ =post.text }}</div>
+  {{ pass }}
 </div>
-{{if user_logged_in:}}
+{{ if user_logged_in: }}
 <div class="cp">User cp</div>
-{{pass}}
+{{ pass }}
 ```
 
-As you can see, the only difference between the weppy template and pure Python
-code is that you have to write `pass` after the statements to tell weppy where 
+As you can see, the only difference between the Renoir template and pure Python
+code is that you have to write `pass` after the statements to tell Emmett where 
 the Python block ends. Normally, Python uses indentation for this, but HTML is
 not structured the same way and just undoing the indentation would be ambiguous.
 
@@ -61,12 +60,12 @@ Template structure
 Templates can extend other templates in a tree-like structure. For example, 
 we can think of a template *index.html* that extends *layout.html*.
 
-###include
+### include
 
 A structure like that would produce something like this for *index.html*:
 
 ```html
-{{extend 'layout.html'}}
+{{ extend 'layout.html' }}
 
 <h1>Hello World, this is index</h1>
 ```
@@ -79,9 +78,9 @@ and for *layout.html*:
     <title>Page Title</title>
   </head>
   <body>
-    {{include}}
+    {{ include }}
   </body>
-  {{include 'footer.html'}}
+  {{ include 'footer.html' }}
 </html>
 ```
 
@@ -90,20 +89,20 @@ recursive. When the template is parsed, the extended template is loaded,
 and the calling template replaces the `{{include}}` directive inside it.
 The contents of *footer.html* will be loaded inside the parent template.
 
-###block
+### block
 
-weppy templates have another important feature that accomplishes the same task
+Renoir templates have another important feature that accomplishes the same task
 as include, but in a different way: the `block` directive. Let's see how it
 works by updating the last example, with *index.html* looking like this:
 
 ```html
-{{extend 'layout.html'}}
+{{ extend 'layout.html' }}
 
 <h1>Hello World, this is index</h1>
 
-{{block sidebar}}
+{{ block sidebar }}
 sidebar by index
-{{end}}
+{{ end }}
 ```
 
 and *layout.html* like this:
@@ -115,13 +114,13 @@ and *layout.html* like this:
   </head>
   <body>
     <div class="sidebar">
-      {{block sidebar}}
+      {{ block sidebar }}
         default layout sidebar
-      {{end}}
+      {{ end }}
     </div>
-    {{include}}
+    {{ include }}
   </body>
-  {{include 'footer.html'}}
+  {{ include 'footer.html' }}
 </html>
 ```
 
@@ -131,7 +130,7 @@ parent's content you can add a `{{super}}` directive.
 
 Included helpers
 ----------------
-There are other statements you can use in weppy templates: `include_static`, 
+There are other statements you can use in Emmett templates: `include_static`, 
 `include_meta` and `include_helpers`.
 
 `include_static` allows you to add a static link for JavaScript or stylesheet
@@ -139,10 +138,10 @@ from your static folder:
 
 ```html
 <html>
-    <head>
-        {{include_static 'myjs.js'}}
-        {{include_static 'mystyle.css'}}
-    </head>
+  <head>
+    {{ include_static 'myjs.js' }}
+    {{ include_static 'mystyle.css' }}
+  </head>
 </html>
 ```
 
@@ -151,12 +150,12 @@ for more details about it check out the [appropriate chapter](#) of the
 documentation.
 
 `include_helpers` adds to your template *jQuery* and an helping JavaScript from 
-weppy. This JavaScript does two things:
+Emmett. This JavaScript does two things:
 
 * allow you to use the `load_component()` function described next
 * adds a useful `ajax` JavaScript function to your template
 
-The `ajax()` function from weppy is a convenient shortcut to the *jQuery* AJAX 
+The `ajax()` function from Emmett is a convenient shortcut to the *jQuery* AJAX 
 function and it can be used as follows:
 
 ```javascript
@@ -173,7 +172,7 @@ if we have an exposed function:
 
 ```python
 @app.route()
-def my_ajaxf():
+async def my_ajaxf():
     return "$('#target').html('something');"
 ```
 
@@ -182,7 +181,7 @@ and in a template:
 ```html
 <div id="target"></div>
 <script type="text/javascript">
-    ajax("{{=url('my_ajaxf')}}", [], ':eval');
+  ajax("{{ =url('my_ajaxf') }}", [], ':eval');
 </script>
 ```
 
@@ -191,9 +190,9 @@ You will see the 'something' content inside the div.
 Basic context
 -------------
 
-weppy adds some useful Python elements to your templates' base context.
+Emmett adds some useful Python elements to your templates' base context.
 First of all, the `current` object. This allows you to access the global objects
-of weppy and the language translator from your templates:
+of Emmett and the language translator from your templates:
 
 ```python
 current.request
@@ -203,14 +202,14 @@ current.T
 ```
 
 Moreover, the templating system adds the `url()`, `asis()` and `load_component()`
-methods, where the `url()` is the same weppy method you've encountered to create
+methods, where the `url()` is the same Emmett method you've encountered to create
 URLs for routed functions.
 
 All these methods are python powered, so when you need to use them in your template file, you have to put an `=` before them, as we saw in this chapter:
 
 ```html
-<a href="{{=url('someroute')}}">Some link</a>
-<img src="{{=url('static', 'img/foo.png)}}" />
+<a href="{{ =url('someroute') }}">Some link</a>
+<img src="{{ =url('static', 'img/foo.png) }}" />
 ```
 
 Now, let's inspect the other methods more deeply.   
@@ -218,7 +217,7 @@ The `asis()` method allows you to put something in the template without escaping
 
 ```html
 <script type="text/javascript">
-    var mylist = {{=asis([myvar, my2ndvar, my3rdvar])}};
+    var mylist = {{ =asis([myvar, my2ndvar, my3rdvar]) }};
 </script>
 ```
 
@@ -230,7 +229,7 @@ you want to load with AJAX inside another one, you can just put in the template:
 
 ```html
 <div id="ajaxcontainer">
-    {{=load_component(url('my_ajaxf'), 'ajaxcontainer')}}
+    {{ =load_component(url('my_ajaxf'), 'ajaxcontainer') }}
 </div>
 ```
 

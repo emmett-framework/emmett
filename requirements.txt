@@ -1,0 +1,17 @@
+aiofiles==0.4.0
+click==7.0
+h11==0.9.0
+httptools==0.0.13; sys_platform != "win32" and sys_platform != "cygwin" and platform_python_implementation != "pypy" or sys_platform != "win32"
+pendulum==2.0.5
+pyaes==1.6.1
+pydal==17.3
+python-dateutil==2.8.1
+python-rapidjson==0.9.1
+pytzdata==2019.3
+pyyaml==5.3
+renoir==1.0.1
+severus==1.0.0b2
+six==1.13.0
+uvicorn==0.11.1
+uvloop==0.14.0; sys_platform != "win32" and sys_platform != "cygwin" and platform_python_implementation != "pypy" or sys_platform != "win32"
+websockets==8.1

@@ -1,67 +1,52 @@
-"""
-weppy is a full-stack python web framework designed with simplicity in mind.
+# -*- coding: utf-8 -*-
 
-
-Links
------
-
-* `website <http://weppy.org>`_
-* `documentation <http://weppy.org/docs>`_
-* `git repo <http://github.com/gi0baro/weppy>`_
-
-"""
-
+import io
 import re
-import ast
-from setuptools import setup
 
-_version_re = re.compile(r'__version__\s+=\s+(.*)')
+from setuptools import find_packages, setup
 
-with open('weppy/__init__.py', 'rb') as f:
-    version = str(ast.literal_eval(_version_re.search(
-        f.read().decode('utf-8')).group(1)))
+with io.open("README.md", "rt", encoding="utf8") as f:
+    readme = f.read()
+
+with io.open("emmett/__version__.py", "rt", encoding="utf8") as f:
+    version = re.search(r'__version__ = "(.*?)"', f.read()).group(1)
+
+with io.open("requirements.txt", "rt", encoding="utf8") as f:
+    requirements = f.readlines()
+
 
 setup(
-    name='weppy',
+    name='Emmett',
     version=version,
-    url='http://github.com/gi0baro/weppy/',
-    license='BSD',
+    url='https://github.com/emmett-framework/emmett',
+    project_urls={
+        "Code": "https://github.com/emmett-framework/emmett",
+        "Issue tracker": "https://github.com/emmett-framework/emmett/issues",
+    },
+    license='BSD-3-Clause',
     author='Giovanni Barillari',
     author_email='gi0baro@d4net.org',
-    description='The web framework for humans',
-    long_description=__doc__,
-    packages=[
-        'weppy',
-        'weppy.language', 'weppy.language.plurals',
-        'weppy.orm', 'weppy.orm.migrations',
-        'weppy.templating',
-        'weppy.testing',
-        'weppy.tools', 'weppy.tools.auth',
-        'weppy.validators',
-        'weppy.libs'],
+    description='The web framework for inventors',
+    long_description=readme,
+    packages=find_packages(),
     include_package_data=True,
-    zip_safe=False,
     platforms='any',
-    install_requires=[
-        'click>=0.6',
-        'pendulum>=2.0.0',
-        'pyaes',
-        'pyDAL==17.3',
-        'pyyaml'
-    ],
+    python_requires='>=3.7',
+    install_requires=requirements,
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
+        'Framework :: AsyncIO',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
     entry_points={
-        'console_scripts': ['weppy = weppy.cli:main']
-    },
+        'console_scripts': ['emmett = emmett.cli:main']
+    }
 )

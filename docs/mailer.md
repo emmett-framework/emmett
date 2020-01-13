@@ -1,13 +1,13 @@
 Sending mails
 =============
 
-Sooner or later you will need to send mails to your users from your application. weppy provides a simple interface to set up SMTP with your application and to send messages to your users.
+Sooner or later you will need to send mails to your users from your application. Emmett provides a simple interface to set up SMTP with your application and to send messages to your users.
 
 Let's start configuring a simple mailer within our application:
 
 ```python
-from weppy import App
-from weppy.tools import Mailer
+from emmett import App
+from emmett.tools import Mailer
 
 app = App(__name__)
 app.config.mailer.sender = "nina@massivedynamic.com"
