@@ -107,9 +107,8 @@ class App:
     __slots__ = [
         'import_name', 'cli', 'config',
         'root_path', 'static_path', 'template_path', 'config_path',
-        'translator',
-        '_languages', '_languages_set', '_language_force_on_url',
-        'language_default', 'language_write',
+        'translator', '_languages', '_languages_set',
+        '_language_default', '_language_force_on_url',
         '_pipeline', '_router_http', '_router_ws', '_asgi_handlers',
         'error_handlers',
         '_logger', 'logger_name',
@@ -144,9 +143,8 @@ class App:
         #: init languages
         self._languages = []
         self._languages_set = set()
+        self._language_default = None
         self._language_force_on_url = False
-        self.language_default = None
-        self.language_write = False
         self.translator = Translator(
             os.path.join(self.root_path, 'languages'),
             default_language=self.language_default or 'en',
@@ -205,6 +203,15 @@ class App:
     def languages(self, value):
         self._languages = value
         self._languages_set = set(self._languages)
+
+    @property
+    def language_default(self):
+        return self._language_default
+
+    @language_default.setter
+    def language_default(self, value):
+        self._language_default = value
+        self.translator._update_config(self._language_default or 'en')
 
     @property
     def language_force_on_url(self):

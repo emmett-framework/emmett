@@ -25,7 +25,13 @@ class Translator(_Translator):
         super().__init__(*args, **kwargs)
         set_context(self)
 
+    def _update_config(self, default_language: str):
+        self._default_language = default_language
+        self._langmap.clear()
+        self._languages.clear()
+        self._build_languages()
+
     def _get_best_language(self, lang: Optional[str] = None) -> str:
         return self._langmap.get(
-            lang or current.language, self._default_languages[0]
+            lang or current.language, self._default_language
         )
