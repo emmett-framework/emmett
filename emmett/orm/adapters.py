@@ -220,6 +220,7 @@ def _initialize(adapter, *args, **kwargs):
     adapter._find_work_folder()
     adapter._connection_manager.configure(
         max_connections=adapter.db._pool_size,
+        connect_timeout=adapter.db._connect_timeout,
         stale_timeout=adapter.db._keep_alive_timeout)
 
 

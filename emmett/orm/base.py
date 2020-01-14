@@ -35,7 +35,7 @@ class DatabasePipe(Pipe):
         self.db = db
 
     async def open(self):
-        self.db.connection_open()
+        await self.db.connection_open_loop()
 
     async def on_pipe_success(self):
         self.db.commit()
@@ -44,7 +44,7 @@ class DatabasePipe(Pipe):
         self.db.rollback()
 
     async def close(self):
-        self.db.connection_close()
+        await self.db.connection_close_loop()
 
 
 class Database(_pyDAL):
@@ -82,8 +82,14 @@ class Database(_pyDAL):
         return super(Database, cls).__new__(cls, uri, *args, **kwargs)
 
     def __init__(
-        self, app, config=sdict(), pool_size=None, keep_alive_timeout=3600,
-        folder=None, **kwargs
+        self,
+        app,
+        config=None,
+        pool_size=None,
+        keep_alive_timeout=3600,
+        connect_timeout=60,
+        folder=None,
+        **kwargs
     ):
         app.send_signal('before_database')
         self.logger = app.log
@@ -125,6 +131,9 @@ class Database(_pyDAL):
         self._keep_alive_timeout = (
             keep_alive_timeout if self.config.keep_alive_timeout is None
             else self.config.keep_alive_timeout)
+        self._connect_timeout = (
+            connect_timeout if self.config.connect_timeout is None
+            else self.config.connect_timeout)
         #: add timings storage if requested
         if config.store_execution_timings:
             self.execution_handlers.append(TimingHandler)
@@ -159,6 +168,13 @@ class Database(_pyDAL):
         finally:
             if new_connection:
                 self.connection_close()
+
+    def connection_open_loop(self, with_transaction=True, reuse_if_open=True):
+        return self._adapter.reconnect_loop(
+            with_transaction=with_transaction, reuse_if_open=reuse_if_open)
+
+    def connection_close_loop(self):
+        return self._adapter.close_loop()
 
     def define_models(self, *models):
         if len(models) == 1 and isinstance(models[0], (list, tuple)):
