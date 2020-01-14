@@ -66,7 +66,7 @@ def run(
     host='127.0.0.1', port=8000, uds=None, fd=None,
     loop='auto', proto_http='auto', proto_ws='auto',
     log_level=None, access_log=None,
-    # proxy_headers=False,
+    proxy_headers=False,
     limit_concurrency=None,
     # limit_max_requests=None,
     timeout_keep_alive=0
@@ -97,7 +97,7 @@ def run(
         log_level=log_level,
         access_log=access_log,
         debug=bool(app.debug),
-        proxy_headers=False,
+        proxy_headers=proxy_headers,
         limit_concurrency=limit_concurrency,
         # limit_max_requests=limit_max_requests,
         timeout_keep_alive=timeout_keep_alive,
