@@ -359,6 +359,7 @@ class App:
         self, host, port,
         loop='auto', proto_http='auto', proto_ws='auto',
         log_level=None, access_log=None,
+        proxy_headers=False,
         limit_concurrency=None,
         timeout_keep_alive=0
     ):
@@ -366,6 +367,7 @@ class App:
             self, host, port,
             loop=loop, proto_http=proto_http, proto_ws=proto_ws,
             log_level=log_level, access_log=access_log,
+            proxy_headers=proxy_headers,
             limit_concurrency=limit_concurrency,
             timeout_keep_alive=timeout_keep_alive
         )

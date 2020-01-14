@@ -306,24 +306,32 @@ def develop_command(info, host, port, reloader, debug):
     '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='warning',
     help='Logging level.')
 @click.option(
-    '--access-log', type=bool, default=True, help='Enable access log.')
+    '--access-log/--no-access-log', is_flag=True, default=True,
+    help='Enable/Disable access log.')
 @click.option(
-    '--max-queue', type=int,
+    '--proxy-headers/--no-proxy-headers', is_flag=True, default=False,
+    help='Enable/Disable proxy headers.')
+@click.option(
+    '--max-concurrency', type=int,
     help='The maximum number of concurrent connections.')
 @click.option(
     '--keep-alive-timeout', type=int, default=0,
     help='Keep alive timeout for connections.')
 @pass_script_info
 def serve_command(
-    info, host, port, loop, http_protocol, ws_protocol, log_level, access_log,
-    max_queue, keep_alive_timeout
+    info, host, port,
+    loop, http_protocol, ws_protocol,
+    log_level, access_log,
+    proxy_headers,
+    max_concurrency, keep_alive_timeout
 ):
     app = info.load_app()
     app._run(
         host, port,
         loop=loop, proto_http=http_protocol, proto_ws=ws_protocol,
         log_level=log_level, access_log=access_log,
-        limit_concurrency=max_queue,
+        proxy_headers=proxy_headers,
+        limit_concurrency=max_concurrency,
         timeout_keep_alive=keep_alive_timeout
     )
 
