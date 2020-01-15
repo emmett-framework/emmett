@@ -21,7 +21,7 @@ from io import BytesIO
 
 from ..asgi.handlers import HTTPHandler, RequestContext
 from ..ctx import current, response
-from ..http import HTTP
+from ..http import HTTP, HTTPResponse
 from ..wrappers.request import Request
 from ..wrappers.response import Response
 from ..utils import cachedprop
@@ -46,17 +46,28 @@ class ClientContext(object):
 
 
 class ClientHTTPHandler(HTTPHandler):
-    async def handle_request(self, scope, receive, send):
-        ctx_token = current._init_(RequestContext, self.app, scope)
+    async def dynamic_handler(self, scope, receive, send):
         try:
-            http = await self.pre_handler(scope, receive, send)
+            ctx_token = current._init_(RequestContext, self.app, scope)
+            http = await self.router.dispatch()
+        except HTTPResponse as http_exception:
+            http = http_exception
+            #: render error with handlers if in app
+            error_handler = self.app.error_handlers.get(http.status_code)
+            if error_handler:
+                http = HTTP(
+                    http.status_code, await error_handler(), response.headers)
+            #: always set cookies
+            http.set_cookies(response.cookies)
         except Exception:
             self.app.log.exception('Application exception:')
-            http = HTTP(
-                500, await self.error_handler(), headers=response.headers)
-        scope['emt.ctx'] = ClientContext()
-        current._close_(ctx_token)
-        await asyncio.wait_for(http.send(scope, send), None)
+            raise HTTP(
+                500, await self.error_handler(), headers=response.headers
+            )
+        finally:
+            scope['emt.ctx'] = ClientContext()
+            current._close_(ctx_token)
+        return http
 
 
 class ClientResponse(object):
