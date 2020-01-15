@@ -127,7 +127,7 @@ class Database(_pyDAL):
                 if not os.path.exists(folder):
                     os.mkdir(folder)
         #: set pool_size
-        pool_size = self.config.pool_size or pool_size or 0
+        pool_size = self.config.pool_size or pool_size or 5
         self._keep_alive_timeout = (
             keep_alive_timeout if self.config.keep_alive_timeout is None
             else self.config.keep_alive_timeout)

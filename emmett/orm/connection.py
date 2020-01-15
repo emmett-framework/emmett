@@ -171,7 +171,7 @@ class PooledConnectionManager(ConnectionManager):
         stale_timeout=0
     ):
         super().__init__(adapter)
-        self.max_connections = max_connections
+        self.max_connections = max(max_connections, 1)
         self.connect_timeout = connect_timeout
         self.stale_timeout = stale_timeout
         self.connections = []
