@@ -149,21 +149,30 @@ class ConnectionManager:
     def _loop(self):
         return asyncio.get_running_loop()
 
-    def connect_sync(self):
-        return self.adapter.connector(), True
+    def _connection_open(self):
+        return self.adapter.connector()
 
-    async def connect_loop(self):
-        return await self._loop.run_in_executor(None, self.connect_sync)
-
-    def close_sync(self, connection, *args, **kwargs):
+    def _connection_close(self, connection):
         try:
             connection.close()
         except Exception:
             pass
 
+    def connect_sync(self):
+        return self._connection_open(), True
+
+    async def connect_loop(self):
+        return (
+            await self._loop.run_in_executor(None, self._connection_open),
+            True
+        )
+
+    def close_sync(self, connection, *args, **kwargs):
+        self._connection_close(connection)
+
     async def close_loop(self, connection, *args, **kwargs):
-        return await self._loop.run_in_executor(
-            None, partial(self.close_sync, connection))
+        await self._loop.run_in_executor(
+            None, partial(self._connection_close, connection))
 
     def __del__(self):
         if not self.state._closed:
