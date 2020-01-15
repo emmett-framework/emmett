@@ -82,6 +82,6 @@ class AutoResponseBuilder(ResponseProcessor):
                     self.route.template, output)
             except TemplateMissingError as exc:
                 raise HTTP(404, body="{}\n".format(exc.message))
-        elif isinstance(output, str) or hasattr(output, '__iter__'):
+        elif isinstance(output, str):
             return output
         return str(output)
