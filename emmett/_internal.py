@@ -13,16 +13,13 @@
     :license: BSD-3-Clause
 """
 
+import asyncio
 import datetime
 import os
 import pendulum
 import pkgutil
 import sys
 import warnings
-
-
-def _is_immutable(self):
-    raise TypeError('%r objects are immutable' % self.__class__.__name__)
 
 
 #: internal datastructures
@@ -147,6 +144,10 @@ class ImmutableList(ImmutableListMixin, list):
 
 
 #: utilities
+def _is_immutable(self):
+    raise TypeError('%r objects are immutable' % self.__class__.__name__)
+
+
 def reraise(tp, value, tb=None):
     if value.__traceback__ is not tb:
         raise value.with_traceback(tb)
@@ -240,36 +241,6 @@ def create_missing_app_folders(app):
 
 
 #: monkey patches
-class IsoformatJSONMixin(object):
-    def __json__(self):
-        return self.isoformat()
-
-
-class Date(datetime.date, IsoformatJSONMixin):
-    pass
-
-
-class Time(datetime.time, IsoformatJSONMixin):
-    pass
-
-
-class DateTime(datetime.datetime):
-    def date(self):
-        d = super(DateTime, self).date()
-        return Date(d.year, d.month, d.day)
-
-    def time(self):
-        t = super(DateTime, self).time()
-        return Time(t.hour, t.minute, t.second, t.microsecond, t.tzinfo)
-
-    def __json__(self):
-        return self.strftime('%Y-%m-%dT%H:%M:%S.%f%_z')
-
-
-def _pendulum_to_json(obj):
-    return obj.strftime('%Y-%m-%dT%H:%M:%S.%f%_z')
-
-
 def _pendulum_to_datetime(obj):
     return datetime.datetime(
         obj.year, obj.month, obj.day,
@@ -286,9 +257,5 @@ def _pendulum_to_naive_datetime(obj):
     )
 
 
-# datetime.date = Date
-# datetime.time = Time
-# datetime.datetime = DateTime
-# pendulum.DateTime.__json__ = _pendulum_to_json
 pendulum.DateTime.as_datetime = _pendulum_to_datetime
 pendulum.DateTime.as_naive_datetime = _pendulum_to_naive_datetime
