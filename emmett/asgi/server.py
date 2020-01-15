@@ -14,6 +14,7 @@ import logging
 from uvicorn.config import Config as UvicornConfig, create_ssl_context
 from uvicorn.lifespan.on import LifespanOn
 from uvicorn.main import Server
+from uvicorn.middleware.debug import DebugMiddleware
 
 from ..logger import LOG_LEVELS
 from .loops import loops
@@ -22,9 +23,6 @@ from .protocols import protocols_http, protocols_ws
 
 class Config(UvicornConfig):
     def setup_event_loop(self):
-        pass
-
-    def configure_logging(self):
         pass
 
     def load(self):
@@ -57,6 +55,9 @@ class Config(UvicornConfig):
 
         self.loaded_app = self.app
         self.interface = "asgi3"
+
+        if self.debug:
+            self.loaded_app = DebugMiddleware(self.loaded_app)
 
         self.loaded = True
 
