@@ -182,8 +182,8 @@ class ConnectionManager:
 class PooledConnectionManager(ConnectionManager):
     __slots__ = [
         'max_connections', 'connect_timeout', 'stale_timeout',
-        'connections_map', 'connections_sync', 'connections_loop',
-        'in_use', '_lock_sync', '_lock_loop'
+        'connections_map', 'connections_sync',
+        'in_use', '_lock_sync'
     ]
 
     def __init__(
@@ -199,10 +199,16 @@ class PooledConnectionManager(ConnectionManager):
         self.stale_timeout = stale_timeout
         self.connections_map = {}
         self.connections_sync = []
-        self.connections_loop = asyncio.LifoQueue()
         self.in_use = {}
         self._lock_sync = threading.RLock()
-        self._lock_loop = asyncio.Lock()
+
+    @cachedprop
+    def _lock_loop(self):
+        return asyncio.Lock()
+
+    @cachedprop
+    def connections_loop(self):
+        return asyncio.LifoQueue()
 
     def is_stale(self, timestamp):
         return (time.time() - timestamp) > self.stale_timeout
