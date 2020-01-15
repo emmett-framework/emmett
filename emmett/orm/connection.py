@@ -220,7 +220,7 @@ class PooledConnectionManager(ConnectionManager):
         while True:
             try:
                 with self._lock_sync:
-                    ts, key = heapq.heappop(self.connections)
+                    ts, key = heapq.heappop(self.connections_sync)
             except IndexError:
                 ts = key = conn = None
                 break
@@ -270,7 +270,7 @@ class PooledConnectionManager(ConnectionManager):
                 super().close_sync(connection)
             else:
                 with self._lock_sync:
-                    heapq.heappush(self.connections, (ts, connection))
+                    heapq.heappush(self.connections_sync, (ts, connection))
 
     async def close_loop(self, connection, close_connection=False):
         key = id(connection)
