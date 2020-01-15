@@ -134,6 +134,7 @@ class ConnectionStateCtl:
 
 
 class ConnectionManager:
+    __slots__ = ['adapter', 'state', '__dict__']
     state_cls = ConnectionStateCtl
 
     def __init__(self, adapter, **kwargs):
@@ -155,14 +156,27 @@ class ConnectionManager:
         return await self._loop.run_in_executor(None, self.connect_sync)
 
     def close_sync(self, connection, *args, **kwargs):
-        connection.close()
+        try:
+            connection.close()
+        except Exception:
+            pass
 
     async def close_loop(self, connection, *args, **kwargs):
         return await self._loop.run_in_executor(
             None, partial(self.close_sync, connection))
 
+    def __del__(self):
+        if not self.state._closed:
+            self.close_sync(self.state.connection)
+
 
 class PooledConnectionManager(ConnectionManager):
+    __slots__ = [
+        'max_connections', 'connect_timeout', 'stale_timeout',
+        'connections_map', 'connections_sync', 'connections_loop',
+        'in_use', '_lock_sync', '_lock_loop'
+    ]
+
     def __init__(
         self,
         adapter,
@@ -174,21 +188,15 @@ class PooledConnectionManager(ConnectionManager):
         self.max_connections = max(max_connections, 1)
         self.connect_timeout = connect_timeout
         self.stale_timeout = stale_timeout
-        self.connections = []
+        self.connections_map = {}
+        self.connections_sync = []
         self.connections_loop = asyncio.LifoQueue()
         self.in_use = {}
-        self._lock = threading.RLock()
+        self._lock_sync = threading.RLock()
         self._lock_loop = asyncio.Lock()
 
     def is_stale(self, timestamp):
         return (time.time() - timestamp) > self.stale_timeout
-
-    @property
-    def _loop_connections_avail(self) -> bool:
-        return (
-            self.connections_loop.qsize() + len(self.in_use) <
-            self.max_connections
-        )
 
     def connect_sync(self):
         if not self.connect_timeout:
@@ -211,81 +219,78 @@ class PooledConnectionManager(ConnectionManager):
         _opened = False
         while True:
             try:
-                with self._lock:
-                    ts, conn = heapq.heappop(self.connections)
-                key = id(conn)
+                with self._lock_sync:
+                    ts, key = heapq.heappop(self.connections)
             except IndexError:
-                ts = conn = None
+                ts = key = conn = None
                 break
             else:
                 if self.stale_timeout and self.is_stale(ts):
-                    try:
-                        super().close_sync(conn)
-                    finally:
-                        ts = conn = None
+                    super().close_sync(self.connections_map.pop(key))
                 else:
+                    conn = self.connections_map[key]
                     break
         if conn is None:
-            if self.max_connections and (
-                len(self.in_use) >= self.max_connections
-            ):
+            if len(self.connections_map) >= self.max_connections:
                 raise MaxConnectionsExceeded()
             conn, _opened = super().connect_sync()
-            ts = time.time()
-            key = id(conn)
+            ts, key = time.time(), id(conn)
+            self.connections_map[key] = conn
         self.in_use[key] = ts
         return conn, _opened
 
     async def _acquire_loop(self):
         _opened = False
         while True:
-            if self._loop_connections_avail:
+            if len(self.connections_map) < self.max_connections:
                 async with self._lock_loop:
-                    if self._loop_connections_avail:
+                    if len(self.connections_map) < self.max_connections:
                         conn, _opened = await super().connect_loop()
-                        ts = time.time()
+                        ts, key = time.time(), id(conn)
+                        self.connections_map[key] = conn
                         break
-            ts, conn = await self.connections_loop.get()
+            ts, key = await self.connections_loop.get()
             if self.stale_timeout and self.is_stale(ts):
-                try:
-                    await super().close_loop(conn)
-                except Exception:
-                    pass
+                await super().close_loop(self.connections_map.pop(key))
             else:
+                conn = self.connections_map[key]
                 break
-        key = id(conn)
         self.in_use[key] = ts
         return conn, _opened
-
-    def can_reuse(self, connection):
-        return True
 
     def close_sync(self, connection, close_connection=False):
         key = id(connection)
         ts = self.in_use.pop(key)
         if close_connection:
+            self.connections_map.pop(key)
             super().close_sync(connection)
         else:
             if self.stale_timeout and self.is_stale(ts):
+                self.connections_map.pop(key)
                 super().close_sync(connection)
-            elif self.can_reuse(connection):
-                with self._lock:
+            else:
+                with self._lock_sync:
                     heapq.heappush(self.connections, (ts, connection))
 
     async def close_loop(self, connection, close_connection=False):
         key = id(connection)
         ts = self.in_use.pop(key)
         if close_connection:
+            self.connections_map.pop(key)
             await super().close_loop(connection)
         else:
             if self.stale_timeout and self.is_stale(ts):
+                self.connections_map.pop(key)
                 await super().close_loop(connection)
-            elif self.can_reuse(connection):
+            else:
                 self.connections_loop.put_nowait((ts, connection))
 
     def close_all(self):
-        for _, connection in self.connections:
+        for connection in self.connections_map.values():
             self.close_sync(connection, close_connection=True)
+
+    def __del__(self):
+        self.close_all()
 
 
 def _init(self, *args, **kwargs):
