@@ -285,7 +285,7 @@ def develop_command(info, host, port, reloader, debug):
         from ._reloader import run_with_reloader
         run_with_reloader(app, host, port)
     else:
-        app._run(host, port)
+        app._run(host, port, log_level='debug', access_log=True)
 
 
 @click.command('serve', short_help='Serve the app.')

@@ -13,20 +13,24 @@
     :license: BSD-3-Clause
 """
 
+import asyncio
 import contextvars
 import heapq
 import threading
 import time
 
 from collections import OrderedDict
+from functools import partial
 from pydal.connection import ConnectionPool
 from pydal.helpers.classes import ConnectionConfigurationMixin
 
 from ..ctx import current
+from ..utils import cachedprop
+from .errors import MaxConnectionsExceeded
 from .transactions import _transaction
 
 
-class ConnectionStateCtxVars(object):
+class ConnectionStateCtxVars:
     __slots__ = ('_connection', '_transactions', '_cursors', '_closed')
 
     def __init__(self):
@@ -65,7 +69,7 @@ class ConnectionStateCtxVars(object):
         self.__set(None, True)
 
 
-class ConnectionState(object):
+class ConnectionState:
     __slots__ = ('_connection', '_transactions', '_cursors', '_closed')
 
     def __init__(self, connection=None):
@@ -83,7 +87,7 @@ class ConnectionState(object):
         self._closed = not bool(value)
 
 
-class ConnectionStateCtl(object):
+class ConnectionStateCtl:
     __slots__ = ['_state_obj_var', '_state_load_var']
 
     state_cls = ConnectionState
@@ -129,7 +133,8 @@ class ConnectionStateCtl(object):
         self.ctx._cursors = OrderedDict()
 
 
-class ConnectionManager(object):
+class ConnectionManager:
+    __slots__ = ['adapter', 'state', '__dict__']
     state_cls = ConnectionStateCtl
 
     def __init__(self, adapter, **kwargs):
@@ -140,84 +145,179 @@ class ConnectionManager(object):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def connect(self):
-        return self.adapter.connector(), True
+    @cachedprop
+    def _loop(self):
+        return asyncio.get_running_loop()
 
-    def close(self, connection, *args, **kwargs):
-        connection.close()
+    def _connection_open(self):
+        return self.adapter.connector()
+
+    def _connection_close(self, connection):
+        try:
+            connection.close()
+        except Exception:
+            pass
+
+    def connect_sync(self):
+        return self._connection_open(), True
+
+    async def connect_loop(self):
+        return (
+            await self._loop.run_in_executor(None, self._connection_open),
+            True
+        )
+
+    def close_sync(self, connection, *args, **kwargs):
+        self._connection_close(connection)
+
+    async def close_loop(self, connection, *args, **kwargs):
+        await self._loop.run_in_executor(
+            None, partial(self._connection_close, connection))
+
+    def __del__(self):
+        if not self.state._closed:
+            self.close_sync(self.state.connection)
 
 
 class PooledConnectionManager(ConnectionManager):
-    def __init__(self, adapter, max_connections=5, stale_timeout=0):
-        super(PooledConnectionManager, self).__init__(adapter)
-        self.max_connections = max_connections
+    __slots__ = [
+        'max_connections', 'connect_timeout', 'stale_timeout',
+        'connections_map', 'connections_sync',
+        'in_use', '_lock_sync'
+    ]
+
+    def __init__(
+        self,
+        adapter,
+        max_connections=5,
+        connect_timeout=0,
+        stale_timeout=0
+    ):
+        super().__init__(adapter)
+        self.max_connections = max(max_connections, 1)
+        self.connect_timeout = connect_timeout
         self.stale_timeout = stale_timeout
-        self.connections = []
+        self.connections_map = {}
+        self.connections_sync = []
         self.in_use = {}
-        self._lock = threading.RLock()
+        self._lock_sync = threading.RLock()
+
+    @cachedprop
+    def _lock_loop(self):
+        return asyncio.Lock()
+
+    @cachedprop
+    def connections_loop(self):
+        return asyncio.LifoQueue()
 
     def is_stale(self, timestamp):
         return (time.time() - timestamp) > self.stale_timeout
 
-    def connect(self):
+    def connect_sync(self):
+        if not self.connect_timeout:
+            return self._acquire_sync()
+        expires = time.time() + self.connect_timeout
+        while time.time() < expires:
+            try:
+                rv = self._acquire_sync()
+            except MaxConnectionsExceeded:
+                time.sleep(0.1)
+            else:
+                return rv
+        raise MaxConnectionsExceeded()
+
+    async def connect_loop(self):
+        return await asyncio.wait_for(
+            self._acquire_loop(), self.connect_timeout or None)
+
+    def _acquire_sync(self):
         _opened = False
         while True:
             try:
-                with self._lock:
-                    ts, conn = heapq.heappop(self.connections)
-                key = id(conn)
+                with self._lock_sync:
+                    ts, key = heapq.heappop(self.connections_sync)
             except IndexError:
-                ts = conn = None
+                ts = key = conn = None
                 break
             else:
                 if self.stale_timeout and self.is_stale(ts):
-                    try:
-                        super(PooledConnectionManager, self).close(conn)
-                    finally:
-                        ts = conn = None
+                    super().close_sync(self.connections_map.pop(key))
                 else:
+                    conn = self.connections_map[key]
                     break
         if conn is None:
-            if self.max_connections and (
-                len(self.in_use) >= self.max_connections
-            ):
-                raise RuntimeError('Exceeded maximum connections.')
-            conn, _opened = super(PooledConnectionManager, self).connect()
-            ts = time.time()
-            key = id(conn)
+            if len(self.connections_map) >= self.max_connections:
+                raise MaxConnectionsExceeded()
+            conn, _opened = super().connect_sync()
+            ts, key = time.time(), id(conn)
+            self.connections_map[key] = conn
         self.in_use[key] = ts
         return conn, _opened
 
-    def can_reuse(self, connection):
-        return True
+    async def _acquire_loop(self):
+        _opened = False
+        while True:
+            if len(self.connections_map) < self.max_connections:
+                async with self._lock_loop:
+                    if len(self.connections_map) < self.max_connections:
+                        conn, _opened = await super().connect_loop()
+                        ts, key = time.time(), id(conn)
+                        self.connections_map[key] = conn
+                        break
+            ts, key = await self.connections_loop.get()
+            if self.stale_timeout and self.is_stale(ts):
+                await super().close_loop(self.connections_map.pop(key))
+            else:
+                conn = self.connections_map[key]
+                break
+        self.in_use[key] = ts
+        return conn, _opened
 
-    def close(self, connection, close_connection=False):
+    def close_sync(self, connection, close_connection=False):
         key = id(connection)
         ts = self.in_use.pop(key)
         if close_connection:
-            super(PooledConnectionManager, self).close(connection)
+            self.connections_map.pop(key)
+            super().close_sync(connection)
         else:
             if self.stale_timeout and self.is_stale(ts):
-                super(PooledConnectionManager, self).close(connection)
-            elif self.can_reuse(connection):
-                with self._lock:
-                    heapq.heappush(self.connections, (ts, connection))
+                self.connections_map.pop(key)
+                super().close_sync(connection)
+            else:
+                with self._lock_sync:
+                    heapq.heappush(self.connections_sync, (ts, key))
+
+    async def close_loop(self, connection, close_connection=False):
+        key = id(connection)
+        ts = self.in_use.pop(key)
+        if close_connection:
+            self.connections_map.pop(key)
+            await super().close_loop(connection)
+        else:
+            if self.stale_timeout and self.is_stale(ts):
+                self.connections_map.pop(key)
+                await super().close_loop(connection)
+            else:
+                self.connections_loop.put_nowait((ts, key))
 
     def close_all(self):
-        for _, connection in self.connections:
-            self.close(connection, close_connection=True)
+        for connection in self.connections_map.values():
+            self.close_sync(connection, close_connection=True)
+
+    def __del__(self):
+        self.close_all()
 
 
 def _init(self, *args, **kwargs):
     self._connection_manager = self._connection_manager_cls(self)
 
 
-def _connect(self, with_transaction=True, reuse_if_open=False):
+def _connect_sync(self, with_transaction=True, reuse_if_open=False):
     if not self._connection_manager.state.closed:
         if reuse_if_open:
             return False
         raise RuntimeError('Connection already opened.')
-    self.connection, _opened = self._connection_manager.connect()
+    self.connection, _opened = self._connection_manager.connect_sync()
     if _opened:
         self.after_connection_hook()
     if with_transaction:
@@ -226,7 +326,21 @@ def _connect(self, with_transaction=True, reuse_if_open=False):
     return True
 
 
-def _close(self, action='commit', really=True):
+async def _connect_loop(self, with_transaction=True, reuse_if_open=False):
+    if not self._connection_manager.state.closed:
+        if reuse_if_open:
+            return False
+        raise RuntimeError('Connection already opened.')
+    self.connection, _opened = await self._connection_manager.connect_loop()
+    if _opened:
+        self.after_connection_hook()
+    if with_transaction:
+        txn = _transaction(self)
+        txn.__enter__()
+    return True
+
+
+def _close_sync(self, action='commit', really=True):
     is_open = not self._connection_manager.state.closed
     if not is_open:
         return is_open
@@ -239,7 +353,26 @@ def _close(self, action='commit', really=True):
             succeeded = False
         really = not succeeded
     try:
-        self._connection_manager.close(self.connection, really)
+        self._connection_manager.close_sync(self.connection, really)
+    finally:
+        self.connection = None
+    return is_open
+
+
+async def _close_loop(self, action='commit', really=True):
+    is_open = not self._connection_manager.state.closed
+    if not is_open:
+        return is_open
+    if self.transaction_depth() == 1:
+        txn = self.top_transaction()
+        try:
+            txn.__exit__(None, None, None)
+            succeeded = True
+        except Exception:
+            succeeded = False
+        really = not succeeded
+    try:
+        await self._connection_manager.close_loop(self.connection, really)
     finally:
         self.connection = None
     return is_open
@@ -271,8 +404,10 @@ def _connect_and_configure(self, *args, **kwargs):
 
 def _patch_adapter_connection():
     setattr(ConnectionPool, '__init__', _init)
-    setattr(ConnectionPool, 'reconnect', _connect)
-    setattr(ConnectionPool, 'close', _close)
+    setattr(ConnectionPool, 'reconnect', _connect_sync)
+    setattr(ConnectionPool, 'reconnect_loop', _connect_loop)
+    setattr(ConnectionPool, 'close', _close_sync)
+    setattr(ConnectionPool, 'close_loop', _close_loop)
     setattr(
         ConnectionPool, 'connection',
         property(_connection_getter, _connection_setter))

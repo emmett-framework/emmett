@@ -106,7 +106,7 @@ class WSCloseDispatcher(WSDispatcher):
         except Exception:
             await self._parallel_flow(self.flow_close)
             raise
-        await self._parallel_flow(self.flow_close)
+        await asyncio.shield(self._parallel_flow(self.flow_close))
 
 
 class WSFlowDispatcher(WSDispatcher):
@@ -119,7 +119,7 @@ class WSFlowDispatcher(WSDispatcher):
         except Exception:
             await self._parallel_flow(self.flow_close)
             raise
-        await self._parallel_flow(self.flow_close)
+        await asyncio.shield(self._parallel_flow(self.flow_close))
 
 
 class DispatcherCacheMixin:

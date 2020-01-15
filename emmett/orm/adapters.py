@@ -20,6 +20,8 @@ from pydal.adapters.postgres import (
     PostgreBoolean, PostgrePsycoBoolean, PostgrePG8000Boolean
 )
 from pydal.adapters.sqlite import SQLite as _SQLite
+from pydal.dialects.postgre import PostgreDialectBooleanJSON
+from pydal.parsers.postgre import PostgreBooleanAutoJSONParser
 
 from .connection import ConnectionManager, PooledConnectionManager
 from .objects import Field
@@ -32,9 +34,6 @@ adapters._registry_.update({
     'mssqln': MSSQL4N,
     'mssqln2': MSSQL1N,
     'mssqln3': MSSQL3N,
-    'postgres': PostgreBoolean,
-    'postgres:psycopg2': PostgrePsycoBoolean,
-    'postgres:pg8000': PostgrePG8000Boolean,
     'postgres2': PostgreNew,
     'postgres2:psycopg2': PostgrePsycoNew,
     'postgres2:pg8000': PostgrePG8000New,
@@ -53,6 +52,48 @@ class SQLite(_SQLite):
     def begin(self, lock_type=None):
         statement = 'BEGIN %s;' % lock_type if lock_type else 'BEGIN;'
         self.execute(statement)
+
+
+@adapters.register_for('postgres')
+class PostgresAdapter(PostgreBoolean):
+    def _load_dependencies(self):
+        super()._load_dependencies()
+        self.dialect = PostgreDialectBooleanJSON(self)
+        self.parser = PostgreBooleanAutoJSONParser(self)
+
+    def _config_json(self):
+        pass
+
+    def _mock_reconnect(self):
+        pass
+
+
+@adapters.register_for('postgres:psycopg2')
+class PostgresPsycoPG2Adapter(PostgrePsycoBoolean):
+    def _load_dependencies(self):
+        super()._load_dependencies()
+        self.dialect = PostgreDialectBooleanJSON(self)
+        self.parser = PostgreBooleanAutoJSONParser(self)
+
+    def _config_json(self):
+        pass
+
+    def _mock_reconnect(self):
+        pass
+
+
+@adapters.register_for('postgres:pg8000')
+class PostgresPG8000Adapter(PostgrePG8000Boolean):
+    def _load_dependencies(self):
+        super()._load_dependencies()
+        self.dialect = PostgreDialectBooleanJSON(self)
+        self.parser = PostgreBooleanAutoJSONParser(self)
+
+    def _config_json(self):
+        pass
+
+    def _mock_reconnect(self):
+        pass
 
 
 def _wrap_on_obj(f, adapter):
@@ -179,6 +220,7 @@ def _initialize(adapter, *args, **kwargs):
     adapter._find_work_folder()
     adapter._connection_manager.configure(
         max_connections=adapter.db._pool_size,
+        connect_timeout=adapter.db._connect_timeout,
         stale_timeout=adapter.db._keep_alive_timeout)
 
 

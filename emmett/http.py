@@ -9,7 +9,6 @@
     :license: BSD-3-Clause
 """
 
-import aiofiles
 import errno
 import os
 import stat
@@ -17,6 +16,7 @@ import stat
 from email.utils import formatdate
 from hashlib import md5
 
+from ._internal import loop_open_file
 from .ctx import current
 from .libs.contenttype import contenttype
 
@@ -144,10 +144,6 @@ class HTTPRedirect(HTTPResponse):
         location = location.replace('\r', '%0D').replace('\n', '%0A')
         super().__init__(status_code, headers={'Location': location})
 
-    # async def send(self, scope, send):
-    #     await self._send_headers(send)
-    #     await send({'type': 'http.response.body'})
-
 
 class HTTPFile(HTTPResponse):
     def __init__(self, file_path, headers={}, cookies={}, chunk_size=4096):
@@ -183,7 +179,7 @@ class HTTPFile(HTTPResponse):
                 await HTTP(404).send(scope, send)
 
     async def _send_body(self, send):
-        async with aiofiles.open(self.file_path, mode='rb') as f:
+        async with loop_open_file(self.file_path, mode='rb') as f:
             more_body = True
             while more_body:
                 chunk = await f.read(self.chunk_size)

@@ -132,8 +132,8 @@ class HTTPHandler(RequestHandler):
             self.static_handler)
 
     async def __call__(self, scope, receive, send):
-        scope['emt.now'] = datetime.utcnow()
         scope['emt.path'] = scope['path'] or '/'
+        scope['emt.now'] = datetime.utcnow()
         scope['emt.input'] = Body(self.app.config.request_max_content_length)
         task_events = asyncio.create_task(
             self.handle_events(scope, receive, send))
@@ -142,7 +142,6 @@ class HTTPHandler(RequestHandler):
         _, pending = await asyncio.wait(
             [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
         )
-        scope['emt._flow_cancel'] = True
         await _cancel_tasks(pending)
 
     @Handler.on_event('http.disconnect')
@@ -166,22 +165,12 @@ class HTTPHandler(RequestHandler):
         return self.app.error_handlers.get(500, self._exception_handler)
 
     async def handle_request(self, scope, receive, send):
-        ctx_token = current._init_(RequestContext, self.app, scope)
         try:
-            http = await self.pre_handler(scope, receive, send)
+            http = await asyncio.shield(self.pre_handler(scope, receive, send))
+        except HTTPResponse as httpe:
+            http = httpe
         except asyncio.CancelledError:
-            if not scope.get('emt._flow_cancel', False):
-                self.app.log.exception('Application exception:')
-                http = HTTP(
-                    500, await self.error_handler(), headers=response.headers)
-            else:
-                current._close_(ctx_token)
-                return
-        except Exception:
-            self.app.log.exception('Application exception:')
-            http = HTTP(
-                500, await self.error_handler(), headers=response.headers)
-        current._close_(ctx_token)
+            return
         # TODO: timeout from app config/response
         await asyncio.wait_for(http.send(scope, send), None)
 
@@ -233,6 +222,7 @@ class HTTPHandler(RequestHandler):
 
     async def dynamic_handler(self, scope, receive, send):
         try:
+            ctx_token = current._init_(RequestContext, self.app, scope)
             http = await self.router.dispatch()
         except HTTPResponse as http_exception:
             http = http_exception
@@ -243,6 +233,13 @@ class HTTPHandler(RequestHandler):
                     http.status_code, await error_handler(), response.headers)
             #: always set cookies
             http.set_cookies(response.cookies)
+        except Exception:
+            self.app.log.exception('Application exception:')
+            raise HTTP(
+                500, await self.error_handler(), headers=response.headers
+            )
+        finally:
+            current._close_(ctx_token)
         return http
 
     async def _debug_handler(self):
@@ -265,12 +262,12 @@ class WSHandler(RequestHandler):
             self.dynamic_handler)
 
     async def __call__(self, scope, receive, send):
-        queue = asyncio.Queue()
         scope['emt.path'] = scope['path'] or '/'
+        scope['emt.input'] = asyncio.Queue()
         task_events = asyncio.create_task(
-            self.handle_events(scope, queue.put, send))
+            self.handle_events(scope, receive, send))
         task_request = asyncio.create_task(
-            self.handle_request(scope, queue.get, send))
+            self.handle_request(scope, receive, send))
         _, pending = await asyncio.wait(
             [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
         )
@@ -283,11 +280,10 @@ class WSHandler(RequestHandler):
 
     @Handler.on_event('websocket.receive')
     async def event_receive(self, scope, receive, send, event):
-        await receive(event.get('bytes') or event['text'])
+        await scope['emt.input'].put(event.get('bytes') or event['text'])
         return _event_looper
 
     async def handle_request(self, scope, receive, send):
-        ctx_token = current._init_(WSContext, self.app, scope, receive, send)
         try:
             await self.pre_handler(scope, receive, send)
         except asyncio.CancelledError:
@@ -295,9 +291,6 @@ class WSHandler(RequestHandler):
                 self.app.log.exception('Application exception:')
         except Exception:
             self.app.log.exception('Application exception:')
-            # http = HTTP(
-            #     500, await self.error_handler(), headers=response.headers)
-        current._close_(ctx_token)
 
     def _prefix_handler(self, scope, receive, send):
         path = request.path
@@ -308,9 +301,15 @@ class WSHandler(RequestHandler):
         return self.dynamic_handler(scope, receive, send)
 
     async def dynamic_handler(self, scope, receive, send):
-        await self.router.dispatch()
-        if current.websocket._accepted:
-            await send({'type': 'websocket.close', 'code': 1000})
+        ctx_token = current._init_(
+            WSContext, self.app, scope, scope['emt.input'].get, send
+        )
+        try:
+            await self.router.dispatch()
+        finally:
+            if current.websocket._accepted:
+                await send({'type': 'websocket.close', 'code': 1000})
+            current._close_(ctx_token)
 
 
 class RequestContext:
@@ -362,6 +361,3 @@ async def _cancel_tasks(tasks):
     for task in tasks:
         task.cancel()
     await asyncio.gather(*tasks, return_exceptions=True)
-    for task in tasks:
-        if not task.cancelled() and task.exception() is not None:
-            raise task.exception()
