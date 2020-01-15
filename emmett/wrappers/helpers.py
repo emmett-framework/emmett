@@ -10,7 +10,9 @@
 """
 
 from collections.abc import Mapping
-from typing import Any, BinaryIO, Dict, Iterable, Iterator, List, Tuple
+from typing import Any, BinaryIO, Dict, Iterable, Iterator, List, Tuple, Union
+
+from .._internal import loop_copyfileobj
 
 
 class Headers(Mapping):
@@ -80,6 +82,21 @@ class FileStorage:
     @property
     def content_length(self) -> int:
         return int(self.headers.get('content-length', 0))
+
+    async def save(
+        self,
+        destination: Union[BinaryIO, str],
+        buffer_size: int = 16384
+    ):
+        close_destination = False
+        if isinstance(destination, str):
+            destination = open(destination, 'wb')
+            close_destination = True
+        try:
+            await loop_copyfileobj(self.stream, destination, buffer_size)
+        finally:
+            if close_destination:
+                destination.close()
 
     def __iter__(self) -> Iterable[bytes]:
         return iter(self.stream)
