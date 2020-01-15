@@ -270,7 +270,7 @@ class PooledConnectionManager(ConnectionManager):
                 super().close_sync(connection)
             else:
                 with self._lock_sync:
-                    heapq.heappush(self.connections_sync, (ts, connection))
+                    heapq.heappush(self.connections_sync, (ts, key))
 
     async def close_loop(self, connection, close_connection=False):
         key = id(connection)
@@ -283,7 +283,7 @@ class PooledConnectionManager(ConnectionManager):
                 self.connections_map.pop(key)
                 await super().close_loop(connection)
             else:
-                self.connections_loop.put_nowait((ts, connection))
+                self.connections_loop.put_nowait((ts, key))
 
     def close_all(self):
         for connection in self.connections_map.values():
