@@ -13,7 +13,7 @@
 - [languages](languages)
 - [orm](orm.md):
   - [connecting](orm/connecting.md)
-  - [models](orm/models.md)
+  - [models](models.md)
   - [operations](orm/operations.md)
   - [scopes](orm/scopes)
   - [relations](orm/relations.md)
@@ -21,7 +21,7 @@
   - [callbacks](orm/callbacks.md)
   - [migrations](orm/migrations.md)
   - [advanced](orm/advanced.md)
-- [validations](orm/validations)
+- [validations](validations)
 - [forms](forms.md)
 - [auth](auth.md)
 - [mailer](mailer.md)

@@ -210,5 +210,5 @@ class Profile(Model):
         )
 ```
 
-[next](orm/migratons.md)
+[next](migratons.md)
 [index](README.md)

@@ -167,5 +167,5 @@ All the code blocks running in `atomic`, `transaction` and `savepoint` will comm
 
 > **Note:** the savepoint support relies on the adapter you configured. Please check your specific DBMS for this feature support.
 
-[next](orm/models.md)
+[next](models.md)
 [index](README.md)

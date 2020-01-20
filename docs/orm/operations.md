@@ -611,5 +611,5 @@ As you can see both of these methods return the number of record removed.
 
 > **Note:** just like the `update_record`, the `delete_record` method requires you to select the `id` field in the rows.
 
-[next](orm/scopes.md)
+[next](scopes.md)
 [index](README.md)

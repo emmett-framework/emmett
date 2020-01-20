@@ -258,5 +258,5 @@ class Post(Model):
 
 The `where` option accepts a lambda function that should accept the model as first parameter and should return any valid query using the Emmett query language.
 
-[next](validation.md)
+[next](../validation.md)
 [index](README.md)

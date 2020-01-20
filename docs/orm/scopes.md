@@ -166,5 +166,5 @@ Post.where(
 )
 ```
 
-[next](orm/relations.md)
+[next](relations.md)
 [index](README.md)

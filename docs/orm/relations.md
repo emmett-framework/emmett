@@ -638,5 +638,5 @@ This code will return the join rows of users and their posts, as we saw with the
 
 If this structure better suits your needs for your application development, you might use this method to perform joins instead of the `join` method.
 
-[next](orm/virtuals.md)
+[next](virtuals.md)
 [index](README.md)
