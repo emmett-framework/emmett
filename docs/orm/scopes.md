@@ -165,3 +165,6 @@ Post.where(
         (p.created_at < datetime(2015, 1, 16))
 )
 ```
+
+[next](orm/relations.md)
+[index](README.md)

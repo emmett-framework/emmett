@@ -100,3 +100,6 @@ list of parameters you can set for a logging file:
 | on\_app\_debug | tells Emmett to log the messages also when application is in debug mode (default `False`) |
 
 That's it.
+
+[next](extensions.md)
+[index](README.md)

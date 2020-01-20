@@ -124,3 +124,6 @@ or you can receive all flash messages with their category:
 >>> response.alerts(with_categories=True)
 [('error', 'message1')]
 ```
+
+[next](sessions.md)
+[index](README.md)

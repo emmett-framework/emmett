@@ -235,3 +235,7 @@ you want to load with AJAX inside another one, you can just put in the template:
 
 Basically, `load_component()` calls an URL and appends its contents inside the
 element with the id you have specified as the second parameter.
+
+
+[next](request.md)
+[index](README.md)

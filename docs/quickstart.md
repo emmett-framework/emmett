@@ -530,3 +530,6 @@ Go ahead
 Congratulations! You've read everything you need to run a simple but functional
 Emmett application. Use this *quick-start guide* as your manual, and refer to the 
 [complete documentation](./) for every in-depth aspect you may encounter.
+
+[next](tutorial.md)
+[index](README.md)

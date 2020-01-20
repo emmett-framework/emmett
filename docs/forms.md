@@ -167,3 +167,6 @@ Well, in Emmett, the style of a form is decided by the `FormStyle` class.
 
 ### Custom widgets
 *sub-section under development*
+
+[next](auth.md)
+[index](README.md)

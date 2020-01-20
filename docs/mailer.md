@@ -111,3 +111,7 @@ app.config.mailer.suppress = True
 ```
 
 This will completely disable message sending.
+
+
+[next](caching.md)
+[index](README.md)

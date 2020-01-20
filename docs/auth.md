@@ -478,3 +478,6 @@ Additional login methods
 ------------------------
 
 *section in development*
+
+[next](mailer.md)
+[index](README.md)

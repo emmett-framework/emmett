@@ -318,3 +318,6 @@ cache.clear('key')
 And if you need to clear **the entire cache** you can invoke the clear method without arguments.
 
 > **Note:** on redis, a key containing * will mean clearing all the existing keys with that pattern. So calling `cache.clear('user*')` will delete all the contents for keys starting with *user*.
+
+[next](services.md)
+[index](README.md)

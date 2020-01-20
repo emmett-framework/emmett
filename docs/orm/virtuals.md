@@ -127,3 +127,6 @@ Then, once we have a message, we can access the next quickly:
 ```
 
 Virtual methods, as we saw for virtual fields, needs the row as first parameter, that will be injected by Emmett, but you can obviously add more parameters and pass values for them during invocation.
+
+[next](orm/callbacks.md)
+[index](README.md)

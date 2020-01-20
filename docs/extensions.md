@@ -284,3 +284,6 @@ class ImgTemplateExtension(TemplateExtension):
     def inject(self, context):
         context['_img_lexer_'] = self.gen_img_string
 ```
+
+[next](cli.md)
+[index](README.md)

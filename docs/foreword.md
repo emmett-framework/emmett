@@ -103,4 +103,5 @@ them and for their framework on which I based Emmett
 * **Marco Stagni**, **Michael Genesini** and **Filippo Zanella** for their
 advices and continuous support
 
-[next](01-quickstart.md)
+[next](instalattion.md)
+[index](README.md)

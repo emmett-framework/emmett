@@ -94,3 +94,7 @@ As you can see `SessionManager.redis` needs a redis connection as first paramete
 | cookie\_name | | allows you to set a specific name for the cookie |
 
 The `expire` parameter tells redis when to auto-delete the unused session: every time the session is updated, the expiration time is reset to the one specified.
+
+
+[next](languages.md)
+[index](README.md)

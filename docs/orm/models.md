@@ -369,3 +369,6 @@ As you observed, you can just use the standard `classmethod` decorator of the py
 
 > **Note:**   
 > Accessing `Model.method()` refers to the model itself, while `db.Model.attribute` refers to the table instance you created with your model.
+
+[next](orm/operations.md)
+[index](README.md)

@@ -421,3 +421,6 @@ So you've just learned three handy aspects of Emmett:
 * `redirect` and `abort` allow you to stop the execution of your code;
 * you can set specific actions for your application to perform when it encounters a particular HTTP error code with `app.on_error()`;
 * you can use `app.render_template()` to render a specific template without the presence of an exposed function or a specific context.
+
+[next](response.md)
+[index](README.md)

@@ -92,3 +92,6 @@ and Emmett will automatically add the support for language on your routing rules
 | /it/anexampleurl | shows up the contents with the italian language |
 
 As you can see, the *routing* way requires that you to explicitly tell to Emmett which languages should be available into your application, so it can build the routing tables.
+
+[next](orm.md)
+[index](README.md)

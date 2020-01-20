@@ -144,3 +144,6 @@ and you also need to remember to commit or rollback changes:
 db.commit()
 db.rollback()
 ```
+
+[next](debug_and_loggging.md)
+[index](README.md)

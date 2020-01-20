@@ -76,3 +76,6 @@ which you can do operations like the `select()`.
 
 In the next chapters, we will inspect how to define models, all the available options,
 and how to use Emmett's ORM to perform operations on the database. 
+
+[next](orm/connecting.md)
+[index](README.md)

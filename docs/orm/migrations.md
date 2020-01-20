@@ -437,3 +437,6 @@ The Emmett migration engine is designed to support all the DBMS supported by pyD
 ### SQLite
 
 The SQLite engine doesn't support *ALTER TABLE* operations that change the columns. As a direct consequence, any `alter_column` operation you will try to run from a migration will fail.
+
+[next](orm/advanced.md)
+[index](README.md)

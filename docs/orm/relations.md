@@ -637,3 +637,6 @@ db(Post.user == User.id).select(db.User.ALL, db.Post.ALL)
 This code will return the join rows of users and their posts, as we saw with the `join` method. The main difference from the above is that the rows returned with this method won't have related posts as nested rows of users, but instead every row contained in the returned `Rows` object will have a `users` attribute and a `posts` attribute containing the two selected rows from their tables. As a direct consequence, if you have users with more than one post, they will be repeated in rows for every post matching the query.
 
 If this structure better suits your needs for your application development, you might use this method to perform joins instead of the `join` method.
+
+[next](orm/virtuals.md)
+[index](README.md)

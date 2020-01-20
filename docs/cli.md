@@ -66,3 +66,6 @@ The command will then be available on the command line:
 ```bash
 > emmett -a myapp setup
 ```
+
+[next](patterns.md)
+[index](README.md)

@@ -276,3 +276,6 @@ Under the default behavior, Emmett will use the first path for building urls, wh
 >>> url('comments.1', 12)
 /post/12/comments
 ```
+
+[next](templates.md)
+[index](README.md)

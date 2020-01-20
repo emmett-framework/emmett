@@ -215,3 +215,6 @@ v2_apis.pipeline = [AnotherAuthPipe()]
 ```
 
 Then all the routes defined in these modules or in sub-modules of these modules will have a final pipeline composed by the one of the `apis` module, and the one of the sub-module.
+
+[next](routing.md)
+[index](README.md)
