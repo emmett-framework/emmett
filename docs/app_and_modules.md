@@ -8,7 +8,7 @@ The App object
 
 *Changed in version 1.3*
 
-As you learned from the [Getting Started](./quickstart) chapter, your application is defined using Emmett's `App` class:
+As you learned from the [Getting Started](./00-quickstart) chapter, your application is defined using Emmett's `App` class:
 
 ```python
 from emmett import App

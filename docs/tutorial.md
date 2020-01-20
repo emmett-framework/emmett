@@ -9,7 +9,7 @@ SQLite comes out of the box with Python, so you won't need to download anything
 other than Emmett.
 
 If you want the full source code in advance, check out the 
-[example source](https://github.com/emmett-framework/emmett/tree/master/examples/bloggy).
+[example source](../examples/bloggy).
 
 Bloggy: a micro blog
 --------------------

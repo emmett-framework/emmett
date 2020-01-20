@@ -11,7 +11,7 @@ for your production environment.
 
 Debugger
 --------
-When you run your application with the built-in server, using the `run()` method,
+When you run your application with the built-in server, using the `develop()` method,
 with the *emmett* command shell, or by setting your `App.debug` attribute to `True`,
 Emmett will use its internal debugger when an exception occurs to show you
 some useful information. What does that look like?
