@@ -1,5 +1,6 @@
 
 # INDEX
+
 - [foreword](foreword.md)
 - [installation](installation.md)
 - [quickstart](quickstart.md)
@@ -9,8 +10,8 @@
 - [templates](templates.md)
 - [request](request.md)
 - [response](response.md)
-- [sessions](sessions)
-- [languages](languages)
+- [sessions](sessions.md)
+- [languages](languages.md)
 - [orm](orm.md):
   - [connecting](orm/connecting.md)
   - [models](models.md)
