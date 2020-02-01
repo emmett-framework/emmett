@@ -16,7 +16,7 @@ import re
 from collections import OrderedDict
 from datetime import datetime
 
-from ..ctx import Context, current, request, response
+from ..ctx import Context, current
 from ..debug import smart_traceback, debug_handler
 from ..http import HTTPResponse, HTTPFile, HTTP
 from ..language import T
@@ -175,10 +175,10 @@ class HTTPHandler(RequestHandler):
         await asyncio.wait_for(http.send(scope, send), None)
 
     def _prefix_handler(self, scope, receive, send):
-        path = request.path
+        path = current.request.path
         if not path.startswith(self.router._prefix_main):
             return HTTP(404)
-        request.path = scope['emt.path'] = (
+        current.request.path = scope['emt.path'] = (
             path[self.router._prefix_main_len:] or '/')
         return self.static_handler(scope, receive, send)
 
@@ -230,13 +230,18 @@ class HTTPHandler(RequestHandler):
             error_handler = self.app.error_handlers.get(http.status_code)
             if error_handler:
                 http = HTTP(
-                    http.status_code, await error_handler(), response.headers)
+                    http.status_code,
+                    await error_handler(),
+                    current.response.headers
+                )
             #: always set cookies
-            http.set_cookies(response.cookies)
+            http.set_cookies(current.response.cookies)
         except Exception:
             self.app.log.exception('Application exception:')
             raise HTTP(
-                500, await self.error_handler(), headers=response.headers
+                500,
+                await self.error_handler(),
+                headers=current.response.headers
             )
         finally:
             current._close_(ctx_token)
@@ -246,7 +251,7 @@ class HTTPHandler(RequestHandler):
         return debug_handler(smart_traceback(self.app))
 
     async def _exception_handler(self):
-        response.headers['Content-Type'] = 'text/plain'
+        current.response.headers['Content-Type'] = 'text/plain'
         return 'Internal error'
 
 
@@ -293,10 +298,10 @@ class WSHandler(RequestHandler):
             self.app.log.exception('Application exception:')
 
     def _prefix_handler(self, scope, receive, send):
-        path = request.path
+        path = current.request.path
         if not path.startswith(self.router._prefix_main):
             return HTTP(404)
-        request.path = scope['emt.path'] = (
+        current.request.path = scope['emt.path'] = (
             path[self.router._prefix_main_len:] or '/')
         return self.dynamic_handler(scope, receive, send)
 
