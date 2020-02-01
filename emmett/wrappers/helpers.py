@@ -16,35 +16,31 @@ from .._internal import loop_copyfileobj
 
 
 class Headers(Mapping):
-    __slots__ = ('_data')
+    __slots__ = ['_data']
 
-    def __init__(self, scope: Dict):
-        self._data = self.__parse_list(scope['headers'])
-
-    @staticmethod
-    def __parse_list(headers: List[Tuple[bytes, bytes]]) -> Dict[str, str]:
-        rv = {}
-        for key, val in headers:
-            rv[key.decode()] = val.decode()
-        return rv
+    def __init__(self, scope: Dict[str, Any]):
+        self._data: Dict[bytes, bytes] = {
+            key: val for key, val in scope['headers']
+        }
 
     __hash__ = None
 
     def __getitem__(self, key: str) -> str:
-        return self._data[key.lower()]
+        return self._data[key.lower().encode()].decode()
 
     def __contains__(self, key: str) -> bool:
-        return key in self._data
+        return key.lower().encode() in self._data
 
     def __iter__(self) -> Iterator[Tuple[str, str]]:
         for key, value in self._data.items():
-            yield key, value
+            yield key.decode(), value.decode()
 
     def __len__(self) -> int:
         return len(self._data)
 
     def get(self, key, default=None, cast=None) -> Any:
-        rv = self._data.get(key.lower(), default)
+        rv = self._data.get(key.lower().encode())
+        rv = rv.decode() if rv is not None else default
         if cast is None:
             return rv
         try:
@@ -52,14 +48,17 @@ class Headers(Mapping):
         except ValueError:
             return default
 
-    def items(self) -> Iterable[Tuple[str, str]]:
-        return self._data.items()
+    def items(self) -> Iterator[Tuple[str, str]]:
+        for key, value in self._data.items():
+            yield key.decode(), value.decode()
 
-    def keys(self) -> Iterable[str]:
-        return self._data.keys()
+    def keys(self) -> Iterator[str]:
+        for key in self._data.keys():
+            yield key.decode()
 
-    def values(self) -> Iterable[str]:
-        return self._data.values()
+    def values(self) -> Iterator[str]:
+        for value in self._data.values():
+            yield value.decode()
 
 
 class FileStorage:
