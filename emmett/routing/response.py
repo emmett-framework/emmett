@@ -9,39 +9,44 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
+from typing import Any, AnyStr, Dict, Tuple, Union
+
 from renoir.errors import TemplateMissingError
 
 from ..ctx import current
 from ..helpers import load_component
 from ..html import asis
-from ..http import HTTP, HTTPBytes
+from ..http import HTTPResponse, HTTP, HTTPBytes
+from .rules import RoutingRule
 from .urls import url
 
 
 class ResponseBuilder:
-    http_cls = HTTP
+    http_cls: HTTPResponse = HTTP
 
-    def __init__(self, route):
+    def __init__(self, route: RoutingRule):
         self.route = route
 
-    def __call__(self, output):
+    def __call__(self, output: Any) -> Tuple[HTTPResponse, AnyStr]:
         return self.http_cls, output
 
 
 class ResponseProcessor(ResponseBuilder):
-    def process(self, output):
-        return output
+    def process(self, output: Any):
+        raise NotImplementedError
 
-    def __call__(self, output):
+    def __call__(self, output: Any) -> Tuple[HTTPResponse, AnyStr]:
         return self.http_cls, self.process(output)
 
 
 class BytesResponseBuilder(ResponseBuilder):
-    http_cls = HTTPBytes
+    http_cls: HTTPResponse = HTTPBytes
 
 
 class TemplateResponseBuilder(ResponseProcessor):
-    def process(self, output):
+    def process(self, output: Union[Dict[str, Any], None]) -> str:
         if output is None:
             output = {
                 'current': current, 'url': url, 'asis': asis,
@@ -61,7 +66,7 @@ class TemplateResponseBuilder(ResponseProcessor):
 
 
 class AutoResponseBuilder(ResponseProcessor):
-    def process(self, output):
+    def process(self, output: Any) -> str:
         is_template = False
         if isinstance(output, dict):
             is_template = True
