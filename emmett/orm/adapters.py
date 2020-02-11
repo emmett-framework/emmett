@@ -11,9 +11,9 @@
 
 from functools import wraps
 from pydal.adapters import adapters
-from pydal.adapters.base import BaseAdapter
 from pydal.adapters.mssql import (
-    MSSQL1, MSSQL3, MSSQL4, MSSQL1N, MSSQL3N, MSSQL4N)
+    MSSQL1, MSSQL3, MSSQL4, MSSQL1N, MSSQL3N, MSSQL4N
+)
 from pydal.adapters.postgres import (
     Postgre, PostgrePsyco, PostgrePG8000,
     PostgreNew, PostgrePsycoNew, PostgrePG8000New,
@@ -23,7 +23,6 @@ from pydal.adapters.sqlite import SQLite as _SQLite
 from pydal.dialects.postgre import PostgreDialectBooleanJSON
 from pydal.parsers.postgre import PostgreBooleanAutoJSONParser
 
-from .connection import ConnectionManager, PooledConnectionManager
 from .objects import Field
 
 
@@ -247,15 +246,3 @@ def _transaction_depth(adapter):
 def _top_transaction(adapter):
     if adapter._connection_manager.state.transactions:
         return adapter._connection_manager.state.transactions[-1]
-
-
-def _patch_adapter_cls():
-    setattr(BaseAdapter, '_initialize_', _initialize)
-    setattr(BaseAdapter, 'in_transaction', _in_transaction)
-    setattr(BaseAdapter, 'push_transaction', _push_transaction)
-    setattr(BaseAdapter, 'pop_transaction', _pop_transaction)
-    setattr(BaseAdapter, 'transaction_depth', _transaction_depth)
-    setattr(BaseAdapter, 'top_transaction', _top_transaction)
-    setattr(BaseAdapter, '_connection_manager_cls', PooledConnectionManager)
-    setattr(BaseAdapter, 'begin', _begin)
-    setattr(SQLite, '_connection_manager_cls', ConnectionManager)

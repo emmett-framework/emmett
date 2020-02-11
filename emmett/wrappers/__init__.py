@@ -33,16 +33,12 @@ class Wrapper:
 
 
 class ScopeWrapper(Wrapper):
-    __slots__ = (
-        '_scope', 'scheme', 'path', 'headers', 'host'
-    )
+    __slots__ = ('_scope', 'scheme', 'path')
 
     def __init__(self, scope):
         self._scope = scope
         self.scheme = scope['scheme']
         self.path = scope['emt.path']
-        self.headers = Headers(scope)
-        self.host = self.headers.get('host')
 
     def __parse_accept_header(self, value, cls=Accept):
         if not value:
@@ -56,6 +52,14 @@ class ScopeWrapper(Wrapper):
                 quality = max(min(float(quality), 1), 0)
             result.append((match.group(1), quality))
         return cls(result)
+
+    @cachedprop
+    def headers(self):
+        return Headers(self._scope)
+
+    @cachedprop
+    def host(self):
+        return self.headers.get('host')
 
     @cachedprop
     def accept_language(self):

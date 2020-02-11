@@ -11,10 +11,12 @@
 
 import re
 import time
+
 from functools import wraps
 from pydal._globals import THREAD_LOCAL
 from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
 from pydal.objects import Field as _Field
+
 from ..datastructures import sdict
 from ..utils import cachedprop
 
@@ -213,6 +215,40 @@ class TimingHandler(ExecutionHandler):
     def after_execute(self, command):
         dt = time.time() - self.t
         self.timings.append((command, dt))
+
+
+class ConnectionContext:
+    __slots__ = ['db', 'conn', 'with_transaction', 'reuse_if_open']
+
+    def __init__(self, db, with_transaction=True, reuse_if_open=True):
+        self.db = db
+        self.conn = None
+        self.with_transaction = with_transaction
+        self.reuse_if_open = reuse_if_open
+
+    def __enter__(self):
+        self.conn = self.db.connection_open(
+            with_transaction=self.with_transaction,
+            reuse_if_open=self.reuse_if_open
+        )
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.conn:
+            self.db.connection_close()
+        self.conn = None
+
+    async def __aenter__(self):
+        self.conn = await self.db.connection_open_loop(
+            with_transaction=self.with_transaction,
+            reuse_if_open=self.reuse_if_open
+        )
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.conn:
+            await self.db.connection_close_loop()
+        self.conn = None
 
 
 def decamelize(name):

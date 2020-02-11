@@ -9,11 +9,12 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import copyreg
 import os
 import threading
 
-from contextlib import contextmanager
 from functools import wraps
 from pydal import DAL as _pyDAL
 from pydal._globals import THREAD_LOCAL
@@ -22,10 +23,9 @@ from ..datastructures import sdict
 from ..pipeline import Pipe
 from ..security import uuid as _uuid
 from ..serializers import _json_default, xml
-from .adapters import _patch_adapter_cls, patch_adapter
-from .connection import _patch_adapter_connection
+from .adapters import patch_adapter
 from .objects import Table, Field, Set, Row, Rows
-from .helpers import TimingHandler
+from .helpers import ConnectionContext, TimingHandler
 from .models import MetaModel, Model
 from .transactions import _atomic, _transaction, _savepoint
 
@@ -159,15 +159,16 @@ class Database(_pyDAL):
     def connection_close(self):
         self._adapter.close()
 
-    @contextmanager
-    def connection(self, with_transaction=True, reuse_if_open=True):
-        new_connection = self.connection_open(
-            with_transaction=with_transaction, reuse_if_open=reuse_if_open)
-        try:
-            yield
-        finally:
-            if new_connection:
-                self.connection_close()
+    def connection(
+        self,
+        with_transaction: bool = True,
+        reuse_if_open: bool = True
+    ) -> ConnectionContext:
+        return ConnectionContext(
+            self,
+            with_transaction=with_transaction,
+            reuse_if_open=reuse_if_open
+        )
 
     def connection_open_loop(self, with_transaction=True, reuse_if_open=True):
         return self._adapter.reconnect_loop(
@@ -264,5 +265,3 @@ def _Database_pickler(db):
 
 
 copyreg.pickle(Database, _Database_pickler, _Database_unpickler)
-_patch_adapter_cls()
-_patch_adapter_connection()

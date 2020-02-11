@@ -21,8 +21,6 @@ import time
 
 from collections import OrderedDict
 from functools import partial
-from pydal.connection import ConnectionPool
-from pydal.helpers.classes import ConnectionConfigurationMixin
 
 from ..ctx import current
 from ..utils import cachedprop
@@ -175,7 +173,7 @@ class ConnectionManager:
             None, partial(self._connection_close, connection))
 
     def __del__(self):
-        if not self.state._closed:
+        if not self.state.closed:
             self.close_sync(self.state.connection)
 
 
@@ -308,7 +306,7 @@ class PooledConnectionManager(ConnectionManager):
         self.close_all()
 
 
-def _init(self, *args, **kwargs):
+def _connection_init(self, *args, **kwargs):
     self._connection_manager = self._connection_manager_cls(self)
 
 
@@ -400,18 +398,3 @@ def _connect_and_configure(self, *args, **kwargs):
             self._configure_on_first_reconnect()
             self.reconnect = self._connection_reconnect
             self._reconnect_mocked = False
-
-
-def _patch_adapter_connection():
-    setattr(ConnectionPool, '__init__', _init)
-    setattr(ConnectionPool, 'reconnect', _connect_sync)
-    setattr(ConnectionPool, 'reconnect_loop', _connect_loop)
-    setattr(ConnectionPool, 'close', _close_sync)
-    setattr(ConnectionPool, 'close_loop', _close_loop)
-    setattr(
-        ConnectionPool, 'connection',
-        property(_connection_getter, _connection_setter))
-    setattr(ConnectionPool, 'cursors', property(_cursors_getter))
-    setattr(
-        ConnectionConfigurationMixin, '_reconnect_and_configure',
-        _connect_and_configure)

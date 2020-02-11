@@ -11,8 +11,6 @@
 
 import re
 
-from collections import OrderedDict
-
 from ..ctx import current
 from ..http import HTTP
 from .response import (
@@ -23,7 +21,7 @@ from .rules import HTTPRoutingRule, WebsocketRoutingRule
 
 class Router:
     __slots__ = [
-        'app', 'routes_in', 'routes_out', '_routes_str',
+        'app', 'routes_in', 'routes_out', '_routes_str', '_routes_nohost',
         '_get_routes_in_for_host', '_prefix_main', '_prefix_main_len',
         '_match_lang'
     ]
@@ -39,8 +37,9 @@ class Router:
         self.app = app
         self.routes_in = {'__any__': self._build_routing_dict()}
         self.routes_out = {}
-        self._routes_str = OrderedDict()
-        self._get_routes_in_for_host = self._get_routes_in_for_host_simple
+        self._routes_str = {}
+        self._routes_nohost = (self.routes_in['__any__'], )
+        self._get_routes_in_for_host = self._get_routes_in_for_host_nomatch
         main_prefix = url_prefix or ''
         if main_prefix:
             main_prefix = main_prefix.rstrip('/')
@@ -66,7 +65,7 @@ class Router:
 
     @staticmethod
     def _build_routing_dict():
-        return {'static': {}, 'match': OrderedDict()}
+        return {'static': {}, 'match': {}}
 
     @classmethod
     def build_route_components(cls, path):
@@ -83,13 +82,13 @@ class Router:
                 components.append(params[idx] + statics[idx + 1])
         return components
 
-    def _get_routes_in_for_host_all(self, hostname):
+    def _get_routes_in_for_host_match(self, wrapper):
         return (
-            self.routes_in.get(hostname, self.routes_in['__any__']),
+            self.routes_in.get(wrapper.host, self.routes_in['__any__']),
             self.routes_in['__any__'])
 
-    def _get_routes_in_for_host_simple(self, hostname):
-        return (self.routes_in['__any__'],)
+    def _get_routes_in_for_host_nomatch(self, wrapper):
+        return self._routes_nohost
 
     def _match_with_lang(self, request, path):
         path, lang = self._split_lang(path)
@@ -159,7 +158,7 @@ class HTTPRouter(Router):
             for method in [
                 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'
             ]:
-                rv[scheme][method] = {'static': {}, 'match': OrderedDict()}
+                rv[scheme][method] = {'static': {}, 'match': {}}
         return rv
 
     def add_route_str(self, route):
@@ -176,7 +175,7 @@ class HTTPRouter(Router):
         host = route.hostname or '__any__'
         if host not in self.routes_in:
             self.routes_in[host] = self._build_routing_dict()
-            self._get_routes_in_for_host = self._get_routes_in_for_host_all
+            self._get_routes_in_for_host = self._get_routes_in_for_host_match
         for scheme in route.schemes:
             for method in route.methods:
                 routing_dict = self.routes_in[host][scheme][method.upper()]
@@ -193,7 +192,7 @@ class HTTPRouter(Router):
     def match(self, request):
         path = self.remove_trailslash(request.path)
         path = self._match_lang(request, path)
-        for routing_dict in self._get_routes_in_for_host(request.host):
+        for routing_dict in self._get_routes_in_for_host(request):
             sub_dict = routing_dict[request.scheme][request.method]
             route = sub_dict['static'].get(path)
             if route:
@@ -228,7 +227,7 @@ class WebsocketRouter(Router):
     def _build_routing_dict():
         rv = {}
         for scheme in ['ws', 'wss']:
-            rv[scheme] = {'static': {}, 'match': OrderedDict()}
+            rv[scheme] = {'static': {}, 'match': {}}
         return rv
 
     def add_route_str(self, route):
@@ -244,7 +243,7 @@ class WebsocketRouter(Router):
         host = route.hostname or '__any__'
         if host not in self.routes_in:
             self.routes_in[host] = self._build_routing_dict()
-            self._get_routes_in_for_host = self._get_routes_in_for_host_all
+            self._get_routes_in_for_host = self._get_routes_in_for_host_match
         for scheme in route.schemes:
             routing_dict = self.routes_in[host][scheme]
             if route.is_static:
@@ -260,7 +259,7 @@ class WebsocketRouter(Router):
     def match(self, websocket):
         path = self.remove_trailslash(websocket.path)
         path = self._match_lang(websocket, path)
-        for routing_dict in self._get_routes_in_for_host(websocket.host):
+        for routing_dict in self._get_routes_in_for_host(websocket):
             sub_dict = routing_dict[websocket.scheme]
             route = sub_dict['static'].get(path)
             if route:

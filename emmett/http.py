@@ -9,12 +9,15 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import errno
 import os
 import stat
 
 from email.utils import formatdate
 from hashlib import md5
+from typing import Any, BinaryIO, Dict, List, Tuple
 
 from ._internal import loop_open_file
 from .ctx import current
@@ -67,20 +70,23 @@ status_codes = {
 
 class HTTPResponse(Exception):
     def __init__(
-        self, status_code, *,
-        headers={'Content-Type': 'text/plain'}, cookies={}
+        self,
+        status_code: int,
+        *,
+        headers: Dict[str, str] = {'Content-Type': 'text/plain'},
+        cookies: Dict[str, Any] = {}
     ):
-        self.status_code = status_code
-        self._headers = headers
-        self._cookies = []
+        self.status_code: int = status_code
+        self._headers: Dict[str, str] = headers
+        self._cookies: List[bytes] = []
         self.set_cookies(cookies)
 
-    def set_cookies(self, cookies):
+    def set_cookies(self, cookies: Dict[str, str]):
         for cookie in cookies.values():
             self._cookies.append(str(cookie)[11:].encode('utf-8'))
 
     @property
-    def headers(self):
+    def headers(self) -> List[Tuple[bytes, bytes]]:
         rv = []
         for key, val in self._headers.items():
             rv.append((key.encode('utf-8'), val.encode('utf-8')))
@@ -105,8 +111,11 @@ class HTTPResponse(Exception):
 
 class HTTPBytes(HTTPResponse):
     def __init__(
-        self, status_code, body=b'',
-        headers={'Content-Type': 'text/plain'}, cookies={}
+        self,
+        status_code: int,
+        body: bytes = b'',
+        headers: Dict[str, str] = {'Content-Type': 'text/plain'},
+        cookies: Dict[str, Any] = {}
     ):
         super().__init__(status_code, headers=headers, cookies=cookies)
         self.body = body
@@ -121,8 +130,11 @@ class HTTPBytes(HTTPResponse):
 
 class HTTP(HTTPResponse):
     def __init__(
-        self, status_code, body=u'',
-        headers={'Content-Type': 'text/plain'}, cookies={}
+        self,
+        status_code: int,
+        body: str = '',
+        headers: Dict[str, str] = {'Content-Type': 'text/plain'},
+        cookies: Dict[str, Any] = {}
     ):
         super().__init__(status_code, headers=headers, cookies=cookies)
         self.body = body
@@ -140,13 +152,19 @@ class HTTP(HTTPResponse):
 
 
 class HTTPRedirect(HTTPResponse):
-    def __init__(self, status_code, location):
+    def __init__(self, status_code: int, location: str):
         location = location.replace('\r', '%0D').replace('\n', '%0A')
         super().__init__(status_code, headers={'Location': location})
 
 
 class HTTPFile(HTTPResponse):
-    def __init__(self, file_path, headers={}, cookies={}, chunk_size=4096):
+    def __init__(
+        self,
+        file_path: str,
+        headers: Dict[str, str] = {},
+        cookies: Dict[str, Any] = {},
+        chunk_size: int = 4096
+    ):
         super().__init__(200, headers=headers, cookies=cookies)
         self.file_path = file_path
         self.chunk_size = chunk_size
@@ -192,7 +210,13 @@ class HTTPFile(HTTPResponse):
 
 
 class HTTPIO(HTTPResponse):
-    def __init__(self, io_stream, headers={}, cookies={}, chunk_size=4096):
+    def __init__(
+        self,
+        io_stream: BinaryIO,
+        headers: Dict[str, str] = {},
+        cookies: Dict[str, Any] = {},
+        chunk_size: int = 4096
+    ):
         super().__init__(200, headers=headers, cookies=cookies)
         self.io_stream = io_stream
         self.chunk_size = chunk_size
@@ -220,6 +244,6 @@ class HTTPIO(HTTPResponse):
             })
 
 
-def redirect(location, status_code=303):
+def redirect(location: str, status_code: int = 303):
     current.response.status = status_code
     raise HTTPRedirect(status_code, location)
