@@ -148,7 +148,7 @@ class HTTPHandler(RequestHandler):
     async def handle_request(self, scope, receive, send):
         scope['emt.path'] = scope['path'] or '/'
         try:
-            http = await asyncio.shield(self.pre_handler(scope, receive, send))
+            http = await self.pre_handler(scope, receive, send)
         except RequestCancelled:
             return
         # TODO: timeout from app config/response
