@@ -6,7 +6,6 @@
     Test Emmett wrappers module
 """
 
-
 from helpers import current_ctx
 from emmett.testing.env import ScopeBuilder
 from emmett.wrappers.request import Request
@@ -18,7 +17,7 @@ def test_request():
         path='/?foo=bar',
         method='GET',
     ).get_data()
-    request = Request(scope)
+    request = Request(scope, None, None)
 
     assert request.query_params == {'foo': 'bar'}
     assert request.client == '127.0.0.1'

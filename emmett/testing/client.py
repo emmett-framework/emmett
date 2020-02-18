@@ -32,7 +32,7 @@ from .urls import get_host, url_parse, url_unparse
 
 class ClientContext(object):
     def __init__(self):
-        self.request = Request(current.request._scope)
+        self.request = Request(current.request._scope, None, None)
         self.response = Response()
         self.response.__dict__.update(current.response.__dict__)
         self.session = copy.deepcopy(current.session)
@@ -47,8 +47,10 @@ class ClientContext(object):
 
 class ClientHTTPHandler(HTTPHandler):
     async def dynamic_handler(self, scope, receive, send):
+        ctx_token = current._init_(
+            RequestContext, self.app, scope, receive, send
+        )
         try:
-            ctx_token = current._init_(RequestContext, self.app, scope)
             http = await self.router.dispatch()
         except HTTPResponse as http_exception:
             http = http_exception
@@ -56,12 +58,15 @@ class ClientHTTPHandler(HTTPHandler):
             error_handler = self.app.error_handlers.get(http.status_code)
             if error_handler:
                 http = HTTP(
-                    http.status_code, await error_handler(), response.headers)
+                    http.status_code,
+                    await error_handler(),
+                    response.headers
+                )
             #: always set cookies
             http.set_cookies(response.cookies)
         except Exception:
             self.app.log.exception('Application exception:')
-            raise HTTP(
+            http = HTTP(
                 500, await self.error_handler(), headers=response.headers
             )
         finally:

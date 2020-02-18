@@ -14,35 +14,31 @@ import pendulum
 import re
 
 from cgi import FieldStorage, parse_header
+from datetime import datetime
 from io import BytesIO
 from urllib.parse import parse_qs
+from typing import Optional
 
 from ..datastructures import sdict
 from ..http import HTTP
 from ..parsers import Parsers
 from ..utils import cachedprop
 from . import ScopeWrapper
-from .helpers import FileStorage
+from .helpers import FileStorage, RequestCancelled
+from .typing import Scope, Receive, Send
 
 _regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
 
 
 class Body:
-    __slots__ = ('_data', '_complete', '_max_content_length')
+    __slots__ = ('_data', '_receive', '_max_content_length')
 
-    def __init__(self, max_content_length=None):
+    def __init__(self, receive, max_content_length=None):
         self._data = bytearray()
-        self._complete = asyncio.Event()
+        self._receive = receive
         self._max_content_length = max_content_length
 
-    async def __load(self):
-        await self._complete.wait()
-        return bytes(self._data)
-
-    def __await__(self):
-        return self.__load().__await__()
-
-    def append(self, data):
+    def append(self, data: bytes):
         if data == b'':
             return
         self._data.extend(data)
@@ -52,19 +48,41 @@ class Body:
         ):
             raise HTTP(413, 'Request entity too large')
 
-    def set_complete(self):
-        self._complete.set()
+    async def __load(self) -> bytes:
+        while True:
+            event = await self._receive()
+            if event['type'] == 'http.request':
+                self.append(event['body'])
+                if not event.get('more_body', False):
+                    break
+            elif event['type'] == 'http.disconnect':
+                raise RequestCancelled
+        return bytes(self._data)
+
+    def __await__(self):
+        return self.__load().__await__()
 
 
 class Request(ScopeWrapper):
-    __slots__ = ('_input', 'method')
+    __slots__ = ['_now', 'method']
 
-    def __init__(self, scope, max_content_length=None, body_timeout=None):
-        super().__init__(scope)
+    def __init__(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        max_content_length: Optional[int] = None,
+        body_timeout: Optional[int] = None
+    ):
+        super().__init__(scope, receive, send)
         self.max_content_length = max_content_length
         self.body_timeout = body_timeout
+        self._now = datetime.utcnow()
         self.method = scope['method']
-        self._input = scope['emt.input']
+
+    @cachedprop
+    def _input(self):
+        return Body(self._receive, self.max_content_length)
 
     @cachedprop
     async def body(self):
@@ -81,7 +99,7 @@ class Request(ScopeWrapper):
 
     @cachedprop
     def now(self):
-        return pendulum.instance(self._scope['emt.now'])
+        return pendulum.instance(self._now)
 
     @cachedprop
     def now_local(self):

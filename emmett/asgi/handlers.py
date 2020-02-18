@@ -14,14 +14,14 @@ import os
 import re
 
 from collections import OrderedDict
-from datetime import datetime
 
 from ..ctx import Context, current
 from ..debug import smart_traceback, debug_handler
 from ..http import HTTPResponse, HTTPFile, HTTP
 from ..language import T
 from ..utils import cachedprop
-from ..wrappers.request import Body, Request
+from ..wrappers.helpers import RequestCancelled
+from ..wrappers.request import Request
 from ..wrappers.response import Response
 from ..wrappers.websocket import Websocket
 
@@ -89,6 +89,8 @@ class Handler(metaclass=MetaHandler):
 
 
 class LifeSpanHandler(Handler):
+    __slots__ = []
+
     @Handler.on_event('lifespan.startup')
     async def event_startup(self, scope, receive, send, event):
         await send({'type': 'lifespan.startup.complete'})
@@ -131,29 +133,8 @@ class HTTPHandler(RequestHandler):
             self._prefix_handler if self.router._prefix_main else
             self.static_handler)
 
-    async def __call__(self, scope, receive, send):
-        scope['emt.path'] = scope['path'] or '/'
-        scope['emt.now'] = datetime.utcnow()
-        scope['emt.input'] = Body(self.app.config.request_max_content_length)
-        task_events = asyncio.create_task(
-            self.handle_events(scope, receive, send))
-        task_request = asyncio.create_task(
-            self.handle_request(scope, receive, send))
-        _, pending = await asyncio.wait(
-            [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
-        )
-        await _cancel_tasks(pending)
-
-    @Handler.on_event('http.disconnect')
-    async def event_disconnect(self, scope, receive, send, event):
-        return
-
-    @Handler.on_event('http.request')
-    async def event_request(self, scope, receive, send, event):
-        scope['emt.input'].append(event['body'])
-        if not event.get('more_body', False):
-            scope['emt.input'].set_complete()
-        return _event_looper
+    def __call__(self, scope, receive, send):
+        return self.handle_request(scope, receive, send)
 
     @cachedprop
     def error_handler(self):
@@ -165,11 +146,10 @@ class HTTPHandler(RequestHandler):
         return self.app.error_handlers.get(500, self._exception_handler)
 
     async def handle_request(self, scope, receive, send):
+        scope['emt.path'] = scope['path'] or '/'
         try:
             http = await asyncio.shield(self.pre_handler(scope, receive, send))
-        except HTTPResponse as httpe:
-            http = httpe
-        except asyncio.CancelledError:
+        except RequestCancelled:
             return
         # TODO: timeout from app config/response
         await asyncio.wait_for(http.send(scope, send), None)
@@ -221,8 +201,10 @@ class HTTPHandler(RequestHandler):
         return self.dynamic_handler(scope, receive, send)
 
     async def dynamic_handler(self, scope, receive, send):
+        ctx_token = current._init_(
+            RequestContext, self.app, scope, receive, send
+        )
         try:
-            ctx_token = current._init_(RequestContext, self.app, scope)
             http = await self.router.dispatch()
         except HTTPResponse as http_exception:
             http = http_exception
@@ -236,9 +218,11 @@ class HTTPHandler(RequestHandler):
                 )
             #: always set cookies
             http.set_cookies(current.response.cookies)
+        except RequestCancelled:
+            raise
         except Exception:
             self.app.log.exception('Application exception:')
-            raise HTTP(
+            http = HTTP(
                 500,
                 await self.error_handler(),
                 headers=current.response.headers
@@ -267,7 +251,6 @@ class WSHandler(RequestHandler):
             self.dynamic_handler)
 
     async def __call__(self, scope, receive, send):
-        scope['emt.path'] = scope['path'] or '/'
         scope['emt.input'] = asyncio.Queue()
         task_events = asyncio.create_task(
             self.handle_events(scope, receive, send))
@@ -277,7 +260,7 @@ class WSHandler(RequestHandler):
             [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
         )
         scope['emt._flow_cancel'] = True
-        await _cancel_tasks(pending)
+        _cancel_tasks(pending)
 
     @Handler.on_event('websocket.disconnect')
     async def event_disconnect(self, scope, receive, send, event):
@@ -289,6 +272,7 @@ class WSHandler(RequestHandler):
         return _event_looper
 
     async def handle_request(self, scope, receive, send):
+        scope['emt.path'] = scope['path'] or '/'
         try:
             await self.pre_handler(scope, receive, send)
         except asyncio.CancelledError:
@@ -318,10 +302,12 @@ class WSHandler(RequestHandler):
 
 
 class RequestContext:
-    def __init__(self, app, scope):
+    def __init__(self, app, scope, receive, send):
         self.app = app
         self.request = Request(
             scope,
+            receive,
+            send,
             app.config.request_max_content_length,
             app.config.request_body_timeout
         )
@@ -362,7 +348,6 @@ async def _event_missing(handler, receive, send):
     raise RuntimeError('Event type not recognized.')
 
 
-async def _cancel_tasks(tasks):
+def _cancel_tasks(tasks):
     for task in tasks:
         task.cancel()
-    await asyncio.gather(*tasks, return_exceptions=True)

@@ -21,7 +21,9 @@ from emmett.testing.env import ScopeBuilder
 @contextmanager
 def current_ctx(app, path):
     builder = ScopeBuilder(path)
-    token = current._init_(FakeRequestContext, app, builder.get_data()[0])
+    token = current._init_(
+        FakeRequestContext, app, builder.get_data()[0], None, None
+    )
     yield current
     current._close_(token)
 

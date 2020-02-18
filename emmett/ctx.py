@@ -34,8 +34,10 @@ class Current:
         object.__setattr__(self, '_ctx', contextvars.ContextVar('ctx'))
         self._ctx.set(Context())
 
-    def _init_(self, ctx_cls, app, scope, *args, **kwargs):
-        return self._ctx.set(ctx_cls(app, scope, *args, **kwargs))
+    def _init_(self, ctx_cls, app, scope, receive, send, *args, **kwargs):
+        return self._ctx.set(
+            ctx_cls(app, scope, receive, send, *args, **kwargs)
+        )
 
     def _close_(self, token):
         self._ctx.reset(token)

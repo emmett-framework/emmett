@@ -17,8 +17,8 @@ from emmett.wrappers.response import Response
 
 
 class FakeRequestContext(RequestContext):
-    def __init__(self, app, scope):
-        self.request = Request(scope)
+    def __init__(self, app, scope, *args):
+        self.request = Request(scope, None, None)
         self.response = Response()
         self.session = None
 
@@ -26,7 +26,9 @@ class FakeRequestContext(RequestContext):
 @pytest.fixture(scope='module')
 def ctx():
     builder = ScopeBuilder()
-    token = current._init_(FakeRequestContext, None, builder.get_data()[0])
+    token = current._init_(
+        FakeRequestContext, None, builder.get_data()[0], None, None
+    )
     yield current
     current._close_(token)
 

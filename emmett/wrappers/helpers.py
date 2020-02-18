@@ -10,7 +10,7 @@
 """
 
 from collections.abc import Mapping
-from typing import Any, BinaryIO, Dict, Iterable, Iterator, List, Tuple, Union
+from typing import Any, BinaryIO, Dict, Iterable, Iterator, Tuple, Union
 
 from .._internal import loop_copyfileobj
 
@@ -104,3 +104,7 @@ class FileStorage:
         return (
             f'<{self.__class__.__name__}: '
             f'{self.filename} ({self.content_type})')
+
+
+class RequestCancelled(Exception):
+    pass
