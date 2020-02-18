@@ -9,14 +9,18 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import re
+
+from typing import Any, Callable, Type
 
 from ..ctx import current
 from ..http import HTTP
 from .response import (
     AutoResponseBuilder, BytesResponseBuilder, ResponseBuilder,
     TemplateResponseBuilder)
-from .rules import HTTPRoutingRule, WebsocketRoutingRule
+from .rules import RoutingRule, HTTPRoutingRule, WebsocketRoutingRule
 
 
 class Router:
@@ -284,12 +288,18 @@ class WebsocketRouter(Router):
 class RoutingCtx:
     __slots__ = ['router', 'rule']
 
-    def __init__(self, router, rule_cls, *args, **kwargs):
+    def __init__(
+        self,
+        router: Router,
+        rule_cls: Type[RoutingRule],
+        *args,
+        **kwargs
+    ):
         self.router = router
         self.rule = rule_cls(self.router, *args, **kwargs)
         self.router._routing_stack.append(self.rule)
 
-    def __call__(self, f):
+    def __call__(self, f: Callable[[...], Any]) -> Callable[[...], Any]:
         self.router.app.send_signal('before_route', route=self.rule, f=f)
         rv = self.rule(f)
         self.router.app.send_signal('after_route', route=self.rule)

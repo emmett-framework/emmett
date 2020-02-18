@@ -9,7 +9,11 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import os
+
+from typing import Any, Callable
 
 from ..cache import RouteCacheRule
 from ..http import HTTPResponse
@@ -38,6 +42,9 @@ class RoutingRule:
         if len(short.split(os.sep)) > 1:
             short = short.split(os.sep)[-1]
         return '.'.join(short.split(os.sep) + [f.__name__])
+
+    def __call__(self, f: Callable[[...], Any]) -> Callable[[...], Any]:
+        raise NotImplementedError
 
 
 class HTTPRoutingRule(RoutingRule):
