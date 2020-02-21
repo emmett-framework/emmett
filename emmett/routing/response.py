@@ -11,7 +11,7 @@
 
 from __future__ import annotations
 
-from typing import Any, AnyStr, Dict, Tuple, Union
+from typing import Any, AnyStr, Dict, Tuple, Type, Union
 
 from renoir.errors import TemplateMissingError
 
@@ -24,12 +24,12 @@ from .urls import url
 
 
 class ResponseBuilder:
-    http_cls: HTTPResponse = HTTP
+    http_cls: Type[HTTPResponse] = HTTP
 
     def __init__(self, route: RoutingRule):
         self.route = route
 
-    def __call__(self, output: Any) -> Tuple[HTTPResponse, AnyStr]:
+    def __call__(self, output: Any) -> Tuple[Type[HTTPResponse], AnyStr]:
         return self.http_cls, output
 
 
@@ -37,12 +37,12 @@ class ResponseProcessor(ResponseBuilder):
     def process(self, output: Any):
         raise NotImplementedError
 
-    def __call__(self, output: Any) -> Tuple[HTTPResponse, AnyStr]:
+    def __call__(self, output: Any) -> Tuple[Type[HTTPResponse], AnyStr]:
         return self.http_cls, self.process(output)
 
 
 class BytesResponseBuilder(ResponseBuilder):
-    http_cls: HTTPResponse = HTTPBytes
+    http_cls: Type[HTTPResponse] = HTTPBytes
 
 
 class TemplateResponseBuilder(ResponseProcessor):
