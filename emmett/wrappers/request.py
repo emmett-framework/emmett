@@ -19,13 +19,13 @@ from io import BytesIO
 from urllib.parse import parse_qs
 from typing import Optional
 
+from ..asgi.typing import Scope, Receive, Send
 from ..datastructures import sdict
 from ..http import HTTP
 from ..parsers import Parsers
 from ..utils import cachedprop
 from . import ScopeWrapper
 from .helpers import FileStorage, RequestCancelled
-from .typing import Scope, Receive, Send
 
 _regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
 

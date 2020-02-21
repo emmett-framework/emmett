@@ -16,11 +16,11 @@ import re
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs
 
+from ..asgi.typing import Scope, Receive, Send
 from ..datastructures import Accept, sdict
 from ..language.helpers import LanguageAccept
 from ..utils import cachedprop
 from .helpers import Headers
-from .typing import Scope, Receive, Send
 
 _regex_accept = re.compile(r'''
     ([^\s;,]+(?:[ \t]*;[ \t]*(?:[^\s;,q][^\s;,]*|q[^\s;,=][^\s;,]*))*)

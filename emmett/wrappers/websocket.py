@@ -9,8 +9,8 @@
     :license: BSD-3-Clause
 """
 
+from ..asgi.typing import Scope, Receive, Send
 from . import ScopeWrapper
-from .typing import Scope, Receive, Send
 
 
 class Websocket(ScopeWrapper):
