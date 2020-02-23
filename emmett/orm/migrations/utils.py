@@ -24,17 +24,17 @@ class RuntimeMigration(MigrationOp):
     def __init__(self, engine: Engine, ops: UpgradeOps):
         super().__init__('runtime', ops, ops.reverse(), 'runtime')
         self.engine = engine
-        for op in self.upgrade_ops:
+        for op in self.upgrade_ops.ops:
             op.engine = self.engine
-        for op in self.downgrade_ops:
+        for op in self.downgrade_ops.ops:
             op.engine = self.engine
 
     def up(self):
-        for op in self.upgrade_ops:
+        for op in self.upgrade_ops.ops:
             op.run()
 
     def down(self):
-        for op in self.downgrade_ops:
+        for op in self.downgrade_ops.ops:
             op.run()
 
 
