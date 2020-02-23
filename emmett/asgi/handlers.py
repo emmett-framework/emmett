@@ -201,8 +201,10 @@ class HTTPHandler(RequestHandler):
             http = await self.pre_handler(scope, receive, send)
         except RequestCancelled:
             return
-        # TODO: timeout from app config/response
-        await asyncio.wait_for(http.send(scope, send), None)
+        await asyncio.wait_for(
+            http.send(scope, send),
+            self.app.config.response_timeout
+        )
 
     @staticmethod
     async def _http_response(code: int) -> HTTPResponse:

@@ -48,7 +48,8 @@ class Config(ConfigData):
             static_version_urls=False,
             url_default_namespace=None,
             request_max_content_length=None,
-            request_body_timeout=None
+            request_body_timeout=None,
+            response_timeout=None
         )
         self._handle_static = True
         self._templates_auto_reload = app.debug or False
