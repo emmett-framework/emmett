@@ -15,7 +15,7 @@ from datetime import timedelta
 from typing import List, Optional, Type
 
 from ...cache import RouteCacheRule
-from ...ctx import session, request
+from ...ctx import session, now
 from ...pipeline import Pipe, Injector
 from .ext import AuthExtension
 from .exposer import AuthModule
@@ -205,7 +205,7 @@ class AuthPipe(Pipe):
             del session.auth
             return
         #: is session expired?
-        visit_dt = request.now.as_naive_datetime()
+        visit_dt = now().as_naive_datetime()
         if (
             authsess.last_visit + timedelta(seconds=authsess.expiration) <
             visit_dt
