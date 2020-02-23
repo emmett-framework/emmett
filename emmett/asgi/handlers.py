@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent
 import os
 import re
 
@@ -30,9 +31,9 @@ from ..wrappers.websocket import Websocket
 from .typing import Event, EventHandler, EventLooper, Receive, Scope, Send
 
 REGEX_STATIC = re.compile(
-    '^/static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
+    r'^/static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
 REGEX_STATIC_LANG = re.compile(
-    '^/(?P<l>\w+/)?static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
+    r'^/(?P<l>\w+/)?static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
 
 
 class EventHandlerWrapper:
@@ -376,17 +377,19 @@ class WSHandler(RequestHandler):
         send: Send
     ):
         scope['emt.path'] = scope['path'] or '/'
+        scope['emt._ws_closed'] = False
         try:
             await self.pre_handler(scope, receive, send)
+        except HTTPResponse:
+            if not scope['emt._ws_closed']:
+                await send({'type': 'websocket.close', 'code': 1006})
         except asyncio.CancelledError:
             if not scope.get('emt._flow_cancel', False):
                 self.app.log.exception('Application exception:')
         except Exception:
+            if not scope['emt._ws_closed']:
+                await send({'type': 'websocket.close', 'code': 1006})
             self.app.log.exception('Application exception:')
-
-    @staticmethod
-    async def _empty_response():
-        return None
 
     def _prefix_handler(
         self,
@@ -396,8 +399,7 @@ class WSHandler(RequestHandler):
     ) -> Awaitable[None]:
         path = scope['emt.path']
         if not path.startswith(self.router._prefix_main):
-            # TODO: better implement this
-            return self._empty_response()
+            raise HTTP(404)
         scope['emt.path'] = path[self.router._prefix_main_len:] or '/'
         return self.dynamic_handler(scope, receive, send)
 
@@ -412,13 +414,13 @@ class WSHandler(RequestHandler):
         )
         try:
             await self.router.dispatch()
-        except HTTPResponse:
-            return
         finally:
-            if current.websocket._accepted:
+            if (
+                not scope.get('emt._flow_cancel', False) and
+                current.websocket._accepted
+            ):
                 await send({'type': 'websocket.close', 'code': 1000})
-            else:
-                await send({'type': 'websocket.close', 'code': 1006})
+                scope['emt._ws_closed'] = True
             current._close_(ctx_token)
 
 

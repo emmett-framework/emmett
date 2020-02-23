@@ -9,6 +9,8 @@
     :license: BSD-3-Clause
 """
 
+from typing import Dict, List, Optional, Tuple
+
 from ..asgi.typing import Scope, Receive, Send
 from . import ScopeWrapper
 
@@ -33,11 +35,31 @@ class Websocket(ScopeWrapper):
         self._flow_receive = flow_receive
         self._flow_send = flow_send
 
-    async def accept(self):
+    @property
+    def _asgi_spec_version(self) -> int:
+        return int(''.join(
+            self._scope.get('asgi', {}).get('spec_version', '2.0').split('.')
+        ))
+
+    def _encode_headers(
+        self,
+        headers: Dict[str, str]
+    ) -> List[Tuple[bytes, bytes]]:
+        return [
+            (key.encode('utf-8'), val.encode('utf-8'))
+            for key, val in headers.items()
+        ]
+
+    async def accept(
+        self,
+        headers: Optional[Dict[str, str]] = None,
+        subprotocol: Optional[str] = None
+    ):
         if self._accepted:
             return
-        message = {'type': 'websocket.accept', 'subprotocol': None}
-        # TODO headers
+        message = {'type': 'websocket.accept', 'subprotocol': subprotocol}
+        if headers and self._asgi_spec_version > 20:
+            message['headers'] = self._encode_headers(headers)
         await self._send(message)
         self._accepted = True
         self.receive = self._wrapped_receive
