@@ -95,13 +95,13 @@ class Router:
     def _get_routes_in_for_host_nomatch(self, wrapper):
         return self._routes_nohost
 
-    def _match_with_lang(self, request, path):
+    def _match_with_lang(self, wrapper, path):
         path, lang = self._split_lang(path)
-        current.language = request.language = lang
+        current.language = wrapper.language = lang
         return path
 
-    def _match_no_lang(self, request, path):
-        request.language = None
+    def _match_no_lang(self, wrapper, path):
+        wrapper.language = None
         return path
 
     @staticmethod
