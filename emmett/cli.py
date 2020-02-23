@@ -130,9 +130,6 @@ class ScriptInfo(object):
         self._loaded_ctx = None
         self._loaded_app = None
         self.db_var_name = None
-        #: Set environment flag
-        # TODO: custom commands?
-        # os.environ['EMMETT_CLI_ENV'] = 'true'
 
     def load_appctx(self):
         if self._loaded_ctx is not None:
