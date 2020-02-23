@@ -9,15 +9,19 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import click
 import os
 import sys
 
 from yaml import SafeLoader as ymlLoader, load as ymlload
+from typing import List, Optional, Type, Union
 
 from ._internal import get_root_path, create_missing_app_folders
 from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
 from .asgi.server import run as asgi_run
+from .cache import RouteCacheRule
 from .ctx import current
 from .datastructures import sdict, ConfigData
 from .extensions import Extension
@@ -25,7 +29,8 @@ from .helpers import load_component
 from .html import asis
 from .language.helpers import Tstr
 from .language.translator import Translator
-from .routing.router import HTTPRouter, WebsocketRouter
+from .pipeline import Pipe, Injector
+from .routing.router import HTTPRouter, WebsocketRouter, RoutingCtx
 from .routing.urls import url
 from .templating.templater import Templater
 from .utils import dict_to_sdict, cachedprop, read_file
@@ -43,7 +48,8 @@ class Config(ConfigData):
             static_version_urls=False,
             url_default_namespace=None,
             request_max_content_length=None,
-            request_body_timeout=None
+            request_body_timeout=None,
+            response_timeout=None
         )
         self._handle_static = True
         self._templates_auto_reload = app.debug or False
@@ -243,10 +249,21 @@ class App:
         self.route._injectors = injectors
 
     def route(
-        self, paths=None, name=None, template=None, pipeline=None,
-        injectors=None, schemes=None, hostname=None, methods=None, prefix=None,
-        template_folder=None, template_path=None, cache=None, output='auto'
-    ):
+        self,
+        paths: Optional[Union[str, List[str]]] = None,
+        name: Optional[str] = None,
+        template: Optional[str] = None,
+        pipeline: Optional[List[Pipe]] = None,
+        injectors: Optional[List[Injector]] = None,
+        schemes: Optional[Union[str, List[str]]] = None,
+        hostname: Optional[str] = None,
+        methods: Optional[Union[str, List[str]]] = None,
+        prefix: Optional[str] = None,
+        template_folder: Optional[str] = None,
+        template_path: Optional[str] = None,
+        cache: Optional[RouteCacheRule] = None,
+        output: str = 'auto'
+    ) -> RoutingCtx:
         if callable(paths):
             raise SyntaxError('Use @route(), not @route.')
         return self._router_http(
@@ -266,9 +283,14 @@ class App:
         )
 
     def websocket(
-        self, paths=None, name=None, pipeline=None, schemes=None,
-        hostname=None, prefix=None
-    ):
+        self,
+        paths: Optional[Union[str, List[str]]] = None,
+        name: Optional[str] = None,
+        pipeline: Optional[List[Pipe]] = None,
+        schemes: Optional[Union[str, List[str]]] = None,
+        hostname: Optional[str] = None,
+        prefix: Optional[str] = None
+    ) -> RoutingCtx:
         if callable(paths):
             raise SyntaxError('Use @websocket(), not @websocket.')
         return self._router_ws(
@@ -361,6 +383,7 @@ class App:
         log_level=None, access_log=None,
         proxy_headers=False,
         limit_concurrency=None,
+        backlog=2048,
         timeout_keep_alive=0
     ):
         asgi_run(
@@ -369,6 +392,7 @@ class App:
             log_level=log_level, access_log=access_log,
             proxy_headers=proxy_headers,
             limit_concurrency=limit_concurrency,
+            backlog=backlog,
             timeout_keep_alive=timeout_keep_alive
         )
 
@@ -401,14 +425,32 @@ class App:
         return self._asgi_handlers[scope['type']](scope, receive, send)
 
     def module(
-        self, import_name, name, template_folder=None, template_path=None,
-        url_prefix=None, hostname=None, cache=None, root_path=None,
-        module_class=None
-    ):
+        self,
+        import_name: str,
+        name: str,
+        template_folder: Optional[str] = None,
+        template_path: Optional[str] = None,
+        url_prefix: Optional[str] = None,
+        hostname: Optional[str] = None,
+        cache: Optional[RouteCacheRule] = None,
+        root_path: Optional[str] = None,
+        pipeline: Optional[List[Pipe]] = None,
+        injectors: Optional[List[Injector]] = None,
+        module_class: Optional[Type[AppModule]] = None
+    ) -> AppModule:
         module_class = module_class or self.config.modules_class
         return module_class.from_app(
-            self, import_name, name, template_folder, template_path,
-            url_prefix, hostname, cache, root_path
+            self,
+            import_name,
+            name,
+            template_folder=template_folder,
+            template_path=template_path,
+            url_prefix=url_prefix,
+            hostname=hostname,
+            cache=cache,
+            root_path=root_path,
+            pipeline=pipeline or [],
+            injectors=injectors or []
         )
 
 
@@ -416,11 +458,11 @@ class AppModule:
     @classmethod
     def from_app(
         cls, app, import_name, name, template_folder, template_path,
-        url_prefix, hostname, cache, root_path
+        url_prefix, hostname, cache, root_path, pipeline, injectors
     ):
         return cls(
             app, name, import_name, template_folder, template_path, url_prefix,
-            hostname, cache, root_path
+            hostname, cache, root_path, pipeline, injectors
         )
 
     @classmethod
@@ -446,20 +488,34 @@ class AppModule:
         )
 
     def module(
-        self, import_name, name, template_folder=None, template_path=None,
-        url_prefix=None, hostname=None, cache=None, root_path=None,
-        module_class=None
-    ):
+        self,
+        import_name: str,
+        name: str,
+        template_folder: Optional[str] = None,
+        template_path: Optional[str] = None,
+        url_prefix: Optional[str] = None,
+        hostname: Optional[str] = None,
+        cache: Optional[RouteCacheRule] = None,
+        root_path: Optional[str] = None,
+        module_class: Optional[Type[AppModule]] = None
+    ) -> AppModule:
         module_class = module_class or self.__class__
         return module_class.from_module(
-            self, import_name, name, template_folder, template_path,
-            url_prefix, hostname, cache, root_path
+            self,
+            import_name,
+            name,
+            template_folder=template_folder,
+            template_path=template_path,
+            url_prefix=url_prefix,
+            hostname=hostname,
+            cache=cache,
+            root_path=root_path
         )
 
     def __init__(
         self, app, name, import_name, template_folder=None, template_path=None,
         url_prefix=None, hostname=None, cache=None, root_path=None,
-        pipeline=[], injectors=[]
+        pipeline=None, injectors=None
     ):
         self.app = app
         self.name = name
@@ -476,28 +532,34 @@ class AppModule:
         self.url_prefix = url_prefix
         self.hostname = hostname
         self.cache = cache
-        self._super_pipeline = pipeline
-        self._super_injectors = injectors
+        self._super_pipeline = pipeline or []
+        self._super_injectors = injectors or []
         self.pipeline = []
         self.injectors = []
 
     @property
-    def pipeline(self):
+    def pipeline(self) -> List[Pipe]:
         return self._pipeline
 
     @pipeline.setter
-    def pipeline(self, pipeline):
+    def pipeline(self, pipeline: List[Pipe]):
         self._pipeline = self._super_pipeline + pipeline
 
     @property
-    def injectors(self):
+    def injectors(self) -> List[Injector]:
         return self._injectors
 
     @injectors.setter
-    def injectors(self, injectors):
+    def injectors(self, injectors: List[Injector]):
         self._injectors = self._super_injectors + injectors
 
-    def route(self, paths=None, name=None, template=None, **kwargs):
+    def route(
+        self,
+        paths: Optional[Union[str, List[str]]] = None,
+        name: Optional[str] = None,
+        template: Optional[str] = None,
+        **kwargs
+    ) -> RoutingCtx:
         if name is not None and "." in name:
             raise RuntimeError(
                 "App modules' route names should not contains dots"
@@ -523,7 +585,12 @@ class AppModule:
             **kwargs
         )
 
-    def websocket(self, paths=None, name=None, **kwargs):
+    def websocket(
+        self,
+        paths: Optional[Union[str, List[str]]] = None,
+        name: Optional[str] = None,
+        **kwargs
+    ) -> RoutingCtx:
         if name is not None and "." in name:
             raise RuntimeError(
                 "App modules' websocket names should not contains dots"

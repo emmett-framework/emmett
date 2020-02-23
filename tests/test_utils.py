@@ -14,7 +14,7 @@ from emmett.utils import (
     dict_to_sdict, is_valid_ip_address)
 
 
-class TestClass(object):
+class Class:
     def __init__(self):
         self.calls = 0
 
@@ -30,8 +30,8 @@ class TestClass(object):
 
 
 def test_cachedprop_sync():
-    assert isinstance(TestClass.prop, _cached_prop_sync)
-    obj = TestClass()
+    assert isinstance(Class.prop, _cached_prop_sync)
+    obj = Class()
     assert obj.calls == 0
     assert obj.prop == 'test_cachedprop_sync'
     assert obj.calls == 1
@@ -41,8 +41,8 @@ def test_cachedprop_sync():
 
 @pytest.mark.asyncio
 async def test_cachedprop_loop():
-    assert isinstance(TestClass.prop_loop, _cached_prop_loop)
-    obj = TestClass()
+    assert isinstance(Class.prop_loop, _cached_prop_loop)
+    obj = Class()
     assert obj.calls == 0
     assert (await obj.prop_loop) == 'test_cachedprop_loop'
     assert obj.calls == 1

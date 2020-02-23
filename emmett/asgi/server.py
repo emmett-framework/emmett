@@ -70,6 +70,7 @@ def run(
     proxy_headers=False,
     limit_concurrency=None,
     # limit_max_requests=None,
+    backlog=2048,
     timeout_keep_alive=0
     # timeout_notify=30
 ):
@@ -101,6 +102,7 @@ def run(
         proxy_headers=proxy_headers,
         limit_concurrency=limit_concurrency,
         # limit_max_requests=limit_max_requests,
+        backlog=backlog,
         timeout_keep_alive=timeout_keep_alive,
         # timeout_notify=timeout_notify
     )

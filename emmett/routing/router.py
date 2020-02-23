@@ -9,14 +9,19 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import re
+
+from typing import Any, Callable, Dict, List, Type
 
 from ..ctx import current
 from ..http import HTTP
 from .response import (
-    AutoResponseBuilder, BytesResponseBuilder, ResponseBuilder,
-    TemplateResponseBuilder)
-from .rules import HTTPRoutingRule, WebsocketRoutingRule
+    ResponseBuilder, AutoResponseBuilder,
+    BytesResponseBuilder, TemplateResponseBuilder
+)
+from .rules import RoutingRule, HTTPRoutingRule, WebsocketRoutingRule
 
 
 class Router:
@@ -26,11 +31,11 @@ class Router:
         '_match_lang'
     ]
 
-    _outputs = {}
-    _routing_rule_cls = None
+    _outputs: Dict[str, Type[ResponseBuilder]] = {}
+    _routing_rule_cls: Type[RoutingRule] = RoutingRule
     _routing_signal = 'before_routes'
     _routing_started = False
-    _routing_stack = []
+    _routing_stack: List[RoutingRule] = []
     _re_components = re.compile(r'(\()?([^<\w]+)?<(\w+)\:(\w+)>(\)\?)?')
 
     def __init__(self, app, url_prefix=None):
@@ -90,13 +95,13 @@ class Router:
     def _get_routes_in_for_host_nomatch(self, wrapper):
         return self._routes_nohost
 
-    def _match_with_lang(self, request, path):
+    def _match_with_lang(self, wrapper, path):
         path, lang = self._split_lang(path)
-        current.language = request.language = lang
+        current.language = wrapper.language = lang
         return path
 
-    def _match_no_lang(self, request, path):
-        request.language = None
+    def _match_no_lang(self, wrapper, path):
+        wrapper.language = None
         return path
 
     @staticmethod
@@ -284,12 +289,18 @@ class WebsocketRouter(Router):
 class RoutingCtx:
     __slots__ = ['router', 'rule']
 
-    def __init__(self, router, rule_cls, *args, **kwargs):
+    def __init__(
+        self,
+        router: Router,
+        rule_cls: Type[RoutingRule],
+        *args,
+        **kwargs
+    ):
         self.router = router
         self.rule = rule_cls(self.router, *args, **kwargs)
         self.router._routing_stack.append(self.rule)
 
-    def __call__(self, f):
+    def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
         self.router.app.send_signal('before_route', route=self.rule, f=f)
         rv = self.rule(f)
         self.router.app.send_signal('after_route', route=self.rule)

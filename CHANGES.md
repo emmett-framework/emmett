@@ -23,6 +23,8 @@ Next
 - Added `request_body_timeout` to `App.config`
 - Added async support in `cache` module
 - Decoupled internationalization engine
+- Added runtime migration utils in ORM
+- Added `response_timeout` to `App.config`
 
 Version 1.3
 -----------

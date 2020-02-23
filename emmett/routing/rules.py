@@ -9,7 +9,11 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import os
+
+from typing import Any, Callable
 
 from ..cache import RouteCacheRule
 from ..http import HTTPResponse
@@ -20,7 +24,7 @@ from .routes import HTTPRoute, WebsocketRoute
 class RoutingRule:
     __slots__ = ['router']
 
-    def __init__(self, router):
+    def __init__(self, router, *args, **kwargs):
         self.router = router
 
     @property
@@ -38,6 +42,9 @@ class RoutingRule:
         if len(short.split(os.sep)) > 1:
             short = short.split(os.sep)[-1]
         return '.'.join(short.split(os.sep) + [f.__name__])
+
+    def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
+        raise NotImplementedError
 
 
 class HTTPRoutingRule(RoutingRule):
@@ -94,7 +101,7 @@ class HTTPRoutingRule(RoutingRule):
         if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
             raise RuntimeError('Invalid pipeline')
 
-    def __call__(self, f):
+    def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
         if not self.paths:
             self.paths.append("/" + f.__name__)
         if not self.name:
@@ -156,7 +163,7 @@ class WebsocketRoutingRule(RoutingRule):
         if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
             raise RuntimeError('Invalid pipeline')
 
-    def __call__(self, f):
+    def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
         if not self.paths:
             self.paths.append("/" + f.__name__)
         if not self.name:

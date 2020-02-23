@@ -9,7 +9,7 @@
     :license: BSD-3-Clause
 """
 
-from collections import Iterable
+from collections.abc import Iterable
 from uuid import uuid4
 
 from ...datastructures import _unique_list

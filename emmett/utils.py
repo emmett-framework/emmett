@@ -117,11 +117,14 @@ def parse_datetime(text):
     )
 
 
+_re_ipv4 = re.compile(r'(\d+)\.(\d+)\.(\d+)\.(\d+)')
+
+
 def is_valid_ip_address(address):
-    REGEX_IPv4 = re.compile('(\d+)\.(\d+)\.(\d+)\.(\d+)')
     # deal with special cases
-    if address.lower() in ('127.0.0.1', 'localhost', '::1',
-                           '::ffff:127.0.0.1'):
+    if address.lower() in [
+        '127.0.0.1', 'localhost', '::1', '::ffff:127.0.0.1'
+    ]:
         return True
     elif address.lower() in ('unknown', ''):
         return False
@@ -135,9 +138,10 @@ def is_valid_ip_address(address):
             except socket.error:  # invalid address
                 return False
         else:  # try validate using Regex
-            match = REGEX_IPv4.match(address)
-            if match and all(0 <= int(match.group(i)) < 256
-                             for i in (1, 2, 3, 4)):
+            match = _re_ipv4.match(address)
+            if match and all(
+                0 <= int(match.group(i)) < 256 for i in (1, 2, 3, 4)
+            ):
                 return True
             return False
     elif hasattr(socket, 'inet_pton'):  # assume IPv6, try using the OS

@@ -9,15 +9,20 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import os
 import pickle
 import tempfile
 import time
 
+from typing import Any, Optional, Type
+
 from .ctx import current, request, response, websocket
 from .datastructures import sdict, SessionData
 from .pipeline import Pipe
 from .security import secure_loads, secure_dumps, uuid
+from .wrappers import ScopeWrapper
 
 
 class SessionPipe(Pipe):
@@ -28,15 +33,16 @@ class SessionPipe(Pipe):
         self.secure = secure
         self.domain = domain
         self.cookie_name = (
-            cookie_name or 'emt_session_data_%s' % current.app.name)
+            cookie_name or f'emt_session_data_{current.app.name}'
+        )
 
-    def _load_session(self):
-        pass
+    def _load_session(self, wrapper: ScopeWrapper):
+        raise NotImplementedError
 
-    def _new_session(self):
-        pass
+    def _new_session(self) -> SessionData:
+        raise NotImplementedError
 
-    def _pack_session(self, expiration):
+    def _pack_session(self, expiration: int):
         response.cookies[self.cookie_name] = self._session_cookie_data()
         response.cookies[self.cookie_name]['path'] = "/"
         response.cookies[self.cookie_name]['expires'] = expiration
@@ -45,18 +51,18 @@ class SessionPipe(Pipe):
         if self.domain is not None:
             response.cookies[self.cookie_name]['domain'] = self.domain
 
-    def _session_cookie_data(self):
-        pass
+    def _session_cookie_data(self) -> str:
+        raise NotImplementedError
 
     async def open_request(self):
         if self.cookie_name in request.cookies:
-            current.session = self._load_session()
+            current.session = self._load_session(request)
         if not current.session:
             current.session = self._new_session()
 
     async def open_ws(self):
         if self.cookie_name in websocket.cookies:
-            current.session = self._load_session()
+            current.session = self._load_session(websocket)
         if not current.session:
             current.session = self._new_session()
 
@@ -72,37 +78,38 @@ class CookieSessionPipe(SessionPipe):
     def __init__(
         self, key, expire=3600, secure=False, domain=None, cookie_name=None
     ):
-        super(CookieSessionPipe, self).__init__(
-            expire, secure, domain, cookie_name)
+        super().__init__(expire, secure, domain, cookie_name)
         self.key = key
 
-    def _load_session(self):
-        cookie_data = request.cookies[self.cookie_name].value
+    def _load_session(self, wrapper: ScopeWrapper) -> SessionData:
+        cookie_data = wrapper.cookies[self.cookie_name].value
         return SessionData(
-            secure_loads(cookie_data, self.key), expires=self.expire)
+            secure_loads(cookie_data, self.key),
+            expires=self.expire
+        )
 
-    def _new_session(self):
+    def _new_session(self) -> SessionData:
         return SessionData(expires=self.expire)
 
-    def _session_cookie_data(self):
+    def _session_cookie_data(self) -> str:
         return secure_dumps(sdict(current.session), self.key)
 
     def clear(self):
         raise NotImplementedError(
-            "%s doesn't support sessions clearing. " +
-            "You should change the '%s' parameter to invalidate existing ones."
-            % (self.__class__.__name__, 'key'))
+            f"{self.__class__.__name__} doesn't support sessions clearing. "
+            f"Change the 'key' parameter to invalidate existing ones."
+        )
 
 
 class BackendStoredSessionPipe(SessionPipe):
     def _new_session(self):
         return SessionData(sid=uuid())
 
-    def _session_cookie_data(self):
+    def _session_cookie_data(self) -> str:
         return current.session._sid
 
-    def _load_session(self):
-        sid = request.cookies[self.cookie_name].value
+    def _load_session(self, wrapper: ScopeWrapper) -> Optional[SessionData]:
+        sid = wrapper.cookies[self.cookie_name].value
         data = self._load(sid)
         if data is not None:
             return SessionData(data, sid=sid)
@@ -111,10 +118,10 @@ class BackendStoredSessionPipe(SessionPipe):
     def _delete_session(self):
         pass
 
-    def _save_session(self, expiration):
+    def _save_session(self, expiration: int):
         pass
 
-    def _load(self, sid):
+    def _load(self, sid: str):
         return None
 
     async def close_request(self):
@@ -138,8 +145,7 @@ class FileSessionPipe(BackendStoredSessionPipe):
         self, expire=3600, secure=False, domain=None, cookie_name=None,
         filename_template='emt_%s.sess'
     ):
-        super(FileSessionPipe, self).__init__(
-            expire, secure, domain, cookie_name)
+        super().__init__(expire, secure, domain, cookie_name)
         assert not filename_template.endswith(self._fs_transaction_suffix), \
             'filename templates cannot end with %s' % \
             self._fs_transaction_suffix
@@ -205,8 +211,7 @@ class RedisSessionPipe(BackendStoredSessionPipe):
         self, redis, prefix="emtsess:", expire=3600, secure=False, domain=None,
         cookie_name=None
     ):
-        super(RedisSessionPipe, self).__init__(
-            expire, secure, domain, cookie_name)
+        super().__init__(expire, secure, domain, cookie_name)
         self.redis = redis
         self.prefix = prefix
 
@@ -229,39 +234,74 @@ class RedisSessionPipe(BackendStoredSessionPipe):
         self.redis.delete(self.prefix + "*")
 
 
-class SessionManager(object):
-    _pipe = None
+class SessionManager:
+    _pipe: Optional[SessionPipe] = None
 
     @classmethod
-    def _build_pipe(cls, handler_cls, *args, **kwargs):
+    def _build_pipe(
+        cls,
+        handler_cls: Type[SessionPipe],
+        *args,
+        **kwargs
+    ) -> SessionPipe:
         cls._pipe = handler_cls(*args, **kwargs)
         return cls._pipe
 
     @classmethod
     def cookies(
-        cls, key, expire=3600, secure=False, domain=None, cookie_name=None
-    ):
+        cls,
+        key: str,
+        expire: int = 3600,
+        secure: bool = False,
+        domain: Optional[str] = None,
+        cookie_name: Optional[str] = None
+    ) -> CookieSessionPipe:
         return cls._build_pipe(
-            CookieSessionPipe, key, expire=expire, secure=secure,
-            domain=domain, cookie_name=cookie_name)
+            CookieSessionPipe,
+            key,
+            expire=expire,
+            secure=secure,
+            domain=domain,
+            cookie_name=cookie_name
+        )
 
     @classmethod
     def files(
-        cls, expire=3600, secure=False, domain=None, cookie_name=None,
-        filename_template='emt_%s.sess'
-    ):
+        cls,
+        expire: int = 3600,
+        secure: bool = False,
+        domain: Optional[str] = None,
+        cookie_name: Optional[str] = None,
+        filename_template: str = 'emt_%s.sess'
+    ) -> FileSessionPipe:
         return cls._build_pipe(
-            FileSessionPipe, expire=expire, secure=secure, domain=domain,
-            cookie_name=cookie_name, filename_template=filename_template)
+            FileSessionPipe,
+            expire=expire,
+            secure=secure,
+            domain=domain,
+            cookie_name=cookie_name,
+            filename_template=filename_template
+        )
 
     @classmethod
     def redis(
-        cls, redis, prefix="emtsess:", expire=3600, secure=False, domain=None,
-        cookie_name=None
-    ):
+        cls,
+        redis: Any,
+        prefix: str = "emtsess:",
+        expire: int = 3600,
+        secure: bool = False,
+        domain: Optional[str] = None,
+        cookie_name: Optional[str] = None
+    ) -> RedisSessionPipe:
         return cls._build_pipe(
-            RedisSessionPipe, redis, prefix=prefix, expire=expire,
-            secure=secure, domain=domain, cookie_name=cookie_name)
+            RedisSessionPipe,
+            redis,
+            prefix=prefix,
+            expire=expire,
+            secure=secure,
+            domain=domain,
+            cookie_name=cookie_name
+        )
 
     @classmethod
     def clear(cls):

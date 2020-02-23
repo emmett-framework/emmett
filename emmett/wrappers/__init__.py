@@ -9,11 +9,14 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import re
 
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs
 
+from ..asgi.typing import Scope, Receive, Send
 from ..datastructures import Accept, sdict
 from ..language.helpers import LanguageAccept
 from ..utils import cachedprop
@@ -33,10 +36,17 @@ class Wrapper:
 
 
 class ScopeWrapper(Wrapper):
-    __slots__ = ('_scope', 'scheme', 'path')
+    __slots__ = ('_scope', '_receive', '_send', 'scheme', 'path')
 
-    def __init__(self, scope):
+    def __init__(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send
+    ):
         self._scope = scope
+        self._receive = receive
+        self._send = send
         self.scheme = scope['scheme']
         self.path = scope['emt.path']
 

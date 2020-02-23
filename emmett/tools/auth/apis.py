@@ -9,10 +9,14 @@
     :license: BSD-3-Clause
 """
 
-from datetime import timedelta
+from __future__ import annotations
 
-from ...ctx import session, request
-from ...pipeline import Pipe
+from datetime import timedelta
+from typing import List, Optional, Type
+
+from ...cache import RouteCacheRule
+from ...ctx import session, now
+from ...pipeline import Pipe, Injector
 from .ext import AuthExtension
 from .exposer import AuthModule
 
@@ -27,13 +31,31 @@ class Auth(object):
         self.pipe = AuthPipe(self)
 
     def module(
-        self, import_name, name='auth', template_folder='auth',
-        template_path=None, url_prefix='auth', hostname=None, cache=None,
-        root_path=None, module_class=AuthModule
-    ):
+        self,
+        import_name: str,
+        name: str = 'auth',
+        template_folder: str = 'auth',
+        template_path: Optional[str] = None,
+        url_prefix: Optional[str] = 'auth',
+        hostname: Optional[str] = None,
+        cache: Optional[RouteCacheRule] = None,
+        root_path: Optional[str] = None,
+        pipeline: Optional[List[Pipe]] = None,
+        injectors: Optional[List[Injector]] = None,
+        module_class: Type[AuthModule] = AuthModule
+    ) -> AuthModule:
         return module_class.from_app(
-            self.ext.app, import_name, name, template_folder, template_path,
-            url_prefix, hostname, cache, root_path
+            self.ext.app,
+            import_name,
+            name,
+            template_folder=template_folder,
+            template_path=template_path,
+            url_prefix=url_prefix,
+            hostname=hostname,
+            cache=cache,
+            root_path=root_path,
+            pipeline=pipeline or [],
+            injectors=injectors or []
         )
 
     @property
@@ -183,7 +205,7 @@ class AuthPipe(Pipe):
             del session.auth
             return
         #: is session expired?
-        visit_dt = request.now.as_naive_datetime()
+        visit_dt = now().as_naive_datetime()
         if (
             authsess.last_visit + timedelta(seconds=authsess.expiration) <
             visit_dt

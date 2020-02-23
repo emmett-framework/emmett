@@ -130,9 +130,6 @@ class ScriptInfo(object):
         self._loaded_ctx = None
         self._loaded_app = None
         self.db_var_name = None
-        #: Set environment flag
-        # TODO: custom commands?
-        # os.environ['EMMETT_CLI_ENV'] = 'true'
 
     def load_appctx(self):
         if self._loaded_ctx is not None:
@@ -315,6 +312,9 @@ def develop_command(info, host, port, reloader, debug):
     '--max-concurrency', type=int,
     help='The maximum number of concurrent connections.')
 @click.option(
+    '--backlog', type=int, default=2048,
+    help='Maximum number of connections to hold in backlog')
+@click.option(
     '--keep-alive-timeout', type=int, default=0,
     help='Keep alive timeout for connections.')
 @pass_script_info
@@ -323,7 +323,7 @@ def serve_command(
     loop, http_protocol, ws_protocol,
     log_level, access_log,
     proxy_headers,
-    max_concurrency, keep_alive_timeout
+    max_concurrency, backlog, keep_alive_timeout
 ):
     app = info.load_app()
     app._run(
@@ -332,6 +332,7 @@ def serve_command(
         log_level=log_level, access_log=access_log,
         proxy_headers=proxy_headers,
         limit_concurrency=max_concurrency,
+        backlog=backlog,
         timeout_keep_alive=keep_alive_timeout
     )
 
