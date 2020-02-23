@@ -18,7 +18,7 @@ from .ctx import current, response, session
 from .html import tag
 from .http import HTTP, HTTPFile, HTTPIO
 
-_REGEX_DBSTREAM = re.compile('(?P<table>.*?)\.(?P<field>.*?)\..*')
+_re_dbstream = re.compile(r'(?P<table>.*?)\.(?P<field>.*?)\..*')
 
 
 def abort(code, body=''):
@@ -29,11 +29,12 @@ def abort(code, body=''):
 def stream_file(path):
     full_path = os.path.join(current.app.root_path, path)
     raise HTTPFile(
-        full_path, headers=response.headers, cookies=response.cookies)
+        full_path, headers=response.headers, cookies=response.cookies
+    )
 
 
 def stream_dbfile(db, name):
-    items = _REGEX_DBSTREAM.match(name)
+    items = _re_dbstream.match(name)
     if not items:
         abort(404)
     table_name, field_name = items.group('table'), items.group('field')
@@ -51,9 +52,11 @@ def stream_dbfile(db, name):
         abort(404)
     if isinstance(path_or_stream, str):
         raise HTTPFile(
-            path_or_stream, headers=response.headers, cookies=response.cookies)
+            path_or_stream, headers=response.headers, cookies=response.cookies
+        )
     raise HTTPIO(
-        path_or_stream, headers=response.headers, cookies=response.cookies)
+        path_or_stream, headers=response.headers, cookies=response.cookies
+    )
 
 
 def flash(message, category='message'):
