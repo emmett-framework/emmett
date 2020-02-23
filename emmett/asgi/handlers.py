@@ -338,6 +338,16 @@ class WSHandler(RequestHandler):
         scope['emt._flow_cancel'] = True
         _cancel_tasks(pending)
 
+    @Handler.on_event('websocket.connect')
+    async def event_connect(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        event: Event
+    ) -> EventLooper:
+        return _event_looper
+
     @Handler.on_event('websocket.disconnect')
     async def event_disconnect(
         self,
@@ -402,9 +412,13 @@ class WSHandler(RequestHandler):
         )
         try:
             await self.router.dispatch()
+        except HTTPResponse:
+            return
         finally:
             if current.websocket._accepted:
                 await send({'type': 'websocket.close', 'code': 1000})
+            else:
+                await send({'type': 'websocket.close', 'code': 1006})
             current._close_(ctx_token)
 
 
