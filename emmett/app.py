@@ -382,6 +382,7 @@ class App:
         log_level=None, access_log=None,
         proxy_headers=False,
         limit_concurrency=None,
+        backlog=2048,
         timeout_keep_alive=0
     ):
         asgi_run(
@@ -390,6 +391,7 @@ class App:
             log_level=log_level, access_log=access_log,
             proxy_headers=proxy_headers,
             limit_concurrency=limit_concurrency,
+            backlog=backlog,
             timeout_keep_alive=timeout_keep_alive
         )
 
