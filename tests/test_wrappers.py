@@ -27,7 +27,7 @@ def test_response():
     response = Response()
 
     assert response.status == 200
-    assert response.headers == {'Content-Type': 'text/html; charset=utf-8'}
+    assert response.headers['content-type'] == 'text/plain'
 
 
 def test_req_ctx():
