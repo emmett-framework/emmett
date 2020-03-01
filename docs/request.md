@@ -99,7 +99,7 @@ You can always access the variables you need.
 Pipeline
 --------
 
-*Changed in 1.0*
+*Changed in 2.0*
 
 Quite often, you will need to perform operations during the request flow, for example you might need to verify certain authorization conditions before your exposed method is invoked by Emmett when the request is routed trough it, or you may want to close a database connection once the request flow is ended and the response is ready to be transmitted to the client.
 
