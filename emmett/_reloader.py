@@ -13,6 +13,7 @@
     :license: BSD-3-Clause
 """
 
+import click
 import multiprocessing
 import os
 import signal
@@ -88,7 +89,7 @@ class ReloaderLoop(object):
         but running the reloader thread.
         """
         while 1:
-            print('> Restarting (%s mode)' % self.name)
+            click.secho('> Restarting (%s mode)' % self.name, fg='yellow')
             args = _get_args_for_reloading()
             new_environ = os.environ.copy()
             new_environ['EMMETT_RUN_MAIN'] = 'true'
@@ -107,7 +108,7 @@ class ReloaderLoop(object):
 
     def trigger_reload(self, process, filename):
         filename = os.path.abspath(filename)
-        print('> Detected change in %r, reloading' % filename)
+        click.secho('> Detected change in %r, reloading' % filename, fg='cyan')
         os.kill(process.pid, signal.SIGTERM)
         process.join()
         sys.exit(3)

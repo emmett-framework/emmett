@@ -9,6 +9,8 @@
     :license: BSD-3-Clause
 """
 
+import click
+
 from ...datastructures import sdict
 from .base import Schema, Column
 from .helpers import make_migration_id, to_tuple
@@ -28,7 +30,10 @@ class Command(object):
                 sdict(
                     db=dal,
                     scriptdir=ScriptDir(
-                        self.app, dal.config.migrations_folder)))
+                        self.app, dal.config.migrations_folder
+                    )
+                )
+            )
 
     def load_schema(self, ctx):
         ctx.db.define_models(Schema)
@@ -71,21 +76,52 @@ class Command(object):
             ctx._current_revision_ = [rev.version for rev in revisions]
 
     @staticmethod
-    def _store_current_revision_(ctx, source, dest):
-        logs = {
-            'new': '> Adding revision %s to schema',
-            'del': '> Removing revision %s from schema',
-            'upd': '> Updating schema revision from %s to %s'}
+    def _log_store_new(revid):
+        click.echo(
+            " ".join([
+                "> Adding revision",
+                click.style(revid, fg="cyan", bold=True),
+                "to schema"
+            ])
+        )
+
+    @staticmethod
+    def _log_store_del(revid):
+        click.echo(
+            " ".join([
+                "> Removing revision",
+                click.style(revid, fg="cyan", bold=True),
+                "from schema"
+            ])
+        )
+
+    @staticmethod
+    def _log_store_upd(revid_src, revid_dst):
+        click.echo(
+            " ".join([
+                "> Updating schema revision from",
+                click.style(revid_src, fg="cyan", bold=True),
+                "to",
+                click.style(revid_dst, fg="cyan", bold=True),
+            ])
+        )
+
+    def _store_current_revision_(self, ctx, source, dest):
+        _store_logs = {
+            'new': self._log_store_new,
+            'del': self._log_store_del,
+            'upd': self._log_store_upd
+        }
         source = to_tuple(source)
         dest = to_tuple(dest)
         if source is None:
-            print(logs['new'] % dest[0])
+            _store_logs['new'](dest[0])
             ctx.db.Schema.insert(version=dest[0])
             ctx.db.commit()
             ctx._current_revision_ = [dest[0]]
             return
         if dest is None:
-            print(logs['del'] % source[0])
+            _store_logs['del'](source[0])
             ctx.db(ctx.db.Schema.version == source[0]).delete()
             ctx.db.commit()
             ctx._current_revision_ = []
@@ -95,20 +131,20 @@ class Command(object):
                 ctx.db(
                     ctx.db.Schema.version.belongs(
                         source[1:])).delete()
-                print(logs['del'] % source[1:])
+                _store_logs['del'](source[1:])
             else:
                 ctx.db(
                     ctx.db.Schema.version == source[1]).delete()
-                print(logs['del'] % source[1])
+                _store_logs['del'](source[1])
             ctx.db(ctx.db.Schema.version == source[0]).update(
                 version=dest[0]
             )
-            print(logs['upd'] % (source[0], dest[0]))
+            _store_logs['upd'](source[0], dest[0])
             ctx._current_revision_ = [dest[0]]
         else:
             if list(source) != ctx._current_revision_:
                 ctx.db.Schema.insert(version=dest[0])
-                print(logs['new'] % dest[0])
+                _store_logs['new'](dest[0])
                 ctx._current_revision_.append(dest[0])
             else:
                 ctx.db(
@@ -116,7 +152,7 @@ class Command(object):
                 ).update(
                     version=dest[0]
                 )
-                print(logs['upd'] % (source[0], dest[0]))
+                _store_logs['upd'](source[0], dest[0])
                 ctx._current_revision_ = [dest[0]]
         ctx.db.commit()
 
@@ -135,9 +171,15 @@ class Command(object):
             upgrade_ops = Generator.generate_from(ctx.db, ctx.scriptdir, head)
             revid = make_migration_id()
             migration = MigrationOp(
-                revid, upgrade_ops, upgrade_ops.reverse(), message)
+                revid, upgrade_ops, upgrade_ops.reverse(), message
+            )
             self._generate_migration_script(ctx, migration, head)
-            print("> Generated migration for revision %s" % revid)
+            click.echo(
+                " ".join([
+                    "> Generated migration for revision",
+                    click.style(revid, fg="cyan", bold=True)
+                ])
+            )
 
     def new(self, message, head):
         for ctx in self.envs:
@@ -147,61 +189,104 @@ class Command(object):
                 revid, UpgradeOps(), DowngradeOps(), message
             )
             self._generate_migration_script(
-                ctx, migration, source_rev.revision)
-            print("> Created new migration with revision %s" % revid)
+                ctx, migration, source_rev.revision
+            )
+            click.echo(
+                " ".join([
+                    "> Created new migration for revision",
+                    click.style(revid, fg="cyan", bold=True)
+                ])
+            )
 
     def history(self, base, head, verbose):
         for ctx in self.envs:
-            print("> Migrations history")
+            click.echo("> Migrations history:")
             lines = []
             for sc in ctx.scriptdir.walk_revisions(
-                    base=base or "base",
-                    head=head or "heads"):
+                base=base or "base",
+                head=head or "heads"
+            ):
                 lines.append(
                     sc.cmd_format(
                         verbose=verbose, include_doc=True, include_parents=True
                     )
                 )
             for line in lines:
-                print(line)
+                click.echo(line)
             if not lines:
-                print("No migrations for the selected application.")
+                click.secho(
+                    "No migrations for the selected application.", fg="yellow"
+                )
 
     def status(self, verbose):
         for ctx in self.envs:
             self.load_schema(ctx)
-            print("> Current revision(s) for %s" % ctx.db._uri)
+            click.echo(
+                " ".join([
+                    "> Current revision(s) for",
+                    click.style(ctx.db._uri, bold=True)
+                ])
+            )
             lines = []
             for rev in ctx.scriptdir.get_revisions(ctx._current_revision_):
                 lines.append(rev.cmd_format(verbose))
             for line in lines:
-                print(line)
+                click.echo(line)
             if not lines:
-                print("No revision state found on the schema.")
+                click.secho(
+                    "No revision state found on the schema.", fg="yellow"
+                )
 
     def up(self, rev_id):
         for ctx in self.envs:
             self.load_schema(ctx)
             start_point = ctx._current_revision_
             revisions = ctx.scriptdir.get_upgrade_revs(
-                rev_id, start_point)
-            print("> Performing upgrades against %s" % ctx.db._uri)
+                rev_id, start_point
+            )
+            click.echo(
+                " ".join([
+                    "> Performing upgrades against",
+                    click.style(ctx.db._uri, bold=True)
+                ])
+            )
             with ctx.db.connection():
                 for revision in revisions:
-                    print("> Performing upgrade: %s" % revision)
+                    click.echo(
+                        " ".join([
+                            "> Performing upgrade:",
+                            click.style(str(revision), fg="cyan", bold=True)
+                        ])
+                    )
                     migration = revision.migration_class(self.app, ctx.db)
                     try:
                         migration.up()
                         ctx.db.commit()
                         self._store_current_revision_(
-                            ctx, migration.revises, migration.revision)
-                        print(
-                            "> Succesfully upgraded to revision %s: %s" %
-                            (revision.revision, revision.doc)
+                            ctx, migration.revises, migration.revision
+                        )
+                        click.echo(
+                            "".join([
+                                click.style(
+                                    "> Succesfully upgraded to revision ",
+                                    fg="green"
+                                ),
+                                click.style(
+                                    revision.revision, fg="cyan", bold=True
+                                ),
+                                click.style(f": {revision.doc}", fg="green")
+                            ])
                         )
                     except Exception:
                         ctx.db.rollback()
-                        print("[ERROR] failed upgrading to %s" % revision)
+                        click.echo(
+                            " ".join([
+                                click.style("> Failed upgrading to", fg="red"),
+                                click.style(
+                                    revision.revision, fg="red", bold=True
+                                ),
+                            ])
+                        )
                         raise
 
     def down(self, rev_id):
@@ -210,23 +295,51 @@ class Command(object):
             start_point = ctx._current_revision_
             revisions = ctx.scriptdir.get_downgrade_revs(
                 rev_id, start_point)
-            print("> Performing downgrades against %s" % ctx.db._uri)
+            click.echo(
+                " ".join([
+                    "> Performing downgrades against",
+                    click.style(ctx.db._uri, bold=True)
+                ])
+            )
             with ctx.db.connection():
                 for revision in revisions:
-                    print("> Performing downgrade: %s" % revision)
+                    click.echo(
+                        " ".join([
+                            "> Performing downgrade:",
+                            click.style(str(revision), fg="cyan", bold=True)
+                        ])
+                    )
                     migration = revision.migration_class(self.app, ctx.db)
                     try:
                         migration.down()
                         ctx.db.commit()
                         self._store_current_revision_(
-                            ctx, migration.revision, migration.revises)
-                        print(
-                            "> Succesfully downgraded from revision %s: %s" %
-                            (revision.revision, revision.doc)
+                            ctx, migration.revision, migration.revises
+                        )
+                        click.echo(
+                            "".join([
+                                click.style(
+                                    "> Succesfully downgraded from revision ",
+                                    fg="green"
+                                ),
+                                click.style(
+                                    revision.revision, fg="cyan", bold=True
+                                ),
+                                click.style(f": {revision.doc}", fg="green")
+                            ])
                         )
                     except Exception:
                         ctx.db.rollback()
-                        print("[ERROR] failed downgrading from %s" % revision)
+                        click.echo(
+                            " ".join([
+                                click.style(
+                                    "> Failed downgrading from", fg="red"
+                                ),
+                                click.style(
+                                    revision.revision, fg="red", bold=True
+                                ),
+                            ])
+                        )
                         raise
 
 

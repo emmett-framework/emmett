@@ -13,10 +13,14 @@
     :license: BSD-3-Clause
 """
 
-import click
+import code
 import os
+import re
 import sys
+import traceback
 import types
+
+import click
 
 from .__version__ import __version__ as fw_version
 from ._internal import warn_of_deprecation
@@ -25,16 +29,47 @@ from .asgi.protocols import protocols_http, protocols_ws
 from .logger import LOG_LEVELS
 
 
+def find_app_module():
+    rv, files, dirs = None, [], []
+    for path in os.listdir():
+        if any(path.startswith(val) for val in [".", "test"]):
+            continue
+        if os.path.isdir(path):
+            if not path.startswith("_"):
+                dirs.append(path)
+            continue
+        _, ext = os.path.splitext(path)
+        if ext == ".py":
+            files.append(path)
+    if "app.py" in files:
+        rv = "app.py"
+    elif "app" in dirs:
+        rv = "app"
+    elif "__init__.py" in files:
+        rv = "__init__.py"
+    elif len(files) == 1:
+        rv = files[0]
+    elif len(dirs) == 1:
+        rv = dirs[1]
+    else:
+        modules = []
+        for path in dirs:
+            if os.path.exists(os.path.join(path, "__init__.py")):
+                modules.append(path)
+        if len(modules) == 1:
+            rv = modules[0]
+    return rv
+
+
 def find_best_app(module):
-    """Given a module instance this tries to find the best possible
-    application in the module or raises an exception.
-    """
+    #: Given a module instance this tries to find the best possible
+    #  application in the module.
     from .app import App
 
     # Search for the most common names first.
-    for attr_name in 'app', 'application':
+    for attr_name in ('app', 'application'):
         app = getattr(module, attr_name, None)
-        if app is not None and isinstance(app, App):
+        if isinstance(app, App):
             return app
 
     # Otherwise find the only object that is an App instance.
@@ -42,8 +77,8 @@ def find_best_app(module):
 
     if len(matches) == 1:
         return matches[0]
-    raise Exception(
-        'Failed to find application in module "%s".' % module.__name__
+    raise RuntimeError(
+        f"Failed to find Emmett application in module '{module.__name__}'."
     )
 
 
@@ -52,118 +87,123 @@ def find_db(module, var_name=None):
     #  in the module.
     if var_name:
         return [getattr(module, var_name)]
-    from .orm import Database
-    matches = [
-        v for k, v in module.__dict__.items() if isinstance(v, Database)]
 
+    from .orm import Database
+
+    matches = [
+        v for k, v in module.__dict__.items() if isinstance(v, Database)
+    ]
     return matches
 
 
-def prepare_exec_for_file(filename):
-    """Given a filename this will try to calculate the python path, add it
-    to the search path and return the actual module name that is expected.
-    """
-    module = []
+def get_import_components(path):
+    return (re.split(r":(?![\\/])", path, 1) + [None])[:2]
 
-    # Chop off file extensions or package markers
-    if filename.endswith('.py'):
-        filename = filename[:-3]
-    elif os.path.split(filename)[1] == '__init__.py':
-        filename = os.path.dirname(filename)
-    else:
-        raise Exception(
-            'The file provided (%s) does is not a valid Python file.')
-    filename = os.path.realpath(filename)
 
-    dirpath = filename
-    while 1:
-        dirpath, extra = os.path.split(dirpath)
-        module.append(extra)
-        if not os.path.isfile(os.path.join(dirpath, '__init__.py')):
+def prepare_import(path):
+    #: Given a path this will try to calculate the python path, add it
+    #  to the search path and return the actual module name that is expected.
+    path = os.path.realpath(path)
+
+    fname, ext = os.path.splitext(path)
+    if ext == ".py":
+        path = fname
+    if os.path.basename(path) == "__init__":
+        path = os.path.dirname(path)
+
+    module_name = []
+
+    #: move up untile outside package
+    while True:
+        path, name = os.path.split(path)
+        module_name.append(name)
+
+        if not os.path.exists(os.path.join(path, "__init__.py")):
             break
 
-    sys.path.insert(0, dirpath)
-    return '.'.join(module[::-1])
+    if sys.path[0] != path:
+        sys.path.insert(0, path)
+
+    return ".".join(module_name[::-1])
 
 
-def get_app_module(app_id):
-    if ':' in app_id:
-        module, app_obj = app_id.split(':', 1)
-    else:
-        module = app_id
-        app_obj = None
-    mod = sys.modules.get(module)
-    if mod is None:
-        __import__(module)
-        mod = sys.modules[module]
-    return module, mod, app_obj
+def get_app_module(module_name, raise_on_failure=True):
+    try:
+        __import__(module_name)
+    except ImportError:
+        if sys.exc_info()[-1].tb_next:
+            raise RuntimeError(
+                f"While importing '{module_name}', an ImportError was raised:"
+                f"\n\n{traceback.format_exc()}"
+            )
+        elif raise_on_failure:
+            raise RuntimeError(f"Could not import '{module_name}'.")
+        else:
+            return
+    return sys.modules[module_name]
 
 
-def locate_app(app_id):
-    """Attempts to locate the application."""
-    module, mod, app_obj = get_app_module(app_id)
-    if app_obj is None:
-        app = find_best_app(mod)
-    else:
-        app = getattr(mod, app_obj, None)
-        if app is None:
-            raise RuntimeError('Failed to find application in module "%s"'
-                               % module)
-    return app
+def locate_app(module_name, app_name, raise_on_failure=True):
+    module = get_app_module(module_name, raise_on_failure=raise_on_failure)
+    if app_name:
+        return getattr(module, app_name, None)
+    return find_best_app(module)
 
 
 class ScriptInfo(object):
-    """Help object to deal with Emmett applications.  This is usually not
-    necessary to interface with as it's used internally in the dispatching
-    to click.
-    """
-
     def __init__(self, app_import_path=None, debug=None):
         #: The application import path
-        self.app_import_path = app_import_path
+        self.app_import_path = app_import_path or os.environ.get("EMMETT_APP")
         #: The debug flag. If this is not None, the application will
-        #: automatically have it's debug flag overridden with this value.
+        #  automatically have it's debug flag overridden with this value.
         self.debug = debug
         #: A dictionary with arbitrary data that can be associated with
-        #: this script info.
+        #  this script info.
         self.data = {}
-        self._loaded_ctx = None
         self._loaded_app = None
+        self._loaded_ctx = None
         self.db_var_name = None
 
+    def _get_import_name(self):
+        if self.app_import_path:
+            path, name = get_import_components(self.app_import_path)
+        else:
+            path, name = (find_app_module(), None)
+        return prepare_import(path) if path else None, name
+
+    def load_app(self):
+        if self._loaded_app is not None:
+            return self._loaded_app
+
+        import_name, app_name = self._get_import_name()
+        app = locate_app(import_name, app_name) if import_name else None
+
+        if app is None:
+            raise RuntimeError("Could not locate an Emmett application.")
+
+        if self.debug is not None:
+            app.debug = self.debug
+
+        self._loaded_app = app
+        return app
+
     def load_appctx(self):
-        if self._loaded_ctx is not None:
-            return self._loaded_ctx
-        if self.app_import_path is None:
-            raise Exception("Could not locate application.")
-        module, mod, app_obj = get_app_module(self.app_import_path)
         ctx = {}
-        for key, value in mod.__dict__.items():
-            if key == "__builtins__" or isinstance(value, types.FunctionType):
+        import_name, _ = self._get_import_name()
+        mod = get_app_module(import_name)
+
+        for key in set(mod.__dict__.keys()) - {"__builtins__"}:
+            value = mod.__dict__[key]
+            if isinstance(value, types.FunctionType):
                 continue
             ctx[key] = value
+
         self._loaded_ctx = ctx
         return ctx
 
-    def load_app(self):
-        """Loads the app (if not yet loaded) and returns it.  Calling
-        this multiple times will just result in the already loaded app to
-        be returned.
-        """
-        if self._loaded_app is not None:
-            return self._loaded_app
-        if self.app_import_path is None:
-            raise Exception("Could not locate application.")
-        a = locate_app(self.app_import_path)
-        if self.debug is not None:
-            a.debug = self.debug
-        self._loaded_app = a
-        return a
-
     def load_db(self):
-        if self.app_import_path is None:
-            raise Exception("Could not locate application.")
-        module, mod, app_obj = get_app_module(self.app_import_path)
+        import_name, _ = self._get_import_name()
+        mod = get_app_module(import_name)
         return find_db(mod, self.db_var_name)
 
 
@@ -171,24 +211,25 @@ pass_script_info = click.make_pass_decorator(ScriptInfo)
 
 
 def set_app_value(ctx, param, value):
-    if value is not None:
-        if os.path.isfile(value):
-            value = prepare_exec_for_file(value)
-        elif '.' not in sys.path:
-            sys.path.insert(0, '.')
     ctx.ensure_object(ScriptInfo).app_import_path = value
 
 
 app_option = click.Option(
     ['-a', '--app'],
     help='The application to run',
-    callback=set_app_value, is_eager=True
+    callback=set_app_value,
+    is_eager=True
 )
 
 
 class EmmettGroup(click.Group):
-    def __init__(self, add_default_commands=True, add_app_option=True,
-                 add_debug_option=True, **extra):
+    def __init__(
+        self,
+        add_default_commands=True,
+        add_app_option=True,
+        add_debug_option=True,
+        **extra
+    ):
         params = list(extra.pop('params', None) or ())
         if add_app_option:
             params.append(app_option)
@@ -239,7 +280,7 @@ class EmmettGroup(click.Group):
         if obj is None:
             obj = ScriptInfo()
         kwargs['obj'] = obj
-        return click.Group.main(self, *args, **kwargs)
+        return super().main(*args, **kwargs)
 
 
 @click.command('run', short_help='Deprecated - Runs a development server.')
@@ -263,7 +304,8 @@ def run_command(ctx, host, port, reloader, debug):
 @click.option(
     '--port', '-p', type=int, default=8000, help='The port to bind to.')
 @click.option(
-    '--reloader', type=bool, default=True, help='Runs with reloader.')
+    '--reloader/--no-reloader', is_flag=True, default=True,
+    help='Runs with reloader.')
 @click.option(
     '--debug', type=bool, default=True, help='Runs in debug mode.')
 @pass_script_info
@@ -272,11 +314,20 @@ def develop_command(info, host, port, reloader, debug):
     app = info.load_app()
     app.debug = debug
     if os.environ.get('EMMETT_RUN_MAIN') != 'true':
-        print(f"> Serving Emmett application {app.import_name}")
-        quit_msg = "(press CTRL+C to quit)"
-        print(
-            f"> Emmett application {app.import_name} running on "
-            f"http://{host}:{port} {quit_msg}"
+        click.echo(
+            ' '.join([
+                "> Starting Emmett development server on app",
+                click.style(app.import_name, fg="cyan", bold=True)
+            ])
+        )
+        click.echo(
+            ' '.join([
+                click.style("> Emmett application", fg="green"),
+                click.style(app.import_name, fg="cyan", bold=True),
+                click.style("running on", fg="green"),
+                click.style(f"http://{host}:{port}", fg="cyan"),
+                click.style("(press CTRL+C to quit)", fg="green")
+            ])
         )
     if reloader:
         from ._reloader import run_with_reloader
@@ -340,7 +391,6 @@ def serve_command(
 @click.command('shell', short_help='Runs a shell in the app context.')
 @pass_script_info
 def shell_command(info):
-    import code
     os.environ['EMMETT_CLI_ENV'] = 'true'
     ctx = info.load_appctx()
     app = info.load_app()
@@ -357,11 +407,17 @@ def shell_command(info):
 @pass_script_info
 def routes_command(info):
     app = info.load_app()
-    print("> Routing table for Emmett application %s:" % app.import_name)
+    click.echo(
+        "".join([
+            "> Routing table for Emmett application ",
+            click.style(app.import_name, fg="cyan", bold=True),
+            ":"
+        ])
+    )
     for route in app._router_http._routes_str.values():
-        print(route)
+        click.echo(route)
     for route in app._router_ws._routes_str.values():
-        print(route)
+        click.echo(route)
 
 
 cli = EmmettGroup(help="")
@@ -451,23 +507,7 @@ def migrations_down(info, revision):
 
 
 def main(as_module=False):
-    this_module = __package__ + '.cli'
-    args = sys.argv[1:]
-
-    if as_module:
-        if sys.version_info >= (2, 7):
-            name = 'python -m ' + this_module.rsplit('.', 1)[0]
-        else:
-            name = 'python -m ' + this_module
-
-        # This module is always executed as "python -m run" and as such
-        # we need to ensure that we restore the actual command line so that
-        # the reloader can properly operate.
-        sys.argv = ['-m', this_module] + sys.argv[1:]
-    else:
-        name = None
-
-    cli.main(args=args, prog_name=name)
+    cli.main(prog_name="python -m emmett" if as_module else None)
 
 
 if __name__ == '__main__':

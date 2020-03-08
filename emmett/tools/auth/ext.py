@@ -11,6 +11,8 @@
 
 import time
 
+import click
+
 from functools import wraps
 
 from ...cli import pass_script_info
@@ -23,7 +25,8 @@ from ...orm.helpers import decamelize
 from ...security import uuid
 from .forms import AuthForms
 from .models import (
-    AuthModel, AuthUser, AuthGroup, AuthMembership, AuthPermission, AuthEvent)
+    AuthModel, AuthUser, AuthGroup, AuthMembership, AuthPermission, AuthEvent
+)
 
 
 class AuthExtension(Extension):
@@ -133,7 +136,7 @@ class AuthExtension(Extension):
         @cli_group.command('generate_key', short_help='Generate an auth key')
         @pass_script_info
         def generate_key(info):
-            print(uuid())
+            click.echo(uuid())
 
     def __ensure_config(self):
         for key in (

@@ -38,11 +38,11 @@ include = [
 ]
 
 [tool.poetry.scripts]
-emmett = 'emmett.cli:main'
+emmett = "emmett.cli:main"
 
 [tool.poetry.dependencies]
 python = "^3.7"
-click = ">=0.6"
+click = ">=6.0"
 h11 = "~0.9.0"
 pendulum = "^2.0"
 pyaes = "~1.6.0"
