@@ -309,7 +309,7 @@ class HTTPHandler(RequestHandler):
         return debug_handler(smart_traceback(self.app))
 
     async def _exception_handler(self) -> str:
-        current.response.headers['content-type'] = 'text/plain'
+        current.response.headers._data['content-type'] = 'text/plain'
         return 'Internal error'
 
 

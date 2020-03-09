@@ -24,7 +24,7 @@ class JSONServicePipe(Pipe):
         self.encoder = Serializers.get_for('json')
 
     async def pipe_request(self, next_pipe, **kwargs):
-        current.response.headers['content-type'] = 'application/json'
+        current.response.headers._data['content-type'] = 'application/json'
         return self.encoder(await next_pipe(**kwargs))
 
     def receive(self, data):
@@ -42,7 +42,7 @@ class XMLServicePipe(Pipe):
         self.encoder = Serializers.get_for('xml')
 
     async def pipe_request(self, next_pipe, **kwargs):
-        current.response.headers['content-type'] = 'text/xml'
+        current.response.headers._data['content-type'] = 'text/xml'
         return self.encoder(await next_pipe(**kwargs))
 
     def send(self, data):

@@ -49,7 +49,7 @@ class BytesResponseBuilder(ResponseBuilder):
 
 class TemplateResponseBuilder(ResponseProcessor):
     def process(self, output: Union[Dict[str, Any], None]) -> str:
-        current.response.headers['content-type'] = _html_content_type
+        current.response.headers._data['content-type'] = _html_content_type
         if output is None:
             output = {
                 'current': current, 'url': url, 'asis': asis,
@@ -85,7 +85,7 @@ class AutoResponseBuilder(ResponseProcessor):
                 'load_component': load_component
             }
         if is_template:
-            current.response.headers['content-type'] = _html_content_type
+            current.response.headers._data['content-type'] = _html_content_type
             try:
                 return self.route.app.templater.render(
                     self.route.template, output)
