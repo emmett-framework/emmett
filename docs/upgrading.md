@@ -140,6 +140,14 @@ async def upload():
     await file.save(f"somepath/{file.filename}")
 ```
 
+### Internationalization files
+
+Since 2.0 Emmett uses [Severus](https://github.com/emmett-framework/severus) as its internationalization engine.
+
+Versions prior to 2.0 implied usage of python files for translations, while in 2.0 supported formats are JSON and YAML.
+
+This means you should convert your Python translations to JSON files, which in the majority of cases it just requires changing the files extensions from `.py` to `.json`.
+
 ### Other changes
 
 Here we list other breaking changes introduced with 2.0
