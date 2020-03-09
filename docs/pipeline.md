@@ -235,8 +235,91 @@ Requests and sockets
 
 *Added in version 2.0*
 
-*Section under development*
+The `Pipe`'s methods we saw until now are commonly handled by Emmett on all the routes you define, without distinction between routes handling requests and routes handling websockets.
 
+But since handling the former or the latter ones make a great difference in terms of *flow*, `Pipe`s objects also have two dedicated methods for websockets only, and in particular:
+
+- on\_receive
+- on\_send
+
+These two methods accepts only one argument: the message; and they will be called sequentially when receiving or sending messages. Here is an example:
+
+```python
+class WSPipe(Pipe):
+    def on_receive(self, data):
+        return {'original_message': data, 'stripped_message': data.strip()}
+
+    def on_send(self, data):
+        return json.dumps(data)
+```
+
+Also, while your application scales and grows into complexity, you might need to have a single `Pipe` object behaving differently depending on when is applied on a request route or a websocket one. This is perfectly achievable in Emmett, since the majority of methods we saw in the previous section can also be specialized. For example, let's say we want to rewrite the authentication example from above in order to use it also on websockets:
+
+```python
+from emmett import request, websocket
+
+class AuthPipe(Pipe):
+    async def pipe_request(self, next_pipe, **kwargs):
+        if self.valid_header(request):
+            return await next_pipe(**kwargs)
+        return "Bad auth"
+
+    async def pipe_ws(self, next_pipe, **kwargs):
+        if self.valid_header(websocket):
+            return await next_pipe(**kwargs)
+        return
+
+    def valid_header(self, wrapper):
+        return wrapper.headers.get("my-header", "") == "MY_KEY"
+```
+
+To summarize, here is the complete table of methods available on Emmett pipes:
+
+| common | request | websocket |
+| --- | --- | --- |
+| open | open\_request | open\_ws |
+| close | close\_request | close\_ws |
+| pipe | pipe\_request | pipe\_ws |
+| on\_pipe\_success | | |
+| on\_pipe\_failure | | |
+| | | on\_receive |
+| | | on\_send |
+
+Pipeline composition
+--------------------
+
+One of the advantages in using Emmett pipeline is the capability to compose different flows inside the application depending on the specific needs. Since routes and [modules](./app_and_modules#application-modules) can add their own pipes to the application pipeline, it gets very easy to modularize the pipeline of your application accordingly.
+
+As an example, let's say your application has a group of routes rendering templates and another group consisting of APIs. Then maybe you won't need the sessions in your APIs module, and you want to use JSON for your APIs, and thus you can split the pipeline:
+
+```python
+app.pipeline = [db.pipe]
+
+
+front = app.module(__name__, 'front')
+front.pipeline = [SessionManager.cookies('GreatScott!')]
+
+apis = app.module(__name__, 'apis', url_prefix='api')
+apis.pipeline = [ServicePipe('json')]
+```
+
+and maybe you will use the included authentication system for the front part, while your own authentication system for the APIs, in which you have some authenticated endpoints and some of them open:
+
+```python
+front = app.module(__name__, 'front')
+front.pipeline = [
+    SessionManager.cookies('GreatScott!'),
+    auth.pipe
+]
+
+apis = app.module(__name__, 'apis', url_prefix='api')
+apis.pipeline = [ServicePipe('json')]
+
+secure_apis = apis.module(__name__, 'secure')
+secure_apis.pipeline[MyAuthPipe()]
+```
+
+As you can see the level of composition you can implement over your application's pipeline is limitless.
 
 Injectors
 ---------
