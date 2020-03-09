@@ -8,6 +8,8 @@
 - templates
 - request
 - response
+- websocket
+- pipeline
 - sessions
 - languages
 - orm:

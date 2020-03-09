@@ -126,7 +126,19 @@ In general, if you need the execution order of your code to be preserved, use th
 
 #### Upload handling
 
-*Section under development*
+Emmett 2.0 introduces the `files` sdict attribute in the `Request` object.
+
+As a direct consequence, your code should be updated to handle uploads from the new attribute, instead of looking for uploads in the `body_params` one.
+
+An example might be the following:
+
+```python
+@app.route()
+async def upload():
+    files = await request.files
+    file = files.upload_param
+    await file.save(f"somepath/{file.filename}")
+```
 
 ### Other changes
 
@@ -167,7 +179,7 @@ While the `run` command still works in Emmett 2.0, it will be completely removed
 
 Emmett 2.0 also introduces some new features:
 
-- [Websockets](#) support
+- [Websockets](./websocket) support
 - An optional `output` parameter to `route` decorator
 - An `after_loop` signal
 
