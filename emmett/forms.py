@@ -67,6 +67,7 @@ class Form(HtmlTag):
         #: init the form
         self.errors = sdict()
         self.params = sdict()
+        self.files = sdict()
         self.input_params = None
         self._awaited = False
         self.processed = False
@@ -107,6 +108,8 @@ class Form(HtmlTag):
             v = self.input_params.get(field.name, False)
             if v is not False:
                 v = True
+        elif field.type == 'upload':
+            v = self.input_files.get(field.name)
         else:
             v = self.input_params.get(field.name)
         return v
@@ -115,6 +118,8 @@ class Form(HtmlTag):
         value, error = field.validate(value)
         if error:
             self.errors[field.name] = error
+        elif field.type == 'upload':
+            self.files[field.name] = value
         else:
             self.params[field.name] = value
 
@@ -134,9 +139,17 @@ class Form(HtmlTag):
             params = request.query_params
         return sdict(params)
 
+    async def _load_input_files(self):
+        if self.attributes['_method'] == 'POST':
+            rv = await request.files
+        else:
+            rv = sdict()
+        return rv
+
     async def _process(self):
         self._load_csrf()
         self.input_params = await self._load_input_params()
+        self.input_files = await self._load_input_files()
         # run processing if needed
         if self._submitted:
             self.processed = True
@@ -223,8 +236,10 @@ class Form(HtmlTag):
 
 
 class ModelForm(Form):
-    def __init__(self, table, record=None, record_id=None, fields=None,
-                 exclude_fields=[], **attributes):
+    def __init__(
+        self, table, record=None, record_id=None, fields=None,
+        exclude_fields=[], **attributes
+    ):
         self.table = table
         self.record = record or table(record_id)
         #: build fields for form
@@ -285,24 +300,26 @@ class ModelForm(Form):
             for field in self.writable_fields:
                 #: handle uploads
                 if field.type == 'upload':
-                    f = self.params[field.name]
-                    fd = field.name + "__del"
-                    if f == b'' or f is None:
-                        if self.input_params.get(fd, False):
-                            self.params[field.name] = \
+                    upload = self.files[field.name]
+                    del_field = field.name + "__del"
+                    if not upload.filename:
+                        if self.input_params.get(del_field, False):
+                            self.params[field.name] = (
                                 self.table[field.name].default or ''
+                            )
                             # TODO: we want to physically delete file?
                         else:
                             if self.record and self.record[field.name]:
                                 self.params[field.name] = \
                                     self.record[field.name]
                         continue
-                    elif hasattr(f, 'file'):
-                        source_file, original_filename = f.file, f.filename
                     else:
-                        continue
-                    newfilename = field.store(source_file, original_filename,
-                                              field.uploadfolder)
+                        source_file, original_filename = (
+                            upload.stream, upload.filename
+                        )
+                    newfilename = field.store(
+                        source_file, original_filename, field.uploadfolder
+                    )
                     if isinstance(field.uploadfield, str):
                         self.params[field.uploadfield] = source_file.read()
                     self.params[field.name] = newfilename
