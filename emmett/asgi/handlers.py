@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import asyncio
-import concurrent
 import os
 import re
 
@@ -306,6 +305,9 @@ class HTTPHandler(RequestHandler):
         return http
 
     async def _debug_handler(self) -> str:
+        current.response.headers._data['content-type'] = (
+            'text/html; charset=utf-8'
+        )
         return debug_handler(smart_traceback(self.app))
 
     async def _exception_handler(self) -> str:
