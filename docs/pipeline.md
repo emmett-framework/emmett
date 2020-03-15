@@ -98,6 +98,8 @@ The `on_pipe_success` and `on_pipe_failure` will be called as soon as the flow g
 
 Notice that the `close` method will be always invoked on the pipeline, even if an exception occurred.
 
+> **Note:** the order on which the `open` and `close` methods get called is not guaranteed. In general, if you need the execution order of your code to be preserved, use the `pipe` method instead of the `open` or `close` ones.
+
 So how you can use these pipes functions? Let's see some examples.
 
 A pipe responsible of connecting to the database will need to open the connection on a new request, and close the connection when the request flow is ended. Then we can write a pipe like this:
