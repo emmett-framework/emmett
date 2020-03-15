@@ -72,6 +72,7 @@ class Worker(_Worker):
 
     def run(self):
         self.config.app = self.wsgi
+        self.config.app.send_signal('after_loop', loop=self.config.loop)
         server = Server(config=self.config)
         loop = asyncio.get_event_loop()
         loop.run_until_complete(server.serve(sockets=self.sockets))
