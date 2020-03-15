@@ -22,7 +22,7 @@ Once you have written your models, you will need to create the relevant tables o
 In the bloggy example we defined three models, and since we turned off automatic migrations, we need to create a migration that will add the relevant tables to the database. This can be quite immediate if you use the Emmett generation command:
 
 ```
-$ emmett -a bloggy.py migrations generate -m "First migration"
+$ emmett migrations generate -m "First migration"
 > Generated migration for revision fe68547ce244
 ```
 
@@ -128,7 +128,7 @@ Running your fist migration
 Once we generated our first migration, we need to run it in order to apply the canges to the database. We can use the *up* command of Emmett migrations:
 
 ```
-$ emmett -a bloggy.py migrations up
+$ emmett migrations up
 > Performing upgrades against sqlite://dummy.db
 > Performing upgrade: <base> -> 4ceb82ecd8e4 (head), First migration
 > Adding revision 4ceb82ecd8e4 to schema
@@ -138,7 +138,7 @@ $ emmett -a bloggy.py migrations up
 As you can see, the command prints out some information regarding the operations it runs: it says on which database the operations are performed, which migrations are used to upgrade the database and which revision is stored on the schema. In this case the migration was performed successfully, in fact we can check the current revision of the database:
 
 ```
-$ emmett -a bloggy.py migrations status
+$ emmett migrations status
 > Current revision(s) for sqlite://dummy.db
 4ceb82ecd8e4 (head)
 ```
@@ -164,7 +164,7 @@ db.define_models(Post, Comment, Tag)
 we can run the *generate* command again:
 
 ```
-$ emmett -a bloggy.py migrations generate -m "Add tags"
+$ emmett migrations generate -m "Add tags"
 > Generated migration for revision 4dee31071bf8
 ```
 
@@ -199,7 +199,7 @@ class Migration(migrations.Migration):
 As you can see the engine found that the change to perform is just the one of creating the *tags* table. Now we can upgrade our database to this revision as we did for the first migration:
 
 ```
-$ emmett -a bloggy.py migrations up
+$ emmett migrations up
 > Performing upgrades against sqlite://dummy.db
 > Performing upgrade: 4ceb82ecd8e4 -> 4dee31071bf8 (head), Add tags
 > Updating schema revision from 4ceb82ecd8e4 to 4dee31071bf8
@@ -209,7 +209,7 @@ $ emmett -a bloggy.py migrations up
 As we increase the number of migrations for our application, the *history* command can be useful to check out them as an ordered list:
 
 ```
-$ emmett -a bloggy.py migrations history
+$ emmett migrations history
 > Migrations history
 4ceb82ecd8e4 -> 4dee31071bf8 (head), Add tags
 <base> -> 4ceb82ecd8e4, First migration
@@ -223,7 +223,7 @@ Downgrading migrations
 Whenever you need to rollback to a previous revision of your schema, you can use the *down* command:
 
 ```
-$ emmett -a bloggy.py migrations down -r base
+$ emmett migrations down -r base
 > Performing downgrades against sqlite://dummy.db
 > Performing downgrade: 4ceb82ecd8e4 -> 4dee31071bf8 (head), Add tags
 > Updating schema revision from 4dee31071bf8 to 4ceb82ecd8e4
@@ -237,7 +237,7 @@ The `-r` option is required and has to be the revision to be downgraded. Wheneve
 When this parameter is set to `base`, Emmett will use the first migration in history: in our case we returned the database back to the beginning. In fact, if we run the status command:
 
 ```
-$ emmett -a bloggy.py migrations status
+$ emmett migrations status
 > Current revision(s) for sqlite://dummy.db
 No revision state found on the schema.
 ```
@@ -269,7 +269,7 @@ Empty migrations and operations
 Aside with the generated migrations, you can obviously generate new empty migration files and write down the operations on your own. In fact, if you run the *new* command:
 
 ```
-$ emmett -a bloggy.py migrations new -m "Custom migration"
+$ emmett migrations new -m "Custom migration"
 > Created new migration with revision 57f23e051fa3
 ```
 

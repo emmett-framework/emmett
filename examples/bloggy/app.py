@@ -10,7 +10,7 @@ from emmett.sessions import SessionManager
 app = App(__name__)
 app.config.auth.single_template = True
 app.config.auth.registration_verification = False
-app.config.auth.hmac_key = "MassiveDynamicRules"
+app.config.auth.hmac_key = "november.5.1955"
 
 
 #: define models
@@ -72,10 +72,10 @@ def setup_admin():
     with db.connection():
         # create the user
         user = User.create(
-            email="walter@massivedynamics.com",
-            first_name="Walter",
-            last_name="Bishop",
-            password="pocketuniverse"
+            email="doc@emmettbrown.com",
+            first_name="Emmett",
+            last_name="Brown",
+            password="fluxcapacitor"
         )
         # create an admin group
         admins = auth.create_group("admin")
@@ -91,7 +91,7 @@ def setup():
 
 #: pipeline
 app.pipeline = [
-    SessionManager.cookies('Walternate'), db.pipe, auth.pipe
+    SessionManager.cookies('GreatScott'), db.pipe, auth.pipe
 ]
 
 

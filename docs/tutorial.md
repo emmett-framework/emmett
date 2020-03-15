@@ -43,7 +43,7 @@ clients via HTTP. This is the place where you should put the CSS and JavaScript
 files. The templates you're gonna create later in this tutorial will go in the
 *templates* directory instead.
 
-After you create the above folders, create a *bloggy.py* file inside your
+After you create the above folders, create an *app.py* file inside your
 *bloggy* application:
 
 ```python
@@ -56,7 +56,7 @@ so you should end with this directory structure:
 
 ```
 /bloggy
-    bloggy.py
+    app.py
     /static
     /templates
 ```
@@ -65,7 +65,7 @@ Now you can test your application simply issuing the following command (inside
 the *bloggy* folder):
 
 ```bash
-> emmett -a bloggy.py develop
+> emmett develop
 ```
 
 and you will see a message telling you that the server has started, along with
@@ -169,7 +169,7 @@ We've defined our schema, so now it's time to add the database and the authoriza
 ```python
 app.config.auth.single_template = True
 app.config.auth.registration_verification = False
-app.config.auth.hmac_key = "MassiveDynamicRules"
+app.config.auth.hmac_key = "november.5.1955"
 ```
 
 These options allow us to use a single template file for everything regarding the auth, and, since we're writing just a simple application, prevent it to use a mailer system for validating our users. The `hmac_key` will be used to crypt the passwords into our database.
@@ -194,10 +194,10 @@ But, wait, how do we add an admin user who can write posts? We can write a `setu
 def setup():
     # create the user
     user = User.create(
-        email="walter@massivedynamics.com",
-        first_name="Walter",
-        last_name="Bishop",
-        password="pocketuniverse"
+        email="doc@emmettbrown.com",
+        first_name="Emmett",
+        last_name="Brown",
+        password="fluxcapacitor"
     )
     # create an admin group
     admins = auth.create_group("admin")
@@ -206,12 +206,12 @@ def setup():
     db.commit()
 ```
 
-The code is quite self-explanatory: it will add an user who can sign in with the *walter@massivedynamics.com* email and *pocketuniverse* password, then it creates an admin group and adds the *Walter* user to this group.
+The code is quite self-explanatory: it will add an user who can sign in with the *doc@emmettbrown.com* email and *fluxcapacitor* password, then it creates an admin group and adds the *Emmett* user to this group.
 
 Also, notice that we added the `@app.command` decorator, which allow us to run our setup function using the *emmett* command shell:
 
 ```bash
-> emmett -a bloggy.py setup
+> emmett setup
 ```
 
 Now that the backend is ready, we can prepare to write and *expose* our functions.
@@ -221,12 +221,12 @@ Exposing routes
 
 Before we can start writing the functions that will handle the clients' requests, we need to add the database and authorization **pipes** to our application, so that we can use them with our functions following the request flow.
 
-Moreover, to use the authorization module, we need to add a **session manager** to the application's pipeline, too. In this tutorial, cookie support for session will be enough, and we will use *Walternate* as a secret key for encrypting cookies.
+Moreover, to use the authorization module, we need to add a **session manager** to the application's pipeline, too. In this tutorial, cookie support for session will be enough, and we will use *GreatScott* as a secret key for encrypting cookies.
 
 ```python
 from emmett.sessions import SessionManager
 app.pipeline = [
-    SessionManager.cookies('Walternate'),
+    SessionManager.cookies('GreatScott'),
     db.pipe,
     auth.pipe
 ]

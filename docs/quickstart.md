@@ -17,10 +17,10 @@ async def hello():
     return "Hello world!"
 ```
 
-Here it is. Save it as *hello.py* and run it with Emmett:
+Here it is. Save it as *app.py* and run it with Emmett:
 
 ```bash
-> emmett -a hello.py develop
+> emmett develop
 App running on 127.0.0.1:8000
 ```
 
