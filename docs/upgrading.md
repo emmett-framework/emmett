@@ -148,6 +148,22 @@ Versions prior to 2.0 implied usage of python files for translations, while in 2
 
 This means you should convert your Python translations to JSON files, which in the majority of cases it just requires changing the files extensions from `.py` to `.json`.
 
+Mind that the format syntax also changed: since Emmett 2.0 the only supported syntax for symbols in strings is the `format` one. Consequentialy you have to change your translation strings containing old symbols:
+
+```json
+{
+    "you received %(like)s": "hai ricevuto %(like)s"
+}
+```
+
+to the braces format:
+
+```json
+{
+    "you received {like}": "hai ricevuto {like}"
+}
+```
+
 ### Other changes
 
 Here we list other breaking changes introduced with 2.0
