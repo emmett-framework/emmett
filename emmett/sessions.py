@@ -44,12 +44,13 @@ class SessionPipe(Pipe):
 
     def _pack_session(self, expiration: int):
         response.cookies[self.cookie_name] = self._session_cookie_data()
-        response.cookies[self.cookie_name]['path'] = "/"
-        response.cookies[self.cookie_name]['expires'] = expiration
+        cookie_data = response.cookies[self.cookie_name]
+        cookie_data['path'] = "/"
+        cookie_data['expires'] = expiration
         if self.secure:
-            response.cookies[self.cookie_name]['secure'] = True
+            cookie_data['secure'] = True
         if self.domain is not None:
-            response.cookies[self.cookie_name]['domain'] = self.domain
+            cookie_data['domain'] = self.domain
 
     def _session_cookie_data(self) -> str:
         raise NotImplementedError

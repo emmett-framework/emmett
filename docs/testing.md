@@ -106,8 +106,8 @@ def logged_client():
     c = app.test_client()
     c.get('/auth/login')
     c.post('/auth/login', data={
-        'email': 'walter@massivedynamics.com',
-        'password': 'pocketuniverse',
+        'email': 'doc@emmettbrown.com',
+        'password': 'fluxcapacitor',
         '_csrf_token': list(session._csrf)[-1]
     }, follow_redirects=True)
     return c
@@ -120,8 +120,8 @@ def logged_client():
     c = app.test_client()
     with c.get('/auth/login').context as ctx:
         c.post('/auth/login', data={
-            'email': 'walter@massivedynamics.com',
-            'password': 'pocketuniverse',
+            'email': 'doc@emmettbrown.com',
+            'password': 'fluxcapacitor',
             '_csrf_token': list(ctx.session._csrf)[-1]
         }, follow_redirects=True)
         return c

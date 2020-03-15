@@ -9,7 +9,7 @@
     :license: BSD-3-Clause
 """
 
-from ..ctx import response
+from ..ctx import current
 from ..parsers import Parsers
 from ..pipeline import Pipe
 from ..serializers import Serializers
@@ -24,7 +24,7 @@ class JSONServicePipe(Pipe):
         self.encoder = Serializers.get_for('json')
 
     async def pipe_request(self, next_pipe, **kwargs):
-        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        current.response.headers._data['content-type'] = 'application/json'
         return self.encoder(await next_pipe(**kwargs))
 
     def receive(self, data):
@@ -42,7 +42,7 @@ class XMLServicePipe(Pipe):
         self.encoder = Serializers.get_for('xml')
 
     async def pipe_request(self, next_pipe, **kwargs):
-        response.headers['Content-Type'] = 'text/xml'
+        current.response.headers._data['content-type'] = 'text/xml'
         return self.encoder(await next_pipe(**kwargs))
 
     def send(self, data):

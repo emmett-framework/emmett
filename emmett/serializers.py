@@ -7,7 +7,12 @@
     :license: BSD-3-Clause
 """
 
-from rapidjson import DM_ISO8601, NM_DECIMAL, dumps as _json_dumps
+from functools import partial
+from rapidjson import (
+    DM_ISO8601, DM_NAIVE_IS_UTC,
+    NM_DECIMAL, NM_NATIVE,
+    dumps as _json_dumps
+)
 
 from .html import tag, htmlescape
 
@@ -38,11 +43,12 @@ def _json_default(obj):
     raise ValueError('%r is not JSON serializable' % obj)
 
 
-@Serializers.register_for('json')
-def json(value):
-    return _json_dumps(
-        value, default=_json_default,
-        datetime_mode=DM_ISO8601, number_mode=NM_DECIMAL)
+json = partial(
+    _json_dumps,
+    default=_json_default,
+    datetime_mode=DM_ISO8601 | DM_NAIVE_IS_UTC,
+    number_mode=NM_NATIVE | NM_DECIMAL
+)
 
 
 def json_safe(value):
@@ -68,6 +74,9 @@ def xml_encode(value, key=None, quote=True):
                 for item in value
             ])
     return htmlescape(value, quote)
+
+
+Serializers.register_for('json')(json)
 
 
 @Serializers.register_for('xml')

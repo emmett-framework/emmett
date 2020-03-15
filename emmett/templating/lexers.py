@@ -9,7 +9,7 @@
     :license: BSD-3-Clause
 """
 
-from renoir.lexers import Lexer
+from renoir import Lexer
 
 from ..ctx import current
 from ..routing.urls import url

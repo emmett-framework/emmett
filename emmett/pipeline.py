@@ -10,6 +10,7 @@
 """
 
 import asyncio
+import types
 
 from functools import wraps
 
@@ -279,18 +280,38 @@ class RequirePipe(Pipe):
 
 
 class Injector(Pipe):
-    def __init__(self):
-        self._injection_attrs_ = []
-        for attr in (
-            set(dir(self)) - self._pipeline_all_methods_ - {'output'}
-        ):
-            if attr.startswith('_'):
-                continue
-            self._injection_attrs_.append(attr)
+    namespace: str = '__global__'
 
-    def _inject(self, ctx):
-        for attr in self._injection_attrs_:
-            ctx[attr] = getattr(self, attr)
+    def __init__(self):
+        self._injections_ = {}
+        if self.namespace != '__global__':
+            self._inject = self._inject_local
+            return
+        self._inject = self._inject_global
+        for attr_name in (
+            set(dir(self)) -
+            self.__class__._pipeline_methods_ -
+            {'output', 'namespace'}
+        ):
+            if attr_name.startswith('_'):
+                continue
+            attr = getattr(self, attr_name)
+            if isinstance(attr, types.MethodType):
+                self._injections_[attr_name] = self._wrapped_method(attr)
+                continue
+            self._injections_[attr_name] = attr
+
+    @staticmethod
+    def _wrapped_method(method):
+        def wrap(*args, **kwargs):
+            return method(*args, **kwargs)
+        return wrap
+
+    def _inject_local(self, ctx):
+        ctx[self.namespace] = self
+
+    def _inject_global(self, ctx):
+        ctx.update(self._injections_)
 
     async def pipe_request(self, next_pipe, **kwargs):
         ctx = await next_pipe(**kwargs)

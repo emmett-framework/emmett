@@ -15,7 +15,7 @@ from helpers import current_ctx as _current_ctx, ws_ctx as _ws_ctx
 from emmett import App, request, websocket, abort
 from emmett.ctx import current
 from emmett.http import HTTP
-from emmett.pipeline import Pipe
+from emmett.pipeline import Pipe, Injector
 from emmett.parsers import Parsers
 from emmett.serializers import Serializers
 
@@ -149,9 +149,56 @@ class PipeSR2(FlowStorePipeSplit):
         return dict(pipe2s='send_inject', **data)
 
 
+class CTXInjector(Injector):
+    async def pipe_request(self, next_pipe, **kwargs):
+        rv = await super().pipe_request(next_pipe, **kwargs)
+        current._pipeline_generic_storage.append(rv)
+        return rv
+
+
+class GlobalInjector(CTXInjector):
+    foo = "bar"
+
+    def __init__(self):
+        self.bar = "baz"
+        super().__init__()
+
+    @staticmethod
+    def staticm(val):
+        return val
+
+    def boundm(self, val):
+        return self.foo, val
+
+    @property
+    def prop(self):
+        return self.bar
+
+
+class ScopedInjector(CTXInjector):
+    namespace = "scoped"
+    foo = "bar"
+
+    def __init__(self):
+        self.bar = "baz"
+        super().__init__()
+
+    @staticmethod
+    def staticm(val):
+        return val
+
+    def boundm(self, val):
+        return self.foo, val
+
+    @property
+    def prop(self):
+        return self.bar
+
+
 @contextmanager
 def request_ctx(path):
     with _current_ctx(path) as ctx:
+        ctx._pipeline_generic_storage = []
         ctx._pipeline_linear_storage = []
         ctx._pipeline_parallel_storage = []
         yield ctx
@@ -160,6 +207,7 @@ def request_ctx(path):
 @contextmanager
 def ws_ctx(path):
     with _ws_ctx(path) as ctx:
+        ctx._pipeline_generic_storage = []
         ctx._pipeline_linear_storage = []
         ctx._pipeline_parallel_storage = []
         yield ctx
@@ -252,6 +300,13 @@ def app():
     @mod.websocket(pipeline=[Pipe6()])
     def ws_pipe6():
         return
+
+    inj = app.module(__name__, 'inj', url_prefix='inj')
+    inj.pipeline = [GlobalInjector(), ScopedInjector()]
+
+    @inj.route(template='test.html')
+    def injpipe():
+        return {'posts': []}
 
     return app
 
@@ -525,3 +580,26 @@ async def test_receive_send_flow(app):
             'pipe1r': 'receive_inject', 'pipe2r': 'receive_inject',
             'pipe1s': 'send_inject', 'pipe2s': 'send_inject'
         }
+
+
+@pytest.mark.asyncio
+async def test_injectors(app):
+    with request_ctx('/inj/injpipe') as ctx:
+        current.app = app
+
+        await app._router_http.dispatch()
+        env = ctx._pipeline_generic_storage[0]
+
+        assert env['posts'] == []
+        assert env['foo'] == "bar"
+        assert env['bar'] == "baz"
+        assert env['staticm']("test") == "test"
+        assert env['boundm']("test") == ("bar", "test")
+        assert env['prop'] == "baz"
+
+        env = env['scoped']
+        assert env.foo == "bar"
+        assert env.bar == "baz"
+        assert env.staticm("test") == "test"
+        assert env.boundm("test") == ("bar", "test")
+        assert env.prop == "baz"

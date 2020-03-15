@@ -10,7 +10,9 @@
 """
 
 from collections.abc import Mapping
-from typing import Any, BinaryIO, Dict, Iterable, Iterator, Tuple, Union
+from typing import (
+    Any, BinaryIO, Dict, Iterable, Iterator, Optional, Tuple, Union
+)
 
 from .._internal import loop_copyfileobj
 
@@ -59,6 +61,45 @@ class Headers(Mapping):
     def values(self) -> Iterator[str]:
         for value in self._data.values():
             yield value.decode()
+
+
+class ResponseHeaders(Mapping):
+    __slots__ = ['_data']
+    __hash__ = None
+
+    def __init__(self, data: Optional[Dict[str, str]] = None):
+        self._data = data or {}
+
+    def __getitem__(self, key: str) -> str:
+        return self._data[key.lower()]
+
+    def __setitem__(self, key: str, value: str):
+        self._data[key.lower()] = value
+
+    def __contains__(self, key: str) -> bool:
+        return key.lower() in self._data
+
+    def __iter__(self) -> Iterator[Tuple[str, str]]:
+        for key, value in self._data.items():
+            yield key, value
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def items(self) -> Iterator[Tuple[str, str]]:
+        for key, value in self._data.items():
+            yield key, value
+
+    def keys(self) -> Iterator[str]:
+        for key in self._data.keys():
+            yield key
+
+    def values(self) -> Iterator[str]:
+        for value in self._data.values():
+            yield value
+
+    def update(self, data: Dict[str, str]):
+        self._data.update(data)
 
 
 class FileStorage:

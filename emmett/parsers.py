@@ -7,7 +7,12 @@
     :license: BSD-3-Clause
 """
 
-from rapidjson import DM_ISO8601, NM_NATIVE, loads as _json_loads
+from functools import partial
+from rapidjson import (
+    DM_ISO8601, DM_NAIVE_IS_UTC,
+    NM_NATIVE,
+    loads as _json_loads
+)
 
 
 class Parsers(object):
@@ -25,6 +30,10 @@ class Parsers(object):
         return cls._registry_[target]
 
 
-@Parsers.register_for('json')
-def json(value):
-    return _json_loads(value, datetime_mode=DM_ISO8601, number_mode=NM_NATIVE)
+json = partial(
+    _json_loads,
+    datetime_mode=DM_ISO8601 | DM_NAIVE_IS_UTC,
+    number_mode=NM_NATIVE
+)
+
+Parsers.register_for('json')(json)
