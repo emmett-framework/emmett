@@ -1,4 +1,4 @@
-![Emmett](https://github.com/emmett-framework/emmett/blob/master/artwork/logo-bwb-xb-xl.png)
+![Emmett](https://deneb.spaces.amira.io/emmett/artwork/logo-bwb-xb-xl.png)
 
 Emmett is a full-stack Python web framework designed with simplicity in mind.
 
@@ -43,15 +43,16 @@ async def todo():
 
 ## Documentation
 
-The documentations is available under the [docs folder](https://github.com/emmett-framework/emmett/tree/master/docs) folder.
+The documentation is available at [https://emmett.sh/docs](https://emmett.sh/docs).
+The sources are available under the [docs folder](https://github.com/emmett-framework/emmett/tree/master/docs).
 
 ## Examples
 
-The "bloggy" example described in the [Tutorial](http://weppy.org/docs/latest/tutorial) is available under the *examples* folder. 
+The *bloggy* example described in the [Tutorial](https://emmett.sh/docs/latest/tutorial) is available under the [examples folder](https://github.com/emmett-framework/emmett/tree/master/examples). 
 
 ## Status of the project
 
-This is an alpha stage aiming to have full async support. It can be used only with Python 3.7 and above versions.
+This is a beta stage aiming to have full async support. It can be used only with Python 3.7 and above versions.
 
 ## How can I help?
 
