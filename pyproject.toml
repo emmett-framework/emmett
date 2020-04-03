@@ -6,9 +6,9 @@ authors = ["Giovanni Barillari <gi0baro@d4net.org>"]
 license = "BSD-3-Clause"
 
 readme = "README.md"
-# homepage = "https://github.com/emmett-framework/emmett"
+homepage = "https://emmett.sh"
 repository = "https://github.com/emmett-framework/emmett"
-# documentation = "https://github.com/emmett-framework/emmett"
+documentation = "https://emmett.sh/docs"
 
 keywords = ["web", "asyncio"]
 classifiers = [
@@ -62,6 +62,9 @@ pytest = "^5.3"
 pytest-asyncio = "^0.10"
 ipaddress = "^1.0"
 pylint = "^2.4.4"
+
+[tool.poetry.urls]
+"Issue Tracker" = "https://github.com/emmett-framework/emmett/issues"
 
 [build-system]
 requires = ["poetry>=1.0.0"]
