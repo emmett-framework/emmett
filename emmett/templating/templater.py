@@ -32,6 +32,6 @@ class Templater(Renoir):
         self.escape = value
         self._configure()
 
-    def _set_prettify(self, value):
-        self.prettify = value
+    def _set_indent(self, value):
+        self.indent = value
         self._configure()

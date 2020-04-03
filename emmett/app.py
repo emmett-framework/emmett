@@ -55,7 +55,7 @@ class Config(ConfigData):
         self._templates_auto_reload = app.debug or False
         self._templates_encoding = 'utf8'
         self._templates_escape = 'common'
-        self._templates_prettify = False
+        self._templates_indent = False
 
     def __setattr__(self, key, value):
         obj = getattr(self.__class__, key, None)
@@ -100,13 +100,13 @@ class Config(ConfigData):
         self._app.templater._set_escape(value)
 
     @property
-    def templates_prettify(self):
-        return self._templates_prettify
+    def templates_adjust_indent(self):
+        return self._templates_adjust_indent
 
-    @templates_prettify.setter
-    def templates_prettify(self, value):
-        self._templates_prettify = value
-        self._app.templater._set_prettify(value)
+    @templates_adjust_indent.setter
+    def templates_adjust_indent(self, value):
+        self._templates_adjust_indent = value
+        self._app.templater._set_indent(value)
 
 
 class App:
@@ -180,7 +180,7 @@ class App:
             path=self.template_path,
             encoding=self.config.templates_encoding,
             escape=self.config.templates_escape,
-            prettify=self.config.templates_prettify,
+            adjust_indent=self.config.templates_adjust_indent,
             reload=self.config.templates_auto_reload
         )
         #: store app in current

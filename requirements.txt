@@ -8,7 +8,7 @@ python-dateutil==2.8.1
 python-rapidjson==0.9.1
 pytzdata==2019.3
 pyyaml==5.3.1
-renoir==1.1.0
+renoir==1.2.0
 severus==1.0.0b2
 six==1.14.0
 uvicorn==0.11.3

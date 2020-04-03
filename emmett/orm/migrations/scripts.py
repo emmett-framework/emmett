@@ -46,7 +46,7 @@ class ScriptDir(object):
         self.truncate_slug_length = \
             self.app.config.migrations.filename_len or 40
         self.revision_map = RevisionsMap(self.app, self._load_revisions)
-        self.templater = Renoir(path=self.cwd, prettify=True)
+        self.templater = Renoir(path=self.cwd, mode='plain')
 
     def _load_revisions(self):
         sys.path.insert(0, self.path)
