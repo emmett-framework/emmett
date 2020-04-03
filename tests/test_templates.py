@@ -16,16 +16,16 @@ from emmett import App
 def app():
     app = App(__name__)
     app.config.templates_escape = 'all'
-    app.config.templates_prettify = True
+    app.config.templates_adjust_indent = True
     app.config.templates_auto_reload = True
     return app
 
 
 def test_helpers(app):
     templater = app.templater
-    r = templater._render(source="{{include_helpers}}")
+    r = templater._render(source="{{ include_helpers }}")
     assert r == '<script type="text/javascript" ' + \
-        'src="/__emmett__/jquery.min.js"></script>\n' + \
+        'src="/__emmett__/jquery.min.js"></script>' + \
         '<script type="text/javascript" ' + \
         'src="/__emmett__/helpers.js"></script>'
 
@@ -36,9 +36,9 @@ def test_meta(app):
         ctx.response.meta_prop.foo = "bar"
         templater = app.templater
         r = templater._render(
-            source="\n{{include_meta}}",
+            source="{{ include_meta }}",
             context={'current': ctx})
-        assert r == '<meta name="foo" content="bar" />\n' + \
+        assert r == '<meta name="foo" content="bar" />' + \
             '<meta property="foo" content="bar" />'
 
 
@@ -56,8 +56,8 @@ rendered_value = """
 <html>
     <head>
         <title>Test</title>
-        <script type="text/javascript" src="/__emmett__/jquery.min.js"></script>
-        <script type="text/javascript" src="/__emmett__/helpers.js"></script>
+
+        {helpers}
         <link rel="stylesheet" href="/static/style.css" type="text/css" />
     </head>
     <body>
@@ -77,9 +77,15 @@ rendered_value = """
                     <hr />
                 </li>
             </ul>
+
         </div>
     </body>
-</html>"""
+</html>""".format(
+    helpers="".join([
+        f'<script type="text/javascript" src="/__emmett__/{name}"></script>'
+        for name in ["jquery.min.js", "helpers.js"]
+    ])
+)
 
 
 def test_render(app):

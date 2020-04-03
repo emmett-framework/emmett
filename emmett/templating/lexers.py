@@ -20,7 +20,8 @@ class HelpersLexer(Lexer):
         '<script type="text/javascript" ' +
         'src="{}/__emmett__/jquery.min.js"></script>',
         '<script type="text/javascript" ' +
-        'src="{}/__emmett__/helpers.js"></script>']
+        'src="{}/__emmett__/helpers.js"></script>'
+    ]
 
     def process(self, ctx, value):
         for helper in self.helpers:

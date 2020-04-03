@@ -1,14 +1,14 @@
 [tool.poetry]
 name = "Emmett"
-version = "2.0.0b1"
+version = "2.0.0b2"
 description = "The web framework for inventors"
 authors = ["Giovanni Barillari <gi0baro@d4net.org>"]
 license = "BSD-3-Clause"
 
 readme = "README.md"
-# homepage = "https://github.com/emmett-framework/emmett"
+homepage = "https://emmett.sh"
 repository = "https://github.com/emmett-framework/emmett"
-# documentation = "https://github.com/emmett-framework/emmett"
+documentation = "https://emmett.sh/docs"
 
 keywords = ["web", "asyncio"]
 classifiers = [
@@ -44,12 +44,12 @@ emmett = "emmett.cli:main"
 python = "^3.7"
 click = ">=6.0"
 h11 = "~0.9.0"
-pendulum = "^2.0"
+pendulum = "~2.0.0"
 pyaes = "~1.6.0"
 pyDAL = "17.3"
 python-rapidjson = "~0.9.1"
 pyyaml = "~5.3.0"
-renoir = "^1.1"
+renoir = "^1.2"
 severus = "1.0.0b2"
 uvicorn = "0.11.3"
 websockets = "^8.0"
@@ -62,6 +62,9 @@ pytest = "^5.3"
 pytest-asyncio = "^0.10"
 ipaddress = "^1.0"
 pylint = "^2.4.4"
+
+[tool.poetry.urls]
+"Issue Tracker" = "https://github.com/emmett-framework/emmett/issues"
 
 [build-system]
 requires = ["poetry>=1.0.0"]
