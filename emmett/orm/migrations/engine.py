@@ -287,6 +287,7 @@ class Engine(MetaEngine):
             changes['type'][1] = csql
         elif 'length' in changes:
             change = changes.pop('length')
+            ftype = change[2] or field.type
             changes['type'] = [
                 None,
                 self.adapter.types[ftype] % {'length': change[1]}
