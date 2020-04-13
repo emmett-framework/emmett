@@ -44,12 +44,19 @@ class MetaEngine(object):
         rv = {}
         for change in changes:
             if change[0] == "modify_type":
-                rv['type'] = [change[4], change[5]]
+                rv['type'] = [
+                    change[4], change[5], change[3]['existing_length']
+                ]
+            elif change[0] == "modify_length":
+                rv['length'] = [
+                    change[4], change[5], change[3]['existing_type']
+                ]
             elif change[0] == "modify_notnull":
                 rv['notnull'] = [change[4], change[5]]
             elif change[0] == "modify_default":
                 rv['default'] = [
-                    change[4], change[5], change[3]['existing_type']]
+                    change[4], change[5], change[3]['existing_type']
+                ]
         return rv
 
 
@@ -253,23 +260,15 @@ class Engine(MetaEngine):
         return sql % (
             self.dialect.quote(table_name), self.dialect.quote(column_name))
 
-    def _feasible_as_changed_type(self, oldv, newv, clen):
-        old_sqltype = self.adapter.types[oldv] % {'length': clen}
-        new_sqltype = self.adapter.types[newv] % {'length': clen}
-        return old_sqltype != new_sqltype
-
-    def _represent_changes(self, changes, col_len):
+    def _represent_changes(self, changes, field):
         if 'default' in changes and changes['default'][1] is not None:
-            ftype = changes['default'][2]
+            ftype = changes['default'][2] or field.type
             if 'type' in changes:
                 ftype = changes['type'][1]
             changes['default'][1] = self.adapter.represent(
                 changes['default'][1], ftype)
         if 'type' in changes:
-            if not self._feasible_as_changed_type(
-                    changes['type'][0], changes['type'][1], col_len):
-                del changes['type']
-                return
+            changes.pop('length', None)
             coltype = changes['type'][1]
             if coltype.startswith('reference'):
                 raise NotImplementedError(
@@ -282,9 +281,16 @@ class Engine(MetaEngine):
             elif coltype.startswith('geo'):
                 csql = self._gen_geo()
             else:
-                csql = self.adapter.types[coltype] % \
-                    {'length': col_len}
+                csql = self.adapter.types[coltype] % {
+                    'length': changes['type'][2] or field.length
+                }
             changes['type'][1] = csql
+        elif 'length' in changes:
+            change = changes.pop('length')
+            changes['type'] = [
+                None,
+                self.adapter.types[ftype] % {'length': change[1]}
+            ]
 
     def _alter_column_sql(self, table_name, column_name, changes):
         sql = 'ALTER TABLE %(tname)s ALTER COLUMN %(cname)s %(changes)s;'
@@ -296,8 +302,8 @@ class Engine(MetaEngine):
             },
             'default': ["SET DEFAULT %s", "DROP DEFAULT"]
         }
-        col_len = self.db[table_name][column_name].length
-        self._represent_changes(changes, col_len)
+        field = self.db[table_name][column_name]
+        self._represent_changes(changes, field)
         sql_changes = []
         for change_type, change_val in changes.items():
             change_sql = sql_changes_map[change_type]
@@ -306,7 +312,8 @@ class Engine(MetaEngine):
             elif isinstance(change_sql, list):
                 sql_changes.append(
                     change_sql[0] % change_val[1] if change_val[1] is not None
-                    else change_sql[1])
+                    else change_sql[1]
+                )
             else:
                 sql_changes.append(change_sql % change_val[1])
         if not sql_changes:
