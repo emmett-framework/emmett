@@ -119,7 +119,7 @@ accepted by the `route()` decorator.
 Let's we see how to build URLs with our routing rules.
 
 ### Building URLs
-Weppy provides a useful method to create URLs.
+Emmett provides a useful method to create URLs.
 
 ```python
 from emmett import App, url
