@@ -20,4 +20,4 @@ jobs:
         pip install tox>=1.8
     - name: Test
       run: |
-        tox -e $(echo ${{ matrix.python-version }} | tr -d .)
+        tox -e $(echo py${{ matrix.python-version }} | tr -d .)
