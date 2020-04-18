@@ -218,12 +218,20 @@ class Comparator(object):
     def column(self, dbcolumn, metacolumn):
         self.notnulls(dbcolumn, metacolumn)
         self.types(dbcolumn, metacolumn)
+        self.lengths(dbcolumn, metacolumn)
         self.defaults(dbcolumn, metacolumn)
 
     def types(self, dbcolumn, metacolumn):
         self.ops[-1].existing_type = metacolumn.type
         if dbcolumn.type != metacolumn.type:
             self.ops[-1].modify_type = dbcolumn.type
+
+    def lengths(self, dbcolumn, metacolumn):
+        self.ops[-1].existing_length = metacolumn.length
+        if any(
+            field.type == "string" for field in [dbcolumn, metacolumn]
+        ) and dbcolumn.length != metacolumn.length:
+            self.ops[-1].modify_length = dbcolumn.length
 
     def notnulls(self, dbcolumn, metacolumn):
         self.ops[-1].existing_notnull = metacolumn.notnull
@@ -387,10 +395,14 @@ def _alter_column(op):
 
     if op.existing_type is not None:
         text += ",\n%sexisting_type=%r" % (indent, op.existing_type)
+    if op.existing_length:
+        text += ",\n%sexisting_length=%r" % (indent, op.existing_length)
     if op.modify_default is not DEFAULT_VALUE:
         text += ",\n%sdefault=%r" % (indent, op.modify_default)
     if op.modify_type is not None:
         text += ",\n%stype=%r" % (indent, op.modify_type)
+    if op.modify_length is not None:
+        text += ",\n%slength=%r" % (indent, op.modify_length)
     if op.modify_notnull is not None:
         text += ",\n%snotnull=%r" % (indent, op.modify_notnull)
     if op.modify_notnull is None and op.existing_notnull is not None:
