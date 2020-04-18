@@ -146,22 +146,24 @@ class RamCache(CacheHandler):
             prefix=prefix, default_expire=default_expire)
         self._threshold = threshold
 
-    def _prune(self):
-        now = time.time()
+    def _prune(self, now):
         # remove expired items
         while self._heap_exp:
-            exp, rk = heapq.heappop(self._heap_exp)
-            if exp < now:
+            exp, rk = self._heap_exp[0]
+            if exp >= now:
+                break
+            self._heap_exp.remove((exp, rk))
+            element = self.data.get(rk)
+            if element and element.exp == exp:
                 self._heap_acc.remove((self.data[rk].acc, rk))
                 del self.data[rk]
-            else:
-                heapq.heappush(self._heap_exp, (exp, rk))
-                break
         # remove threshold exceding elements
         while len(self.data) > self._threshold:
             rk = heapq.heappop(self._heap_acc)[1]
-            self._heap_exp.remove((self.data[rk].exp, rk))
-            del self.data[rk]
+            element = self.data.get(rk)
+            if element:
+                self._heap_exp.remove((element.exp, rk))
+                del self.data[rk]
 
     @CacheHandler._key_prefix_
     def get(self, key):
@@ -183,7 +185,7 @@ class RamCache(CacheHandler):
     @CacheHandler._convert_duration_
     def set(self, key, value, **kwargs):
         with self.lock:
-            self._prune()
+            self._prune(kwargs['now'])
             heapq.heappush(self._heap_exp, (kwargs['expiration'], key))
             heapq.heappush(self._heap_acc, (kwargs['now'], key))
             self.data[key] = RamElement(
