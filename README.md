@@ -1,7 +1,7 @@
 ![logo](http://weppy.org/static/logo-big.png)
 
 [![pip version](https://img.shields.io/pypi/v/weppy.svg?style=flat)](https://pypi.python.org/pypi/weppy) 
-[![build status](https://img.shields.io/travis/gi0baro/weppy.svg?style=flat)](https://travis-ci.org/gi0baro/weppy)
+![Tests Status](https://github.com/emmett-framework/emmett/workflows/Tests-weppy/badge.svg)
 
 weppy is a full-stack python web framework designed with simplicity in mind.
 
