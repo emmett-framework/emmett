@@ -147,34 +147,42 @@ class ConnectionManager:
     def _loop(self):
         return asyncio.get_running_loop()
 
-    def _connection_open(self):
+    def _connector_sync(self):
         return self.adapter.connector()
 
-    def _connection_close(self, connection):
+    _connector_loop = _connector_sync
+
+    def _connection_open_sync(self):
+        return self._connector_sync(), True
+
+    async def _connection_open_loop(self):
+        return (
+            await self._loop.run_in_executor(
+                None, self._connector_loop
+            ),
+            True
+        )
+
+    def _connection_close_sync(self, connection, *args, **kwargs):
         try:
             connection.close()
         except Exception:
             pass
 
-    def connect_sync(self):
-        return self._connection_open(), True
-
-    async def connect_loop(self):
-        return (
-            await self._loop.run_in_executor(None, self._connection_open),
-            True
+    async def _connection_close_loop(self, connection, *args, **kwargs):
+        return await self._loop.run_in_executor(
+            None, partial(self._connection_close_sync, connection)
         )
 
-    def close_sync(self, connection, *args, **kwargs):
-        self._connection_close(connection)
+    connect_sync = _connection_open_sync
+    connect_loop = _connection_open_loop
 
-    async def close_loop(self, connection, *args, **kwargs):
-        await self._loop.run_in_executor(
-            None, partial(self._connection_close, connection))
+    disconnect_sync = _connection_close_sync
+    disconnect_loop = _connection_close_loop
 
     def __del__(self):
         if not self.state.closed:
-            self.close_sync(self.state.connection)
+            self.disconnect_sync(self.state.connection)
 
 
 class PooledConnectionManager(ConnectionManager):
@@ -226,7 +234,8 @@ class PooledConnectionManager(ConnectionManager):
 
     async def connect_loop(self):
         return await asyncio.wait_for(
-            self._acquire_loop(), self.connect_timeout or None)
+            self._acquire_loop(), self.connect_timeout or None
+        )
 
     def _acquire_sync(self):
         _opened = False
@@ -239,14 +248,14 @@ class PooledConnectionManager(ConnectionManager):
                 break
             else:
                 if self.stale_timeout and self.is_stale(ts):
-                    super().close_sync(self.connections_map.pop(key))
+                    self._connection_close_sync(self.connections_map.pop(key))
                 else:
                     conn = self.connections_map[key]
                     break
         if conn is None:
             if len(self.connections_map) >= self.max_connections:
                 raise MaxConnectionsExceeded()
-            conn, _opened = super().connect_sync()
+            conn, _opened = self._connection_open_sync()
             ts, key = time.time(), id(conn)
             self.connections_map[key] = conn
         self.in_use[key] = ts
@@ -258,29 +267,31 @@ class PooledConnectionManager(ConnectionManager):
             if len(self.connections_map) < self.max_connections:
                 async with self._lock_loop:
                     if len(self.connections_map) < self.max_connections:
-                        conn, _opened = await super().connect_loop()
+                        conn, _opened = await self._connection_open_loop()
                         ts, key = time.time(), id(conn)
                         self.connections_map[key] = conn
                         break
             ts, key = await self.connections_loop.get()
             if self.stale_timeout and self.is_stale(ts):
-                await super().close_loop(self.connections_map.pop(key))
+                await self._connection_close_loop(
+                    self.connections_map.pop(key)
+                )
             else:
                 conn = self.connections_map[key]
                 break
         self.in_use[key] = ts
         return conn, _opened
 
-    def close_sync(self, connection, close_connection=False):
+    def disconnect_sync(self, connection, close_connection=False):
         key = id(connection)
         ts = self.in_use.pop(key)
         if close_connection:
             self.connections_map.pop(key)
-            super().close_sync(connection)
+            self._connection_close_sync(connection)
         else:
             if self.stale_timeout and self.is_stale(ts):
                 self.connections_map.pop(key)
-                super().close_sync(connection)
+                self._connection_close_sync(connection)
             else:
                 with self._lock_sync:
                     heapq.heappush(self.connections_sync, (ts, key))
@@ -290,20 +301,20 @@ class PooledConnectionManager(ConnectionManager):
         ts = self.in_use.pop(key)
         if close_connection:
             self.connections_map.pop(key)
-            await super().close_loop(connection)
+            await self._connection_close_loop(connection)
         else:
             if self.stale_timeout and self.is_stale(ts):
                 self.connections_map.pop(key)
-                await super().close_loop(connection)
+                await self._connection_close_loop(connection)
             else:
                 self.connections_loop.put_nowait((ts, key))
 
-    def close_all(self):
+    def disconnect_all(self):
         for connection in self.connections_map.values():
-            self.close_sync(connection, close_connection=True)
+            self.disconnect_sync(connection, close_connection=True)
 
     def __del__(self):
-        self.close_all()
+        self.disconnect_all()
 
 
 def _connection_init(self, *args, **kwargs):
@@ -351,7 +362,7 @@ def _close_sync(self, action='commit', really=True):
             succeeded = False
         really = not succeeded
     try:
-        self._connection_manager.close_sync(self.connection, really)
+        self._connection_manager.disconnect_sync(self.connection, really)
     finally:
         self.connection = None
     return is_open
@@ -370,7 +381,7 @@ async def _close_loop(self, action='commit', really=True):
             succeeded = False
         really = not succeeded
     try:
-        await self._connection_manager.close_loop(self.connection, really)
+        await self._connection_manager.disconnect_loop(self.connection, really)
     finally:
         self.connection = None
     return is_open
