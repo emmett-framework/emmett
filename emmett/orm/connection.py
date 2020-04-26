@@ -296,7 +296,7 @@ class PooledConnectionManager(ConnectionManager):
                 with self._lock_sync:
                     heapq.heappush(self.connections_sync, (ts, key))
 
-    async def close_loop(self, connection, close_connection=False):
+    async def disconnect_loop(self, connection, close_connection=False):
         key = id(connection)
         ts = self.in_use.pop(key)
         if close_connection:
