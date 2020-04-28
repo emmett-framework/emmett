@@ -28,16 +28,18 @@ class Worker(_Worker):
         logger = logging.getLogger("uvicorn.error")
         logger.handlers = self.log.error_log.handlers
         logger.setLevel(self.log.error_log.level)
+        logger.propagate = False
 
         logger = logging.getLogger("uvicorn.access")
         logger.handlers = self.log.access_log.handlers
         logger.setLevel(self.log.access_log.level)
+        logger.propagate = False
 
         config = {
             "app": None,
             "log_config": None,
             "timeout_keep_alive": self.cfg.keepalive,
-            "timeout_notify": self.timeout,
+            "timeout_notify": self.cfg.timeout,
             "callback_notify": self.callback_notify,
             "limit_max_requests": self.max_requests
         }
