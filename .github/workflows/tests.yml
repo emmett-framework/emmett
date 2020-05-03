@@ -1,10 +1,6 @@
 name: Tests
 
-on:
-  push:
-    tags-ignore:
-      - "**"
-  pull_request:
+on: [push, pull_request]
 
 jobs:
   Linux:
