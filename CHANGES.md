@@ -25,6 +25,9 @@ Next
 - Decoupled internationalization engine
 - Added runtime migration utils in ORM
 - Added `response_timeout` to `App.config`
+- Use default `text/plain` Content-Type header in responses
+- Added `namespace` to `Injector` class
+- Added Python 3.8 support
 
 Version 1.3
 -----------
