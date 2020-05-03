@@ -1,10 +1,10 @@
 Emmett changelog
 ================
 
-Next
-----
+Version 2.0
+-----------
 
-(Release date to be defined, codename to be selected)
+Released on May 3rd 2020, codename Archimedes
 
 - Dropped Python 2 support, requiring Python 3.7 minimum version
 - Changed package name to `emmett`
