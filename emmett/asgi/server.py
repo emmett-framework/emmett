@@ -10,6 +10,7 @@
 """
 
 import logging
+import os
 
 from uvicorn.config import Config as UvicornConfig, create_ssl_context
 from uvicorn.lifespan.on import LifespanOn
@@ -91,6 +92,9 @@ def run(
     log_level = (
         LOG_LEVELS[log_level] if log_level else (
             logging.DEBUG if app.debug else logging.WARNING))
+
+    if proxy_trust_ips is None:
+        proxy_trust_ips = os.environ.get("PROXY_TRUST_IPS", "*")
 
     uvicorn_config = Config(
         app=app,
