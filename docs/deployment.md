@@ -3,7 +3,7 @@ Deployment
 
 Depending on your setup and preferences, there are multiple ways to run Emmett applications. In this chapter, we'll try to document the most common ones.
 
-If you want to use an ASGI server not listed in this section, please refer to its documentation, remembering that your weppy application object is the actual ASGI application (following spec version 3.0).
+If you want to use an ASGI server not listed in this section, please refer to its documentation, remembering that your Emmett application object is the actual ASGI application (following spec version 3.0).
 
 Included server
 ---------------

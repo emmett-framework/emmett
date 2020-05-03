@@ -267,24 +267,28 @@ class AlterColumnOp(AlterTableOp):
     def __init__(
             self, table_name, column_name,
             existing_type=None,
+            existing_length=None,
             existing_default=None,
             existing_notnull=None,
             modify_notnull=None,
             modify_default=DEFAULT_VALUE,
             modify_name=None,
             modify_type=None,
+            modify_length=None,
             **kw
 
     ):
         super(AlterColumnOp, self).__init__(table_name)
         self.column_name = column_name
         self.existing_type = existing_type
+        self.existing_length = existing_length
         self.existing_default = existing_default
         self.existing_notnull = existing_notnull
         self.modify_notnull = modify_notnull
         self.modify_default = modify_default
         self.modify_name = modify_name
         self.modify_type = modify_type
+        self.modify_length = modify_length
         self.kw = kw
 
     def to_diff_tuple(self):
@@ -295,10 +299,23 @@ class AlterColumnOp(AlterTableOp):
             col_diff.append(
                 (
                     "modify_type", tname, cname, {
+                        "existing_length": self.existing_length,
                         "existing_notnull": self.existing_notnull,
                         "existing_default": self.existing_default},
                     self.existing_type,
                     self.modify_type
+                )
+            )
+
+        if self.modify_length is not None:
+            col_diff.append(
+                (
+                    "modify_length", tname, cname, {
+                        "existing_type": self.existing_type,
+                        "existing_notnull": self.existing_notnull,
+                        "existing_default": self.existing_default},
+                    self.existing_length,
+                    self.modify_length
                 )
             )
 
@@ -327,24 +344,29 @@ class AlterColumnOp(AlterTableOp):
         return col_diff
 
     def has_changes(self):
-        hc = self.modify_notnull is not None or \
-            self.modify_default is not DEFAULT_VALUE or \
-            self.modify_type is not None
+        hc = (
+            self.modify_notnull is not None or
+            self.modify_default is not DEFAULT_VALUE or
+            self.modify_type is not None or
+            self.modify_length is not None
+        )
         if hc:
             return True
         for kw in self.kw:
             if kw.startswith('modify_'):
                 return True
-        else:
-            return False
+        return False
 
     def reverse(self):
         kw = self.kw.copy()
         kw['existing_type'] = self.existing_type
+        kw['existing_length'] = self.existing_length
         kw['existing_notnull'] = self.existing_notnull
         kw['existing_default'] = self.existing_default
         if self.modify_type is not None:
             kw['modify_type'] = self.modify_type
+        if self.modify_length is not None:
+            kw['modify_length'] = self.modify_length
         if self.modify_notnull is not None:
             kw['modify_notnull'] = self.modify_notnull
         if self.modify_default is not DEFAULT_VALUE:
@@ -372,7 +394,9 @@ class AlterColumnOp(AlterTableOp):
         default=DEFAULT_VALUE,
         new_column_name=None,
         type=None,
+        length=None,
         existing_type=None,
+        existing_length=None,
         existing_default=None,
         existing_notnull=None,
         **kw
@@ -380,10 +404,12 @@ class AlterColumnOp(AlterTableOp):
         return cls(
             table_name, column_name,
             existing_type=existing_type,
+            existing_length=existing_length,
             existing_default=existing_default,
             existing_notnull=existing_notnull,
             modify_name=new_column_name,
             modify_type=type,
+            modify_length=length,
             modify_default=default,
             modify_notnull=notnull,
             **kw

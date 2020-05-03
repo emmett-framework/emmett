@@ -52,7 +52,15 @@ The *bloggy* example described in the [Tutorial](https://emmett.sh/docs/latest/t
 
 ## Status of the project
 
-This is a beta stage aiming to have full async support. It can be used only with Python 3.7 and above versions.
+Emmett is production ready and is compatible with Python 3.7 and above versions.
+
+Emmett follows a *semantic versioning* for its releases, with a `{major}.{minor}.{patch}` scheme for versions numbers, where:
+
+- *major* versions might introduce breaking changes
+- *minor* versions usually introduce new features and might introduce deprecations
+- *patch* versions only introduce bug fixes
+
+Deprecations are kept in place for at least 3 minor versions, and the drop is always communicated in the [upgrade guide](https://emmett.sh/docs/latest/upgrading).
 
 ## How can I help?
 

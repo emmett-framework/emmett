@@ -16,37 +16,37 @@ with io.open("requirements.txt", "rt", encoding="utf8") as f:
 
 
 setup(
-    name='Emmett',
+    name="Emmett",
     version=version,
-    url='https://github.com/emmett-framework/emmett',
+    url="https://github.com/emmett-framework/emmett",
     project_urls={
         "Code": "https://github.com/emmett-framework/emmett",
         "Issue tracker": "https://github.com/emmett-framework/emmett/issues",
     },
-    license='BSD-3-Clause',
-    author='Giovanni Barillari',
-    author_email='gi0baro@d4net.org',
-    description='The web framework for inventors',
+    license="BSD-3-Clause",
+    author="Giovanni Barillari",
+    author_email="gi0baro@d4net.org",
+    description="The web framework for inventors",
     long_description=readme,
     packages=find_packages(),
     include_package_data=True,
-    platforms='any',
-    python_requires='>=3.7',
+    platforms="any",
+    python_requires=">=3.7",
     install_requires=requirements,
     classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Environment :: Web Environment',
-        'Framework :: AsyncIO',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
-        'Topic :: Software Development :: Libraries :: Python Modules'
+        "Development Status :: 5 - Production/Stable",
+        "Environment :: Web Environment",
+        "Framework :: AsyncIO",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: BSD License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+        "Topic :: Software Development :: Libraries :: Python Modules"
     ],
     entry_points={
-        'console_scripts': ['emmett = emmett.cli:main']
+        "console_scripts": ["emmett = emmett.cli:main"]
     }
 )

@@ -232,7 +232,7 @@ Practically speaking, the rules Emmett apply on the indexes definition are:
 
 When using the `dict` notation, you can also specify the `unique` option as a boolean, which is `False` on default behavior.
 
-Weppy supports some advanced options on defining indexes, see the [advanced chapter](./advanced#advanced-indexes) of the documentation for further informations.
+Emmett supports some advanced options on defining indexes, see the [advanced chapter](./advanced#advanced-indexes) of the documentation for further informations.
 
 Values representation
 ---------------------

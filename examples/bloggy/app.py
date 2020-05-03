@@ -62,7 +62,7 @@ class Comment(Model):
 
 
 #: init db and auth
-db = Database(app, auto_migrate=True)
+db = Database(app)
 auth = Auth(app, db, user_model=User)
 db.define_models(Post, Comment)
 

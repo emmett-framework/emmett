@@ -352,14 +352,16 @@ class App:
             self._extensions_listeners[signal].append(listener)
 
     #: Add an extension to application
-    def use_extension(self, ext_cls):
+    def use_extension(self, ext_cls: Type[Extension]) -> Extension:
         if not issubclass(ext_cls, Extension):
             raise RuntimeError(
-                f'{ext_cls.__name__} is an invalid emmett extension')
+                f'{ext_cls.__name__} is an invalid Emmett extension'
+            )
         ext_env, ext_config = self.__init_extension(ext_cls)
         self.ext[ext_cls.__name__] = ext_cls(self, ext_env, ext_config)
         self.__register_extension_listeners(self.ext[ext_cls.__name__])
         self.ext[ext_cls.__name__].on_load()
+        return self.ext[ext_cls.__name__]
 
     #: Add a template extension to application
     def use_template_extension(self, ext_cls, **config):
@@ -381,7 +383,7 @@ class App:
         self, host, port,
         loop='auto', proto_http='auto', proto_ws='auto',
         log_level=None, access_log=None,
-        proxy_headers=False,
+        proxy_headers=False, proxy_trust_ips=None,
         limit_concurrency=None,
         backlog=2048,
         timeout_keep_alive=0
@@ -390,7 +392,7 @@ class App:
             self, host, port,
             loop=loop, proto_http=proto_http, proto_ws=proto_ws,
             log_level=log_level, access_log=access_log,
-            proxy_headers=proxy_headers,
+            proxy_headers=proxy_headers, proxy_trust_ips=proxy_trust_ips,
             limit_concurrency=limit_concurrency,
             backlog=backlog,
             timeout_keep_alive=timeout_keep_alive

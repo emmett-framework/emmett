@@ -424,7 +424,7 @@ db(Event.location == "New York").select(
 
 ### Pagination
 
-When you select records, you often want to limit the result to a specific number of records, and use pagination to get the consequent results. Weppy provides the `paginate` option in the `select` method, so for example
+When you select records, you often want to limit the result to a specific number of records, and use pagination to get the consequent results. Emmett provides the `paginate` option in the `select` method, so for example
 
 ```python
 Event.all().select(paginate=1)

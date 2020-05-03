@@ -1,0 +1,30 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Install and set up Poetry
+        run: |
+          curl -fsS -o get-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py
+          python get-poetry.py -y
+          source $HOME/.poetry/env
+          poetry config virtualenvs.in-project true
+      - name: Publish
+        run: |
+          source $HOME/.poetry/env
+          poetry config pypi-token.pypi $PUBLISH_TOKEN
+          poetry build
+          poetry publish
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}

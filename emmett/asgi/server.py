@@ -10,11 +10,13 @@
 """
 
 import logging
+import os
 
 from uvicorn.config import Config as UvicornConfig, create_ssl_context
 from uvicorn.lifespan.on import LifespanOn
 from uvicorn.main import Server
 from uvicorn.middleware.debug import DebugMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from ..logger import LOG_LEVELS
 from .loops import loops
@@ -58,6 +60,10 @@ class Config(UvicornConfig):
 
         if self.debug:
             self.loaded_app = DebugMiddleware(self.loaded_app)
+        if self.proxy_headers:
+            self.loaded_app = ProxyHeadersMiddleware(
+                self.loaded_app, trusted_hosts=self.forwarded_allow_ips
+            )
 
         self.loaded = True
 
@@ -67,7 +73,7 @@ def run(
     host='127.0.0.1', port=8000, uds=None, fd=None,
     loop='auto', proto_http='auto', proto_ws='auto',
     log_level=None, access_log=None,
-    proxy_headers=False,
+    proxy_headers=False, proxy_trust_ips=None,
     limit_concurrency=None,
     # limit_max_requests=None,
     backlog=2048,
@@ -87,6 +93,9 @@ def run(
         LOG_LEVELS[log_level] if log_level else (
             logging.DEBUG if app.debug else logging.WARNING))
 
+    if proxy_trust_ips is None:
+        proxy_trust_ips = os.environ.get("PROXY_TRUST_IPS", "*")
+
     uvicorn_config = Config(
         app=app,
         host=host,
@@ -100,6 +109,7 @@ def run(
         access_log=access_log,
         debug=bool(app.debug),
         proxy_headers=proxy_headers,
+        forwarded_allow_ips=proxy_trust_ips,
         limit_concurrency=limit_concurrency,
         # limit_max_requests=limit_max_requests,
         backlog=backlog,

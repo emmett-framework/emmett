@@ -360,6 +360,9 @@ def develop_command(info, host, port, reloader, debug):
     '--proxy-headers/--no-proxy-headers', is_flag=True, default=False,
     help='Enable/Disable proxy headers.')
 @click.option(
+    '--proxy-trust-ips', type=str, default=None,
+    help='Comma seperated list of IPs to trust with proxy headers')
+@click.option(
     '--max-concurrency', type=int,
     help='The maximum number of concurrent connections.')
 @click.option(
@@ -373,7 +376,7 @@ def serve_command(
     info, host, port,
     loop, http_protocol, ws_protocol,
     log_level, access_log,
-    proxy_headers,
+    proxy_headers, proxy_trust_ips,
     max_concurrency, backlog, keep_alive_timeout
 ):
     app = info.load_app()
@@ -381,7 +384,7 @@ def serve_command(
         host, port,
         loop=loop, proto_http=http_protocol, proto_ws=ws_protocol,
         log_level=log_level, access_log=access_log,
-        proxy_headers=proxy_headers,
+        proxy_headers=proxy_headers, proxy_trust_ips=proxy_trust_ips,
         limit_concurrency=max_concurrency,
         backlog=backlog,
         timeout_keep_alive=keep_alive_timeout

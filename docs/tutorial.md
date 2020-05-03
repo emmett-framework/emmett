@@ -180,14 +180,25 @@ Now, we can write down the code to use the database and the auth. Just the next 
 from emmett.orm import Database
 from emmett.tools import Auth
 
-db = Database(app, auto_migrate=True)
+db = Database(app)
 auth = Auth(app, db, user_model=User)
 db.define_models(Post, Comment)
 ```
 
-As you can see we configured the database to peform automatic migration of the schema – otherwise we need to [generate a migration](./orm/migrations) – and passed our `User` model to the auth module.
+As you can see we configured the database to use the models we defined, and passed our `User` model to the auth module. Now it's time to generate our first [migration](./orm/migrations):
 
-But, wait, how do we add an admin user who can write posts? We can write a `setup` function which allows us to do that. Let's write:
+```bash
+> emmett migrations generate -m "First migration"
+```
+
+This will produce a migration file inside the *migrations* folder, that will apply all the needed schema changes to our database. Let's apply them:
+
+```bash
+> mkdir -p databases
+> emmett migrations up
+```
+
+Now the database of our application is ready. But, wait, how do we add an admin user who can write posts? We can write a `setup` function which allows us to do that. Let's write:
 
 ```python
 @app.command('setup')
