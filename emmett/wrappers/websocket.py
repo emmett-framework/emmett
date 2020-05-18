@@ -9,7 +9,7 @@
     :license: BSD-3-Clause
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..asgi.typing import Scope, Receive, Send
 from . import ScopeWrapper
@@ -65,21 +65,21 @@ class Websocket(ScopeWrapper):
         self.receive = self._wrapped_receive
         self.send = self._wrapped_send
 
-    async def _accept_and_receive(self):
+    async def _accept_and_receive(self) -> Any:
         await self.accept()
         return await self.receive()
 
-    async def _accept_and_send(self, data):
+    async def _accept_and_send(self, data: Any):
         await self.accept()
         await self.send(data)
 
-    async def _wrapped_receive(self):
+    async def _wrapped_receive(self) -> Any:
         data = await self._receive()
         for method in self._flow_receive:
             data = method(data)
         return data
 
-    async def _wrapped_send(self, data):
+    async def _wrapped_send(self, data: Any):
         for method in self._flow_send:
             data = method(data)
         if isinstance(data, str):

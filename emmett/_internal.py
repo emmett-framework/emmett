@@ -16,30 +16,20 @@
 import asyncio
 import datetime
 import os
-import pendulum
 import pkgutil
 import sys
 import warnings
 
 from functools import partial
 from shutil import copyfileobj
+from typing import Any, Generic
+
+import pendulum
+
+from .typing import T
 
 
-#: internal datastructures
-class ObjectProxy(object):
-    #: Proxy to another object.
-    __slots__ = ('__obj', '__name__')
-
-    def __init__(self, obj, name=None):
-        object.__setattr__(self, '_ObjectProxy__obj', obj)
-        object.__setattr__(self, '__name__', name)
-
-    def _get_robj(self):
-        try:
-            return getattr(self.__obj, self.__name__)
-        except AttributeError:
-            raise RuntimeError('no object bound to %s' % self.__name__)
-
+class ProxyMixin:
     @property
     def __dict__(self):
         try:
@@ -66,7 +56,7 @@ class ObjectProxy(object):
         except RuntimeError:
             return []
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self._get_robj(), name)
 
     def __setitem__(self, key, value):
@@ -86,14 +76,25 @@ class ObjectProxy(object):
     __contains__ = lambda x, i: i in x._get_robj()
 
 
-class ContextVarProxy(ObjectProxy):
+class ObjectProxy(ProxyMixin, Generic[T]):
     __slots__ = ('__obj', '__name__')
 
-    def __init__(self, obj, name=None):
+    def __init__(self, obj: Any, name: str):
+        object.__setattr__(self, '_ObjectProxy__obj', obj)
+        object.__setattr__(self, '__name__', name)
+
+    def _get_robj(self) -> T:
+        return getattr(self.__obj, self.__name__)
+
+
+class ContextVarProxy(ProxyMixin, Generic[T]):
+    __slots__ = ('__obj', '__name__')
+
+    def __init__(self, obj: Any, name: str):
         object.__setattr__(self, '_ContextVarProxy__obj', obj)
         object.__setattr__(self, '__name__', name)
 
-    def _get_robj(self):
+    def _get_robj(self) -> T:
         return getattr(self.__obj.get(), self.__name__)
 
 

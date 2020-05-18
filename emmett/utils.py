@@ -9,15 +9,39 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import asyncio
-import pendulum
 import re
 import socket
 
 from datetime import datetime, date, time
+from typing import Awaitable, Callable, Generic, overload
+
+import pendulum
+
 from pendulum.parsing import _parse as _pendulum_parse
 
 from .datastructures import sdict
+from .typing import T
+
+
+@overload
+def cachedprop(
+    fget: Callable[..., T],
+    doc: str = None,
+    name: str = None
+) -> _cached_prop_sync[T]:
+    ...
+
+
+@overload
+def cachedprop(
+    fget: Callable[..., Awaitable[T]],
+    doc: str = None,
+    name: str = None
+) -> _cached_prop_loop[T]:
+    ...
 
 
 def cachedprop(fget, doc=None, name=None):
@@ -28,22 +52,22 @@ def cachedprop(fget, doc=None, name=None):
     return _cached_prop_sync(fget, doc, name)
 
 
-class _cached_prop(object):
+class _cached_prop:
     def __init__(self, fget, doc, name):
         self.fget = fget
         self.__doc__ = doc
         self.__name__ = name
 
 
-class _cached_prop_sync(_cached_prop):
-    def __get__(self, obj, cls):
+class _cached_prop_sync(_cached_prop, Generic[T]):
+    def __get__(self, obj, cls) -> T:
         if obj is None:
             return self
         obj.__dict__[self.__name__] = rv = self.fget(obj)
         return rv
 
 
-class _cached_awaitable_coro(object):
+class _cached_awaitable_coro:
     slots = ['coro_f', 'obj', '_result', '_awaitable']
 
     def __init__(self, coro_f, obj):
@@ -63,26 +87,13 @@ class _cached_awaitable_coro(object):
         return self._awaitable().__await__()
 
 
-class _cached_awaitable_task(object):
-    slots = ['coro', 'task']
-
-    def __init__(self, coro):
-        self.coro = coro
-
-    @cachedprop
-    def task(self):
-        return asyncio.create_task(self.coro)
-
-    def __await__(self):
-        return self.task.__await__()
-
-
-class _cached_prop_loop(_cached_prop):
-    def __get__(self, obj, cls):
+class _cached_prop_loop(_cached_prop, Generic[T]):
+    def __get__(self, obj, cls) -> Awaitable[T]:
         if obj is None:
             return self
         obj.__dict__[self.__name__] = rv = _cached_awaitable_coro(
-            self.fget, obj)
+            self.fget, obj
+        )
         return rv
 
 

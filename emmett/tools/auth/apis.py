@@ -15,7 +15,7 @@ from datetime import timedelta
 from typing import List, Optional, Type
 
 from ...cache import RouteCacheRule
-from ...ctx import session, now
+from ...locals import now, session
 from ...pipeline import Pipe, Injector
 from .ext import AuthExtension
 from .exposer import AuthModule

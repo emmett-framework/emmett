@@ -14,7 +14,7 @@ import re
 
 from pydal.exceptions import NotAuthorizedException, NotFoundException
 
-from .ctx import current, response, session
+from .ctx import current
 from .html import tag
 from .http import HTTP, HTTPFile, HTTPIO
 
@@ -22,14 +22,16 @@ _re_dbstream = re.compile(r'(?P<table>.*?)\.(?P<field>.*?)\..*')
 
 
 def abort(code, body=''):
-    response.status = code
+    current.response.status = code
     raise HTTP(code, body)
 
 
 def stream_file(path):
     full_path = os.path.join(current.app.root_path, path)
     raise HTTPFile(
-        full_path, headers=response.headers, cookies=response.cookies
+        full_path,
+        headers=current.response.headers,
+        cookies=current.response.cookies
     )
 
 
@@ -52,18 +54,22 @@ def stream_dbfile(db, name):
         abort(404)
     if isinstance(path_or_stream, str):
         raise HTTPFile(
-            path_or_stream, headers=response.headers, cookies=response.cookies
+            path_or_stream,
+            headers=current.response.headers,
+            cookies=current.response.cookies
         )
     raise HTTPIO(
-        path_or_stream, headers=response.headers, cookies=response.cookies
+        path_or_stream,
+        headers=current.response.headers,
+        cookies=current.response.cookies
     )
 
 
 def flash(message, category='message'):
     #: Flashes a message to the next request.
-    if session._flashes is None:
-        session._flashes = []
-    session._flashes.append((category, message))
+    if current.session._flashes is None:
+        current.session._flashes = []
+    current.session._flashes.append((category, message))
 
 
 def get_flashed_messages(with_categories=False, category_filter=[]):
@@ -74,11 +80,11 @@ def get_flashed_messages(with_categories=False, category_filter=[]):
     if not isinstance(category_filter, list):
         category_filter = [category_filter]
     try:
-        flashes = list(session._flashes or [])
+        flashes = list(current.session._flashes or [])
         if category_filter:
             flashes = list(filter(lambda f: f[0] in category_filter, flashes))
         for el in flashes:
-            session._flashes.remove(el)
+            current.session._flashes.remove(el)
         if not with_categories:
             return [x[1] for x in flashes]
     except Exception:

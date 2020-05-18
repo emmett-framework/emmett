@@ -10,9 +10,9 @@
 """
 
 from ...app import AppModule
-from ...ctx import request, session
 from ...helpers import flash, stream_dbfile
 from ...http import redirect
+from ...locals import request, session
 from ...pipeline import RequirePipe
 from ...routing.urls import url
 

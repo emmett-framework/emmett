@@ -14,13 +14,17 @@ from __future__ import annotations
 import re
 
 from http.cookies import SimpleCookie
+from typing import Any, List, Type, TypeVar, Union
 from urllib.parse import parse_qs
 
 from ..asgi.typing import Scope, Receive, Send
 from ..datastructures import Accept, sdict
 from ..language.helpers import LanguageAccept
+from ..typing import T
 from ..utils import cachedprop
 from .helpers import Headers
+
+AcceptType = TypeVar("AcceptType", bound=Accept)
 
 _regex_accept = re.compile(r'''
     ([^\s;,]+(?:[ \t]*;[ \t]*(?:[^\s;,q][^\s;,]*|q[^\s;,=][^\s;,]*))*)
@@ -28,11 +32,11 @@ _regex_accept = re.compile(r'''
 
 
 class Wrapper:
-    def __getitem__(self, key):
-        return getattr(self, key, None)
+    def __getitem__(self, name: str) -> Any:
+        return getattr(self, name, None)
 
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
+    def __setitem__(self, name: str, value: Any):
+        setattr(self, name, value)
 
 
 class ScopeWrapper(Wrapper):
@@ -47,10 +51,14 @@ class ScopeWrapper(Wrapper):
         self._scope = scope
         self._receive = receive
         self._send = send
-        self.scheme = scope['scheme']
-        self.path = scope['emt.path']
+        self.scheme: str = scope['scheme']
+        self.path: str = scope['emt.path']
 
-    def __parse_accept_header(self, value, cls=Accept):
+    def __parse_accept_header(
+        self,
+        value: str,
+        cls: Type[AcceptType] = Accept
+    ) -> AcceptType:
         if not value:
             return cls(None)
         result = []
@@ -64,27 +72,28 @@ class ScopeWrapper(Wrapper):
         return cls(result)
 
     @cachedprop
-    def headers(self):
+    def headers(self) -> Headers:
         return Headers(self._scope)
 
     @cachedprop
-    def host(self):
+    def host(self) -> str:
         return self.headers.get('host')
 
     @cachedprop
-    def accept_language(self):
+    def accept_language(self) -> LanguageAccept:
         return self.__parse_accept_header(
-            self.headers.get('accept-language'), LanguageAccept)
+            self.headers.get('accept-language'), LanguageAccept
+        )
 
     @cachedprop
-    def cookies(self):
+    def cookies(self) -> SimpleCookie:
         cookies = SimpleCookie()
         for cookie in self.headers.get('cookie', '').split(';'):
             cookies.load(cookie)
         return cookies
 
     @cachedprop
-    def query_params(self):
+    def query_params(self) -> sdict[str, Union[str, List[str]]]:
         rv = sdict()
         for key, values in parse_qs(
             self._scope['query_string'].decode('ascii'), keep_blank_values=True

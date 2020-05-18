@@ -18,10 +18,9 @@ import re
 from collections import OrderedDict
 from typing import Any, Awaitable, Callable, Optional, Tuple, Union
 
-from ..ctx import Context, current
+from ..ctx import RequestContext, WSContext, current
 from ..debug import smart_traceback, debug_handler
 from ..http import HTTPResponse, HTTPFile, HTTP
-from ..language import T
 from ..utils import cachedprop
 from ..wrappers.helpers import RequestCancelled
 from ..wrappers.request import Request
@@ -275,7 +274,13 @@ class HTTPHandler(RequestHandler):
         send: Send
     ) -> HTTPResponse:
         ctx_token = current._init_(
-            RequestContext, self.app, scope, receive, send
+            RequestContext,
+            self.app,
+            scope,
+            receive,
+            send,
+            wrapper_request=Request,
+            wrapper_response=Response
         )
         try:
             http = await self.router.dispatch()
@@ -414,7 +419,12 @@ class WSHandler(RequestHandler):
         send: Send
     ):
         ctx_token = current._init_(
-            WSContext, self.app, scope, scope['emt.input'].get, send
+            WSContext,
+            self.app,
+            scope,
+            scope['emt.input'].get,
+            send,
+            wrapper_websocket=Websocket
         )
         try:
             await self.router.dispatch()
@@ -426,43 +436,6 @@ class WSHandler(RequestHandler):
                 await send({'type': 'websocket.close', 'code': 1000})
                 scope['emt._ws_closed'] = True
             current._close_(ctx_token)
-
-
-class RequestContext:
-    def __init__(self, app, scope, receive, send):
-        self.app = app
-        self.request = Request(
-            scope,
-            receive,
-            send,
-            app.config.request_max_content_length,
-            app.config.request_body_timeout
-        )
-        self.response = Response()
-        self.session = None
-
-    @property
-    def now(self):
-        return self.request.now
-
-    @cachedprop
-    def language(self):
-        return self.request.accept_language.best_match(list(T._langmap))
-
-
-class WSContext(Context):
-    def __init__(self, app, scope, receive, send):
-        self.app = app
-        self.websocket = Websocket(
-            scope,
-            receive,
-            send
-        )
-        self.session = None
-
-    @cachedprop
-    def language(self):
-        return self.websocket.accept_language.best_match(list(T._langmap))
 
 
 async def _event_looper(

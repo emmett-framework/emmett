@@ -13,10 +13,13 @@ import copy
 import hashlib
 import pickle
 
+from typing import Dict
+
 from ._internal import ImmutableList
+from .typing import KT, VT
 
 
-class sdict(dict):
+class sdict(Dict[KT, VT]):
     #: like a dictionary except `obj.foo` can be used in addition to
     #  `obj['foo']`, and setting obj.foo = None deletes item foo.
     __slots__ = ()

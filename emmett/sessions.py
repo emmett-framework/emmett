@@ -18,7 +18,7 @@ import time
 
 from typing import Any, Optional, Type
 
-from .ctx import current, request, response, websocket
+from .ctx import current
 from .datastructures import sdict, SessionData
 from .pipeline import Pipe
 from .security import secure_loads, secure_dumps, uuid
@@ -43,8 +43,8 @@ class SessionPipe(Pipe):
         raise NotImplementedError
 
     def _pack_session(self, expiration: int):
-        response.cookies[self.cookie_name] = self._session_cookie_data()
-        cookie_data = response.cookies[self.cookie_name]
+        current.response.cookies[self.cookie_name] = self._session_cookie_data()
+        cookie_data = current.response.cookies[self.cookie_name]
         cookie_data['path'] = "/"
         cookie_data['expires'] = expiration
         if self.secure:
@@ -56,14 +56,14 @@ class SessionPipe(Pipe):
         raise NotImplementedError
 
     async def open_request(self):
-        if self.cookie_name in request.cookies:
-            current.session = self._load_session(request)
+        if self.cookie_name in current.request.cookies:
+            current.session = self._load_session(current.request)
         if not current.session:
             current.session = self._new_session()
 
     async def open_ws(self):
-        if self.cookie_name in websocket.cookies:
-            current.session = self._load_session(websocket)
+        if self.cookie_name in current.websocket.cookies:
+            current.session = self._load_session(current.websocket)
         if not current.session:
             current.session = self._new_session()
 
@@ -130,8 +130,8 @@ class BackendStoredSessionPipe(SessionPipe):
             self._delete_session()
             if current.session._modified:
                 #: if we got here means we want to destroy session definitely
-                if self.cookie_name in response.cookies:
-                    del response.cookies[self.cookie_name]
+                if self.cookie_name in current.response.cookies:
+                    del current.response.cookies[self.cookie_name]
             return
         expiration = current.session._expiration or self.expire
         self._save_session(expiration)

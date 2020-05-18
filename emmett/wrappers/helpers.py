@@ -9,7 +9,7 @@
     :license: BSD-3-Clause
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from typing import (
     Any, BinaryIO, Dict, Iterable, Iterator, Optional, Tuple, Union
 )
@@ -63,7 +63,7 @@ class Headers(Mapping):
             yield value.decode()
 
 
-class ResponseHeaders(Mapping):
+class ResponseHeaders(MutableMapping):
     __slots__ = ['_data']
     __hash__ = None
 
@@ -75,6 +75,9 @@ class ResponseHeaders(Mapping):
 
     def __setitem__(self, key: str, value: str):
         self._data[key.lower()] = value
+
+    def __delitem__(self, key: str):
+        del self._data[key.lower()]
 
     def __contains__(self, key: str) -> bool:
         return key.lower() in self._data

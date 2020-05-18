@@ -19,8 +19,8 @@ import types
 
 from io import BytesIO
 
-from ..asgi.handlers import HTTPHandler, RequestContext
-from ..ctx import current, response
+from ..asgi.handlers import HTTPHandler
+from ..ctx import RequestContext, current
 from ..http import HTTP, HTTPResponse
 from ..wrappers.request import Request
 from ..wrappers.response import Response
@@ -48,7 +48,13 @@ class ClientContext(object):
 class ClientHTTPHandler(HTTPHandler):
     async def dynamic_handler(self, scope, receive, send):
         ctx_token = current._init_(
-            RequestContext, self.app, scope, receive, send
+            RequestContext,
+            self.app,
+            scope,
+            receive,
+            send,
+            wrapper_request=Request,
+            wrapper_response=Response
         )
         try:
             http = await self.router.dispatch()
@@ -60,14 +66,16 @@ class ClientHTTPHandler(HTTPHandler):
                 http = HTTP(
                     http.status_code,
                     await error_handler(),
-                    response.headers
+                    current.response.headers
                 )
             #: always set cookies
-            http.set_cookies(response.cookies)
+            http.set_cookies(current.response.cookies)
         except Exception:
             self.app.log.exception('Application exception:')
             http = HTTP(
-                500, await self.error_handler(), headers=response.headers
+                500,
+                await self.error_handler(),
+                headers=current.response.headers
             )
         finally:
             scope['emt.ctx'] = ClientContext()

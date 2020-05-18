@@ -11,7 +11,7 @@
 
 from functools import wraps
 
-from .ctx import current, request, session
+from .ctx import current
 from .datastructures import sdict
 from .html import HtmlTag, tag, cat, asis
 from .orm import Field, Model
@@ -95,12 +95,12 @@ class Form(HtmlTag):
             return
         if not hasattr(current, "session"):
             raise RuntimeError("You need sessions to use csrf in forms.")
-        session._csrf = session._csrf or CSRFStorage()
+        current.session._csrf = current.session._csrf or CSRFStorage()
 
     @property
     def _submitted(self):
         if self.csrf:
-            return self.input_params._csrf_token in session._csrf
+            return self.input_params._csrf_token in current.session._csrf
         return self.input_params._csrf_token is 'undef'
 
     def _get_input_val(self, field):
@@ -134,14 +134,14 @@ class Form(HtmlTag):
 
     async def _load_input_params(self):
         if self.attributes['_method'] == 'POST':
-            params = await request.body_params
+            params = await current.request.body_params
         else:
-            params = request.query_params
+            params = current.request.query_params
         return sdict(params)
 
     async def _load_input_files(self):
         if self.attributes['_method'] == 'POST':
-            rv = await request.files
+            rv = await current.request.files
         else:
             rv = sdict()
         return rv
@@ -164,10 +164,10 @@ class Form(HtmlTag):
             if not self.errors:
                 self.accepted = True
                 if self.csrf:
-                    del session._csrf[self.input_params._csrf_token]
+                    del current.session._csrf[self.input_params._csrf_token]
         # CSRF protection logic
         if self.csrf and not self.accepted:
-            self.formkey = session._csrf.gen_token()
+            self.formkey = current.session._csrf.gen_token()
         # reset default values in form
         if not self.processed or (self.accepted and not self.keepvalues):
             for field in self.fields:
