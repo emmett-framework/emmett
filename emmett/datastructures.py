@@ -28,10 +28,10 @@ class sdict(Dict[KT, VT]):
     __getitem__ = dict.get
 
     # see http://stackoverflow.com/questions/10364332/how-to-pickle-python-object-derived-from-dict
-    def __getattr__(self, attr):
-        if attr.startswith('__'):
+    def __getattr__(self, key):
+        if key.startswith('__'):
             raise AttributeError
-        return self.get(attr, None)
+        return self.get(key, None)
 
     __repr__ = lambda self: '<sdict %s>' % dict.__repr__(self)
     __getstate__ = lambda self: None
@@ -39,18 +39,17 @@ class sdict(Dict[KT, VT]):
     __deepcopy__ = lambda self, memo: sdict(copy.deepcopy(dict(self)))
 
 
-class ConfigData(sdict):
+class ConfigData(sdict[KT, VT]):
     #: like sdict, except it autogrows creating sub-sdict attributes.
     #  Useful for configurations.
     __slots__ = ()
 
-    def _get(self, name):
-        if name not in self.keys():
-            self[name] = sdict()
-        return super(ConfigData, self).__getitem__(name)
+    def __getitem__(self, key):
+        if key not in self.keys():
+            self[key] = sdict()
+        return super().__getitem__(key)
 
-    __getitem__ = lambda o, v: o._get(v)
-    __getattr__ = lambda o, v: o._get(v)
+    __getattr__ = __getitem__
 
 
 class SessionData(sdict):

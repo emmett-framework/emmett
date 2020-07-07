@@ -9,8 +9,10 @@
     :license: BSD-3-Clause
 """
 
-from typing import TypeVar
+from typing import Awaitable, Callable, TypeVar
 
 T = TypeVar("T")
 KT = TypeVar("KT")
 VT = TypeVar("VT")
+
+ErrorHandlerType = TypeVar("ErrorHandlerType", bound=Callable[[], Awaitable[str]])

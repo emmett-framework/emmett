@@ -11,12 +11,15 @@
 
 from __future__ import annotations
 
-import click
 import os
 import sys
 
+from logging import Logger
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Type, Union
+
+import click
+
 from yaml import SafeLoader as ymlLoader, load as ymlload
-from typing import List, Optional, Type, Union
 
 from ._internal import get_root_path, create_missing_app_folders
 from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
@@ -24,7 +27,7 @@ from .asgi.server import run as asgi_run
 from .cache import RouteCacheRule
 from .ctx import current
 from .datastructures import sdict, ConfigData
-from .extensions import Extension
+from .extensions import Extension, ExtensionType
 from .helpers import load_component
 from .html import asis
 from .language.helpers import Tstr
@@ -33,13 +36,15 @@ from .pipeline import Pipe, Injector
 from .routing.router import HTTPRouter, WebsocketRouter, RoutingCtx
 from .routing.urls import url
 from .templating.templater import Templater
+from .testing import EmmettTestClient
+from .typing import ErrorHandlerType
 from .utils import dict_to_sdict, cachedprop, read_file
 
 
 class Config(ConfigData):
     __slots__ = ()
 
-    def __init__(self, app):
+    def __init__(self, app: App):
         self._app = app
         super().__init__(
             modules_class=AppModule,
@@ -64,47 +69,47 @@ class Config(ConfigData):
         return super().__setattr__(key, value)
 
     @property
-    def handle_static(self):
+    def handle_static(self) -> bool:
         return self._handle_static
 
     @handle_static.setter
-    def handle_static(self, value):
+    def handle_static(self, value: bool):
         self._handle_static = value
         self._app._configure_asgi_handlers()
 
     @property
-    def templates_auto_reload(self):
+    def templates_auto_reload(self) -> bool:
         return self._templates_auto_reload
 
     @templates_auto_reload.setter
-    def templates_auto_reload(self, value):
+    def templates_auto_reload(self, value: bool):
         self._templates_auto_reload = value
         self._app.templater._set_reload(value)
 
     @property
-    def templates_encoding(self):
+    def templates_encoding(self) -> str:
         return self._templates_encoding
 
     @templates_encoding.setter
-    def templates_encoding(self, value):
+    def templates_encoding(self, value: str):
         self._templates_encoding = value
         self._app.templater._set_encoding(value)
 
     @property
-    def templates_escape(self):
+    def templates_escape(self) -> str:
         return self._templates_escape
 
     @templates_escape.setter
-    def templates_escape(self, value):
+    def templates_escape(self, value: str):
         self._templates_escape = value
         self._app.templater._set_escape(value)
 
     @property
-    def templates_adjust_indent(self):
+    def templates_adjust_indent(self) -> bool:
         return self._templates_adjust_indent
 
     @templates_adjust_indent.setter
-    def templates_adjust_indent(self, value):
+    def templates_adjust_indent(self, value: bool):
         self._templates_adjust_indent = value
         self._app.templater._set_indent(value)
 
@@ -127,8 +132,12 @@ class App:
     test_client_class = None
 
     def __init__(
-        self, import_name, root_path=None, url_prefix=None,
-        template_folder='templates', config_folder='config'
+        self,
+        import_name: str,
+        root_path: Optional[str] = None,
+        url_prefix: Optional[str] = None,
+        template_folder: str = 'templates',
+        config_folder: str = 'config'
     ):
         self.import_name = import_name
         #: init debug var
@@ -141,15 +150,15 @@ class App:
         self.template_path = os.path.join(self.root_path, template_folder)
         self.config_path = os.path.join(self.root_path, config_folder)
         #: the click command line context for this application
-        self.cli = click.Group(self)
+        self.cli = click.Group(self.import_name)
         #: init the configuration
         self.config = Config(self)
         #: try to create needed folders
         create_missing_app_folders(self)
         #: init languages
-        self._languages = []
-        self._languages_set = set()
-        self._language_default = None
+        self._languages: List[str] = []
+        self._languages_set: Set[str] = set()
+        self._language_default: Optional[str] = None
         self._language_force_on_url = False
         self.translator = Translator(
             os.path.join(self.root_path, 'languages'),
@@ -158,7 +167,7 @@ class App:
             str_class=Tstr
         )
         #: init routing
-        self._pipeline = []
+        self._pipeline: List[Pipe] = []
         self._router_http = HTTPRouter(self, url_prefix=url_prefix)
         self._router_ws = WebsocketRouter(self, url_prefix=url_prefix)
         self._asgi_handlers = {
@@ -166,13 +175,13 @@ class App:
             'lifespan': LifeSpanHandler(self),
             'websocket': WSHandler(self)
         }
-        self.error_handlers = {}
+        self.error_handlers: Dict[int, Callable[[], Awaitable[str]]] = {}
         self.template_default_extension = '.html'
         #: init logger
         self._logger = None
         self.logger_name = self.import_name
         #: init extensions
-        self.ext = sdict()
+        self.ext: sdict[str, Extension] = sdict()
         self._extensions_env = sdict()
         self._extensions_listeners = {key: [] for key in Extension._signals_}
         #: init templater
@@ -202,51 +211,51 @@ class App:
         return rv
 
     @property
-    def languages(self):
+    def languages(self) -> List[str]:
         return self._languages
 
     @languages.setter
-    def languages(self, value):
+    def languages(self, value: List[str]):
         self._languages = value
         self._languages_set = set(self._languages)
 
     @property
-    def language_default(self):
+    def language_default(self) -> Optional[str]:
         return self._language_default
 
     @language_default.setter
-    def language_default(self, value):
+    def language_default(self, value: str):
         self._language_default = value
         self.translator._update_config(self._language_default or 'en')
 
     @property
-    def language_force_on_url(self):
+    def language_force_on_url(self) -> bool:
         return self._language_force_on_url
 
     @language_force_on_url.setter
-    def language_force_on_url(self, value):
+    def language_force_on_url(self, value: bool):
         self._language_force_on_url = value
         self._router_http._set_language_handling()
         self._router_ws._set_language_handling()
         self._configure_asgi_handlers()
 
     @property
-    def pipeline(self):
+    def pipeline(self) -> List[Pipe]:
         return self._pipeline
 
     @pipeline.setter
-    def pipeline(self, pipes):
+    def pipeline(self, pipes: List[Pipe]):
         self._pipeline = pipes
         self._router_http.pipeline = self._pipeline
         self._router_ws.pipeline = self._pipeline
 
     @property
-    def injectors(self):
-        return self.route._injectors
+    def injectors(self) -> List[Injector]:
+        return self._router_http.injectors
 
     @injectors.setter
-    def injectors(self, injectors):
-        self.route._injectors = injectors
+    def injectors(self, injectors: List[Injector]):
+        self._router_http.injectors = injectors
 
     def route(
         self,
@@ -302,8 +311,8 @@ class App:
             prefix=prefix
         )
 
-    def on_error(self, code):
-        def decorator(f):
+    def on_error(self, code: int) -> Callable[[ErrorHandlerType], ErrorHandlerType]:
+        def decorator(f: ErrorHandlerType) -> ErrorHandlerType:
             self.error_handlers[code] = f
             return f
         return decorator
@@ -313,7 +322,7 @@ class App:
         return self.cli.command
 
     @property
-    def log(self):
+    def log(self) -> Logger:
         if self._logger and self._logger.name == self.logger_name:
             return self._logger
         from .logger import _logger_lock, create_logger
@@ -323,14 +332,14 @@ class App:
             self._logger = rv = create_logger(self)
             return rv
 
-    def render_template(self, filename):
+    def render_template(self, filename: str) -> str:
         ctx = {
             'current': current, 'url': url, 'asis': asis,
             'load_component': load_component
         }
         return self.templater.render(filename, ctx)
 
-    def config_from_yaml(self, filename, namespace=None):
+    def config_from_yaml(self, filename: str, namespace: Optional[str] = None):
         #: import configuration from yaml files
         rc = read_file(os.path.join(self.config_path, filename))
         rc = ymlload(rc, Loader=ymlLoader)
@@ -352,7 +361,7 @@ class App:
             self._extensions_listeners[signal].append(listener)
 
     #: Add an extension to application
-    def use_extension(self, ext_cls: Type[Extension]) -> Extension:
+    def use_extension(self, ext_cls: Type[ExtensionType]) -> ExtensionType:
         if not issubclass(ext_cls, Extension):
             raise RuntimeError(
                 f'{ext_cls.__name__} is an invalid Emmett extension'
@@ -367,15 +376,11 @@ class App:
     def use_template_extension(self, ext_cls, **config):
         return self.templater.use_extension(ext_cls, **config)
 
-    def send_signal(self, signal, *args, **kwargs):
+    def send_signal(self, signal: str, *args, **kwargs):
         for listener in self._extensions_listeners[signal]:
             listener(*args, **kwargs)
 
-    def make_shell_context(self, context={}):
-        """Returns the shell context for an interactive shell for this
-        application.  This runs all the registered shell context
-        processors.
-        """
+    def make_shell_context(self, context: Dict[str, Any] = {}) -> Dict[str, Any]:
         context['app'] = self
         return context
 
@@ -398,7 +403,13 @@ class App:
             timeout_keep_alive=timeout_keep_alive
         )
 
-    def run(self, host=None, port=None, reloader=True, debug=True):
+    def run(
+        self,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        reloader: bool = True,
+        debug: bool = True
+    ):
         if host is None:
             host = "127.0.0.1"
         if port is None:
@@ -416,11 +427,8 @@ class App:
         else:
             self._run(host, port)
 
-    def test_client(self, use_cookies=True, **kwargs):
-        tclass = self.test_client_class
-        if tclass is None:
-            from .testing import EmmettTestClient
-            tclass = EmmettTestClient
+    def test_client(self, use_cookies: bool = True, **kwargs) -> EmmettTestClient:
+        tclass = self.test_client_class or EmmettTestClient
         return tclass(self, use_cookies=use_cookies, **kwargs)
 
     def __call__(self, scope, receive, send):
@@ -515,9 +523,18 @@ class AppModule:
         )
 
     def __init__(
-        self, app, name, import_name, template_folder=None, template_path=None,
-        url_prefix=None, hostname=None, cache=None, root_path=None,
-        pipeline=None, injectors=None
+        self,
+        app: App,
+        name: str,
+        import_name: str,
+        template_folder: Optional[str] = None,
+        template_path: Optional[str] = None,
+        url_prefix: Optional[str] = None,
+        hostname: Optional[str] = None,
+        cache: Optional[RouteCacheRule] = None,
+        root_path: Optional[str] = None,
+        pipeline: Optional[List[Pipe]] = None,
+        injectors: Optional[List[Injector]] = None
     ):
         self.app = app
         self.name = name

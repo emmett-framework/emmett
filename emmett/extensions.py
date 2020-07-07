@@ -11,6 +11,7 @@
 
 from collections import OrderedDict
 from functools import wraps
+from typing import TypeVar
 
 
 class listen_signal(object):
@@ -84,3 +85,6 @@ def _wrap_listener(ext, f):
     def wrapped(*args, **kwargs):
         return f(ext, *args, **kwargs)
     return wrapped
+
+
+ExtensionType = TypeVar("ExtensionType", bound=Extension)
