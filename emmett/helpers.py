@@ -12,21 +12,23 @@
 import os
 import re
 
+from typing import Any, List, Optional, Tuple, Union
+
 from pydal.exceptions import NotAuthorizedException, NotFoundException
 
 from .ctx import current
-from .html import tag
+from .html import HtmlTag, tag
 from .http import HTTP, HTTPFile, HTTPIO
 
 _re_dbstream = re.compile(r'(?P<table>.*?)\.(?P<field>.*?)\..*')
 
 
-def abort(code, body=''):
+def abort(code: int, body: str = ''):
     current.response.status = code
     raise HTTP(code, body)
 
 
-def stream_file(path):
+def stream_file(path: str):
     full_path = os.path.join(current.app.root_path, path)
     raise HTTPFile(
         full_path,
@@ -35,7 +37,7 @@ def stream_file(path):
     )
 
 
-def stream_dbfile(db, name):
+def stream_dbfile(db: Any, name: str):
     items = _re_dbstream.match(name)
     if not items:
         abort(404)
@@ -65,14 +67,17 @@ def stream_dbfile(db, name):
     )
 
 
-def flash(message, category='message'):
+def flash(message: str, category: str = 'message'):
     #: Flashes a message to the next request.
     if current.session._flashes is None:
         current.session._flashes = []
     current.session._flashes.append((category, message))
 
 
-def get_flashed_messages(with_categories=False, category_filter=[]):
+def get_flashed_messages(
+    with_categories: bool = False,
+    category_filter: Union[str, List[str]] = []
+) -> Union[List[str], Tuple[str, str]]:
     #: Pulls flashed messages from the session and returns them.
     #  By default just the messages are returned, but when `with_categories`
     #  is set to `True`, the return value will be a list of tuples in the
@@ -92,7 +97,11 @@ def get_flashed_messages(with_categories=False, category_filter=[]):
     return flashes
 
 
-def load_component(url, target=None, content='loading...'):
+def load_component(
+    url: str,
+    target: Optional[str] = None,
+    content: str = 'loading...'
+) -> HtmlTag:
     attr = {}
     if target:
         attr['_id'] = target
