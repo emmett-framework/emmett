@@ -18,6 +18,7 @@ from uvicorn.main import Server
 from uvicorn.middleware.debug import DebugMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
+from ..extensions import Signals
 from ..logger import LOG_LEVELS
 from .loops import loops
 from .protocols import protocols_http, protocols_ws
@@ -84,7 +85,7 @@ def run(
     protocol_cls_http = protocols_http.get_protocol(proto_http)
     protocol_cls_ws = protocols_ws.get_protocol(proto_ws)
 
-    app.send_signal('after_loop', loop=loop)
+    app.send_signal(Signals.after_loop, loop=loop)
 
     if access_log is None:
         access_log = bool(app.debug)
