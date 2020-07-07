@@ -437,6 +437,7 @@ class App:
         reloader: bool = True,
         debug: bool = True
     ):
+        warn_of_deprecation("App.run", "CLI develop and serve commands", stack=3)
         if host is None:
             host = "127.0.0.1"
         if port is None:
