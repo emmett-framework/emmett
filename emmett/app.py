@@ -116,16 +116,32 @@ class Config(ConfigData):
 
 class App:
     __slots__ = [
-        'import_name', 'cli', 'config',
-        'root_path', 'static_path', 'template_path', 'config_path',
-        'translator', '_languages', '_languages_set',
-        '_language_default', '_language_force_on_url',
-        '_pipeline', '_router_http', '_router_ws', '_asgi_handlers',
+        '__dict__',
+        '_asgi_handlers',
+        '_extensions_env',
+        '_extensions_listeners',
+        '_language_default',
+        '_language_force_on_url',
+        '_languages_set',
+        '_languages',
+        '_logger',
+        '_modules',
+        '_pipeline',
+        '_router_http',
+        '_router_ws',
+        'cli',
+        'config_path',
+        'config',
         'error_handlers',
-        '_logger', 'logger_name',
-        'ext', '_extensions_env', '_extensions_listeners',
-        'templater', 'template_default_extension',
-        '__dict__'
+        'ext',
+        'import_name',
+        'logger_name',
+        'root_path',
+        'static_path',
+        'template_default_extension',
+        'template_path',
+        'templater',
+        'translator'
     ]
 
     debug = None
@@ -192,7 +208,8 @@ class App:
             adjust_indent=self.config.templates_adjust_indent,
             reload=self.config.templates_auto_reload
         )
-        #: store app in current
+        #: finalise
+        self._modules: Dict[str, AppModule] = {}
         current.app = self
 
     def _configure_asgi_handlers(self):
@@ -555,6 +572,7 @@ class AppModule:
         self._super_injectors = injectors or []
         self.pipeline = []
         self.injectors = []
+        self.app._modules[self.name] = self
 
     @property
     def pipeline(self) -> List[Pipe]:
