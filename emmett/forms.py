@@ -9,86 +9,90 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 from functools import wraps
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 from .ctx import current
 from .datastructures import sdict
 from .html import HtmlTag, tag, cat, asis
 from .orm import Field, Model
+from .orm.objects import Row, Table
 from .security import CSRFStorage
 from .utils import cachedprop
 from .validators import isEmptyOr
+from .wrappers.helpers import FileStorage
 
-__all__ = ['Form', 'ModelForm']
+__all__ = ["Form", "ModelForm"]
 
 
-class Form(HtmlTag):
-    default_attrs = {
-        '_action': '', '_method': 'POST', '_enctype': 'multipart/form-data',
-        'submit': 'Submit', 'csrf': 'auto', 'keepvalues': False,
-        'onvalidation': None, 'id_prefix': '', 'upload': None
-    }
-
+class BaseForm(HtmlTag):
     @staticmethod
     def _get_default_style():
         return current.app.config.ui.forms_style or FormStyle
 
-    def __init__(self, fields={}, **kwargs):
-        #: get fields from kwargs
-        for name, parameter in kwargs.items():
-            if isinstance(parameter, Field):
-                fields[name] = parameter
-        for name in fields.keys():
-            if name in kwargs:
-                del kwargs[name]
-        #: order fields correctly
-        sorted_fields = []
-        for name, field in fields.items():
-            sorted_fields.append((name, field))
-        sorted_fields.sort(key=lambda x: x[1]._inst_count_)
-        #: init fields
-        self.fields = []
-        self.writable_fields = []
-        for name, obj in sorted_fields:
-            field_obj = obj._make_field(name)
-            self.fields.append(field_obj)
-            if field_obj.writable:
-                self.writable_fields.append(field_obj)
-        self._preprocess_(**kwargs)
+    def __init__(
+        self,
+        fields: List[Field],
+        writable_fields: List[Field],
+        csrf: Union[str, bool] = "auto",
+        id_prefix: str = "",
+        formstyle: Optional[Type[FormStyle]] = None,
+        keepvalues: bool = False,
+        onvalidation: Optional[Callable[[Form], None]] = None,
+        submit: str = "Submit",
+        upload: Optional[str] = None,
+        _action: str = "",
+        _enctype: str = "multipart/form-data",
+        _method: str = "POST",
+        **kwargs: Any
+    ):
+        self._action = _action
+        self._csrf = csrf
+        self._enctype = _enctype
+        self._id_prefix = id_prefix
+        self._formstyle = formstyle or self._get_default_style()
+        self._submit_method = _method
+        self._submit_text = submit
+        self._upload = upload
+        self.fields = fields
+        self.keepvalues = keepvalues
+        self.onvalidation = onvalidation
+        self.writable_fields = writable_fields
+        if not issubclass(self._formstyle, FormStyle):
+            raise RuntimeError(
+                "{!r} is an invalid Emmett form style".format(formstyle)
+            )
+        self._preprocess(**kwargs)
 
-    def _preprocess_(self, **kwargs):
+    def _preprocess(self, **kwargs):
         #: process attributes
-        self.attributes = {}
+        self.attributes = {
+            "_action": self._action,
+            "_enctype": self._enctype,
+            "_method": self._submit_method,
+            "id_prefix": self._id_prefix,
+            "hidden": {},
+            "submit": self._submit_text,
+            "upload": self._upload
+        }
         self.attributes.update(kwargs)
-        for key, val in Form.default_attrs.items():
-            self.attributes[key] = self.attributes.get(key, val)
-        self.attributes['formstyle'] = self.attributes.get(
-            'formstyle', self._get_default_style())
         #: init the form
-        self.errors = sdict()
-        self.params = sdict()
-        self.files = sdict()
-        self.input_params = None
         self._awaited = False
+        self.input_params: sdict[str, Any] = sdict()
+        self.errors: sdict[str, str] = sdict()
+        self.params: sdict[str, Any] = sdict()
+        self.files: sdict[str, FileStorage] = sdict()
         self.processed = False
         self.accepted = False
         self.formkey = "undef"
-        #: move some attributes to self, just because it's handy
-        self.keepvalues = self.attributes['keepvalues']
-        self.onvalidation = self.attributes['onvalidation']
-        del self.attributes['keepvalues']
-        del self.attributes['onvalidation']
-        #: verify formstyle consistence
-        if not issubclass(self.attributes['formstyle'], FormStyle):
-            raise RuntimeError(
-                '%s is an invalid Emmett form style' %
-                self.attributes['formstyle'].__name__)
 
     @property
-    def csrf(self):
-        _csrf = self.attributes['csrf']
-        return _csrf is True or (
-            _csrf == 'auto' and self.attributes['_method'] == 'POST')
+    def csrf(self) -> bool:
+        return self._csrf is True or (
+            self._csrf == "auto" and self._submit_method == "POST"
+        )
 
     def _load_csrf(self):
         if not self.csrf:
@@ -101,14 +105,14 @@ class Form(HtmlTag):
     def _submitted(self):
         if self.csrf:
             return self.input_params._csrf_token in current.session._csrf
-        return self.input_params._csrf_token is 'undef'
+        return self.input_params._csrf_token == "undef"
 
     def _get_input_val(self, field):
-        if field.type == 'boolean':
+        if field.type == "boolean":
             v = self.input_params.get(field.name, False)
             if v is not False:
                 v = True
-        elif field.type == 'upload':
+        elif field.type == "upload":
             v = self.input_files.get(field.name)
         else:
             v = self.input_params.get(field.name)
@@ -118,7 +122,7 @@ class Form(HtmlTag):
         value, error = field.validate(value)
         if error:
             self.errors[field.name] = error
-        elif field.type == 'upload':
+        elif field.type == "upload":
             self.files[field.name] = value
         else:
             self.params[field.name] = value
@@ -133,14 +137,14 @@ class Form(HtmlTag):
         return self._process().__await__()
 
     async def _load_input_params(self):
-        if self.attributes['_method'] == 'POST':
+        if self._submit_method == "POST":
             params = await current.request.body_params
         else:
             params = current.request.query_params
         return sdict(params)
 
     async def _load_input_files(self):
-        if self.attributes['_method'] == 'POST':
+        if self._submit_method == "POST":
             rv = await current.request.files
         else:
             rv = sdict()
@@ -177,7 +181,7 @@ class Form(HtmlTag):
         return self
 
     def _render(self):
-        styler = self.attributes['formstyle'](self.attributes)
+        styler = self._formstyle(self.attributes)
         styler.on_start()
         for field in self.fields:
             value = self.input_params.get(field.name)
@@ -185,7 +189,7 @@ class Form(HtmlTag):
             styler._proc_element(field, value, error)
         styler.add_buttons()
         styler._add_formkey(self.formkey)
-        for key, value in self.attributes.get('hidden', {}).items():
+        for key, value in self.attributes["hidden"].items():
             styler._add_hidden(key, value)
         return styler.render()
 
@@ -199,7 +203,7 @@ class Form(HtmlTag):
         custom.comment = sdict()
         custom.widget = sdict()
         # load selected styler
-        styler = self.attributes['formstyle'](self.attributes)
+        styler = self._formstyle(self.attributes)
         styler.on_start()
         # load data
         for field in self.fields:
@@ -213,38 +217,102 @@ class Form(HtmlTag):
                 styler.style_widget(widget)
             custom.widget[field.name] = widget
         # add submit
-        custom.submit = tag.input(
-            _type="submit", value=self.attributes['submit'])
+        custom.submit = tag.input(_type="submit", value=self.attributes["submit"])
         # provides begin attribute
-        begin = '<form %s>' % self._build_html_attributes()
-        custom.begin = asis(begin)
+        custom.begin = asis(f"<form {self._build_html_attributes()}>")
         # add hidden stuffs to get process working
         hidden = cat()
         hidden.append(
-            tag.input(
-                _name='_csrf_token', _type='hidden', _value=self.formkey))
-        for key, value in self.attributes.get('hidden', {}).items():
-            hidden.append(
-                tag.input(_name=key, _type='hidden', _value=value))
+            tag.input(_name="_csrf_token", _type="hidden", _value=self.formkey)
+        )
+        for key, value in self.attributes["hidden"].items():
+            hidden.append(tag.input(_name=key, _type="hidden", _value=value)
+        )
         # provides end attribute
-        end = '%s</form>' % hidden.__html__()
-        custom.end = asis(end)
+        custom.end = asis(f"{hidden.__html__()}</form>")
         return custom
 
     def __html__(self):
         return self._render().__html__()
 
 
-class ModelForm(Form):
+class Form(BaseForm):
     def __init__(
-        self, table, record=None, record_id=None, fields=None,
-        exclude_fields=[], **attributes
+        self,
+        fields: Optional[Dict[str, Field]] = None,
+        csrf: Union[str, bool] = "auto",
+        id_prefix: str = "",
+        formstyle: Optional[Type[FormStyle]] = None,
+        keepvalues: bool = False,
+        onvalidation: Optional[Callable[[Form], None]] = None,
+        submit: str = "Submit",
+        upload: Optional[str] = None,
+        _action: str = "",
+        _enctype: str = "multipart/form-data",
+        _method: str = "POST",
+        **kwargs: Any
+    ):
+        fields = fields or {}
+        #: get fields from kwargs
+        for name, parameter in kwargs.items():
+            if isinstance(parameter, Field):
+                fields[name] = parameter
+        for name in fields.keys():
+            if name in kwargs:
+                del kwargs[name]
+        #: order fields correctly
+        sorted_fields = []
+        for name, field in fields.items():
+            sorted_fields.append((name, field))
+        sorted_fields.sort(key=lambda tup: tup[1]._inst_count_)
+        #: init fields
+        fields_list_all = []
+        fields_list_writable = []
+        for name, obj in sorted_fields:
+            field_obj = obj._make_field(name)
+            fields_list_all.append(field_obj)
+            if field_obj.writable:
+                fields_list_writable.append(field_obj)
+        super().__init__(
+            fields=fields_list_all,
+            writable_fields=fields_list_writable,
+            csrf=csrf,
+            id_prefix=id_prefix,
+            formstyle=formstyle,
+            keepvalues=keepvalues,
+            onvalidation=onvalidation,
+            submit=submit,
+            upload=upload,
+            _action=_action,
+            _enctype=_enctype,
+            _method=_method
+        )
+
+
+class ModelForm(BaseForm):
+    def __init__(
+        self,
+        table: Table,
+        record: Optional[Row] = None,
+        record_id: Optional[int] = None,
+        fields: Union[Dict[str, List[str]], List[str]] = None,
+        exclude_fields: List[str] = [],
+        csrf: Union[str, bool] = "auto",
+        formstyle: Optional[Type[FormStyle]] = None,
+        keepvalues: bool = False,
+        onvalidation: Optional[Callable[[Form], None]] = None,
+        submit: str = "Submit",
+        upload: Optional[str] = None,
+        _action: str = "",
+        _enctype: str = "multipart/form-data",
+        _method: str = "POST",
+        **attributes
     ):
         self.table = table
         self.record = record or table(record_id)
         #: build fields for form
-        self.fields = []
-        self.writable_fields = []
+        fields_list_all = []
+        fields_list_writable = []
         if fields is not None:
             #: developer has selected specific fields
             if not isinstance(fields, dict):
@@ -252,9 +320,9 @@ class ModelForm(Form):
             for field in table:
                 if field.name not in fields['readable']:
                     continue
-                self.fields.append(field)
+                fields_list_all.append(field)
                 if field.name in fields['writable']:
-                    self.writable_fields.append(field)
+                    fields_list_writable.append(field)
         else:
             #: use table fields
             for field in table:
@@ -265,26 +333,36 @@ class ModelForm(Form):
                 if not self.record and not field.writable:
                     #: show readable fields only on update
                     continue
-                self.fields.append(field)
+                fields_list_all.append(field)
                 if field.writable:
-                    self.writable_fields.append(field)
+                    fields_list_writable.append(field)
                 # if field.type != 'id' and field.writable and \
                 #         field.name not in exclude_fields:
                 #     self.fields.append(field)
-        #: use tablename for form id
-        attributes['id_prefix'] = table._tablename + "_"
-        #: finally init the form
-        self._preprocess_(**attributes)
+        super().__init__(
+            fields=fields_list_all,
+            writable_fields=fields_list_writable,
+            csrf=csrf,
+            id_prefix=table._tablename + "_",
+            formstyle=formstyle,
+            keepvalues=keepvalues,
+            onvalidation=onvalidation,
+            submit=submit,
+            upload=upload,
+            _action=_action,
+            _enctype=_enctype,
+            _method=_method
+        )
 
     def _validate_value(self, field, value):
-        if field.type == 'upload' and self.record:
+        if field.type == "upload" and self.record:
             if (
-                (value == b'' or value is None) and
+                (value == b"" or value is None) and
                 not self.input_params.get(field.name + "__del", False) and
                 self.record[field.name]
             ):
                 return
-        super(ModelForm, self)._validate_value(field, value)
+        super()._validate_value(field, value)
 
     async def _process(self):
         #: send record id to validators if needed
@@ -299,19 +377,18 @@ class ModelForm(Form):
         if self.accepted:
             for field in self.writable_fields:
                 #: handle uploads
-                if field.type == 'upload':
+                if field.type == "upload":
                     upload = self.files[field.name]
                     del_field = field.name + "__del"
                     if not upload.filename:
                         if self.input_params.get(del_field, False):
                             self.params[field.name] = (
-                                self.table[field.name].default or ''
+                                self.table[field.name].default or ""
                             )
                             # TODO: we want to physically delete file?
                         else:
                             if self.record and self.record[field.name]:
-                                self.params[field.name] = \
-                                    self.record[field.name]
+                                self.params[field.name] = self.record[field.name]
                         continue
                     else:
                         source_file, original_filename = (
@@ -329,8 +406,10 @@ class ModelForm(Form):
                 for field in self.table:
                     if field.name not in fieldnames and field.compute is None:
                         if field.default is not None:
-                            def_val = field.default() \
-                                if callable(field.default) else field.default
+                            def_val = (
+                                field.default() if callable(field.default) else
+                                field.default
+                            )
                             self.params[field.name] = def_val
             if self.record:
                 self.record.update_record(**self.params)
@@ -341,17 +420,19 @@ class ModelForm(Form):
                 if self.record:
                     self.input_params[field.name] = self.record[field.name]
                 self.input_params[field.name] = field.formatter(
-                    self.input_params[field.name])
+                    self.input_params[field.name]
+                )
         elif self.processed and not self.accepted and self.record:
             for field in self.writable_fields:
-                if field.type == 'upload' and field.name not in self.params:
+                if field.type == "upload" and field.name not in self.params:
                     self.input_params[field.name] = self.record[field.name]
                     self.input_params[field.name] = field.formatter(
-                        self.input_params[field.name])
+                        self.input_params[field.name]
+                    )
         return self
 
 
-class FormStyle(object):
+class FormStyle:
     _stack = []
     parent = None
 
@@ -361,114 +442,130 @@ class FormStyle(object):
         return validator.options(), validator.multiple
 
     @staticmethod
-    def widget_string(attr, field, value, _class='string', _id=None):
+    def widget_string(attr, field, value, _class="string", _id=None):
         return tag.input(
-            _type='text', _name=field.name,
-            _value=value if value is not None else '',
-            _class=_class, _id=_id or field.name
+            _type="text",
+            _name=field.name,
+            _value=value if value is not None else "",
+            _class=_class,
+            _id=_id or field.name
         )
 
     @staticmethod
-    def widget_text(attr, field, value, _class='text', _id=None):
-        return tag.textarea(value or '', _name=field.name,
-                            _class=_class, _id=_id or field.name)
-
-    @staticmethod
-    def widget_int(attr, field, value, _class='int', _id=None):
-        return FormStyle.widget_string(attr, field, value, _class, _id)
-
-    @staticmethod
-    def widget_bigint(attr, field, value, _class='int', _id=None):
-        return FormStyle.widget_string(attr, field, value, _class, _id)
-
-    @staticmethod
-    def widget_float(attr, field, value, _class='float', _id=None):
-        return FormStyle.widget_string(attr, field, value, _class, _id)
-
-    @staticmethod
-    def widget_date(attr, field, value, _class='date', _id=None):
-        return FormStyle.widget_string(attr, field, value, _class, _id)
-
-    @staticmethod
-    def widget_time(attr, field, value, _class='time', _id=None):
-        return FormStyle.widget_string(attr, field, value, _class, _id)
-
-    @staticmethod
-    def widget_datetime(attr, field, value, _class='datetime', _id=None):
-        return FormStyle.widget_string(attr, field, value, _class, _id)
-
-    @staticmethod
-    def widget_password(attr, field, value, _class='password', _id=None):
-        return tag.input(
-            _type='password', _name=field.name, _value=value or '',
-            _class=_class, _id=_id or field.name
+    def widget_text(attr, field, value, _class="text", _id=None):
+        return tag.textarea(
+            value or "",
+            _name=field.name,
+            _class=_class,
+            _id=_id or field.name
         )
 
     @staticmethod
-    def widget_bool(attr, field, value, _class='bool', _id=None):
-        return tag.input(_type='checkbox', _name=field.name,
-                         _checked='checked' if value else None,
-                         _class=_class, _id=_id or field.name)
+    def widget_int(attr, field, value, _class="int", _id=None):
+        return FormStyle.widget_string(attr, field, value, _class, _id)
 
     @staticmethod
-    def widget_select(attr, field, value, _class='', _id=None):
+    def widget_bigint(attr, field, value, _class="int", _id=None):
+        return FormStyle.widget_string(attr, field, value, _class, _id)
+
+    @staticmethod
+    def widget_float(attr, field, value, _class="float", _id=None):
+        return FormStyle.widget_string(attr, field, value, _class, _id)
+
+    @staticmethod
+    def widget_date(attr, field, value, _class="date", _id=None):
+        return FormStyle.widget_string(attr, field, value, _class, _id)
+
+    @staticmethod
+    def widget_time(attr, field, value, _class="time", _id=None):
+        return FormStyle.widget_string(attr, field, value, _class, _id)
+
+    @staticmethod
+    def widget_datetime(attr, field, value, _class="datetime", _id=None):
+        return FormStyle.widget_string(attr, field, value, _class, _id)
+
+    @staticmethod
+    def widget_password(attr, field, value, _class="password", _id=None):
+        return tag.input(
+            _type="password",
+            _name=field.name,
+            _value=value or "",
+            _class=_class,
+            _id=_id or field.name
+        )
+
+    @staticmethod
+    def widget_bool(attr, field, value, _class="bool", _id=None):
+        return tag.input(
+            _type="checkbox",
+            _name=field.name,
+            _checked="checked" if value else None,
+            _class=_class,
+            _id=_id or field.name
+        )
+
+    @staticmethod
+    def widget_select(attr, field, value, _class="", _id=None):
         def selected(k):
-            return 'selected' if str(value) == str(k) else None
+            return "selected" if str(value) == str(k) else None
 
         options, multiple = FormStyle._field_options(field)
         if multiple:
             return FormStyle.widget_multiple(
-                attr, field, value, options, _class=_class, _id=_id)
-        option_items = [
-            tag.option(n, _value=k, _selected=selected(k)) for k, n in options]
+                attr, field, value, options, _class=_class, _id=_id
+            )
         return tag.select(
-            *option_items, _name=field.name, _class=_class,
-            _id=_id or field.name)
+            *[
+                tag.option(n, _value=k, _selected=selected(k)) for k, n in options
+            ],
+            _name=field.name,
+            _class=_class,
+            _id=_id or field.name
+        )
 
     @staticmethod
-    def widget_multiple(attr, field, values, options, _class='', _id=None):
+    def widget_multiple(attr, field, values, options, _class="", _id=None):
         def selected(k):
-            return 'selected' if str(k) in [str(v) for v in values] else None
+            return "selected" if str(k) in [str(v) for v in values] else None
 
         values = values or []
-        option_items = [
-            tag.option(n, _value=k, _selected=selected(k)) for k, n in options]
         return tag.select(
-            *option_items, _name=field.name, _class=_class,
-            _multiple='multiple', _id=_id or field.name)
+            *[
+                tag.option(n, _value=k, _selected=selected(k)) for k, n in options
+            ],
+            _name=field.name,
+            _class=_class,
+            _multiple="multiple",
+            _id=_id or field.name
+        )
 
     #: TO-DO
     #@staticmethod
-    #def widget_list(attr, field, value, _class='', _id=None):
+    #def widget_list(attr, field, value, _class="", _id=None):
     #    return ""
 
     @staticmethod
-    def widget_upload(attr, field, value, _class='upload',
-                      _id=None):
+    def widget_upload(attr, field, value, _class="upload", _id=None):
         def is_image(value):
-            extension = value.split('.')[-1].lower()
-            if extension in ['gif', 'png', 'jpg', 'jpeg', 'bmp']:
-                return True
-            return False
+            return value.split(".")[-1].lower() in ["gif", "png", "jpg", "jpeg", "bmp"]
 
         def _coerce_value(value):
             if isinstance(value, str) or isinstance(value, bytes):
-                return value or ''
-            return ''
+                return value or ""
+            return ""
 
         elements = []
         _value = _coerce_value(value)
-        download_url = attr.get('upload')
-        inp = tag.input(_type='file', _name=field.name, _class=_class, _id=_id)
+        download_url = attr.get("upload")
+        inp = tag.input(_type="file", _name=field.name, _class=_class, _id=_id)
         elements.append(inp)
         if _value and download_url:
             if callable(download_url):
                 url = download_url(value)
             else:
-                url = download_url + '/' + value
+                url = download_url + "/" + value
             if is_image(_value):
-                elements.append(
-                    tag.img(_src=url, _width='120px', _class='upload_img'))
+                elements.append(tag.img(_src=url, _width="120px", _class="upload_img"))
             else:
                 elements.append(tag.div(tag.a(_value, _href=url)))
             requires = field.requires or []
@@ -477,14 +574,21 @@ class FormStyle(object):
                 elements.append(
                     tag.div(
                         tag.input(
-                            _type='checkbox', _class='checkbox',
-                            _id=_id + '__del', _name=field.name + '__del',
-                            _style="display: inline;"),
+                            _type="checkbox",
+                            _class="checkbox",
+                            _id=_id + "__del",
+                            _name=field.name + "__del",
+                            _style="display: inline;"
+                        ),
                         tag.label(
-                            'delete',
-                            _for=_id + '__del', _style="margin: 4px"),
-                        _style="white-space: nowrap;"))
-        return tag.div(*elements, _class='upload_wrap')
+                            "delete",
+                            _for=_id + "__del",
+                            _style="margin: 4px"
+                        ),
+                        _style="white-space: nowrap;"
+                    )
+                )
+        return tag.div(*elements, _class="upload_wrap")
 
     @staticmethod
     def widget_json(attr, field, value, _id=None):
@@ -498,7 +602,7 @@ class FormStyle(object):
         ftype = field._type.split(":")[0]
         if ftype != "bool" and field.requires:
             for v in field.requires:
-                if hasattr(v, 'options'):
+                if hasattr(v, "options"):
                     return v
         return None
 
@@ -510,25 +614,25 @@ class FormStyle(object):
         widget_id = self.attr["id_prefix"] + field.name
         wtype = field._type.split(":")[0]
         if self._validation_woptions(field) is not None:
-            wtype = 'select'
-        elif wtype.startswith('reference'):
-            wtype = 'int'
-        elif wtype.startswith('decimal'):
-            wtype = 'float'
+            wtype = "select"
+        elif wtype.startswith("reference"):
+            wtype = "int"
+        elif wtype.startswith("decimal"):
+            wtype = "float"
         try:
             widget = getattr(self, "widget_" + wtype)(
-                self.attr, field, value, _id=widget_id)
+                self.attr, field, value, _id=widget_id
+            )
             if not field.writable:
                 self._disable_widget(widget)
             return widget, False
         except AttributeError:
             raise RuntimeError(
-                "Missing form widget for field %s of type %s" %
-                (field.name, wtype)
+                f"Missing form widget for field {field.name} of type {wtype}"
             )
 
     def _disable_widget(self, widget):
-        widget.attributes['_disabled'] = 'disabled'
+        widget.attributes["_disabled"] = "disabled"
 
     def _proc_element(self, field, value, error):
         widget, wfield = self._get_widget(field, value)
@@ -548,11 +652,10 @@ class FormStyle(object):
         self.add_widget(self.element.widget)
 
     def _add_hidden(self, key, value):
-        self.parent.append(tag.input(_name=key, _type='hidden', _value=value))
+        self.parent.append(tag.input(_name=key, _type="hidden", _value=value))
 
     def _add_formkey(self, key):
-        self.parent.append(tag.input(_name='_csrf_token', _type='hidden',
-                                     _value=key))
+        self.parent.append(tag.input(_name="_csrf_token", _type="hidden", _value=key))
 
     @property
     def element(self):
@@ -565,14 +668,13 @@ class FormStyle(object):
         pass
 
     def create_label(self, label):
-        wid = self.element.widget['_id']
-        return tag.label(label, _for=wid, _class='emt_label')
+        return tag.label(label, _for=self.element.widget["_id"], _class="emt_label")
 
     def create_error(self, error):
-        return tag.div(error, _class='emt_error')
+        return tag.div(error, _class="emt_error")
 
     def create_comment(self, comment):
-        return tag.p(comment, _class='emt_help')
+        return tag.p(comment, _class="emt_help")
 
     def add_widget(self, widget):
         wrapper = tag.div(widget)
@@ -583,7 +685,7 @@ class FormStyle(object):
         self.parent.append(tag.div(self.element.label, wrapper))
 
     def add_buttons(self):
-        submit = tag.input(_type='submit', _value=self.attr['submit'])
+        submit = tag.input(_type="submit", _value=self.attr["submit"])
         self.parent.append(tag.div(submit))
 
     def render(self):
@@ -597,4 +699,4 @@ def add_form_on_model(cls):
     return wrapped
 
 
-setattr(Model, 'form', classmethod(add_form_on_model(ModelForm)))
+setattr(Model, "form", classmethod(add_form_on_model(ModelForm)))
