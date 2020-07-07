@@ -16,6 +16,7 @@ import re
 from typing import Any, Callable, Dict, List, Type
 
 from ..ctx import current
+from ..extensions import Signals
 from ..http import HTTP
 from .response import (
     ResponseBuilder, AutoResponseBuilder,
@@ -33,7 +34,7 @@ class Router:
 
     _outputs: Dict[str, Type[ResponseBuilder]] = {}
     _routing_rule_cls: Type[RoutingRule] = RoutingRule
-    _routing_signal = 'before_routes'
+    _routing_signal = Signals.before_routes
     _routing_started = False
     _routing_stack: List[RoutingRule] = []
     _re_components = re.compile(r'(\()?([^<\w]+)?<(\w+)\:(\w+)>(\)\?)?')
@@ -301,8 +302,8 @@ class RoutingCtx:
         self.router._routing_stack.append(self.rule)
 
     def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
-        self.router.app.send_signal('before_route', route=self.rule, f=f)
+        self.router.app.send_signal(Signals.before_route, route=self.rule, f=f)
         rv = self.rule(f)
-        self.router.app.send_signal('after_route', route=self.rule)
+        self.router.app.send_signal(Signals.after_route, route=self.rule)
         self.router._routing_stack.pop()
         return rv

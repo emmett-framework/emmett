@@ -21,13 +21,13 @@ import click
 
 from yaml import SafeLoader as ymlLoader, load as ymlload
 
-from ._internal import get_root_path, create_missing_app_folders
+from ._internal import get_root_path, create_missing_app_folders, warn_of_deprecation
 from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
 from .asgi.server import run as asgi_run
 from .cache import RouteCacheRule
 from .ctx import current
 from .datastructures import sdict, ConfigData
-from .extensions import Extension, ExtensionType
+from .extensions import Extension, ExtensionType, Signals
 from .helpers import load_component
 from .html import asis
 from .language.helpers import Tstr
@@ -199,7 +199,7 @@ class App:
         #: init extensions
         self.ext: sdict[str, Extension] = sdict()
         self._extensions_env = sdict()
-        self._extensions_listeners = {key: [] for key in Extension._signals_}
+        self._extensions_listeners = {element.value: [] for element in Signals}
         #: init templater
         self.templater = Templater(
             path=self.template_path,
@@ -393,7 +393,17 @@ class App:
     def use_template_extension(self, ext_cls, **config):
         return self.templater.use_extension(ext_cls, **config)
 
-    def send_signal(self, signal: str, *args, **kwargs):
+    def send_signal(self, signal: Union[str, Signals], *args, **kwargs):
+        if not isinstance(signal, Signals):
+            warn_of_deprecation(
+                "App.send_signal str argument",
+                "extensions.Signals as argument",
+                stack=3
+            )
+            try:
+                signal = Signals[signal]
+            except KeyError:
+                raise SyntaxError(f"{signal} is not a valid signal")
         for listener in self._extensions_listeners[signal]:
             listener(*args, **kwargs)
 

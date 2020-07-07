@@ -20,6 +20,7 @@ from pydal import DAL as _pyDAL
 from pydal._globals import THREAD_LOCAL
 
 from ..datastructures import sdict
+from ..extensions import Signals
 from ..pipeline import Pipe
 from ..security import uuid as _uuid
 from ..serializers import _json_default, xml
@@ -91,7 +92,7 @@ class Database(_pyDAL):
         folder=None,
         **kwargs
     ):
-        app.send_signal('before_database')
+        app.send_signal(Signals.before_database)
         self.logger = app.log
         config = config or app.config.db
         if not config.uri:
@@ -142,7 +143,7 @@ class Database(_pyDAL):
             self.config.uri, pool_size, folder, **kwargs)
         patch_adapter(self._adapter)
         Model._init_inheritable_dicts_()
-        app.send_signal('after_database', database=self)
+        app.send_signal(Signals.after_database, database=self)
 
     @property
     def pipe(self):
