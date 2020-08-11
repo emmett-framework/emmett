@@ -68,7 +68,7 @@ def xml_encode(value, key=None, quote=True):
                 tag[item](xml_encode(item, None, quote))
                 for item in value
             ])
-    return htmlescape(value, quote)
+    return htmlescape(value)
 
 
 Serializers.register_for('json')(json)
