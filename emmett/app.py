@@ -242,11 +242,11 @@ class App:
 
     @property
     def injectors(self):
-        return self.route._injectors
+        return self._router_http.injectors
 
     @injectors.setter
     def injectors(self, injectors):
-        self.route._injectors = injectors
+        self._router_http.injectors = injectors
 
     def route(
         self,
