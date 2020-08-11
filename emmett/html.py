@@ -13,7 +13,9 @@ import html
 import re
 import threading
 
-from .libs.sanitizer import sanitize
+from functools import reduce
+
+from ._internal import deprecated, warnings
 
 __all__ = ['tag', 'cat', 'safe', 'asis']
 
@@ -35,7 +37,7 @@ class TagStack(threading.local):
         return len(self.stack) > 0
 
 
-class HtmlTag(object):
+class HtmlTag:
     rules = {
         'ul': ['li'],
         'ol': ['li'],
@@ -44,11 +46,11 @@ class HtmlTag(object):
         'tbody': ['tr'],
         'tr': ['td', 'th'],
         'select': ['option', 'optgroup'],
-        'optgroup': ['optionp']}
+        'optgroup': ['optionp']
+    }
     _self_closed = {'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta'}
 
     def __init__(self, name):
-        self.safe = safe
         self.name = name
         self.parent = None
         self.components = []
@@ -189,7 +191,7 @@ class HtmlTag(object):
         return str(self)
 
 
-class MetaHtmlTag(object):
+class MetaHtmlTag:
     def __getattr__(self, name):
         return HtmlTag(name)
 
@@ -215,45 +217,15 @@ class asis(HtmlTag):
 
 
 class safe(asis):
-    default_allowed_tags = {
-        'a': ['href', 'title', 'target'],
-        'b': [],
-        'blockquote': ['type'],
-        'br': [],
-        'i': [],
-        'li': [],
-        'ol': [],
-        'ul': [],
-        'p': [],
-        'cite': [],
-        'code': [],
-        'pre': [],
-        'img': ['src', 'alt'],
-        'strong': [],
-        'h1': [],
-        'h2': [],
-        'h3': [],
-        'h4': [],
-        'h5': [],
-        'h6': [],
-        'table': [],
-        'tr': [],
-        'td': ['colspan'],
-        'div': []
-    }
-
+    @deprecated("html.safe", "html.asis")
     def __init__(self, text, sanitize=False, allowed_tags=None):
-        super(safe, self).__init__(text)
-        self.sanitize = sanitize
-        self.allowed_tags = allowed_tags or safe.default_allowed_tags
-
-    def __html__(self):
-        if self.sanitize:
-            return sanitize(
-                _to_str(self.text),
-                self.allowed_tags.keys(),
-                self.allowed_tags)
-        return super(safe, self).__html__()
+        super().__init__(text)
+        if sanitize:
+            warnings.warn(
+                "HTML sanitizer is no longer available. "
+                "Please switch to html.asis or implement your own policy."
+            )
+        self.sanitize = False
 
 
 def _to_str(obj):
