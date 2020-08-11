@@ -575,7 +575,7 @@ async def test_receive_send_flow(app):
             'foo': 'bar',
             'pipe1r': 'receive_inject', 'pipe2r': 'receive_inject'
         }
-        assert json_load(ctx._send_storage[-1]['text']) == {
+        assert json_load(ctx._send_storage[-1]['bytes']) == {
             'foo': 'bar',
             'pipe1r': 'receive_inject', 'pipe2r': 'receive_inject',
             'pipe1s': 'send_inject', 'pipe2s': 'send_inject'
