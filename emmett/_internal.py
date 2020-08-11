@@ -313,5 +313,10 @@ def _pendulum_to_naive_datetime(obj):
     )
 
 
+def _pendulum_json(obj):
+    return obj.for_json()
+
+
 pendulum.DateTime.as_datetime = _pendulum_to_datetime
 pendulum.DateTime.as_naive_datetime = _pendulum_to_naive_datetime
+pendulum.DateTime.__json__ = _pendulum_json
