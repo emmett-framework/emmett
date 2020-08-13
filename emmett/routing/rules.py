@@ -49,11 +49,23 @@ class RoutingRule:
 
 class HTTPRoutingRule(RoutingRule):
     __slots__ = [
-        'name', 'f', 'output_type',
-        'paths', 'schemes', 'methods', 'hostname', 'prefix',
-        'template', 'template_folder', 'template_path',
-        'pipeline', 'pipeline_flow_open', 'pipeline_flow_close',
-        'response_builders', 'cache_rule'
+        'cache_rule',
+        'f',
+        'head_builder',
+        'hostname',
+        'methods',
+        'name',
+        'output_type',
+        'paths',
+        'pipeline_flow_close',
+        'pipeline_flow_open',
+        'pipeline',
+        'prefix',
+        'response_builder',
+        'schemes',
+        'template_folder',
+        'template_path',
+        'template'
     ]
 
     def __init__(
@@ -101,6 +113,12 @@ class HTTPRoutingRule(RoutingRule):
         if any(not isinstance(pipe, Pipe) for pipe in self.pipeline):
             raise RuntimeError('Invalid pipeline')
 
+    def _make_builders(self, output_type):
+        builder_cls = self.router._outputs[output_type]
+        response, head = builder_cls(self), builder_cls(self)
+        head.http_cls = HTTPResponse
+        return response, head
+
     def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
         if not self.paths:
             self.paths.append("/" + f.__name__)
@@ -120,12 +138,7 @@ class HTTPRoutingRule(RoutingRule):
         self.pipeline_flow_close = pipeline_obj._flow_close()
         self.f = wrapped_f
         output_type = pipeline_obj._output_type() or self.output_type
-        self.response_builders = {
-            method.upper(): self.router._outputs[output_type](self)
-            for method in self.methods
-        }
-        if 'head' in self.response_builders:
-            self.response_builders['head'].http_cls = HTTPResponse
+        self.response_builder, self.head_builder = self._make_builders(output_type)
         for idx, path in enumerate(self.paths):
             self.router.add_route(HTTPRoute(self, path, idx))
         return f
@@ -133,10 +146,17 @@ class HTTPRoutingRule(RoutingRule):
 
 class WebsocketRoutingRule(RoutingRule):
     __slots__ = [
-        'name', 'f',
-        'paths', 'schemes', 'hostname', 'prefix',
-        'pipeline', 'pipeline_flow_open', 'pipeline_flow_close',
-        'pipeline_flow_receive', 'pipeline_flow_send'
+        'f',
+        'hostname',
+        'name',
+        'paths',
+        'pipeline_flow_close',
+        'pipeline_flow_open',
+        'pipeline_flow_receive',
+        'pipeline_flow_send',
+        'pipeline',
+        'prefix',
+        'schemes'
     ]
 
     def __init__(

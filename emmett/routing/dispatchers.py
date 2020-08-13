@@ -29,78 +29,68 @@ class Dispatcher:
             if task.exception():
                 raise task.exception()
 
-    def dispatch(self, wrapper, reqargs):
-        raise NotImplementedError
+    def dispatch(self, reqargs):
+        return self.f(**reqargs)
 
 
 class RequestDispatcher(Dispatcher):
-    __slots__ = ['response_builders']
+    __slots__ = ['response_builder']
 
-    def __init__(self, route, rule):
+    def __init__(self, route, rule, response_builder):
         super().__init__(route)
-        self.response_builders = rule.response_builders
+        self.response_builder = response_builder
 
-    async def get_response(self, wrapper, reqargs):
-        return self.response_builders[wrapper.method](await self.f(**reqargs))
-
-    def dispatch(self, wrapper, reqargs):
-        return self.get_response(wrapper, reqargs)
+    async def dispatch(self, reqargs, response):
+        return self.response_builder(await self.f(**reqargs), response)
 
 
 class RequestOpenDispatcher(RequestDispatcher):
     __slots__ = []
 
-    async def dispatch(self, wrapper, reqargs):
+    async def dispatch(self, reqargs, response):
         await self._parallel_flow(self.flow_open)
-        return await self.get_response(wrapper, reqargs)
+        return self.response_builder(await self.f(**reqargs), response)
 
 
 class RequestCloseDispatcher(RequestDispatcher):
     __slots__ = []
 
-    async def dispatch(self, wrapper, reqargs):
+    async def dispatch(self, reqargs, response):
         try:
-            rv = await self.get_response(wrapper, reqargs)
+            output = await self.f(**reqargs)
         except Exception:
             await self._parallel_flow(self.flow_close)
             raise
         await self._parallel_flow(self.flow_close)
-        return rv
+        return self.response_builder(output, response)
 
 
 class RequestFlowDispatcher(RequestDispatcher):
     __slots__ = []
 
-    async def dispatch(self, wrapper, reqargs):
+    async def dispatch(self, reqargs, response):
         await self._parallel_flow(self.flow_open)
         try:
-            rv = await self.get_response(wrapper, reqargs)
+            output = await self.f(**reqargs)
         except Exception:
             await self._parallel_flow(self.flow_close)
             raise
         await self._parallel_flow(self.flow_close)
-        return rv
+        return self.response_builder(output, response)
 
 
-class WSDispatcher(Dispatcher):
+class WSOpenDispatcher(Dispatcher):
     __slots__ = []
 
-    def dispatch(self, wrapper, reqargs):
-        return self.f(**reqargs)
-
-
-class WSOpenDispatcher(WSDispatcher):
-    __slots__ = []
-
-    async def dispatch(self, wrapper, reqargs):
+    async def dispatch(self, reqargs):
         await self._parallel_flow(self.flow_open)
         await self.f(**reqargs)
 
 
-class WSCloseDispatcher(WSDispatcher):
+class WSCloseDispatcher(Dispatcher):
     __slots__ = []
 
-    async def dispatch(self, wrapper, reqargs):
+    async def dispatch(self, reqargs):
         try:
             await self.f(**reqargs)
         except Exception:
@@ -109,10 +99,10 @@ class WSCloseDispatcher(WSDispatcher):
         await asyncio.shield(self._parallel_flow(self.flow_close))
 
 
-class WSFlowDispatcher(WSDispatcher):
+class WSFlowDispatcher(Dispatcher):
     __slots__ = []
 
-    async def dispatch(self, wrapper, reqargs):
+    async def dispatch(self, reqargs):
         await self._parallel_flow(self.flow_open)
         try:
             await self.f(**reqargs)
@@ -122,48 +112,68 @@ class WSFlowDispatcher(WSDispatcher):
         await asyncio.shield(self._parallel_flow(self.flow_close))
 
 
-class DispatcherCacheMixin:
-    __slots__ = []
-    _allowed_methods = {'GET', 'HEAD'}
+class CacheDispatcher(RequestDispatcher):
+    __slots__ = ['route', 'cache_rule']
 
-    def __init__(self, route, rule):
-        super().__init__(route, rule)
+    def __init__(self, route, rule, response_builder):
+        super().__init__(route, rule, response_builder)
         self.route = route
         self.cache_rule = rule.cache_rule
 
-    async def get_response(self, wrapper, reqargs):
-        if wrapper.method not in self._allowed_methods:
-            return await super().get_response(wrapper, reqargs)
-        response = current.response
+    async def get_data(self, reqargs, response):
         key = self.cache_rule._build_ctx_key(
             self.route, **self.cache_rule._build_ctx(
-                reqargs, self.route, current))
+                reqargs, self.route, current
+            )
+        )
         data = self.cache_rule.cache.get(key)
         if data is not None:
             response.headers.update(data['headers'])
-            return data['http_cls'], data['content']
-        http_cls, output = await super().get_response(wrapper, reqargs)
+            return data['content']
+        content = await self.f(**reqargs)
         if response.status == 200:
             self.cache_rule.cache.set(
-                key, {
-                    'http_cls': http_cls,
-                    'content': output,
-                    'headers': response.headers},
-                self.cache_rule.duration)
-        return http_cls, output
+                key,
+                {'content': content, 'headers': response.headers},
+                self.cache_rule.duration
+            )
+        return content
+
+    async def dispatch(self, reqargs, response):
+        content = await self.get_data(reqargs, response)
+        return self.response_builder(content, response)
 
 
-class CacheDispatcher(DispatcherCacheMixin, RequestDispatcher):
-    __slots__ = ('route', 'cache_rule')
+class CacheOpenDispatcher(CacheDispatcher):
+    __slots__ = []
+
+    async def dispatch(self, reqargs, response):
+        await self._parallel_flow(self.flow_open)
+        return await super().dispatch(reqargs, response)
 
 
-class CacheOpenDispatcher(DispatcherCacheMixin, RequestOpenDispatcher):
-    __slots__ = ('route', 'cache_rule')
+class CacheCloseDispatcher(CacheDispatcher):
+    __slots__ = []
+
+    async def dispatch(self, reqargs, response):
+        try:
+            content = await self.get_data(reqargs, response)
+        except Exception:
+            await self._parallel_flow(self.flow_close)
+            raise
+        await self._parallel_flow(self.flow_close)
+        return self.response_builder(content, response)
 
 
-class CacheCloseDispatcher(DispatcherCacheMixin, RequestCloseDispatcher):
-    __slots__ = ('route', 'cache_rule')
+class CacheFlowDispatcher(CacheDispatcher):
+    __slots__ = []
 
-
-class CacheFlowDispatcher(DispatcherCacheMixin, RequestFlowDispatcher):
-    __slots__ = ('route', 'cache_rule')
+    async def dispatch(self, reqargs, response):
+        await self._parallel_flow(self.flow_open)
+        try:
+            content = await self.get_data(reqargs, response)
+        except Exception:
+            await self._parallel_flow(self.flow_close)
+            raise
+        await self._parallel_flow(self.flow_close)
+        return self.response_builder(content, response)

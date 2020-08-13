@@ -9,18 +9,26 @@
     :license: BSD-3-Clause
 """
 
-import pendulum
 import re
 
 from functools import wraps
 
+import pendulum
+
 from ..http import HTTP
 from .dispatchers import (
-    RequestDispatcher, RequestOpenDispatcher,
-    RequestCloseDispatcher, RequestFlowDispatcher,
-    WSDispatcher, WSOpenDispatcher, WSCloseDispatcher, WSFlowDispatcher,
-    CacheDispatcher, CacheOpenDispatcher,
-    CacheCloseDispatcher, CacheFlowDispatcher
+    CacheCloseDispatcher,
+    CacheDispatcher,
+    CacheFlowDispatcher,
+    CacheOpenDispatcher,
+    Dispatcher,
+    RequestCloseDispatcher,
+    RequestDispatcher,
+    RequestFlowDispatcher,
+    RequestOpenDispatcher,
+    WSCloseDispatcher,
+    WSFlowDispatcher,
+    WSOpenDispatcher
 )
 
 REGEX_INT = re.compile(r'<int\:(\w+)>')
@@ -33,10 +41,17 @@ REGEX_FLOAT = re.compile(r'<float\:(\w+)>')
 
 class Route:
     __slots__ = [
-        'name', 'f', 'regex', 'match', 'is_static', 'parse_reqargs',
-        'path', 'schemes', 'hostname',
-        'pipeline_flow_open', 'pipeline_flow_close',
-        'dispatcher'
+        'f',
+        'hostname',
+        'is_static',
+        'match',
+        'name',
+        'parse_reqargs',
+        'path',
+        'pipeline_flow_close',
+        'pipeline_flow_open',
+        'regex',
+        'schemes'
     ]
     _re_condl = re.compile(r'\(.*\)\?')
     _re_param = re.compile(r'<(\w+)\:(\w+)>')
@@ -56,7 +71,6 @@ class Route:
         self.pipeline_flow_close = rule.pipeline_flow_close
         self.build_matcher()
         self.build_argparser()
-        self.build_dispatcher(rule)
 
     @staticmethod
     def build_regex(path):
@@ -190,46 +204,53 @@ class Route:
 
 
 class HTTPRoute(Route):
-    __slots__ = ['methods']
+    __slots__ = ['methods', 'dispatchers']
 
     def __init__(self, rule, path, idx):
         super().__init__(rule, path, idx)
-        self.methods = tuple(rule.methods)
+        self.methods = tuple(method.upper() for method in rule.methods)
+        self.build_dispatchers(rule)
 
-    def build_dispatcher(self, rule):
+    def build_dispatchers(self, rule):
         dispatchers = {
-            'base': RequestDispatcher,
-            'open': RequestOpenDispatcher,
-            'close': RequestCloseDispatcher,
-            'flow': RequestFlowDispatcher
-        } if not rule.cache_rule else {
-            'base': CacheDispatcher,
-            'open': CacheOpenDispatcher,
-            'close': CacheCloseDispatcher,
-            'flow': CacheFlowDispatcher
+            'base': (RequestDispatcher, CacheDispatcher),
+            'open': (RequestOpenDispatcher, CacheOpenDispatcher),
+            'close': (RequestCloseDispatcher, CacheCloseDispatcher),
+            'flow': (RequestFlowDispatcher, CacheFlowDispatcher)
         }
         if self.pipeline_flow_open and self.pipeline_flow_close:
-            dispatcher = dispatchers['flow']
+            dispatcher, cdispatcher = dispatchers['flow']
         elif self.pipeline_flow_open and not self.pipeline_flow_close:
-            dispatcher = dispatchers['open']
+            dispatcher, cdispatcher = dispatchers['open']
         elif not self.pipeline_flow_open and self.pipeline_flow_close:
-            dispatcher = dispatchers['close']
+            dispatcher, cdispatcher = dispatchers['close']
         else:
-            dispatcher = dispatchers['base']
-        self.dispatcher = dispatcher(self, rule)
+            dispatcher, cdispatcher = dispatchers['base']
+        self.dispatchers = {}
+        for method in self.methods:
+            dispatcher_cls = (
+                cdispatcher if rule.cache_rule and method in ['HEAD', 'GET']
+                else dispatcher
+            )
+            self.dispatchers[method] = dispatcher_cls(
+                self,
+                rule,
+                rule.head_builder if method == 'HEAD' else rule.response_builder
+            )
 
 
 class WebsocketRoute(Route):
-    __slots__ = ['pipeline_flow_receive', 'pipeline_flow_send']
+    __slots__ = ['pipeline_flow_receive', 'pipeline_flow_send', 'dispatcher']
 
     def __init__(self, rule, path, idx):
         super().__init__(rule, path, idx)
         self.pipeline_flow_receive = rule.pipeline_flow_receive
         self.pipeline_flow_send = rule.pipeline_flow_send
+        self.build_dispatcher(rule)
 
     def build_dispatcher(self, rule):
         dispatchers = {
-            'base': WSDispatcher,
+            'base': Dispatcher,
             'open': WSOpenDispatcher,
             'close': WSCloseDispatcher,
             'flow': WSFlowDispatcher

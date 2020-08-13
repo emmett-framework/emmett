@@ -170,25 +170,7 @@ class HTTPHandler(RequestHandler):
             self._prefix_handler if self.router._prefix_main else
             self.static_handler)
 
-    def __call__(
-        self,
-        scope: Scope,
-        receive: Receive,
-        send: Send
-    ) -> Awaitable[None]:
-        return self.handle_request(scope, receive, send)
-
-    @cachedprop
-    def error_handler(self) -> Callable[[], Awaitable[str]]:
-        return (
-            self._debug_handler if self.app.debug else self.exception_handler
-        )
-
-    @cachedprop
-    def exception_handler(self) -> Callable[[], Awaitable[str]]:
-        return self.app.error_handlers.get(500, self._exception_handler)
-
-    async def handle_request(
+    async def __call__(
         self,
         scope: Scope,
         receive: Receive,
@@ -203,6 +185,16 @@ class HTTPHandler(RequestHandler):
             http.send(scope, send),
             self.app.config.response_timeout
         )
+
+    @cachedprop
+    def error_handler(self) -> Callable[[], Awaitable[str]]:
+        return (
+            self._debug_handler if self.app.debug else self.exception_handler
+        )
+
+    @cachedprop
+    def exception_handler(self) -> Callable[[], Awaitable[str]]:
+        return self.app.error_handlers.get(500, self._exception_handler)
 
     @staticmethod
     async def _http_response(code: int) -> HTTPResponse:

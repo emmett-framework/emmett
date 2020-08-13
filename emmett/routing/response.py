@@ -11,7 +11,7 @@
 
 from __future__ import annotations
 
-from typing import Any, AnyStr, Dict, Tuple, Type, Union
+from typing import Any, Dict, Type, Union
 
 from renoir.errors import TemplateMissingError
 
@@ -19,6 +19,7 @@ from ..ctx import current
 from ..helpers import load_component
 from ..html import asis
 from ..http import HTTPResponse, HTTP, HTTPBytes
+from ..wrappers.response import Response
 from .rules import RoutingRule
 from .urls import url
 
@@ -31,16 +32,26 @@ class ResponseBuilder:
     def __init__(self, route: RoutingRule):
         self.route = route
 
-    def __call__(self, output: Any) -> Tuple[Type[HTTPResponse], AnyStr]:
-        return self.http_cls, output
+    def __call__(self, output: Any, response: Response) -> HTTPResponse:
+        return self.http_cls(
+            response.status,
+            output,
+            response.headers,
+            response.cookies
+        )
 
 
 class ResponseProcessor(ResponseBuilder):
-    def process(self, output: Any):
+    def process(self, output: Any, response: Response):
         raise NotImplementedError
 
-    def __call__(self, output: Any) -> Tuple[Type[HTTPResponse], AnyStr]:
-        return self.http_cls, self.process(output)
+    def __call__(self, output: Any, response: Response) -> HTTPResponse:
+        return self.http_cls(
+            response.status,
+            self.process(output, response),
+            response.headers,
+            response.cookies
+        )
 
 
 class BytesResponseBuilder(ResponseBuilder):
@@ -48,8 +59,12 @@ class BytesResponseBuilder(ResponseBuilder):
 
 
 class TemplateResponseBuilder(ResponseProcessor):
-    def process(self, output: Union[Dict[str, Any], None]) -> str:
-        current.response.headers._data['content-type'] = _html_content_type
+    def process(
+        self,
+        output: Union[Dict[str, Any], None],
+        response: Response
+    ) -> str:
+        response.headers._data['content-type'] = _html_content_type
         base_ctx = {
             'current': current,
             'url': url,
@@ -66,7 +81,7 @@ class TemplateResponseBuilder(ResponseProcessor):
 
 
 class AutoResponseBuilder(ResponseProcessor):
-    def process(self, output: Any) -> str:
+    def process(self, output: Any, response: Response) -> str:
         is_template = False
         if isinstance(output, dict):
             is_template = True
@@ -87,7 +102,7 @@ class AutoResponseBuilder(ResponseProcessor):
                 'load_component': load_component
             }
         if is_template:
-            current.response.headers._data['content-type'] = _html_content_type
+            response.headers._data['content-type'] = _html_content_type
             try:
                 return self.route.app.templater.render(
                     self.route.template, output
