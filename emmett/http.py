@@ -73,7 +73,7 @@ class HTTPResponse(Exception):
         self,
         status_code: int,
         *,
-        headers: Dict[str, str] = {'Content-Type': 'text/plain'},
+        headers: Dict[str, str] = {'content-type': 'text/plain'},
         cookies: Dict[str, Any] = {}
     ):
         self.status_code: int = status_code
@@ -114,7 +114,7 @@ class HTTPBytes(HTTPResponse):
         self,
         status_code: int,
         body: bytes = b'',
-        headers: Dict[str, str] = {'Content-Type': 'text/plain'},
+        headers: Dict[str, str] = {'content-type': 'text/plain'},
         cookies: Dict[str, Any] = {}
     ):
         super().__init__(status_code, headers=headers, cookies=cookies)
@@ -133,7 +133,7 @@ class HTTP(HTTPResponse):
         self,
         status_code: int,
         body: str = '',
-        headers: Dict[str, str] = {'Content-Type': 'text/plain'},
+        headers: Dict[str, str] = {'content-type': 'text/plain'},
         cookies: Dict[str, Any] = {}
     ):
         super().__init__(status_code, headers=headers, cookies=cookies)
@@ -175,10 +175,10 @@ class HTTPFile(HTTPResponse):
         etag_base = str(stat_data.st_mtime) + '_' + str(stat_data.st_size)
         etag = md5(etag_base.encode('utf-8')).hexdigest()
         return {
-            'Content-Type': contenttype(self.file_path),
-            'Content-Length': content_length,
-            'Last-Modified': last_modified,
-            'Etag': etag
+            'content-type': contenttype(self.file_path),
+            'content-length': content_length,
+            'last-modified': last_modified,
+            'etag': etag
         }
 
     async def send(self, scope, send):
@@ -224,7 +224,7 @@ class HTTPIO(HTTPResponse):
     def _get_io_headers(self):
         content_length = str(self.io_stream.getbuffer().nbytes)
         return {
-            'Content-Length': content_length
+            'content-length': content_length
         }
 
     async def send(self, scope, send):
