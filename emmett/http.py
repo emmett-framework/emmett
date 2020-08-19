@@ -91,7 +91,7 @@ class HTTPResponse(Exception):
         for key, val in self._headers.items():
             rv.append((key.encode('utf-8'), val.encode('utf-8')))
         for cookie in self._cookies:
-            rv.append((b'Set-Cookie', cookie))
+            rv.append((b'set-cookie', cookie))
         return rv
 
     async def _send_headers(self, send):
@@ -154,7 +154,7 @@ class HTTP(HTTPResponse):
 class HTTPRedirect(HTTPResponse):
     def __init__(self, status_code: int, location: str):
         location = location.replace('\r', '%0D').replace('\n', '%0A')
-        super().__init__(status_code, headers={'Location': location})
+        super().__init__(status_code, headers={'location': location})
 
 
 class HTTPFile(HTTPResponse):
