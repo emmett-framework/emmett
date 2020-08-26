@@ -399,7 +399,8 @@ class RedisCache(CacheHandler):
         except ImportError:
             raise RuntimeError('no redis module found')
         self._cache = redis.Redis(
-            host=host, port=port, password=password, db=db, **kwargs)
+            host=host, port=port, password=password, db=db, **kwargs
+        )
 
     def _dump_obj(self, value: Any) -> bytes:
         if isinstance(value, int):
@@ -428,7 +429,10 @@ class RedisCache(CacheHandler):
     def set(self, key: str, value: Any, **kwargs):
         dumped = self._dump_obj(value)
         return self._cache.setex(
-            name=key, value=dumped, time=kwargs['duration'])
+            name=key,
+            time=kwargs['duration'],
+            value=dumped
+        )
 
     @CacheHandler._key_prefix_
     def clear(self, key: Optional[str] = None):

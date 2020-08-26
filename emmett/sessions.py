@@ -222,8 +222,10 @@ class RedisSessionPipe(BackendStoredSessionPipe):
     def _save_session(self, expiration):
         if current.session._modified:
             self.redis.setex(
-                self.prefix + current.session._sid, current.session._dump,
-                expiration)
+                self.prefix + current.session._sid,
+                expiration,
+                current.session._dump
+            )
         else:
             self.redis.expire(self.prefix + current.session._sid, expiration)
 
