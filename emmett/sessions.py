@@ -16,7 +16,7 @@ import pickle
 import tempfile
 import time
 
-from typing import Any, Optional, Type
+from typing import Any, Dict, Optional, Type
 
 from .ctx import current
 from .datastructures import sdict, SessionData
@@ -27,14 +27,22 @@ from .wrappers import ScopeWrapper
 
 class SessionPipe(Pipe):
     def __init__(
-        self, expire=3600, secure=False, domain=None, cookie_name=None
+        self,
+        expire: int = 3600,
+        secure: bool = False,
+        samesite: str = "None",
+        domain: Optional[str] = None,
+        cookie_name: Optional[str] = None,
+        cookie_data: Optional[Dict[str, Any]] = None
     ):
         self.expire = expire
         self.secure = secure
+        self.samesite = samesite
         self.domain = domain
         self.cookie_name = (
             cookie_name or f'emt_session_data_{current.app.name}'
         )
+        self.cookie_data = cookie_data or {}
 
     def _load_session(self, wrapper: ScopeWrapper):
         raise NotImplementedError
@@ -47,10 +55,13 @@ class SessionPipe(Pipe):
         cookie_data = current.response.cookies[self.cookie_name]
         cookie_data['path'] = "/"
         cookie_data['expires'] = expiration
+        cookie_data['samesite'] = self.samesite
         if self.secure:
             cookie_data['secure'] = True
         if self.domain is not None:
             cookie_data['domain'] = self.domain
+        for key, val in self.cookie_data.items():
+            cookie_data[key] = val
 
     def _session_cookie_data(self) -> str:
         raise NotImplementedError
@@ -77,9 +88,23 @@ class SessionPipe(Pipe):
 
 class CookieSessionPipe(SessionPipe):
     def __init__(
-        self, key, expire=3600, secure=False, domain=None, cookie_name=None
+        self,
+        key,
+        expire=3600,
+        secure=False,
+        samesite="None",
+        domain=None,
+        cookie_name=None,
+        cookie_data=None
     ):
-        super().__init__(expire, secure, domain, cookie_name)
+        super().__init__(
+            expire=expire,
+            secure=secure,
+            samesite=samesite,
+            domain=domain,
+            cookie_name=cookie_name,
+            cookie_data=cookie_data
+        )
         self.key = key
 
     def _load_session(self, wrapper: ScopeWrapper) -> SessionData:
@@ -143,10 +168,23 @@ class FileSessionPipe(BackendStoredSessionPipe):
     _fs_mode = 0o600
 
     def __init__(
-        self, expire=3600, secure=False, domain=None, cookie_name=None,
+        self,
+        expire=3600,
+        secure=False,
+        samesite="None",
+        domain=None,
+        cookie_name=None,
+        cookie_data=None,
         filename_template='emt_%s.sess'
     ):
-        super().__init__(expire, secure, domain, cookie_name)
+        super().__init__(
+            expire=expire,
+            secure=secure,
+            samesite=samesite,
+            domain=domain,
+            cookie_name=cookie_name,
+            cookie_data=cookie_data
+        )
         assert not filename_template.endswith(self._fs_transaction_suffix), \
             'filename templates cannot end with %s' % \
             self._fs_transaction_suffix
@@ -209,10 +247,24 @@ class FileSessionPipe(BackendStoredSessionPipe):
 
 class RedisSessionPipe(BackendStoredSessionPipe):
     def __init__(
-        self, redis, prefix="emtsess:", expire=3600, secure=False, domain=None,
-        cookie_name=None
+        self,
+        redis,
+        prefix="emtsess:",
+        expire=3600,
+        secure=False,
+        samesite="None",
+        domain=None,
+        cookie_name=None,
+        cookie_data=None
     ):
-        super().__init__(expire, secure, domain, cookie_name)
+        super().__init__(
+            expire=expire,
+            secure=secure,
+            samesite=samesite,
+            domain=domain,
+            cookie_name=cookie_name,
+            cookie_data=cookie_data
+        )
         self.redis = redis
         self.prefix = prefix
 
@@ -256,16 +308,20 @@ class SessionManager:
         key: str,
         expire: int = 3600,
         secure: bool = False,
+        samesite: str = "None",
         domain: Optional[str] = None,
-        cookie_name: Optional[str] = None
+        cookie_name: Optional[str] = None,
+        cookie_data: Optional[Dict[str, Any]] = None
     ) -> CookieSessionPipe:
         return cls._build_pipe(
             CookieSessionPipe,
             key,
             expire=expire,
             secure=secure,
+            samesite=samesite,
             domain=domain,
-            cookie_name=cookie_name
+            cookie_name=cookie_name,
+            cookie_data=cookie_data
         )
 
     @classmethod
@@ -273,16 +329,20 @@ class SessionManager:
         cls,
         expire: int = 3600,
         secure: bool = False,
+        samesite: str = "None",
         domain: Optional[str] = None,
         cookie_name: Optional[str] = None,
+        cookie_data: Optional[Dict[str, Any]] = None,
         filename_template: str = 'emt_%s.sess'
     ) -> FileSessionPipe:
         return cls._build_pipe(
             FileSessionPipe,
             expire=expire,
             secure=secure,
+            samesite=samesite,
             domain=domain,
             cookie_name=cookie_name,
+            cookie_data=cookie_data,
             filename_template=filename_template
         )
 
@@ -293,8 +353,10 @@ class SessionManager:
         prefix: str = "emtsess:",
         expire: int = 3600,
         secure: bool = False,
+        samesite: str = "None",
         domain: Optional[str] = None,
-        cookie_name: Optional[str] = None
+        cookie_name: Optional[str] = None,
+        cookie_data: Optional[Dict[str, Any]] = None
     ) -> RedisSessionPipe:
         return cls._build_pipe(
             RedisSessionPipe,
@@ -302,8 +364,10 @@ class SessionManager:
             prefix=prefix,
             expire=expire,
             secure=secure,
+            samesite=samesite,
             domain=domain,
-            cookie_name=cookie_name
+            cookie_name=cookie_name,
+            cookie_data=cookie_data
         )
 
     @classmethod
