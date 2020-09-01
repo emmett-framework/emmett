@@ -161,6 +161,8 @@ class HTTPRouter(Router):
     __slots__ = ['pipeline', 'injectors']
 
     _routing_rule_cls = HTTPRoutingRule
+    _routing_rec_builder = RouteRecReq
+
     _outputs = {
         'auto': AutoResponseBuilder,
         'bytes': BytesResponseBuilder,
@@ -207,7 +209,7 @@ class HTTPRouter(Router):
                     ('static', route.path) if route.is_static else
                     ('match', route.name)
                 )
-                routing_dict[slot][key] = RouteRecReq(
+                routing_dict[slot][key] = self._routing_rec_builder(
                     name=route.name,
                     match=route.match,
                     dispatch=route.dispatchers[method].dispatch
@@ -247,6 +249,7 @@ class WebsocketRouter(Router):
     __slots__ = ['pipeline']
 
     _routing_rule_cls = WebsocketRoutingRule
+    _routing_rec_builder = RouteRecWS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -280,7 +283,7 @@ class WebsocketRouter(Router):
                 ('static', route.path) if route.is_static else
                 ('match', route.name)
             )
-            routing_dict[slot][key] = RouteRecWS(
+            routing_dict[slot][key] = self._routing_rec_builder(
                 name=route.name,
                 match=route.match,
                 dispatch=route.dispatcher.dispatch,
