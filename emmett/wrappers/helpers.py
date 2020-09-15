@@ -9,15 +9,23 @@
     :license: BSD-3-Clause
 """
 
-from collections.abc import Mapping, MutableMapping
 from typing import (
-    Any, BinaryIO, Dict, Iterable, Iterator, Optional, Tuple, Union
+    Any,
+    BinaryIO,
+    Dict,
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union
 )
 
 from .._internal import loop_copyfileobj
 
 
-class Headers(Mapping):
+class Headers(Mapping[str, str]):
     __slots__ = ['_data']
 
     def __init__(self, scope: Dict[str, Any]):
@@ -63,7 +71,7 @@ class Headers(Mapping):
             yield value.decode()
 
 
-class ResponseHeaders(MutableMapping):
+class ResponseHeaders(MutableMapping[str, str]):
     __slots__ = ['_data']
     __hash__ = None
 

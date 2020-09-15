@@ -30,6 +30,14 @@ from .helpers import FileStorage, RequestCancelled
 
 _regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
 
+SERVER_PUSH_HEADERS = {
+    "accept",
+    "accept-encoding",
+    "accept-language",
+    "cache-control",
+    "user-agent"
+}
+
 
 class Body:
     __slots__ = ('_data', '_receive', '_max_content_length')
@@ -212,3 +220,15 @@ class Request(ScopeWrapper):
                 # IPv4
                 client = '127.0.0.1'
         return client
+
+    async def push_promise(self, path: str):
+        if "http.response.push" not in self._scope.get("extensions", {}):
+            return
+        await self._send({
+            "type": "http.response.push",
+            "path": path,
+            "headers": [
+                (key.encode("latin-1"), self.headers[key].encode("latin-1"))
+                for key in SERVER_PUSH_HEADERS & set(self.headers.keys())
+            ]
+        })
