@@ -9,6 +9,8 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import asyncio
 import heapq
 import os
@@ -20,11 +22,13 @@ import time
 from collections import OrderedDict
 from functools import wraps
 from typing import (
-    Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union)
+    Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union, overload
+)
 
 from ._shortcuts import hashlib_sha1
 from .ctx import current
 from .libs.portalocker import LockedFile
+from .typing import T
 
 __all__ = ['Cache']
 
@@ -50,7 +54,7 @@ class CacheHashMixin:
         return hashlib_sha1(':'.join(components)).hexdigest()
 
     def _build_ctx_key(self, **ctx) -> str:
-        return self.key + ":" + self._build_hash(ctx)
+        return self.key + ":" + self._build_hash(ctx)  # type: ignore  # noqa
 
     @staticmethod
     def dict_strategy(data: Dict[str, Any]) -> List[Tuple[str, Any]]:
@@ -85,28 +89,49 @@ class CacheHandler:
                 duration = self._default_expire
             now = time.time()
             return method(
-                self, key, value, now=now, duration=duration,
-                expiration=now + duration)
+                self, key, value,
+                now=now,
+                duration=duration,
+                expiration=now + duration  # type: ignore
+            )
         return wrap
+
+    @overload
+    def __call__(
+        self,
+        key: Optional[str] = None,
+        function: None = None,
+        duration: Union[int, str, None] = 'default'
+    ) -> CacheDecorator:
+        ...
+
+    @overload
+    def __call__(
+        self,
+        key: str,
+        function: Optional[Callable[..., T]],
+        duration: Union[int, str, None] = 'default'
+    ) -> T:
+        ...
 
     def __call__(
         self,
         key: Optional[str] = None,
-        function: Optional[Callable[..., Any]] = None,
+        function: Optional[Callable[..., T]] = None,
         duration: Union[int, str, None] = 'default'
-    ) -> Any:
+    ) -> Union[CacheDecorator, T]:
         if function:
             if asyncio.iscoroutinefunction(function):
-                return self.get_or_set_loop(key, function, duration)
-            return self.get_or_set(key, function, duration)
+                return self.get_or_set_loop(key, function, duration)  # type: ignore
+            return self.get_or_set(key, function, duration)  # type: ignore
         return CacheDecorator(self, key, duration)
 
     def get_or_set(
         self,
         key: str,
-        function: Callable[[], Any],
+        function: Callable[[], T],
         duration: Union[int, str, None] = 'default'
-    ) -> Any:
+    ) -> T:
         value = self.get(key)
         if value is None:
             value = function()
@@ -116,12 +141,12 @@ class CacheHandler:
     async def get_or_set_loop(
         self,
         key: str,
-        function: Callable[[], Awaitable[Any]],
+        function: Callable[[], T],
         duration: Union[int, str, None] = 'default'
-    ) -> Any:
+    ) -> T:
         value = self.get(key)
         if value is None:
-            value = await function()
+            value = await function()  # type: ignore
             self.set(key, value, duration)
         return value
 
@@ -141,9 +166,10 @@ class CacheHandler:
         language: bool = True,
         hostname: bool = False,
         headers: List[str] = []
-    ) -> 'RouteCacheRule':
+    ) -> RouteCacheRule:
         return RouteCacheRule(
-            self, query_params, language, hostname, headers, duration)
+            self, query_params, language, hostname, headers, duration
+        )
 
 
 class CacheDecorator(CacheHashMixin):
@@ -160,15 +186,19 @@ class CacheDecorator(CacheHashMixin):
         self.add_strategy('args')
         self.add_strategy('kwargs', self.dict_strategy)
 
+    def _key_from_wrapped(self, f: Callable[..., Any]) -> str:
+        return f.__module__ + '.' + f.__name__
+
     def _wrap_sync(self, f: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(f)
         def wrap(*args, **kwargs) -> Any:
             if not args and not kwargs:
-                key = self.key
+                key = self.key or self._key_from_wrapped(f)
             else:
                 key = self._build_ctx_key(args=args, kwargs=kwargs)
             return self._cache.get_or_set(
-                key, lambda: f(*args, **kwargs), self.duration)
+                key, lambda: f(*args, **kwargs), self.duration
+            )
         return wrap
 
     def _wrap_loop(
@@ -178,17 +208,19 @@ class CacheDecorator(CacheHashMixin):
         @wraps(f)
         async def wrap(*args, **kwargs) -> Any:
             if not args and not kwargs:
-                key = self.key
+                key = self.key or self._key_from_wrapped(f)
             else:
                 key = self._build_ctx_key(args=args, kwargs=kwargs)
             return await self._cache.get_or_set_loop(
-                key, lambda: f(*args, **kwargs), self.duration)
+                key, lambda: f(*args, **kwargs), self.duration
+            )
         return wrap
 
     def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
         rv = (
             self._wrap_loop(f) if asyncio.iscoroutinefunction(f) else
-            self._wrap_sync(f))
+            self._wrap_sync(f)
+        )
         if not self.key:
             self.key = f.__module__ + '.' + f.__name__
         return rv
@@ -214,9 +246,9 @@ class RamCache(CacheHandler):
     ):
         super().__init__(
             prefix=prefix, default_expire=default_expire)
-        self.data = {}
-        self._heap_exp = []
-        self._heap_acc = []
+        self.data: Dict[str, Any] = {}
+        self._heap_exp: List[Tuple[int, str]] = []
+        self._heap_acc: List[Tuple[float, str]] = []
         self._threshold = threshold
 
     def _prune(self, now):
@@ -486,7 +518,7 @@ class RouteCacheRule(CacheHashMixin):
             self._ctx_builders.append(
                 ('headers', lambda route, current: current.request.headers))
 
-    def _build_ctx_key(self, route: Any, **ctx) -> str:
+    def _build_ctx_key(self, route: Any, **ctx) -> str:  # type: ignore
         return route.name + ":" + self._build_hash(ctx)
 
     def _build_ctx(
@@ -526,12 +558,30 @@ class Cache:
         _default_handler_name = kwargs.get('default', handlers[0][0])
         self._default_handler = getattr(self, _default_handler_name)
 
+    @overload
     def __call__(
         self,
         key: Optional[str] = None,
-        function: Optional[Callable[..., Any]] = None,
+        function: None = None,
         duration: Union[int, str, None] = 'default'
-    ) -> Any:
+    ) -> CacheDecorator:
+        ...
+
+    @overload
+    def __call__(
+        self,
+        key: str,
+        function: Optional[Callable[..., T]],
+        duration: Union[int, str, None] = 'default'
+    ) -> T:
+        ...
+
+    def __call__(
+        self,
+        key: Optional[str] = None,
+        function: Optional[Callable[..., T]] = None,
+        duration: Union[int, str, None] = 'default'
+    ) -> Union[CacheDecorator, T]:
         return self._default_handler(key, function, duration)
 
     def get(self, key: str) -> Any:
@@ -548,9 +598,9 @@ class Cache:
     def get_or_set(
         self,
         key: str,
-        function: Callable[..., Any],
+        function: Callable[..., T],
         duration: Union[int, str, None] = 'default'
-    ) -> Any:
+    ) -> T:
         return self._default_handler.get_or_set(key, function, duration)
 
     def clear(self, key: Optional[str] = None):
@@ -565,4 +615,5 @@ class Cache:
         headers: List[str] = []
     ) -> RouteCacheRule:
         return self._default_handler.response(
-            duration, query_params, language, hostname, headers)
+            duration, query_params, language, hostname, headers
+        )

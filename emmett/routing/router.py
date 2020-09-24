@@ -20,8 +20,11 @@ from ..ctx import current
 from ..extensions import Signals
 from ..http import HTTP
 from .response import (
-    ResponseBuilder, AutoResponseBuilder,
-    BytesResponseBuilder, TemplateResponseBuilder
+    MetaResponseBuilder,
+    ResponseBuilder,
+    AutoResponseBuilder,
+    BytesResponseBuilder,
+    TemplateResponseBuilder
 )
 from .rules import RoutingRule, HTTPRoutingRule, WebsocketRoutingRule
 
@@ -48,7 +51,7 @@ class Router:
         'routes'
     ]
 
-    _outputs: Dict[str, Type[ResponseBuilder]] = {}
+    _outputs: Dict[str, Type[MetaResponseBuilder]] = {}
     _routing_rule_cls: Type[RoutingRule] = RoutingRule
     _routing_signal = Signals.before_routes
     _routing_started = False

@@ -112,7 +112,7 @@ class Request(ScopeWrapper):
 
     @cachedprop
     def now_local(self) -> pendulum.DateTime:
-        return self.now.in_timezone(pendulum.local_timezone())
+        return self.now.in_timezone(pendulum.local_timezone())  # type: ignore
 
     @cachedprop
     def content_type(self) -> str:
@@ -219,7 +219,7 @@ class Request(ScopeWrapper):
             else:
                 # IPv4
                 client = '127.0.0.1'
-        return client
+        return client  # type: ignore
 
     async def push_promise(self, path: str):
         if "http.response.push" not in self._scope.get("extensions", {}):

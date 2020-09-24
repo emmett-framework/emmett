@@ -57,7 +57,10 @@ class Websocket(ScopeWrapper):
     ):
         if self._accepted:
             return
-        message = {'type': 'websocket.accept', 'subprotocol': subprotocol}
+        message: Dict[str, Any] = {
+            'type': 'websocket.accept',
+            'subprotocol': subprotocol
+        }
         if headers and self._asgi_spec_version > 20:
             message['headers'] = self._encode_headers(headers)
         await self._send(message)
@@ -75,12 +78,12 @@ class Websocket(ScopeWrapper):
 
     async def _wrapped_receive(self) -> Any:
         data = await self._receive()
-        for method in self._flow_receive:
+        for method in self._flow_receive:  # type: ignore
             data = method(data)
         return data
 
     async def _wrapped_send(self, data: Any):
-        for method in self._flow_send:
+        for method in self._flow_send:  # type: ignore
             data = method(data)
         if isinstance(data, str):
             await self._send({'type': 'websocket.send', 'text': data})

@@ -69,7 +69,7 @@ def _get_args_for_reloading():
 
 
 class ReloaderLoop(object):
-    name = None
+    name: str
 
     # monkeypatched by testsuite. wrapping with `staticmethod` is required in
     # case time.sleep has been replaced by a non-c function (e.g. by

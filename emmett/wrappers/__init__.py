@@ -57,17 +57,17 @@ class ScopeWrapper(Wrapper):
     def __parse_accept_header(
         self,
         value: str,
-        cls: Type[AcceptType] = Accept
+        cls: Type[AcceptType]
     ) -> AcceptType:
         if not value:
             return cls(None)
         result = []
         for match in _regex_accept.finditer(value):
-            quality = match.group(2)
-            if not quality:
-                quality = 1
+            mq = match.group(2)
+            if not mq:
+                quality = 1.0
             else:
-                quality = max(min(float(quality), 1), 0)
+                quality = max(min(float(mq), 1), 0)
             result.append((match.group(1), quality))
         return cls(result)
 
@@ -87,14 +87,14 @@ class ScopeWrapper(Wrapper):
 
     @cachedprop
     def cookies(self) -> SimpleCookie:
-        cookies = SimpleCookie()
+        cookies: SimpleCookie = SimpleCookie()
         for cookie in self.headers.get('cookie', '').split(';'):
             cookies.load(cookie)
         return cookies
 
     @cachedprop
     def query_params(self) -> sdict[str, Union[str, List[str]]]:
-        rv = sdict()
+        rv: sdict[str, Any] = sdict()
         for key, values in parse_qs(
             self._scope['query_string'].decode('ascii'), keep_blank_values=True
         ).items():

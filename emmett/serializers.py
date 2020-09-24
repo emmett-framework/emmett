@@ -8,6 +8,8 @@
 """
 
 from functools import partial
+from typing import Any, Callable, Dict, Union
+
 from orjson import dumps as _json_dumps, OPT_NAIVE_UTC, OPT_NON_STR_KEYS
 
 from .html import tag, htmlescape
@@ -19,7 +21,7 @@ _json_safe_table = {
 
 
 class Serializers:
-    _registry_ = {}
+    _registry_: Dict[str, Callable[[Any], Union[bytes, str]]] = {}
 
     @classmethod
     def register_for(cls, target):

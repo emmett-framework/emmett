@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from enum import Enum
 from functools import wraps
-from typing import Callable, TypeVar, Union
+from typing import Any, Callable, Dict, Optional, TypeVar, Union
 
 from ._internal import warn_of_deprecation
 from .datastructures import sdict
@@ -73,8 +73,8 @@ class MetaExtension(type):
 
 
 class Extension(metaclass=MetaExtension):
-    namespace = None
-    default_config = {}
+    namespace: Optional[str] = None
+    default_config: Dict[str, Any] = {}
 
     def __init__(self, app, env: sdict, config: sdict):
         self.app = app

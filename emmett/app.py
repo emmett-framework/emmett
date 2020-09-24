@@ -198,10 +198,12 @@ class App:
         self.logger_name = self.import_name
         #: init extensions
         self.ext: sdict[str, Extension] = sdict()
-        self._extensions_env = sdict()
-        self._extensions_listeners = {element.value: [] for element in Signals}
+        self._extensions_env: sdict[str, Any] = sdict()
+        self._extensions_listeners: Dict[str, List[Callable[..., Any]]] = {
+            element.value: [] for element in Signals
+        }
         #: init templater
-        self.templater = Templater(
+        self.templater: Templater = Templater(
             path=self.template_path,
             encoding=self.config.templates_encoding,
             escape=self.config.templates_escape,
@@ -384,10 +386,10 @@ class App:
                 f'{ext_cls.__name__} is an invalid Emmett extension'
             )
         ext_env, ext_config = self.__init_extension(ext_cls)
-        self.ext[ext_cls.__name__] = ext_cls(self, ext_env, ext_config)
-        self.__register_extension_listeners(self.ext[ext_cls.__name__])
-        self.ext[ext_cls.__name__].on_load()
-        return self.ext[ext_cls.__name__]
+        ext = self.ext[ext_cls.__name__] = ext_cls(self, ext_env, ext_config)
+        self.__register_extension_listeners(ext)
+        ext.on_load()
+        return ext
 
     #: Add a template extension to application
     def use_template_extension(self, ext_cls, **config):

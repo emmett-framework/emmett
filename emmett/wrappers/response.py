@@ -19,7 +19,7 @@ from . import Wrapper
 from .helpers import ResponseHeaders
 
 # Workaround for adding samesite support to pre 3.8 python
-Morsel._reserved["samesite"] = "SameSite"
+Morsel._reserved["samesite"] = "SameSite"  # type: ignore  # noqa
 
 
 class Response(Wrapper):

@@ -12,6 +12,7 @@
 from typing import (
     Any,
     BinaryIO,
+    Callable,
     Dict,
     Iterable,
     Iterator,
@@ -33,24 +34,29 @@ class Headers(Mapping[str, str]):
             key: val for key, val in scope['headers']
         }
 
-    __hash__ = None
+    __hash__ = None  # type: ignore
 
     def __getitem__(self, key: str) -> str:
         return self._data[key.lower().encode()].decode()
 
-    def __contains__(self, key: str) -> bool:
+    def __contains__(self, key: str) -> bool:  # type: ignore
         return key.lower().encode() in self._data
 
-    def __iter__(self) -> Iterator[Tuple[str, str]]:
-        for key, value in self._data.items():
-            yield key.decode(), value.decode()
+    def __iter__(self) -> Iterator[str]:
+        for key in self._data.keys():
+            yield key.decode()
 
     def __len__(self) -> int:
         return len(self._data)
 
-    def get(self, key, default=None, cast=None) -> Any:
+    def get(
+        self,
+        key: str,
+        default: Optional[Any] = None,
+        cast: Optional[Callable[[Any], Any]] = None
+    ) -> Any:
         rv = self._data.get(key.lower().encode())
-        rv = rv.decode() if rv is not None else default
+        rv = rv.decode() if rv is not None else default  # type: ignore
         if cast is None:
             return rv
         try:
@@ -58,25 +64,26 @@ class Headers(Mapping[str, str]):
         except ValueError:
             return default
 
-    def items(self) -> Iterator[Tuple[str, str]]:
+    def items(self) -> Iterator[Tuple[str, str]]:  # type: ignore
         for key, value in self._data.items():
             yield key.decode(), value.decode()
 
-    def keys(self) -> Iterator[str]:
+    def keys(self) -> Iterator[str]:  # type: ignore
         for key in self._data.keys():
             yield key.decode()
 
-    def values(self) -> Iterator[str]:
+    def values(self) -> Iterator[str]:  # type: ignore
         for value in self._data.values():
             yield value.decode()
 
 
 class ResponseHeaders(MutableMapping[str, str]):
     __slots__ = ['_data']
-    __hash__ = None
 
     def __init__(self, data: Optional[Dict[str, str]] = None):
         self._data = data or {}
+
+    __hash__ = None  # type: ignore
 
     def __getitem__(self, key: str) -> str:
         return self._data[key.lower()]
@@ -87,29 +94,29 @@ class ResponseHeaders(MutableMapping[str, str]):
     def __delitem__(self, key: str):
         del self._data[key.lower()]
 
-    def __contains__(self, key: str) -> bool:
+    def __contains__(self, key: str) -> bool:  # type: ignore
         return key.lower() in self._data
 
-    def __iter__(self) -> Iterator[Tuple[str, str]]:
-        for key, value in self._data.items():
-            yield key, value
+    def __iter__(self) -> Iterator[str]:
+        for key in self._data.keys():
+            yield key
 
     def __len__(self) -> int:
         return len(self._data)
 
-    def items(self) -> Iterator[Tuple[str, str]]:
+    def items(self) -> Iterator[Tuple[str, str]]:  # type: ignore
         for key, value in self._data.items():
             yield key, value
 
-    def keys(self) -> Iterator[str]:
+    def keys(self) -> Iterator[str]:  # type: ignore
         for key in self._data.keys():
             yield key
 
-    def values(self) -> Iterator[str]:
+    def values(self) -> Iterator[str]:  # type: ignore
         for value in self._data.values():
             yield value
 
-    def update(self, data: Dict[str, str]):
+    def update(self, data: Dict[str, str]):  # type: ignore
         self._data.update(data)
 
 

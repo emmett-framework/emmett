@@ -16,7 +16,7 @@ import pickle
 import tempfile
 import time
 
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional, Type, TypeVar
 
 from .ctx import current
 from .datastructures import sdict, SessionData
@@ -289,16 +289,19 @@ class RedisSessionPipe(BackendStoredSessionPipe):
         self.redis.delete(self.prefix + "*")
 
 
+TSessionPipe = TypeVar("TSessionPipe", bound=SessionPipe)
+
+
 class SessionManager:
     _pipe: Optional[SessionPipe] = None
 
     @classmethod
     def _build_pipe(
         cls,
-        handler_cls: Type[SessionPipe],
-        *args,
-        **kwargs
-    ) -> SessionPipe:
+        handler_cls: Type[TSessionPipe],
+        *args: Any,
+        **kwargs: Any
+    ) -> TSessionPipe:
         cls._pipe = handler_cls(*args, **kwargs)
         return cls._pipe
 
