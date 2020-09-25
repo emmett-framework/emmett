@@ -96,7 +96,7 @@ class ScopeWrapper(Wrapper):
     def query_params(self) -> sdict[str, Union[str, List[str]]]:
         rv: sdict[str, Any] = sdict()
         for key, values in parse_qs(
-            self._scope['query_string'].decode('ascii'), keep_blank_values=True
+            self._scope['query_string'].decode('latin-1'), keep_blank_values=True
         ).items():
             if len(values) == 1:
                 rv[key] = values[0]

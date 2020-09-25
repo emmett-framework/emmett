@@ -153,7 +153,7 @@ class Request(ScopeWrapper):
     def _load_params_form_urlencoded(self, data):
         rv = sdict()
         for key, values in parse_qs(
-            data.decode(), keep_blank_values=True
+            data.decode('latin-1'), keep_blank_values=True
         ).items():
             if len(values) == 1:
                 rv[key] = values[0]
