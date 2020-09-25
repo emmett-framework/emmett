@@ -10,28 +10,60 @@
 """
 
 from .basic import (
-    Validator, isntEmpty, isEmptyOr, Equals, Matches, hasLength, Not, Allow,
-    isEmpty, Any)
+    Allow,
+    Any,
+    Equals,
+    hasLength,
+    isEmpty,
+    isEmptyOr,
+    isntEmpty,
+    Matches,
+    Not,
+    Validator
+)
 from .consist import (
-    isInt, isFloat, isDecimal, isDate, isTime, isDatetime, isEmail, isJSON,
-    isUrl, isIP, isImage, isAlphanumeric, isList)
+    isAlphanumeric,
+    isDate,
+    isDatetime,
+    isDecimal,
+    isEmail,
+    isFloat,
+    isImage,
+    isInt,
+    isIP,
+    isJSON,
+    isList,
+    isTime,
+    isUrl
+)
 from .inside import inRange, inSet, inDB, notInDB
 from .process import Cleanup, Crypt, Lower, Urlify, Upper
 
 
 class ValidateFromDict(object):
-    numkeys = {'gt': False, 'gte': True, 'lt': False, 'lte': True}
+    numkeys = {"gt": False, "gte": True, "lt": False, "lte": True}
 
     def __init__(self):
         self.is_validators = {
-            'int': isInt, 'float': isFloat, 'decimal': isDecimal,
-            'date': isDate, 'time': isTime, 'datetime': isDatetime,
-            'email': isEmail, 'url': isUrl, 'ip': isIP, 'json': isJSON,
-            'image': isImage, 'alphanumeric': isAlphanumeric
+            "alphanumeric": isAlphanumeric,
+            "date": isDate,
+            "datetime": isDatetime,
+            "decimal": isDecimal,
+            "email": isEmail,
+            "float": isFloat,
+            "image": isImage,
+            "int": isInt,
+            "ip": isIP,
+            "json": isJSON,
+            "time": isTime,
+            "url": isUrl
         }
         self.proc_validators = {
-            'crypt': Crypt, 'lower': Lower, 'upper': Upper, 'urlify': Urlify,
-            'clean': Cleanup
+            "clean": Cleanup,
+            "crypt": Crypt,
+            "lower": Lower,
+            "upper": Upper,
+            "urlify": Urlify
         }
 
     def parse_num_comparisons(self, data, minv=None, maxv=None):
@@ -47,7 +79,7 @@ class ValidateFromDict(object):
                     inclusions[1] = include
         return minv, maxv, inclusions
 
-    def parse_is(self, data):
+    def parse_is(self, data, message=None):
         #: map types with fields
         if isinstance(data, str):
             #: map {'is': 'int'}
@@ -60,9 +92,9 @@ class ValidateFromDict(object):
         else:
             raise SyntaxError("'is' validator accepts only string or dict")
         validator = self.is_validators.get(key)
-        return validator(**options) if validator else None
+        return validator(message=message, **options) if validator else None
 
-    def parse_is_list(self, data):
+    def parse_is_list(self, data, message=None):
         #: map types with 'list' fields
         key = ''
         options = {}
@@ -89,7 +121,10 @@ class ValidateFromDict(object):
             subkey = '_missing_'
         validator = self.is_validators.get(subkey)
         return isList(
-            [validator(**suboptions)], **options) if validator else None
+            [validator(message=message, **suboptions)],
+            message=message,
+            **options
+        ) if validator else None
 
     def parse_reference(self, field):
         ref_table = None
@@ -104,6 +139,7 @@ class ValidateFromDict(object):
 
     def __call__(self, field, data):
         validators = []
+        message = data.pop("message", None)
         #: parse 'presence' and 'empty'
         presence = data.get('presence')
         empty = data.get('empty')
@@ -112,7 +148,7 @@ class ValidateFromDict(object):
         #: parse 'is'
         _is = data.get('is')
         if _is is not None:
-            validator = self.parse_is(_is) or self.parse_is_list(_is)
+            validator = self.parse_is(_is, message) or self.parse_is_list(_is, message)
             if validator is None:
                 raise SyntaxError(
                     "Unknown type %s for 'is' validator" % data
@@ -124,8 +160,8 @@ class ValidateFromDict(object):
             if isinstance(_len, int):
                 #: allows {'len': 2}
                 validators.append(
-                    hasLength(
-                        _len + 1, _len, message='Enter %(min)g characters'))
+                    hasLength(_len + 1, _len, message='Enter {min} characters')
+                )
             else:
                 #: allows
                 #  {'len': {'gt': 1, 'gte': 2, 'lt': 5, 'lte' 6}}
@@ -135,27 +171,27 @@ class ValidateFromDict(object):
                     inc = (True, False)
                 else:
                     minv, maxv, inc = self.parse_num_comparisons(_len, 0, 256)
-                validators.append(hasLength(maxv, minv, inc))
+                validators.append(hasLength(maxv, minv, inc, message=message))
         #: parse 'in'
         _dbset = None
         _in = data.get('in', [])
         if _in:
             if isinstance(_in, (list, tuple, set)):
                 #: allows {'in': [1, 2]}
-                validators.append(inSet(_in))
+                validators.append(inSet(_in, message=message))
             elif isinstance(_in, dict):
                 options = {}
                 #: allows {'in': {'range': (1, 5)}}
                 _range = _in.get('range')
                 if isinstance(_range, (tuple, list)):
-                    validators.append(inRange(_range[0], _range[1]))
+                    validators.append(inRange(_range[0], _range[1], message=message))
                 #: allows {'in': {'set': [1, 5]}} with options
                 _set = _in.get('set')
                 if isinstance(_set, (list, tuple, set)):
                     opt_keys = [key for key in list(_in) if key != 'set']
                     for key in opt_keys:
                         options[key] = _in[key]
-                    validators.append(inSet(_set, **options))
+                    validators.append(inSet(_set, message=message, **options))
                 #: allows {'in': {'dbset': lambda db: db.where(query)}}
                 _dbset = _in.get('dbset')
                 if callable(_dbset):
@@ -166,27 +202,35 @@ class ValidateFromDict(object):
                             options[key] = _in[key]
                         validators.append(
                             inDB(
-                                field.db, ref_table, dbset=_dbset,
-                                multiple=multiple, **options))
+                                field.db,
+                                ref_table,
+                                dbset=_dbset,
+                                multiple=multiple,
+                                message=message,
+                                **options
+                            )
+                        )
                     else:
                         raise SyntaxError(
-                            "'in:dbset' validator needs a reference field")
+                            "'in:dbset' validator needs a reference field"
+                        )
             else:
                 raise SyntaxError(
-                    "'in' validator accepts only a set or a dict")
+                    "'in' validator accepts only a set or a dict"
+                )
         #: parse 'gt', 'gte', 'lt', 'lte'
         minv, maxv, inc = self.parse_num_comparisons(data)
         if minv is not None or maxv is not None:
-            validators.append(inRange(minv, maxv, inc))
+            validators.append(inRange(minv, maxv, inc, message=message))
         #: parse 'equals'
         if 'equals' in data:
-            validators.append(Equals(data['equals']))
+            validators.append(Equals(data['equals'], message=message))
         #: parse 'match'
         if 'match' in data:
             if isinstance(data['match'], dict):
-                validators.append(Matches(**data['match']))
+                validators.append(Matches(**data['match'], message=message))
             else:
-                validators.append(Matches(data['match']))
+                validators.append(Matches(data['match'], message=message))
         #: parse transforming validators
         for key, vclass in self.proc_validators.items():
             if key in data:
@@ -198,8 +242,9 @@ class ValidateFromDict(object):
                         options = {'algorithm': data[key]}
                     else:
                         raise SyntaxError(
-                            key + " validator accepts only dict or True")
-                validators.append(vclass(**options))
+                            key + " validator accepts only dict or True"
+                        )
+                validators.append(vclass(message=message, **options))
         #: parse 'unique'
         _unique = data.get('unique', False)
         if _unique:
@@ -209,10 +254,17 @@ class ValidateFromDict(object):
                 if callable(whr):
                     _dbset = whr
             validators.append(
-                notInDB(field.db, field.table, field.name, dbset=_udbset))
+                notInDB(
+                    field.db,
+                    field.table,
+                    field.name,
+                    dbset=_udbset,
+                    message=message
+                )
+            )
             table = field.db[field._tablename]
             table._unique_fields_validation_[field.name] = 1
-        #: common options ('format', 'message')
+        #: apply 'format' option
         if 'format' in data:
             for validator in validators:
                 children = [validator]
@@ -222,9 +274,6 @@ class ValidateFromDict(object):
                     if hasattr(child, 'format'):
                         child.format = data['format']
                         break
-        if 'message' in data:
-            for validator in validators:
-                validator.message = data['message']
         #: parse 'custom'
         if 'custom' in data:
             if isinstance(data['custom'], list):
@@ -234,25 +283,26 @@ class ValidateFromDict(object):
                 validators.append(data['custom'])
         #: parse 'any'
         if 'any' in data:
-            validators.append(Any(self(field, data['any'])))
+            validators.append(Any(self(field, data['any']), message=message))
         #: parse 'not'
         if 'not' in data:
-            validators.append(Not(self(field, data['not'])))
+            validators.append(Not(self(field, data['not']), message=message))
         #: insert presence/empty validation if needed
         if presence:
             ref_table, multiple = self.parse_reference(field)
             if ref_table:
                 if not _dbset:
                     validators.append(
-                        inDB(field.db, ref_table, multiple=multiple))
+                        inDB(field.db, ref_table, multiple=multiple, message=message)
+                    )
             else:
-                validators.insert(0, isntEmpty())
+                validators.insert(0, isntEmpty(message=message))
         if empty:
-            validators.insert(0, isEmpty())
+            validators.insert(0, isEmpty(message=message))
         #: parse 'allow'
         if 'allow' in data:
             if data['allow'] in ['empty', 'blank']:
-                validators = [isEmptyOr(validators)]
+                validators = [isEmptyOr(validators, message=message)]
             else:
-                validators = [Allow(data['allow'], validators)]
+                validators = [Allow(data['allow'], validators, message=message)]
         return validators

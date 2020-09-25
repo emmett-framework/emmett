@@ -24,24 +24,22 @@ from .._shortcuts import to_unicode
 from .helpers import translate, is_empty
 
 
-class Validator(object):
+class Validator:
     message = "Invalid value"
 
     def __init__(self, message=None):
-        if message:
-            self.message = message
+        self.message = message or self.message
 
     def formatter(self, value):
         return value
 
     def __call__(self, value):
         raise NotImplementedError
-        return value, None
 
 
 class ParentValidator(Validator):
     def __init__(self, children, message=None):
-        Validator.__init__(self, message)
+        super().__init__(message=message)
         if not isinstance(children, (list, tuple)):
             children = [children]
         self.children = children
@@ -49,18 +47,24 @@ class ParentValidator(Validator):
     def formatter(self, value):
         return reduce(
             lambda formatted_val, child: child.formatter(formatted_val),
-            self.children, value)
+            self.children,
+            value
+        )
+
+    def __call__(self, value):
+        raise NotImplementedError
 
 
 class _is(Validator):
-    rule = None
     message = "Invalid value"
+    rule = None
 
     def __call__(self, value):
         if (
             self.rule is None or (
                 self.rule is not None and
-                self.rule.match(to_unicode(value) or ''))
+                self.rule.match(to_unicode(value) or '')
+            )
         ):
             return self.check(value)
         return value, translate(self.message)
@@ -92,7 +96,7 @@ class Any(ParentValidator):
 
 class Allow(ParentValidator):
     def __init__(self, value, children, message=None):
-        ParentValidator.__init__(self, children, message)
+        super().__init__(children, message=message)
         self.value = value
 
     def __call__(self, value):
@@ -110,11 +114,8 @@ class isEmpty(Validator):
     message = "No value allowed"
 
     def __init__(self, empty_regex=None, message=None):
-        Validator.__init__(self, message)
-        if empty_regex is not None:
-            self.empty_regex = re.compile(empty_regex)
-        else:
-            self.empty_regex = None
+        super().__init__(message=message)
+        self.empty_regex = re.compile(empty_regex) if empty_regex is not None else None
 
     def __call__(self, value):
         value, empty = is_empty(value, empty_regex=self.empty_regex)
@@ -133,15 +134,15 @@ class isntEmpty(isEmpty):
         return value, None
 
 
-class isEmptyOr(ParentValidator, isEmpty):
+class isEmptyOr(ParentValidator):
     def __init__(self, children, empty_regex=None, message=None):
-        ParentValidator.__init__(self, children, message)
-        isEmpty.__init__(self, empty_regex)
-        for child in children:
+        super().__init__(children, message=message)
+        self.empty_regex = re.compile(empty_regex) if empty_regex is not None else None
+        for child in self.children:
             if hasattr(child, 'multiple'):
                 self.multiple = child.multiple
                 break
-        for child in children:
+        for child in self.children:
             if hasattr(child, 'options'):
                 self._options_ = child.options
                 self.options = self._get_options_
@@ -166,10 +167,10 @@ class isEmptyOr(ParentValidator, isEmpty):
 
 
 class Equals(Validator):
-    message = 'No match'
+    message = "No match"
 
     def __init__(self, expression, message=None):
-        Validator.__init__(self, message)
+        super().__init__(message=message)
         self.expression = expression
 
     def __call__(self, value):
@@ -181,28 +182,20 @@ class Equals(Validator):
 class Matches(Validator):
     message = "Invalid expression"
 
-    def __init__(self, expression, strict=False, search=False, extract=False,
-                 message=None):
-        Validator.__init__(self, message)
+    def __init__(
+        self, expression, strict=False, search=False, extract=False, message=None
+    ):
+        super().__init__(message=message)
         if strict or not search:
             if not expression.startswith('^'):
                 expression = '^(%s)' % expression
         if strict:
             if not expression.endswith('$'):
                 expression = '(%s)$' % expression
-        #if is_unicode:
-        #    if not isinstance(expression, unicode):
-        #        expression = expression.decode('utf8')
-        #    self.regex = re.compile(expression, re.UNICODE)
-        #else:
         self.regex = re.compile(expression)
         self.extract = extract
-        #self.is_unicode = is_unicode
 
     def __call__(self, value):
-        #if self.is_unicode and not isinstance(value, unicode):
-        #    match = self.regex.search(str(value).decode('utf8'))
-        #else:
         match = self.regex.search(to_unicode(value) or '')
         if match is not None:
             return self.extract and match.group() or value, None
@@ -210,19 +203,12 @@ class Matches(Validator):
 
 
 class hasLength(Validator):
-    """
-    Checks if length of field's value fits between given boundaries. Works
-    for both text and file inputs.
+    message = "Enter from {min} to {max} characters"
 
-    Args:
-        maxsize: maximum allowed length / size
-        minsize: minimum allowed length / size
-    """
-    message = 'Enter from %(min)g to %(max)g characters'
-
-    def __init__(self, maxsize=256, minsize=0, include=(True, False),
-                 message=None):
-        Validator.__init__(self, message)
+    def __init__(
+        self, maxsize=256, minsize=0, include=(True, False), message=None
+    ):
+        super().__init__(message=message)
         self.maxsize = maxsize
         self.minsize = minsize
         self.inc = include
@@ -242,7 +228,7 @@ class hasLength(Validator):
         if value is None:
             length = 0
             if self._between(length):
-                return (value, None)
+                return value, None
         elif isinstance(value, FieldStorage):
             if value.file:
                 value.file.seek(0, SEEK_END)
@@ -255,21 +241,20 @@ class hasLength(Validator):
                 else:
                     length = 0
             if self._between(length):
-                return (value, None)
+                return value, None
         elif isinstance(value, bytes):
             try:
                 lvalue = len(value.decode('utf8'))
             except Exception:
                 lvalue = len(value)
             if self._between(lvalue):
-                return (value, None)
+                return value, None
         elif isinstance(value, str):
             if self._between(len(value)):
-                return (value, None)
+                return value, None
         elif isinstance(value, (tuple, list)):
             if self._between(len(value)):
-                return (value, None)
+                return value, None
         elif self._between(len(str(value))):
-            return (str(value), None)
-        return (value, translate(self.message)
-                % dict(min=self.minsize, max=self.maxsize))
+            return str(value), None
+        return value, translate(self.message).format(min=self.minsize, max=self.maxsize)
