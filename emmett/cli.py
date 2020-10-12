@@ -16,6 +16,7 @@
 import code
 import os
 import re
+import ssl
 import sys
 import traceback
 import types
@@ -304,12 +305,36 @@ def run_command(ctx, host, port, reloader, debug):
 @click.option(
     '--port', '-p', type=int, default=8000, help='The port to bind to.')
 @click.option(
+    '--loop', type=click.Choice(loops.registry.keys()), default='auto',
+    help='Event loop implementation.')
+@click.option(
+    '--http-protocol', type=click.Choice(protocols_http.keys()),
+    default='auto', help='HTTP protocol implementation.')
+@click.option(
+    '--ws-protocol', type=click.Choice(protocols_ws.registry.keys()),
+    default='auto', help='HTTP protocol implementation.')
+@click.option(
+    '--ssl-certfile', type=str, default=None, help='SSL certificate file')
+@click.option(
+    '--ssl-keyfile', type=str, default=None, help='SSL key file')
+@click.option(
+    '--ssl-cert-reqs', type=int, default=ssl.CERT_NONE,
+    help='Whether client certificate is required (see ssl module)')
+@click.option(
+    '--ssl-ca-certs', type=str, default=None, help='CA certificates file')
+@click.option(
     '--reloader/--no-reloader', is_flag=True, default=True,
     help='Runs with reloader.')
 @click.option(
     '--debug', type=bool, default=True, help='Runs in debug mode.')
 @pass_script_info
-def develop_command(info, host, port, reloader, debug):
+def develop_command(
+    info, host, port,
+    loop, http_protocol, ws_protocol,
+    ssl_certfile, ssl_keyfile, ssl_cert_reqs, ssl_ca_certs,
+    reloader,
+    debug
+):
     os.environ["EMMETT_RUN_ENV"] = 'true'
     app = info.load_app()
     app.debug = debug
@@ -331,9 +356,34 @@ def develop_command(info, host, port, reloader, debug):
         )
     if reloader:
         from ._reloader import run_with_reloader
-        run_with_reloader(app, host, port)
+        run_with_reloader(
+            app,
+            host,
+            port,
+            loop=loop,
+            proto_http=http_protocol,
+            proto_ws=ws_protocol,
+            log_level='debug',
+            access_log=True,
+            ssl_certfile=ssl_certfile,
+            ssl_keyfile=ssl_keyfile,
+            ssl_cert_reqs=ssl_cert_reqs,
+            ssl_ca_certs=ssl_ca_certs
+        )
     else:
-        app._run(host, port, log_level='debug', access_log=True)
+        app._run(
+            host,
+            port,
+            loop=loop,
+            proto_http=http_protocol,
+            proto_ws=ws_protocol,
+            log_level='debug',
+            access_log=True,
+            ssl_certfile=ssl_certfile,
+            ssl_keyfile=ssl_keyfile,
+            ssl_cert_reqs=ssl_cert_reqs,
+            ssl_ca_certs=ssl_ca_certs
+        )
 
 
 @click.command('serve', short_help='Serve the app.')
@@ -345,7 +395,7 @@ def develop_command(info, host, port, reloader, debug):
     '--loop', type=click.Choice(loops.registry.keys()), default='auto',
     help='Event loop implementation.')
 @click.option(
-    '--http-protocol', type=click.Choice(protocols_http.registry.keys()),
+    '--http-protocol', type=click.Choice(protocols_http.keys()),
     default='auto', help='HTTP protocol implementation.')
 @click.option(
     '--ws-protocol', type=click.Choice(protocols_ws.registry.keys()),
@@ -371,13 +421,23 @@ def develop_command(info, host, port, reloader, debug):
 @click.option(
     '--keep-alive-timeout', type=int, default=0,
     help='Keep alive timeout for connections.')
+@click.option(
+    '--ssl-certfile', type=str, default=None, help='SSL certificate file')
+@click.option(
+    '--ssl-keyfile', type=str, default=None, help='SSL key file')
+@click.option(
+    '--ssl-cert-reqs', type=int, default=ssl.CERT_NONE,
+    help='Whether client certificate is required (see ssl module)')
+@click.option(
+    '--ssl-ca-certs', type=str, default=None, help='CA certificates file')
 @pass_script_info
 def serve_command(
     info, host, port,
     loop, http_protocol, ws_protocol,
     log_level, access_log,
     proxy_headers, proxy_trust_ips,
-    max_concurrency, backlog, keep_alive_timeout
+    max_concurrency, backlog, keep_alive_timeout,
+    ssl_certfile, ssl_keyfile, ssl_cert_reqs, ssl_ca_certs
 ):
     app = info.load_app()
     app._run(
@@ -387,7 +447,11 @@ def serve_command(
         proxy_headers=proxy_headers, proxy_trust_ips=proxy_trust_ips,
         limit_concurrency=max_concurrency,
         backlog=backlog,
-        timeout_keep_alive=keep_alive_timeout
+        timeout_keep_alive=keep_alive_timeout,
+        ssl_certfile=ssl_certfile,
+        ssl_keyfile=ssl_keyfile,
+        ssl_cert_reqs=ssl_cert_reqs,
+        ssl_ca_certs=ssl_ca_certs
     )
 
 

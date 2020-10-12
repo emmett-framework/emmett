@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from .. import ProtocolWrapperRegistry, ProtocolWrapper
+from ...helpers import Registry
 
+protocols = Registry()
 
-protocols = ProtocolWrapperRegistry()
+from . import h11
 
-from . import (
-    auto,
-    h11,
-    httptools
-)
+try:
+    from . import httptools
+except ImportError:
+    pass
+
+from . import auto

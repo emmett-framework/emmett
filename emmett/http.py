@@ -83,7 +83,7 @@ class HTTPResponse(Exception):
 
     def set_cookies(self, cookies: Dict[str, str]):
         for cookie in cookies.values():
-            self._cookies.append(str(cookie)[11:].encode('latin-1'))
+            self._cookies.append(str(cookie)[12:].encode('latin-1'))
 
     @property
     def headers(self) -> List[Tuple[bytes, bytes]]:

@@ -72,17 +72,14 @@ class HTTPProtocol(asyncio.Protocol):
         "app",
         "config",
         "connections",
-        "cycle",
         "default_headers",
         "flow",
-        "headers",
         "limit_concurrency",
         "logger",
         "loop",
         "message_event",
         "root_path",
         "scheme",
-        "scope",
         "server_state",
         "tasks",
         "timeout_keep_alive_task",
@@ -120,9 +117,6 @@ class HTTPProtocol(asyncio.Protocol):
         self.scheme = None
 
         # Per-request state
-        self.scope = None
-        self.headers = None
-        self.cycle = None
         self.message_event = asyncio.Event()
 
     def connection_made(self, transport: asyncio.Transport):
@@ -194,7 +188,6 @@ class ASGICycle:
         "default_headers",
         "disconnected",
         "flow",
-        "keep_alive",
         "logger",
         "message_event",
         "more_body",
@@ -223,13 +216,11 @@ class ASGICycle:
         self.on_response = protocol.on_response_complete
 
         self.disconnected = False
-        self.keep_alive = True
+        self.response_started = False
+        self.response_completed = False
 
         self.body = b""
         self.more_body = True
-
-        self.response_started = False
-        self.response_completed = False
 
     async def run_asgi(self, app):
         try:

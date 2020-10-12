@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from collections import defaultdict, namedtuple
+import asyncio
+
+from collections import defaultdict
 from functools import partial
-from typing import Any
+from typing import Any, List, Tuple
 from urllib.parse import unquote
 
+import h11
 import h2.config
 import h2.connection
 import h2.events
@@ -12,15 +15,15 @@ import h2.exceptions
 
 from uvicorn.protocols.utils import get_client_addr, get_path_with_query_string
 
+from . import protocols
 from .helpers import ASGICycle, Config, HTTPProtocol, ServerState, _service_unavailable
 
 HIGH_WATER_LIMIT = 65536
-# Stream = namedtuple("Stream", ("scope", "cycle"))
 
 
 class EventsRegistry(defaultdict):
     def __init__(self):
-        super().__init__(lambda *args, **kwargs: None)
+        super().__init__(lambda: (lambda *args, **kwargs: None))
 
     def register(self, key: Any):
         def wrap(f):
@@ -29,8 +32,11 @@ class EventsRegistry(defaultdict):
         return wrap
 
 
+@protocols.register("h2")
 class H2Protocol(HTTPProtocol):
     __slots__ = ["conn", "streams"]
+
+    alpn_protocols = ["h2", "http/1.1"]
 
     def __init__(self, config: Config, server_state: ServerState, _loop=None):
         super().__init__(config=config, server_state=server_state, _loop=_loop)
@@ -42,9 +48,43 @@ class H2Protocol(HTTPProtocol):
         )
         self.streams = {}
 
+    def connection_made(self, transport: asyncio.Transport, init: bool = False):
+        super().connection_made(transport)
+        if init:
+            self.conn.initiate_connection()
+            self.transport.write(self.conn.data_to_send())
+
+    def handle_upgrade_from_h11(
+        self,
+        transport: asyncio.Protocol,
+        upgrade_event: h11.Request,
+        headers: List[Tuple[bytes, bytes]]
+    ):
+        self.connection_made(transport, init=False)
+
+        settings = ""
+        headers = [
+            (b":method", upgrade_event.method.encode("ascii")),
+            (b":path", upgrade_event.target),
+            (b":scheme", self.scheme.encode("ascii"))
+        ]
+        for name, value in headers:
+            if name == b"http2-settings":
+                settings = value.decode("latin-1")
+            elif name == b"host":
+                headers.append((b":authority", value))
+            else:
+                headers.append((name, value))
+
+        self.conn.initiate_upgrade_connection(settings)
+        self.transport.write(self.conn.data_to_send())
+        event = h2.events.RequestReceived()
+        event.stream_id = 1
+        event.headers = headers
+        on_request_received(self, event)
+
     def data_received(self, data: bytes):
         super().data_received(data)
-        self.conn.initiate_connection()
         try:
             events = self.conn.receive_data(data)
         except h2.exceptions.ProtocolError:
@@ -54,23 +94,30 @@ class H2Protocol(HTTPProtocol):
 
         for event in events:
             eventsreg[type(event)](self, event)
-            # self.transport.write(self.conn.data_to_send())
 
     def shutdown(self):
-        for stream_id in list(self.streams.keys()):
-            stream = self.streams.pop(stream_id)
-            if stream.cycle.response_complete:
-                self.conn.close_connection(last_stream_id=stream_id)
-                self.transport.write(self.conn.data_to_send())
-            else:
-                stream.cycle.keep_alive = False
+        self.transport.write(self.conn.data_to_send())
+        self.transport.close()
 
     def timeout_keep_alive_handler(self):
-        if not self.transport.is_closing():
-            for stream_id in self.streams.keys():
-                self.conn.close_connection(last_stream_id=stream_id)
-                self.transport.write(self.conn.data_to_send())
-            self.transport.close()
+        if self.transport.is_closing():
+            return
+
+        self.conn.close_connection()
+        self.transport.write(self.conn.data_to_send())
+        self.transport.close()
+
+    def on_response_complete(self, stream_id):
+        self.server_state.total_requests += 1
+        self.streams.pop(stream_id, None)
+        if self.transport.is_closing():
+            return
+
+        if not self.streams:
+            self.timeout_keep_alive_task = self.loop.call_later(
+                self.timeout_keep_alive, self.timeout_keep_alive_handler
+            )
+        self.flow.resume_reading()
 
 
 class H2ASGICycle(ASGICycle):
@@ -122,11 +169,9 @@ class H2ASGICycle(ASGICycle):
                     extra={"status_code": status_code, "scope": self.scope},
                 )
 
-            self.conn.send_headers(self.stream_id, headers, end_stream=True)
+            self.conn.send_headers(self.stream_id, headers, end_stream=False)
             self.transport.write(self.conn.data_to_send())
-
         elif not self.response_completed:
-            # Sending response body
             if message_type == "http.response.body":
                 more_body = message.get("more_body", False)
                 if self.scope["method"] == "HEAD":
@@ -135,7 +180,6 @@ class H2ASGICycle(ASGICycle):
                     body = message.get("body", b"")
                 self.conn.send_data(self.stream_id, body, end_stream=not more_body)
                 self.transport.write(self.conn.data_to_send())
-
                 if not more_body:
                     self.response_completed = True
             elif message_type == "http.response.push":
@@ -164,7 +208,7 @@ class H2ASGICycle(ASGICycle):
                 raise RuntimeError(msg % message_type)
 
         if self.response_completed:
-            self.on_response()
+            self.on_response(self.stream_id)
 
 
 eventsreg = EventsRegistry()
@@ -174,7 +218,7 @@ eventsreg = EventsRegistry()
 def on_request_received(protocol: H2Protocol, event: h2.events.RequestReceived):
     headers, pseudo_headers = [], {}
     for key, value in event.headers:
-        if key[0] == b":":
+        if key[0] == b":"[0]:
             pseudo_headers[key] = value
         else:
             headers.append((key.lower(), value))
@@ -214,7 +258,6 @@ def on_request_received(protocol: H2Protocol, event: h2.events.RequestReceived):
         conn=protocol.conn,
         protocol=protocol
     )
-    # protocol.streams[event.stream_id] = Stream(scope=scope, cycle=cycle)
     protocol.streams[event.stream_id] = cycle
     task = protocol.loop.create_task(cycle.run_asgi(app))
     task.add_done_callback(protocol.tasks.discard)

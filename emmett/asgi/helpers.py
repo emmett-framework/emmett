@@ -7,12 +7,41 @@
     :license: BSD-3-Clause
 """
 
+import ssl
 import sys
 
-from uvicorn.config import Config as UvicornConfig, create_ssl_context
+from typing import Any, Callable, Dict, Iterable, List, Optional
+
+from uvicorn.config import Config as UvicornConfig
 from uvicorn.lifespan.on import LifespanOn
 from uvicorn.middleware.debug import DebugMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+
+class Registry:
+    __slots__ = ["_data"]
+
+    def __init__(self):
+        self._data: Dict[str, Callable[..., Any]] = {}
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._data
+
+    def keys(self) -> Iterable[str]:
+        return self._data.keys()
+
+    def register(self, key: str) -> Callable[[], Callable[..., Any]]:
+        def wrap(builder: Callable[..., Any]) -> Callable[..., Any]:
+            self._data[key] = builder
+            return builder
+        return wrap
+
+    def get(self, key: str) -> Callable[..., Any]:
+        try:
+            return self._data[key]
+        except KeyError:
+            raise RuntimeError(f"'{key}' implementation not available.")
+
 
 
 class BuilderRegistry:
@@ -44,13 +73,12 @@ class Config(UvicornConfig):
         assert not self.loaded
 
         if self.is_ssl:
-            self.ssl = create_ssl_context(
+            self.ssl = _create_ssl_context(
                 keyfile=self.ssl_keyfile,
                 certfile=self.ssl_certfile,
-                ssl_version=self.ssl_version,
                 cert_reqs=self.ssl_cert_reqs,
                 ca_certs=self.ssl_ca_certs,
-                ciphers=self.ssl_ciphers,
+                alpn_protocols=self.http.alpn_protocols
             )
         else:
             self.ssl = None
@@ -79,3 +107,31 @@ class Config(UvicornConfig):
             )
 
         self.loaded = True
+
+    @property
+    def is_ssl(self) -> bool:
+        return self.ssl_certfile is not None and self.ssl_keyfile is not None
+
+
+def _create_ssl_context(
+    certfile: str,
+    keyfile: str,
+    cert_reqs: int,
+    ca_certs: Optional[str],
+    alpn_protocols: List[str]
+) -> ssl.SSLContext:
+    ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    ctx.set_ciphers("ECDHE+AESGCM")
+    ctx.options |= (
+        ssl.OP_NO_SSLv2 |
+        ssl.OP_NO_SSLv3 |
+        ssl.OP_NO_TLSv1 |
+        ssl.OP_NO_TLSv1_1 |
+        ssl.OP_NO_COMPRESSION
+    )
+    ctx.set_alpn_protocols(alpn_protocols)
+    ctx.load_cert_chain(certfile, keyfile)
+    ctx.verify_mode = cert_reqs
+    if ca_certs:
+        ctx.load_verify_locations(ca_certs)
+    return ctx

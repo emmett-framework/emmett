@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import os
+import ssl
 import sys
 
 from logging import Logger
@@ -414,13 +415,23 @@ class App:
         return context
 
     def _run(
-        self, host, port,
-        loop='auto', proto_http='auto', proto_ws='auto',
-        log_level=None, access_log=None,
-        proxy_headers=False, proxy_trust_ips=None,
+        self,
+        host,
+        port,
+        loop='auto',
+        proto_http='auto',
+        proto_ws='auto',
+        log_level=None,
+        access_log=None,
+        proxy_headers=False,
+        proxy_trust_ips=None,
         limit_concurrency=None,
         backlog=2048,
-        timeout_keep_alive=0
+        timeout_keep_alive=0,
+        ssl_certfile: Optional[str] = None,
+        ssl_keyfile: Optional[str] = None,
+        ssl_cert_reqs: int = ssl.CERT_NONE,
+        ssl_ca_certs: Optional[str] = None
     ):
         asgi_run(
             self, host, port,
@@ -429,7 +440,11 @@ class App:
             proxy_headers=proxy_headers, proxy_trust_ips=proxy_trust_ips,
             limit_concurrency=limit_concurrency,
             backlog=backlog,
-            timeout_keep_alive=timeout_keep_alive
+            timeout_keep_alive=timeout_keep_alive,
+            ssl_certfile=ssl_certfile,
+            ssl_keyfile=ssl_keyfile,
+            ssl_cert_reqs=ssl_cert_reqs,
+            ssl_ca_certs=ssl_ca_certs
         )
 
     def run(

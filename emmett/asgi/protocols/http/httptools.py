@@ -7,12 +7,13 @@
     :license: BSD-3-Clause
 """
 
-from . import ProtocolWrapper, protocols
+from uvicorn.protocols.http.httptools_impl import (
+    HttpToolsProtocol as _HttpToolsProtocol
+)
+
+from . import protocols
 
 
-@protocols.register('httptools', packages=['httptools'])
-class HttpToolsProtocol(ProtocolWrapper):
-    @classmethod
-    def protocol_cls(cls):
-        from uvicorn.protocols.http.httptools_impl import HttpToolsProtocol
-        return HttpToolsProtocol
+@protocols.register("httptools")
+class HTTPToolsProtocol(_HttpToolsProtocol):
+    alpn_protocols = ["http/1.1"]
