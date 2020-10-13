@@ -49,8 +49,6 @@ class H11Protocol(_H11Protocol):
             self.transport.set_protocol(protocol)
         elif upgrade_value == b"h2c":
             self.connections.discard(self)
-            # FIXME: useless?
-            # headers = (b"upgrade", b"h2c"), *self.headers)
             self.transport.write(
                 self.conn.send(
                     h11.InformationalResponse(
@@ -121,14 +119,14 @@ class H11Protocol(_H11Protocol):
                 break
 
             elif event_type is h11.Request:
-                self.headers, upgrade_value = {}, None
+                self.headers, upgrade_value = [], None
                 for name, value in event.headers:
                     lname = name.lower()
-                    self.headers[lname] = value
+                    self.headers.append((lname, value))
                     if lname == b"upgrade":
                         upgrade_value = value
 
-                if upgrade_value == b"h2c":
+                if upgrade_value:
                     self.handle_upgrade(event)
                     return
                 elif (
@@ -155,7 +153,7 @@ class H11Protocol(_H11Protocol):
                     "path": unquote(raw_path.decode("ascii")),
                     "raw_path": raw_path,
                     "query_string": query_string,
-                    "headers": self.headers,
+                    "headers": self.headers
                 }
 
                 # Handle 503 responses when 'limit_concurrency' is exceeded.

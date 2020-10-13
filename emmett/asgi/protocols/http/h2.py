@@ -15,7 +15,6 @@ import h2.exceptions
 
 from uvicorn.protocols.utils import get_client_addr, get_path_with_query_string
 
-from . import protocols
 from .helpers import ASGICycle, Config, HTTPProtocol, ServerState, _service_unavailable
 
 HIGH_WATER_LIMIT = 65536
@@ -32,11 +31,10 @@ class EventsRegistry(defaultdict):
         return wrap
 
 
-@protocols.register("h2")
 class H2Protocol(HTTPProtocol):
     __slots__ = ["conn", "streams"]
 
-    alpn_protocols = ["h2", "http/1.1"]
+    alpn_protocols = ["h2"]
 
     def __init__(self, config: Config, server_state: ServerState, _loop=None):
         super().__init__(config=config, server_state=server_state, _loop=_loop)
@@ -121,16 +119,19 @@ class H2Protocol(HTTPProtocol):
 
 
 class H2ASGICycle(ASGICycle):
-    __slots__ = ["stream_id", "new_request"]
+    __slots__ = ["scheme", "host", "stream_id", "new_request"]
 
     def __init__(
         self,
-        stream_id,
         scope,
         conn,
-        protocol: H2Protocol
+        protocol: H2Protocol,
+        stream_id: int,
+        host: bytes
     ):
         super().__init__(scope, conn, protocol)
+        self.scheme = protocol.scheme.encode("ascii")
+        self.host = host
         self.stream_id = stream_id
         self.new_request = partial(on_request_received, protocol)
 
@@ -143,7 +144,30 @@ class H2ASGICycle(ASGICycle):
         if self.disconnected:
             return
 
-        if not self.response_started:
+        if message_type == "http.response.push":
+            push_stream_id = self.conn.get_next_available_stream_id()
+            headers = [
+                (b":authority", self.host),
+                (b":method", b"GET"),
+                (b":path", message["path"].encode("ascii")),
+                (b":scheme", self.scheme)
+            ] + message["headers"]
+
+            try:
+                self.conn.push_stream(
+                    stream_id=self.stream_id,
+                    promised_stream_id=push_stream_id,
+                    request_headers=headers
+                )
+                self.transport.write(self.conn.data_to_send())
+            except h2.exceptions.ProtocolError:
+                self.logger.debug("h2 protocol error.", exc_info=True)
+            else:
+                event = h2.events.RequestReceived()
+                event.stream_id = push_stream_id
+                event.headers = headers
+                self.new_request(event)
+        elif not self.response_started:
             # Sending response status line and headers
             if message_type != "http.response.start":
                 msg = "Expected ASGI message 'http.response.start', but got '%s'."
@@ -182,27 +206,6 @@ class H2ASGICycle(ASGICycle):
                 self.transport.write(self.conn.data_to_send())
                 if not more_body:
                     self.response_completed = True
-            elif message_type == "http.response.push":
-                push_stream_id = self.conn.get_next_available_stream_id()
-                headers = [
-                    (b":method", b"GET"),
-                    (b":path", message["path"])
-                ] + message["headers"]
-
-                try:
-                    self.conn.push_stream(
-                        stream_id=self.stream_id,
-                        promised_stream_id=push_stream_id,
-                        request_headers=headers
-                    )
-                    self.transport.write(self.conn.data_to_send())
-                except h2.exceptions.ProtocolError:
-                    self.logger.debug("h2 protocol error.", exc_info=True)
-                else:
-                    event = h2.events.RequestReceived()
-                    event.stream_id = push_stream_id
-                    event.headers = headers
-                    self.new_request(event)
             else:
                 msg = "Got unexpected ASGI message '%s'."
                 raise RuntimeError(msg % message_type)
@@ -222,6 +225,8 @@ def on_request_received(protocol: H2Protocol, event: h2.events.RequestReceived):
             pseudo_headers[key] = value
         else:
             headers.append((key.lower(), value))
+    host = pseudo_headers[b":authority"]
+    headers.append((b"host", host))
 
     raw_path, _, query_string = pseudo_headers[b":path"].partition(b"?")
     scope = {
@@ -239,7 +244,8 @@ def on_request_received(protocol: H2Protocol, event: h2.events.RequestReceived):
         "path": unquote(raw_path.decode("ascii")),
         "raw_path": raw_path,
         "query_string": query_string,
-        "headers": headers
+        "headers": headers,
+        "extensions": {"http.response.push": {}}
     }
 
     if protocol.limit_concurrency is not None and (
@@ -253,10 +259,11 @@ def on_request_received(protocol: H2Protocol, event: h2.events.RequestReceived):
         app = protocol.app
 
     cycle = H2ASGICycle(
-        stream_id=event.stream_id,
         scope=scope,
         conn=protocol.conn,
-        protocol=protocol
+        protocol=protocol,
+        stream_id=event.stream_id,
+        host=host
     )
     protocol.streams[event.stream_id] = cycle
     task = protocol.loop.create_task(cycle.run_asgi(app))

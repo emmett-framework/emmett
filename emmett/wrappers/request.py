@@ -29,8 +29,7 @@ from . import ScopeWrapper
 from .helpers import FileStorage, RequestCancelled
 
 _regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
-
-SERVER_PUSH_HEADERS = {
+_push_headers = {
     "accept",
     "accept-encoding",
     "accept-language",
@@ -229,6 +228,6 @@ class Request(ScopeWrapper):
             "path": path,
             "headers": [
                 (key.encode("latin-1"), self.headers[key].encode("latin-1"))
-                for key in SERVER_PUSH_HEADERS & set(self.headers.keys())
+                for key in _push_headers & set(self.headers.keys())
             ]
         })
