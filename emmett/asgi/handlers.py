@@ -18,10 +18,9 @@ import re
 from collections import OrderedDict
 from typing import Any, Awaitable, Callable, Optional, Tuple, Union
 
-from ..ctx import Context, current
+from ..ctx import RequestContext, WSContext, current
 from ..debug import smart_traceback, debug_handler
 from ..http import HTTPResponse, HTTPFile, HTTP
-from ..language import T
 from ..utils import cachedprop
 from ..wrappers.helpers import RequestCancelled
 from ..wrappers.request import Request
@@ -171,25 +170,7 @@ class HTTPHandler(RequestHandler):
             self._prefix_handler if self.router._prefix_main else
             self.static_handler)
 
-    def __call__(
-        self,
-        scope: Scope,
-        receive: Receive,
-        send: Send
-    ) -> Awaitable[None]:
-        return self.handle_request(scope, receive, send)
-
-    @cachedprop
-    def error_handler(self) -> Callable[[], Awaitable[str]]:
-        return (
-            self._debug_handler if self.app.debug else self.exception_handler
-        )
-
-    @cachedprop
-    def exception_handler(self) -> Callable[[], Awaitable[str]]:
-        return self.app.error_handlers.get(500, self._exception_handler)
-
-    async def handle_request(
+    async def __call__(
         self,
         scope: Scope,
         receive: Receive,
@@ -204,6 +185,16 @@ class HTTPHandler(RequestHandler):
             http.send(scope, send),
             self.app.config.response_timeout
         )
+
+    @cachedprop
+    def error_handler(self) -> Callable[[], Awaitable[str]]:
+        return (
+            self._debug_handler if self.app.debug else self.exception_handler
+        )
+
+    @cachedprop
+    def exception_handler(self) -> Callable[[], Awaitable[str]]:
+        return self.app.error_handlers.get(500, self._exception_handler)
 
     @staticmethod
     async def _http_response(code: int) -> HTTPResponse:
@@ -275,7 +266,13 @@ class HTTPHandler(RequestHandler):
         send: Send
     ) -> HTTPResponse:
         ctx_token = current._init_(
-            RequestContext, self.app, scope, receive, send
+            RequestContext,
+            self.app,
+            scope,
+            receive,
+            send,
+            wrapper_request=Request,
+            wrapper_response=Response
         )
         try:
             http = await self.router.dispatch()
@@ -414,7 +411,12 @@ class WSHandler(RequestHandler):
         send: Send
     ):
         ctx_token = current._init_(
-            WSContext, self.app, scope, scope['emt.input'].get, send
+            WSContext,
+            self.app,
+            scope,
+            scope['emt.input'].get,
+            send,
+            wrapper_websocket=Websocket
         )
         try:
             await self.router.dispatch()
@@ -426,43 +428,6 @@ class WSHandler(RequestHandler):
                 await send({'type': 'websocket.close', 'code': 1000})
                 scope['emt._ws_closed'] = True
             current._close_(ctx_token)
-
-
-class RequestContext:
-    def __init__(self, app, scope, receive, send):
-        self.app = app
-        self.request = Request(
-            scope,
-            receive,
-            send,
-            app.config.request_max_content_length,
-            app.config.request_body_timeout
-        )
-        self.response = Response()
-        self.session = None
-
-    @property
-    def now(self):
-        return self.request.now
-
-    @cachedprop
-    def language(self):
-        return self.request.accept_language.best_match(list(T._langmap))
-
-
-class WSContext(Context):
-    def __init__(self, app, scope, receive, send):
-        self.app = app
-        self.websocket = Websocket(
-            scope,
-            receive,
-            send
-        )
-        self.session = None
-
-    @cachedprop
-    def language(self):
-        return self.websocket.accept_language.best_match(list(T._langmap))
 
 
 async def _event_looper(

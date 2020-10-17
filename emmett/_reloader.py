@@ -13,15 +13,19 @@
     :license: BSD-3-Clause
 """
 
-import click
 import multiprocessing
 import os
+import platform
 import signal
 import subprocess
+import ssl
 import sys
 import time
 
 from itertools import chain
+from typing import Optional
+
+import click
 
 
 def _iter_module_files():
@@ -69,7 +73,7 @@ def _get_args_for_reloading():
 
 
 class ReloaderLoop(object):
-    name = None
+    name: str
 
     # monkeypatched by testsuite. wrapping with `staticmethod` is required in
     # case time.sleep has been replaced by a non-c function (e.g. by
@@ -143,15 +147,48 @@ reloader_loops['auto'] = reloader_loops['stat']
 
 
 def run_with_reloader(
-    app, host, port, extra_files=None, interval=1, reloader_type='auto'
+    app,
+    host,
+    port,
+    loop='auto',
+    proto_http='auto',
+    proto_ws='auto',
+    log_level=None,
+    access_log=None,
+    ssl_certfile: Optional[str] = None,
+    ssl_keyfile: Optional[str] = None,
+    ssl_cert_reqs: int = ssl.CERT_NONE,
+    ssl_ca_certs: Optional[str] = None,
+    extra_files=None,
+    interval=1,
+    reloader_type='auto'
 ):
     """Run the given function in an independent python interpreter."""
     reloader = reloader_loops[reloader_type](extra_files, interval)
     signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
+
     try:
         if os.environ.get('EMMETT_RUN_MAIN') == 'true':
+            if (
+                sys.version_info >= (3, 8) and
+                platform.system().lower() in ["linux", "darwin"]
+            ):
+                multiprocessing.set_start_method("fork")
             process = multiprocessing.Process(
-                target=app._run, args=(host, port))
+                target=app._run,
+                args=(host, port),
+                kwargs={
+                    "loop": loop,
+                    "proto_http": proto_http,
+                    "proto_ws": proto_ws,
+                    "log_level": log_level,
+                    "access_log": access_log,
+                    "ssl_certfile": ssl_certfile,
+                    "ssl_keyfile": ssl_keyfile,
+                    "ssl_cert_reqs": ssl_cert_reqs,
+                    "ssl_ca_certs": ssl_ca_certs
+                }
+            )
             process.start()
             reloader.run(process)
         else:

@@ -13,33 +13,54 @@ from __future__ import annotations
 
 import re
 
+from collections import namedtuple
 from typing import Any, Callable, Dict, List, Type
 
 from ..ctx import current
+from ..extensions import Signals
 from ..http import HTTP
 from .response import (
-    ResponseBuilder, AutoResponseBuilder,
-    BytesResponseBuilder, TemplateResponseBuilder
+    MetaResponseBuilder,
+    ResponseBuilder,
+    AutoResponseBuilder,
+    BytesResponseBuilder,
+    TemplateResponseBuilder
 )
 from .rules import RoutingRule, HTTPRoutingRule, WebsocketRoutingRule
 
 
+RouteRecReq = namedtuple(
+    "RouteRecReq", ["name", "match", "dispatch"]
+)
+RouteRecWS = namedtuple(
+    "RouteRecWS", ["name", "match", "dispatch", "flow_recv", "flow_send"]
+)
+
+
 class Router:
     __slots__ = [
-        'app', 'routes_in', 'routes_out', '_routes_str', '_routes_nohost',
-        '_get_routes_in_for_host', '_prefix_main', '_prefix_main_len',
-        '_match_lang'
+        '_get_routes_in_for_host',
+        '_match_lang',
+        '_prefix_main_len',
+        '_prefix_main',
+        '_routes_nohost',
+        '_routes_str',
+        'app',
+        'routes_in',
+        'routes_out',
+        'routes'
     ]
 
-    _outputs: Dict[str, Type[ResponseBuilder]] = {}
+    _outputs: Dict[str, Type[MetaResponseBuilder]] = {}
     _routing_rule_cls: Type[RoutingRule] = RoutingRule
-    _routing_signal = 'before_routes'
+    _routing_signal = Signals.before_routes
     _routing_started = False
     _routing_stack: List[RoutingRule] = []
     _re_components = re.compile(r'(\()?([^<\w]+)?<(\w+)\:(\w+)>(\)\?)?')
 
     def __init__(self, app, url_prefix=None):
         self.app = app
+        self.routes = []
         self.routes_in = {'__any__': self._build_routing_dict()}
         self.routes_out = {}
         self._routes_str = {}
@@ -83,7 +104,7 @@ class Router:
             components = statics
         else:
             components.append(statics[0])
-            for idx, el in enumerate(params):
+            for idx, _ in enumerate(params):
                 components.append(params[idx] + statics[idx + 1])
         return components
 
@@ -143,6 +164,8 @@ class HTTPRouter(Router):
     __slots__ = ['pipeline', 'injectors']
 
     _routing_rule_cls = HTTPRoutingRule
+    _routing_rec_builder = RouteRecReq
+
     _outputs = {
         'auto': AutoResponseBuilder,
         'bytes': BytesResponseBuilder,
@@ -161,14 +184,14 @@ class HTTPRouter(Router):
         for scheme in ['http', 'https']:
             rv[scheme] = {}
             for method in [
-                'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'
+                'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'
             ]:
                 rv[scheme][method] = {'static': {}, 'match': {}}
         return rv
 
     def add_route_str(self, route):
         self._routes_str[route.name] = "%s %s://%s%s%s -> %s" % (
-            "|".join(route.methods).upper(),
+            "|".join(route.methods),
             "|".join(route.schemes),
             route.hostname or "<any>",
             self._prefix_main,
@@ -177,17 +200,23 @@ class HTTPRouter(Router):
         )
 
     def add_route(self, route):
+        self.routes.append(route)
         host = route.hostname or '__any__'
         if host not in self.routes_in:
             self.routes_in[host] = self._build_routing_dict()
             self._get_routes_in_for_host = self._get_routes_in_for_host_match
         for scheme in route.schemes:
             for method in route.methods:
-                routing_dict = self.routes_in[host][scheme][method.upper()]
-                if route.is_static:
-                    routing_dict['static'][route.path] = route
-                else:
-                    routing_dict['match'][route.name] = route
+                routing_dict = self.routes_in[host][scheme][method]
+                slot, key = (
+                    ('static', route.path) if route.is_static else
+                    ('match', route.name)
+                )
+                routing_dict[slot][key] = self._routing_rec_builder(
+                    name=route.name,
+                    match=route.match,
+                    dispatch=route.dispatchers[method].dispatch
+                )
         self.routes_out[route.name] = {
             'host': route.hostname,
             'path': self.build_route_components(route.path)
@@ -195,34 +224,35 @@ class HTTPRouter(Router):
         self.add_route_str(route)
 
     def match(self, request):
-        path = self.remove_trailslash(request.path)
-        path = self._match_lang(request, path)
+        path = self._match_lang(
+            request,
+            self.remove_trailslash(request.path)
+        )
         for routing_dict in self._get_routes_in_for_host(request):
             sub_dict = routing_dict[request.scheme][request.method]
-            route = sub_dict['static'].get(path)
-            if route:
-                return route, {}
-            for route in sub_dict['match'].values():
-                match, args = route.match(path)
+            element = sub_dict['static'].get(path)
+            if element:
+                return element, {}
+            for element in sub_dict['match'].values():
+                match, args = element.match(path)
                 if match:
-                    return route, args
+                    return element, args
         return None, {}
 
     async def dispatch(self):
-        request, response = current.request, current.response
-        route, reqargs = self.match(request)
-        if not route:
+        request = current.request
+        match, reqargs = self.match(request)
+        if not match:
             raise HTTP(404, body="Resource not found\n")
-        request.name = route.name
-        http_cls, output = await route.dispatcher.dispatch(request, reqargs)
-        return http_cls(
-            response.status, output, response.headers, response.cookies)
+        request.name = match.name
+        return await match.dispatch(reqargs, current.response)
 
 
 class WebsocketRouter(Router):
     __slots__ = ['pipeline']
 
     _routing_rule_cls = WebsocketRoutingRule
+    _routing_rec_builder = RouteRecWS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -245,16 +275,24 @@ class WebsocketRouter(Router):
         )
 
     def add_route(self, route):
+        self.routes.append(route)
         host = route.hostname or '__any__'
         if host not in self.routes_in:
             self.routes_in[host] = self._build_routing_dict()
             self._get_routes_in_for_host = self._get_routes_in_for_host_match
         for scheme in route.schemes:
             routing_dict = self.routes_in[host][scheme]
-            if route.is_static:
-                routing_dict['static'][route.path] = route
-            else:
-                routing_dict['match'][route.name] = route
+            slot, key = (
+                ('static', route.path) if route.is_static else
+                ('match', route.name)
+            )
+            routing_dict[slot][key] = self._routing_rec_builder(
+                name=route.name,
+                match=route.match,
+                dispatch=route.dispatcher.dispatch,
+                flow_recv=route.pipeline_flow_receive,
+                flow_send=route.pipeline_flow_send
+            )
         self.routes_out[route.name] = {
             'host': route.hostname,
             'path': self.build_route_components(route.path)
@@ -262,28 +300,32 @@ class WebsocketRouter(Router):
         self.add_route_str(route)
 
     def match(self, websocket):
-        path = self.remove_trailslash(websocket.path)
-        path = self._match_lang(websocket, path)
+        path = self._match_lang(
+            websocket,
+            self.remove_trailslash(websocket.path)
+        )
         for routing_dict in self._get_routes_in_for_host(websocket):
             sub_dict = routing_dict[websocket.scheme]
-            route = sub_dict['static'].get(path)
-            if route:
-                return route, {}
-            for route in sub_dict['match'].values():
-                match, args = route.match(path)
+            element = sub_dict['static'].get(path)
+            if element:
+                return element, {}
+            for element in sub_dict['match'].values():
+                match, args = element.match(path)
                 if match:
-                    return route, args
+                    return element, args
         return None, {}
 
     async def dispatch(self):
         websocket = current.websocket
-        route, reqargs = self.match(websocket)
-        if not route:
+        match, reqargs = self.match(websocket)
+        if not match:
             raise HTTP(404, body="Resource not found\n")
-        websocket.name = route.name
+        websocket.name = match.name
         websocket._bind_flow(
-            route.pipeline_flow_receive, route.pipeline_flow_send)
-        await route.dispatcher.dispatch(websocket, reqargs)
+            match.flow_recv,
+            match.flow_send
+        )
+        await match.dispatch(reqargs)
 
 
 class RoutingCtx:
@@ -301,8 +343,8 @@ class RoutingCtx:
         self.router._routing_stack.append(self.rule)
 
     def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
-        self.router.app.send_signal('before_route', route=self.rule, f=f)
+        self.router.app.send_signal(Signals.before_route, route=self.rule, f=f)
         rv = self.rule(f)
-        self.router.app.send_signal('after_route', route=self.rule)
+        self.router.app.send_signal(Signals.after_route, route=self.rule)
         self.router._routing_stack.pop()
         return rv

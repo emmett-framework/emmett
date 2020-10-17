@@ -8,6 +8,8 @@
 """
 
 from functools import partial
+from typing import Any, Callable, Dict
+
 from rapidjson import (
     DM_ISO8601, DM_NAIVE_IS_UTC,
     NM_NATIVE,
@@ -16,7 +18,7 @@ from rapidjson import (
 
 
 class Parsers(object):
-    _registry_ = {}
+    _registry_: Dict[str, Callable[[str], Dict[str, Any]]] = {}
 
     @classmethod
     def register_for(cls, target):

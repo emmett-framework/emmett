@@ -9,33 +9,50 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 from collections import OrderedDict
+from enum import Enum
 from functools import wraps
+from typing import Any, Callable, Dict, Optional, TypeVar, Union
+
+from ._internal import warn_of_deprecation
+from .datastructures import sdict
 
 
-class listen_signal(object):
+class Signals(str, Enum):
+    after_database = "after_database"
+    after_loop = "after_loop"
+    after_route = "after_route"
+    before_database = "before_database"
+    before_route = "before_route"
+    before_routes = "before_routes"
+
+
+class listen_signal:
     _inst_count_ = 0
 
-    def __init__(self, signal):
-        if signal not in MetaExtension._signals_:
-            raise SyntaxError('{} is not a valid signal'.format(signal))
-        self.signal = signal
+    def __init__(self, signal: Union[Signals, str]):
+        if not isinstance(signal, Signals):
+            warn_of_deprecation(
+                "extensions.listen_signal str argument",
+                "extensions.Signals as argument",
+                stack=3
+            )
+            try:
+                signal = Signals[signal]
+            except KeyError:
+                raise SyntaxError(f"{signal} is not a valid signal")
+        self.signal = signal.value if isinstance(signal, Signals) else signal
         self._inst_count_ = listen_signal._inst_count_
         listen_signal._inst_count_ += 1
 
-    def __call__(self, f):
+    def __call__(self, f: Callable[..., None]) -> listen_signal:
         self.f = f
         return self
 
 
 class MetaExtension(type):
-    _signals_ = [
-        'before_routes',
-        'before_route', 'after_route',
-        'before_database', 'after_database',
-        'after_loop'
-    ]
-
     def __new__(cls, name, bases, attrs):
         new_class = type.__new__(cls, name, bases, attrs)
         declared_listeners = OrderedDict()
@@ -48,7 +65,7 @@ class MetaExtension(type):
         declared_listeners.update(listeners)
         new_class._declared_listeners_ = declared_listeners
         for base in reversed(new_class.__mro__[1:]):
-            if hasattr(base, '_declared_listeners_'):
+            if hasattr(base, "_declared_listeners_"):
                 all_listeners.update(base._declared_listeners_)
         all_listeners.update(declared_listeners)
         new_class._all_listeners_ = all_listeners
@@ -56,10 +73,10 @@ class MetaExtension(type):
 
 
 class Extension(metaclass=MetaExtension):
-    namespace = None
-    default_config = {}
+    namespace: Optional[str] = None
+    default_config: Dict[str, Any] = {}
 
-    def __init__(self, app, env, config):
+    def __init__(self, app, env: sdict, config: sdict):
         self.app = app
         self.env = env
         self.config = config
@@ -84,3 +101,6 @@ def _wrap_listener(ext, f):
     def wrapped(*args, **kwargs):
         return f(ext, *args, **kwargs)
     return wrapped
+
+
+ExtensionType = TypeVar("ExtensionType", bound=Extension)

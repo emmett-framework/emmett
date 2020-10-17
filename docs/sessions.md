@@ -17,6 +17,9 @@ Basically, you can use `session` object to store and retrieve data, but before y
 
 Storing sessions in cookies
 ---------------------------
+
+*Changed in version 2.1*
+
 You can store session contents directly in the cookies of the client using the Emmett's `SessionManager.cookies` pipe:
 
 ```python
@@ -35,13 +38,16 @@ As you can see, `SessionManager.cookies` needs a secret key to crypt the session
 | parameter | default value | description |
 | --- | --- | --- |
 | expire | 3600 | the duration in seconds after which the session will expire |
-| secure | `False` | tells the manager to allow sessions only on *https* protocol |
-| domain | | allows you to set a specific domain for the cookie |
-| cookie\_name | | allows you to set a specific name for the cookie |
+| secure | `False` | tells the manager to allow *https* sessions only |
+| samesite | None | set `SameSite` option for the cookie |
+| domain | | allows to set a specific domain for the cookie |
+| cookie\_name | | allows to set a specific name for the cookie |
+| cookie\_data | | allows to pass additional cookie data to the manager |
 
 Storing sessions on filesystem
 ------------------------------
-*New in version 0.2*
+
+*Changed in version 2.1*
 
 You can store session contents on the server's filesystem using the Emmett's `SessionManager.files` pipe:
 
@@ -62,12 +68,17 @@ As you can see, `SessionManager.files` doesn't require specific parameters, but 
 | --- | --- | --- |
 | expire | 3600 | the duration in seconds after which the session will expire |
 | secure | `False` | tells the manager to allow sessions only on *https* protocol |
-| domain | | allows you to set a specific domain for the cookie |
-| cookie\_name | | allows you to set a specific name for the cookie |
+| samesite | None | set `SameSite` option for the cookie |
+| domain | | allows to set a specific domain for the cookie |
+| cookie\_name | | allows to set a specific name for the cookie |
+| cookie\_data | | allows to pass additional cookie data to the manager |
 | filename_template | `'emt_%s.sess'` | allows you to set a specific format for the files created to store the data |
 
 Storing sessions using redis
 ----------------------------
+
+*Changed in version 2.1*
+
 You can store session contents using *redis* – you obviously need the redis package for python – with the Emmett's `SessionManager.redis` pipe:
 
 ```python
@@ -90,7 +101,9 @@ As you can see `SessionManager.redis` needs a redis connection as first paramete
 | prefix | `'emtsess:'` | the prefix for the redis keys (default set to |
 | expire | 3600 | the duration in seconds after which the session will expire |
 | secure | `False` | tells the manager to allow sessions only on *https* protocol |
-| domain | | allows you to set a specific domain for the cookie |
-| cookie\_name | | allows you to set a specific name for the cookie |
+| samesite | None | set `SameSite` option for the cookie |
+| domain | | allows to set a specific domain for the cookie |
+| cookie\_name | | allows to set a specific name for the cookie |
+| cookie\_data | | allows to pass additional cookie data to the manager |
 
 The `expire` parameter tells redis when to auto-delete the unused session: every time the session is updated, the expiration time is reset to the one specified.

@@ -10,7 +10,7 @@ import pytest
 
 from emmett import App
 from emmett.ctx import current
-from emmett.language import T
+from emmett.locals import T
 
 
 @pytest.fixture(scope='module')

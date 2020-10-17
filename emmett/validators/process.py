@@ -21,11 +21,10 @@ from .helpers import translate, LazyCrypt
 
 
 class Cleanup(Validator):
-    """removes special characters on validation"""
-
-    rule = re.compile('[^\x09\x0a\x0d\x20-\x7e]')
+    rule = re.compile(r"[^\x09\x0a\x0d\x20-\x7e]")
 
     def __init__(self, regex=None, message=None):
+        super().__init__(message=message)
         self.regex = self.rule if regex is None else re.compile(regex)
 
     def __call__(self, value):
@@ -34,8 +33,6 @@ class Cleanup(Validator):
 
 
 class Lower(Validator):
-    """Converts to lower case"""
-
     def __call__(self, value):
         if value is None:
             return (value, None)
@@ -43,8 +40,6 @@ class Lower(Validator):
 
 
 class Upper(Validator):
-    """Converts to upper case"""
-
     def __call__(self, value):
         if value is None:
             return (value, None)
@@ -52,8 +47,19 @@ class Upper(Validator):
 
 
 class Urlify(Validator):
-    """converts arbitrary text string to a valid url string"""
     message = "Not convertible to url"
+
+    def __init__(self, maxlen=80, check=False, keep_underscores=False, message=None):
+        super().__init__(message=message)
+        self.maxlen = maxlen
+        self.check = check
+        self.message = message
+        self.keep_underscores = keep_underscores
+
+    def __call__(self, value):
+        if self.check and value != self._urlify(value):
+            return value, translate(self.message)
+        return self._urlify(value), None
 
     def _urlify(self, s):
         """
@@ -65,40 +71,27 @@ class Urlify(Validator):
         # to lowercase
         s = s.lower()
         # replace special characters
-        s = unicodedata.normalize('NFKD', s)
+        s = unicodedata.normalize("NFKD", s)
         # encode as ASCII
-        s = s.encode('ascii', 'ignore').decode('ascii')
+        s = s.encode("ascii", "ignore").decode("ascii")
         # strip html entities
-        s = re.sub('&\w+?;', '', s)
+        s = re.sub(r"&\w+?;", "", s)
         if self.keep_underscores:
             # whitespace to hypens
-            s = re.sub('\s+', '-', s)
+            s = re.sub(r"\s+", "-", s)
             # strip all but alphanumeric/underscore/hyphen
-            s = re.sub('[^\w\-]', '', s)
+            s = re.sub(r"[^\w\-]", "", s)
         else:
             # whitespace & underscores to hyphens
-            s = re.sub('[\s_]+', '-', s)
+            s = re.sub(r"[\s_]+", "-", s)
             # strip all but alphanumeric/hyphen
-            s = re.sub('[^a-z0-9\-]', '', s)
+            s = re.sub(r"[^a-z0-9\-]", "", s)
         # collapse strings of hyphens
-        s = re.sub('[-_][-_]+', '-', s)
+        s = re.sub(r"[-_][-_]+", "-", s)
         # remove leading and trailing hyphens
-        s = s.strip('-')
+        s = s.strip(r"-")
         # enforce maximum length
         return s[:self.maxlen]
-
-    def __init__(self, maxlen=80, check=False, keep_underscores=False,
-                 message=None):
-        Validator.__init__(self, message)
-        self.maxlen = maxlen
-        self.check = check
-        self.message = message
-        self.keep_underscores = keep_underscores
-
-    def __call__(self, value):
-        if self.check and value != self._urlify(value):
-            return value, translate(self.message)
-        return self._urlify(value), None
 
 
 class Crypt(Validator):
@@ -133,8 +126,10 @@ class Crypt(Validator):
     an existing salted password
     """
 
-    def __init__(self, key=None, algorithm='pbkdf2(1000,20,sha512)',
-                 salt=True, message=None):
+    def __init__(
+        self, key=None, algorithm='pbkdf2(1000,20,sha512)', salt=True, message=None
+    ):
+        super().__init__(message=message)
         self.key = key
         self.digest_alg = algorithm
         self.salt = salt

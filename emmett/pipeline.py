@@ -13,6 +13,7 @@ import asyncio
 import types
 
 from functools import wraps
+from typing import Optional
 
 from .helpers import flash
 from .http import HTTPResponse, redirect
@@ -209,7 +210,7 @@ class MetaPipe(type):
 
 
 class Pipe(metaclass=MetaPipe):
-    output = None
+    output: Optional[str] = None
 
     async def open(self):
         pass

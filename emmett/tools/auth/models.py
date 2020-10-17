@@ -9,7 +9,8 @@
     :license: BSD-3-Clause
 """
 
-from ...ctx import current, request, now
+from ...ctx import current
+from ...locals import now, request
 from ...orm import Model, Field, before_insert, rowmethod
 from ...security import uuid
 

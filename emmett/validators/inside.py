@@ -22,9 +22,8 @@ from .helpers import options_sorter, translate
 
 
 class inRange(Validator):
-    def __init__(self, minimum=None, maximum=None, include=(True, False),
-                 message=None):
-        Validator.__init__(self, message)
+    def __init__(self, minimum=None, maximum=None, include=(True, False), message=None):
+        super().__init__(message=message)
         self.minimum = minimum
         self.maximum = maximum
         self.inc = include
@@ -42,8 +41,10 @@ class inRange(Validator):
     def __call__(self, value):
         minimum = self.minimum() if callable(self.minimum) else self.minimum
         maximum = self.maximum() if callable(self.maximum) else self.maximum
-        if ((minimum is None or self._gt(value, minimum, self.inc[0])) and
-                (maximum is None or self._lt(value, maximum, self.inc[1]))):
+        if (
+            (minimum is None or self._gt(value, minimum, self.inc[0])) and
+            (maximum is None or self._lt(value, maximum, self.inc[1]))
+        ):
             return value, None
         return value, translate(
             self._range_error(self.message, minimum, maximum)
@@ -51,33 +52,36 @@ class inRange(Validator):
 
     def _range_error(self, message, minimum, maximum):
         if message is None:
-            message = 'Enter a value'
+            message = "Enter a value"
             if minimum is not None and maximum is not None:
-                message += ' between %(min)s and %(max)s'
+                message += " between {min} and {max}"
             elif minimum is not None:
-                message += ' greater than or equal to %(min)s'
+                message += " greater than or equal to {min}"
             elif maximum is not None:
-                message += ' less than or equal to %(max)s'
+                message += " less than or equal to {max}"
         if isinstance(maximum, int):
             maximum -= 1
-        return translate(message) % dict(min=minimum, max=maximum)
+        return translate(message).format(min=minimum, max=maximum)
 
 
 class inSet(Validator):
-    """
-    Check that value is one of the given list or set.
-    """
-
-    def __init__(self, theset, labels=None, multiple=False, zero=None,
-                 sort=False, message=None):
-        Validator.__init__(self, message)
+    def __init__(
+        self,
+        theset,
+        labels=None,
+        multiple=False,
+        zero=None,
+        sort=False,
+        message=None
+    ):
+        super().__init__(message=message)
         self.multiple = multiple
-        #if isinstance(theset, dict):
-        #    self.theset = [str(item) for item in theset]
-        #    self.labels = theset.values()
-        if theset and isinstance(theset, (tuple, list)) \
-                and isinstance(theset[0], (tuple, list)) \
-                and len(theset[0]) == 2:
+        if (
+            theset and
+            isinstance(theset, (tuple, list)) and
+            isinstance(theset[0], (tuple, list)) and
+            len(theset[0]) == 2
+        ):
             self.theset = [str(item) for item, label in theset]
             self.labels = [str(label) for item, label in theset]
         else:
@@ -115,36 +119,25 @@ class inSet(Validator):
                 return ([], None)
             return value, translate(self.message)
         if self.multiple:
-            if isinstance(self.multiple, (tuple, list)) and \
-                    not self.multiple[0] <= len(values) < self.multiple[1]:
+            if (
+                isinstance(self.multiple, (tuple, list)) and
+                not self.multiple[0] <= len(values) < self.multiple[1]
+            ):
                 return values, translate(self.message)
             return values, None
         return value, None
 
 
-#class inSubSet(inSet):
-#    REGEX_W = re.compile('\w+')
-#
-#    def __init__(self, *a, **b):
-#        inSet.__init__(self, *a, **b)
-#
-#    def __call__(self, value):
-#        values = self.REGEX_W.findall(str(value))
-#        failures = [x for x in values if inSet.__call__(self, x)[1]]
-#        if failures:
-#            return value, translate(self.error_message)
-#        return value, None
-
-
 class DBValidator(Validator):
-    def __init__(
-        self, db, tablename, fieldname='id', dbset=None, message=None
-    ):
-        Validator.__init__(self, message)
+    def __init__(self, db, tablename, fieldname='id', dbset=None, message=None):
+        super().__init__(message=message)
         self.db = db
         self.tablename = tablename
         self.fieldname = fieldname
         self._dbset = dbset
+
+    def __call__(self, value):
+        raise NotImplementedError
 
     @cachedprop
     def table(self):
@@ -163,10 +156,23 @@ class DBValidator(Validator):
 
 class inDB(DBValidator):
     def __init__(
-        self, db, tablename, fieldname='id', dbset=None, label_field=None,
-        multiple=False, orderby=None, message=None
+        self,
+        db,
+        tablename,
+        fieldname='id',
+        dbset=None,
+        label_field=None,
+        multiple=False,
+        orderby=None,
+        message=None
     ):
-        super(inDB, self).__init__(db, tablename, fieldname, dbset, message)
+        super().__init__(
+            db,
+            tablename,
+            fieldname=fieldname,
+            dbset=dbset,
+            message=message
+        )
         self.label_field = label_field
         self.multiple = multiple
         self.orderby = orderby
@@ -183,11 +189,9 @@ class inDB(DBValidator):
     def options(self, zero=True):
         records = self._get_rows()
         if self.label_field:
-            items = [(r.id, str(r[self.label_field]))
-                     for r in records]
+            items = [(r.id, str(r[self.label_field])) for r in records]
         elif self.db[self.tablename]._format:
-            items = [(r.id, self.db[self.tablename]._format % r)
-                     for r in records]
+            items = [(r.id, self.db[self.tablename]._format % r) for r in records]
         else:
             items = [(r.id, r.id) for r in records]
         #if self.sort:
@@ -213,7 +217,8 @@ class inDB(DBValidator):
 class notInDB(DBValidator):
     def __call__(self, value):
         row = self.dbset.where(
-            self.field == value).select(limitby=(0, 1)).first()
+            self.field == value
+        ).select(limitby=(0, 1)).first()
         if row:
             record_id = getattr(current, '_dbvalidation_record_id_', None)
             if row.id != record_id:

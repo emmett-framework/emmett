@@ -8,11 +8,9 @@
 """
 
 from functools import partial
-from rapidjson import (
-    DM_ISO8601, DM_NAIVE_IS_UTC,
-    NM_DECIMAL, NM_NATIVE,
-    dumps as _json_dumps
-)
+from typing import Any, Callable, Dict, Union
+
+from orjson import dumps as _json_dumps, OPT_NAIVE_UTC, OPT_NON_STR_KEYS
 
 from .html import tag, htmlescape
 
@@ -22,8 +20,8 @@ _json_safe_table = {
 }
 
 
-class Serializers(object):
-    _registry_ = {}
+class Serializers:
+    _registry_: Dict[str, Callable[[Any], Union[bytes, str]]] = {}
 
     @classmethod
     def register_for(cls, target):
@@ -40,14 +38,13 @@ class Serializers(object):
 def _json_default(obj):
     if hasattr(obj, '__json__'):
         return obj.__json__()
-    raise ValueError('%r is not JSON serializable' % obj)
+    raise TypeError
 
 
 json = partial(
     _json_dumps,
     default=_json_default,
-    datetime_mode=DM_ISO8601 | DM_NAIVE_IS_UTC,
-    number_mode=NM_NATIVE | NM_DECIMAL
+    option=OPT_NON_STR_KEYS | OPT_NAIVE_UTC
 )
 
 
@@ -73,7 +70,7 @@ def xml_encode(value, key=None, quote=True):
                 tag[item](xml_encode(item, None, quote))
                 for item in value
             ])
-    return htmlescape(value, quote)
+    return htmlescape(value)
 
 
 Serializers.register_for('json')(json)

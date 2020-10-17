@@ -11,16 +11,15 @@
 
 import time
 
-import click
-
 from functools import wraps
 
+import click
+
 from ...cli import pass_script_info
-from ...ctx import session, now
 from ...datastructures import sdict
-from ...extensions import Extension, listen_signal
-from ...language import T
+from ...extensions import Extension, Signals, listen_signal
 from ...language.helpers import Tstr
+from ...locals import T, now, session
 from ...orm.helpers import decamelize
 from ...security import uuid
 from .forms import AuthForms
@@ -185,7 +184,7 @@ class AuthExtension(Extension):
     def bind_exposer(self, exposer):
         self.exposer = exposer
 
-    @listen_signal('before_routes')
+    @listen_signal(Signals.before_routes)
     def _inject_pipe(self):
         if self.config.inject_pipe:
             self.app.pipeline.append(self.auth.pipe)

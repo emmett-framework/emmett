@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Emmett"
-version = "2.0.2"
+version = "2.1.0"
 description = "The web framework for inventors"
 authors = ["Giovanni Barillari <gi0baro@d4net.org>"]
 license = "BSD-3-Clause"
@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
@@ -43,7 +44,9 @@ emmett = "emmett.cli:main"
 [tool.poetry.dependencies]
 python = "^3.7"
 click = ">=6.0"
-h11 = "~0.9.0"
+h11 = "~0.10.0"
+h2 = "~4.0.0"
+orjson = "~3.4.0"
 pendulum = "~2.1.2"
 pyaes = "~1.6.0"
 pyDAL = "17.3"
@@ -51,7 +54,7 @@ python-rapidjson = "~0.9.1"
 pyyaml = "~5.3.0"
 renoir = "^1.2"
 severus = "^1.0"
-uvicorn = "0.11.8"
+uvicorn = "0.12.1"
 websockets = "^8.0"
 
 httptools = { version = "~0.1.0", markers = "sys_platform != 'win32'" }

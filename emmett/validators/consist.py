@@ -25,15 +25,26 @@ from urllib.parse import unquote as url_unquote
 from ..serializers import Serializers
 from ..utils import parse_datetime
 from .basic import Validator, ParentValidator, _is, Matches
-from .helpers import translate, _UTC, url_split_regex, official_url_schemes, \
-    unofficial_url_schemes, unicode_to_ascii_url, official_top_level_domains, \
-    _DEFAULT
+from .helpers import (
+    _DEFAULT,
+    _UTC,
+    official_top_level_domains,
+    official_url_schemes,
+    translate,
+    unofficial_url_schemes,
+    url_split_regex
+)
+
+try:
+    import ipaddress
+except ImportError:
+    ipaddress = None
 
 _utc = _UTC()
 
 
 class isInt(_is):
-    rule = re.compile('^[+-]?\d+$')
+    rule = re.compile(r"^[+-]?\d+$")
 
     def check(self, value):
         return int(value), None
@@ -41,7 +52,7 @@ class isInt(_is):
 
 class isFloat(_is):
     def __init__(self, dot=".", message=None):
-        _is.__init__(self, message)
+        super().__init__(message=message)
         self.dot = dot
 
     def check(self, value):
@@ -51,14 +62,6 @@ class isFloat(_is):
         except (ValueError, TypeError):
             pass
         return value, translate(self.message)
-
-    def _str2dec(number):
-        s = str(number)
-        if '.' not in s:
-            s += '.00'
-        else:
-            s += '0' * (2 - len(s.split('.')[1]))
-        return s
 
     def formatter(self, value):
         if value is None:
@@ -84,11 +87,13 @@ class isDecimal(isFloat):
 
 
 class isTime(_is):
-    rule = re.compile('((?P<h>[0-9]+))([^0-9 ]+(?P<m>[0-9 ]+))?([^0-9ap ]+' +
-                      '(?P<s>[0-9]*))?((?P<d>[ap]m))?')
+    rule = re.compile(
+        r"((?P<h>[0-9]+))([^0-9 ]+(?P<m>[0-9 ]+))?"
+        r"([^0-9ap ]+(?P<s>[0-9]*))?((?P<d>[ap]m))?"
+    )
 
     def __call__(self, value):
-        return _is.__call__(self, value.lower() if value else value)
+        return super().__call__(value.lower() if value else value)
 
     def check(self, value):
         val = self.rule.match(value)
@@ -105,7 +110,8 @@ class isTime(_is):
             if not (h in range(24) and m in range(60) and s
                     in range(60)):
                 raise ValueError(
-                    'Hours or minutes or seconds are outside of allowed range')
+                    'Hours or minutes or seconds are outside of allowed range'
+                )
             val = time(h, m, s)
             return val, None
         except AttributeError:
@@ -117,14 +123,13 @@ class isTime(_is):
 
 class isDate(_is):
     def __init__(self, format='%Y-%m-%d', timezone=None, message=None):
-        _is.__init__(self, message)
+        super().__init__(message=message)
         self.format = translate(format)
         self.timezone = timezone
         self.extremes = {}
 
     def _parse(self, value):
-        (y, m, d, hh, mm, ss, t0, t1, t2) = \
-            strptime(value, str(self.format))
+        y, m, d, hh, mm, ss, t0, t1, t2 = strptime(value, str(self.format))
         return date(y, m, d)
 
     def _check_instance(self, value):
@@ -140,7 +145,7 @@ class isDate(_is):
             if self.timezone is not None:
                 val = self.timezone.localize(val).astimezone(_utc)
             return val, None
-        except:
+        except Exception:
             self.extremes.update(isDate.nice(self.format))
             return value, translate(self.message) % self.extremes
 
@@ -170,7 +175,7 @@ class isDate(_is):
 class isDatetime(isDate):
     def __init__(self, format=_DEFAULT, **kwargs):
         self._parse, format = self._get_parser(format)
-        isDate.__init__(self, format=format, **kwargs)
+        super().__init__(format=format, **kwargs)
 
     def _get_parser(self, format):
         if format is _DEFAULT:
@@ -178,8 +183,7 @@ class isDatetime(isDate):
         return self._parse_strptime, format
 
     def _parse_strptime(self, value):
-        (y, m, d, hh, mm, ss, t0, t1, t2) = \
-            strptime(value, str(self.format))
+        y, m, d, hh, mm, ss, t0, t1, t2 = strptime(value, str(self.format))
         return datetime(y, m, d, hh, mm, ss)
 
     def _parse_pendulum(self, value):
@@ -190,19 +194,24 @@ class isDatetime(isDate):
 
     def _formatter_obj(self, value):
         return datetime(
-            value.year, value.month, value.day,
-            value.hour, value.minute, value.second)
+            value.year,
+            value.month,
+            value.day,
+            value.hour,
+            value.minute,
+            value.second
+        )
 
 
 class isEmail(_is):
     rule = re.compile(
-        "^(?!\.)([-a-z0-9!\#$%&'*+/=?^_`{|}~]|(?<!\.)\.)+(?<!\.)@" +
-        "(localhost|([a-z0-9]([-\w]*[a-z0-9])?\.)+[a-z]{2,})$",
+        r"^(?!\.)([-a-z0-9!\#$%&'*+/=?^_`{|}~]|(?<!\.)\.)+(?<!\.)@"
+        r"(localhost|([a-z0-9]([-\w]*[a-z0-9])?\.)+[a-z]{2,})$",
         re.VERBOSE | re.IGNORECASE
     )
 
     def __init__(self, banned=None, forced=None, message=None):
-        _is.__init__(self, message)
+        super().__init__(message=message)
         self.banned = banned
         self.forced = forced
 
@@ -218,10 +227,8 @@ class isEmail(_is):
 
 class isList(ParentValidator):
     def __init__(self, children, splitter=None, message=None):
-        ParentValidator.__init__(self, children, message)
-        self.splitter = None
-        if splitter:
-            self.splitter = re.compile('[^' + splitter + '\s]+')
+        super().__init__(children, message=message)
+        self.splitter = re.compile(r"[^" + splitter + r"\s]+") if splitter else None
 
     def __call__(self, value):
         if self.splitter is not None and isinstance(value, str):
@@ -245,8 +252,7 @@ class isList(ParentValidator):
 
 
 class isJSON(_is):
-    JSONErrors = (NameError, TypeError, ValueError, AttributeError,
-                  KeyError)
+    JSONErrors = (NameError, TypeError, ValueError, AttributeError, KeyError)
 
     def check(self, value):
         if isinstance(value, str):
@@ -270,10 +276,10 @@ class isJSON(_is):
 
 
 class isAlphanumeric(Matches):
-    message = 'Enter only letters, numbers, and underscores'
+    message = "Enter only letters, numbers, and underscores"
 
     def __init__(self, message=None):
-        Matches.__init__(self, '^[\w]*$', message=message)
+        super().__init__(r"^[\w]*$", message=message)
 
 
 class isImage(Validator):
@@ -281,14 +287,17 @@ class isImage(Validator):
     # image formats and has dimensions within given boundaries.
     message = "Invalid image"
 
-    def __init__(self, extensions=('bmp', 'gif', 'jpeg', 'png'),
-                 width={'min': 0, 'max': 10000},
-                 height={'min': 0, 'max': 100000}, message=None):
-        Validator.__init__(self, message)
+    def __init__(
+        self,
+        extensions=('bmp', 'gif', 'jpeg', 'png'),
+        width={'min': 0, 'max': 10000},
+        height={'min': 0, 'max': 100000},
+        message=None
+    ):
+        super().__init__(message=message)
         self.extensions = extensions
         self.maxsize = (width.get('max', 10000), height.get('max', 10000))
         self.minsize = (width.get('min', 0), height.get('min', 0))
-        self.message = message
 
     def __call__(self, value):
         try:
@@ -364,16 +373,20 @@ class _isGenericUrl(Validator):
     all_url_schemes = [None] + official_url_schemes + unofficial_url_schemes
 
     def __init__(self, schemes=None, prepend_scheme=None, message=None):
-        Validator.__init__(self, message)
+        super().__init__(message=message)
         self.allowed_schemes = schemes or self.all_url_schemes
         self.prepend_scheme = prepend_scheme
         if self.prepend_scheme not in self.allowed_schemes:
             raise SyntaxError(
-                "prepend_scheme='%s' is not in allowed_schemes=%s" %
-                (self.prepend_scheme, self.allowed_schemes))
+                "prepend_scheme='{}' is not in allowed_schemes={}".format(
+                    self.prepend_scheme, self.allowed_schemes
+                )
+            )
 
     GENERIC_URL = re.compile(
-        r"%[^0-9A-Fa-f]{2}|%[^0-9A-Fa-f][0-9A-Fa-f]|%[0-9A-Fa-f][^0-9A-Fa-f]|%$|%[0-9A-Fa-f]$|%[^0-9A-Fa-f]$")
+        r"%[^0-9A-Fa-f]{2}|%[^0-9A-Fa-f][0-9A-Fa-f]|%[0-9A-Fa-f][^0-9A-Fa-f]|"
+        r"%$|%[0-9A-Fa-f]$|%[^0-9A-Fa-f]$"
+    )
     GENERIC_URL_VALID = re.compile(r"[A-Za-z0-9;/?:@&=+$,\-_\.!~*'\(\)%#]+$")
 
     def __call__(self, value):
@@ -411,7 +424,7 @@ class _isGenericUrl(Validator):
                                     # else return the original,
                                     #  non-prepended value
                                     return value, None
-        except:
+        except Exception:
             pass
         # else the URL is not valid
         return value, translate(self.message)
@@ -430,35 +443,43 @@ class _isHTTPUrl(Validator):
     Based on RFC 2616: http://www.faqs.org/rfcs/rfc2616.html
     @author: Jonathan Benn
     """
+
     message = "Invalid URL"
     http_schemes = [None, 'http', 'https']
     GENERIC_VALID_IP = re.compile(
-        "([\w.!~*'|;:&=+$,-]+@)?\d+\.\d+\.\d+\.\d+(:\d*)*$")
+        r"([\w.!~*'|;:&=+$,-]+@)?\d+\.\d+\.\d+\.\d+(:\d*)*$"
+    )
     GENERIC_VALID_DOMAIN = re.compile(
-        "([\w.!~*'|;:&=+$,-]+@)?(([A-Za-z0-9]+[A-Za-z0-9\-]*[A-Za-z0-9]+\.)" +
-        "*([A-Za-z0-9]+\.)*)*([A-Za-z]+[A-Za-z0-9\-]*[A-Za-z0-9]+)\.?(:\d*)*$")
+        r"([\w.!~*'|;:&=+$,-]+@)?(([A-Za-z0-9]+[A-Za-z0-9\-]*[A-Za-z0-9]+\.)"
+        r"*([A-Za-z0-9]+\.)*)*([A-Za-z]+[A-Za-z0-9\-]*[A-Za-z0-9]+)\.?(:\d*)*$"
+    )
 
-    def __init__(self, schemes=None, prepend_scheme='http', tlds=None,
-                 message=None):
-        Validator.__init__(self, message)
+    def __init__(self, schemes=None, prepend_scheme='http', tlds=None, message=None):
+        super().__init__(message=message)
         self.allowed_schemes = schemes or self.http_schemes
         self.allowed_tlds = tlds or official_top_level_domains
         self.prepend_scheme = prepend_scheme
         for i in self.allowed_schemes:
             if i not in self.http_schemes:
-                raise SyntaxError("allowed_scheme value '%s' is not in %s" %
-                                  (i, self.http_schemes))
+                raise SyntaxError(
+                    "allowed_scheme value '{}' is not in {}".format(
+                        i, self.http_schemes
+                    )
+                )
         if self.prepend_scheme not in self.allowed_schemes:
             raise SyntaxError(
-                "prepend_scheme='%s' is not in allowed_schemes=%s" %
-                (self.prepend_scheme, self.allowed_schemes))
+                "prepend_scheme='{}' is not in allowed_schemes={}".format(
+                    self.prepend_scheme, self.allowed_schemes
+                )
+            )
 
     def __call__(self, value):
         try:
             # if the URL passes generic validation
             x = _isGenericUrl(
                 schemes=self.allowed_schemes,
-                prepend_scheme=self.prepend_scheme, message=self.message
+                prepend_scheme=self.prepend_scheme,
+                message=self.message
             )
             if x(value)[1] is None:
                 componentsMatch = url_split_regex.match(value)
@@ -513,19 +534,22 @@ class isUrl(Validator):
     #: use `_isGenericUrl` and `_isHTTPUrl` depending on `mode` parameter
     message = "Invalid URL"
 
-    def __init__(self, mode='http', schemes=None, prepend_scheme='http',
-                 tlds=None, message=None):
-        Validator.__init__(self, message)
+    def __init__(
+        self, mode='http', schemes=None, prepend_scheme='http', tlds=None, message=None
+    ):
+        super().__init__(message=message)
         self.mode = mode.lower()
         if self.mode not in ['generic', 'http']:
-            raise SyntaxError("invalid mode '%s' in isUrl" % self.mode)
+            raise SyntaxError("invalid mode '{}' in isUrl".format(self.mode))
         self.allowed_tlds = tlds
         self.allowed_schemes = schemes
         if self.allowed_schemes:
             if prepend_scheme not in self.allowed_schemes:
                 raise SyntaxError(
-                    "prepend_scheme='%s' is not in allowed_schemes=%s"
-                    % (prepend_scheme, self.allowed_schemes))
+                    "prepend_scheme='{}' is not in allowed_schemes={}".format(
+                        prepend_scheme, self.allowed_schemes
+                    )
+                )
         # if allowed_schemes is None, then we will defer testing
         # prepend_scheme's validity to a sub-method
         self.prepend_scheme = prepend_scheme
@@ -534,16 +558,18 @@ class isUrl(Validator):
         if self.mode == 'generic':
             subValidator = _isGenericUrl(
                 schemes=self.allowed_schemes,
-                prepend_scheme=self.prepend_scheme, message=self.message
+                prepend_scheme=self.prepend_scheme,
+                message=self.message
             )
         elif self.mode == 'http':
             subValidator = _isHTTPUrl(
                 schemes=self.allowed_schemes,
-                prepend_scheme=self.prepend_scheme, tlds=self.allowed_tlds,
+                prepend_scheme=self.prepend_scheme,
+                tlds=self.allowed_tlds,
                 message=self.message
             )
         else:
-            raise SyntaxError("invalid mode '%s' in isUrl" % self.mode)
+            raise SyntaxError("invalid mode '{}' in isUrl".format(self.mode))
 
         return subValidator(value)
 
@@ -581,19 +607,27 @@ class isIPv4(Validator):
 
     Longer iterable will be truncated to match length of shorter one.
     """
-    message = 'Invalid IPv4 address'
+
+    message = "Invalid IPv4 address"
     regex = re.compile(
-        '^(([1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}([1-9]?\d|1\d\d|2[0-4]\d|25[0-5])$')
+        r"^(([1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}([1-9]?\d|1\d\d|2[0-4]\d|25[0-5])$"
+    )
     numbers = (16777216, 65536, 256, 1)
     localhost = 2130706433
     private = ((2886729728, 2886795263), (3232235520, 3232301055))
     automatic = (2851995648, 2852061183)
 
     def __init__(
-        self, min='0.0.0.0', max='255.255.255.255', invert=False,
-        localhost=None, private=None, auto=None, message=None
+        self,
+        min='0.0.0.0',
+        max='255.255.255.255',
+        invert=False,
+        localhost=None,
+        private=None,
+        auto=None,
+        message=None
     ):
-        Validator.__init__(self, message)
+        super().__init__(message=message)
         for n, value in enumerate((min, max)):
             temp = []
             if isinstance(value, str):
@@ -671,34 +705,43 @@ class isIPv6(Validator):
         link_local: Same as above but uses fe80::/10 range
         reserved: Same as above but uses IETF reserved range
         mulicast: Same as above but uses ff00::/8 range
-        routeable: Similar to above but enforces not private, link_local,
+        routable: Similar to above but enforces not private, link_local,
                    reserved or multicast
         to4: Same as above but uses 2002::/16 range
         teredo: Same as above but uses 2001::/32 range
         subnets: value must be a member of at least one from list of subnets
     """
-    message = 'Invalid IPv6 address'
 
-    def __init__(self, private=None, link_local=None, reserved=None,
-                 multicast=None, routeable=None, to4=None, teredo=None,
-                 subnets=None, message=None):
-        Validator.__init__(self, message)
+    message = "Invalid IPv6 address"
+
+    def __init__(
+        self,
+        private=None,
+        link_local=None,
+        reserved=None,
+        multicast=None,
+        routable=None,
+        to4=None,
+        teredo=None,
+        subnets=None,
+        message=None
+    ):
+        super().__init__(message=message)
         self.is_private = private
         self.is_link_local = link_local
         self.is_reserved = reserved
         self.is_multicast = multicast
-        self.is_routeable = routeable
+        self.is_routable = routable
         self.is_6to4 = to4
         self.is_teredo = teredo
         self.subnets = subnets
 
-    def __call__(self, value):
-        try:
-            import ipaddress
-        except ImportError:
+        if ipaddress is None:
             raise RuntimeError(
-                "You need 'ipaddress' python module to use isIPv6 validator.")
+                "You need 'ipaddress' python module to use isIPv6 validator."
+            )
 
+    def __call__(self, value):
         try:
             ip = ipaddress.IPv6Address(value)
             ok = True
@@ -719,7 +762,7 @@ class isIPv6(Validator):
                 if ip in ipnet:
                     ok = True
 
-        if self.is_routeable:
+        if self.is_routable:
             self.is_private = False
             self.is_link_local = False
             self.is_reserved = False
@@ -761,16 +804,29 @@ class isIP(Validator):
 
     Uses ipaddress library.
     """
-    message = 'Invalid IP address'
+
+    message = "Invalid IP address"
 
     def __init__(
-        self, min='0.0.0.0', max='255.255.255.255', invert=False,
-        localhost=None, private=None, auto=None, ipv4=None,
-        link_local=None, reserved=None, multicast=None,
-        routeable=None, to4=None, teredo=None, subnets=None,
-        ipv6=None, message=None
+        self,
+        min='0.0.0.0',
+        max='255.255.255.255',
+        invert=False,
+        localhost=None,
+        private=None,
+        auto=None,
+        ipv4=None,
+        link_local=None,
+        reserved=None,
+        multicast=None,
+        routable=None,
+        to4=None,
+        teredo=None,
+        subnets=None,
+        ipv6=None,
+        message=None
     ):
-        Validator.__init__(self, message)
+        super().__init__(message=message)
         self.minip = min,
         self.maxip = max,
         self.invert = invert
@@ -782,20 +838,18 @@ class isIP(Validator):
         self.is_link_local = link_local
         self.is_reserved = reserved
         self.is_multicast = multicast
-        self.is_routeable = routeable
+        self.is_routable = routable
         self.is_6to4 = to4
         self.is_teredo = teredo
         self.subnets = subnets
         self.is_ipv6 = ipv6
 
-    def __call__(self, value):
-        try:
-            import ipaddress
-        except ImportError:
+        if ipaddress is None:
             raise RuntimeError(
                 "You need 'ipaddress' python module to use isIP validator."
             )
 
+    def __call__(self, value):
         try:
             ip = ipaddress.ip_address(value)
         except ValueError:
@@ -821,7 +875,7 @@ class isIP(Validator):
                 link_local=self.is_link_local,
                 reserved=self.is_reserved,
                 multicast=self.is_multicast,
-                routeable=self.is_routeable,
+                routable=self.is_routable,
                 to4=self.is_6to4,
                 teredo=self.is_teredo,
                 subnets=self.subnets,

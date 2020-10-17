@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
+from ...helpers import Registry
 
-from .. import ProtocolWrapperRegistry, ProtocolWrapper
+protocols = Registry()
 
+from . import websockets
 
-protocols = ProtocolWrapperRegistry()
+try:
+    from . import wsproto
+except ImportError:
+    pass
 
-from . import (
-    auto,
-    websockets,
-    wsproto
-)
+from . import auto

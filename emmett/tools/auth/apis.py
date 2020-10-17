@@ -12,19 +12,23 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional, Type, Union
+
+from pydal.helpers.classes import Reference as _RecordReference
 
 from ...cache import RouteCacheRule
-from ...ctx import session, now
+from ...datastructures import sdict
+from ...locals import now, session
+from ...orm.objects import Row
+from ...orm.models import Model
 from ...pipeline import Pipe, Injector
 from .ext import AuthExtension
 from .exposer import AuthModule
 
 
-class Auth(object):
+class Auth:
     def __init__(self, app, db, user_model=None):
-        app.use_extension(AuthExtension)
-        self.ext = app.ext.AuthExtension
+        self.ext = app.use_extension(AuthExtension)
         self.ext.bind_auth(self)
         self.ext.use_database(db, user_model)
         self.ext.init_forms()
@@ -59,19 +63,19 @@ class Auth(object):
         )
 
     @property
-    def models(self):
+    def models(self) -> Dict[str, Model]:
         return self.ext.config.models
 
-    def group_for_role(self, role):
+    def group_for_role(self, role: str) -> Row:
         return self.models['group'].get(role=role)
 
     #: context
     @property
-    def session(self):
+    def session(self) -> sdict:
         return session.auth
 
     @property
-    def user(self):
+    def user(self) -> Optional[Row]:
         try:
             rv = self.session.user
         except Exception:
@@ -79,10 +83,15 @@ class Auth(object):
         return rv
 
     #: helpers
-    def is_logged(self):
+    def is_logged(self) -> bool:
         return True if self.user else False
 
-    def has_membership(self, group=None, user=None, role=None):
+    def has_membership(
+        self,
+        group: Optional[Union[str, int, Row]] = None,
+        user: Optional[Union[Row, int]] = None,
+        role: Optional[str] = None
+    ) -> bool:
         rv = False
         if not group and role:
             group = self.group_for_role(role)
@@ -100,9 +109,13 @@ class Auth(object):
         return rv
 
     def has_permission(
-        self, name='any', table_name=None, record_id=None, user=None,
-        group=None
-    ):
+        self,
+        name: str = 'any',
+        table_name: Optional[str] = None,
+        record_id: Optional[int] = None,
+        user: Optional[Union[int, Row]] = None,
+        group: Optional[Union[str, int, Row]] = None
+    ) -> bool:
         permission = self.models['permission']
         parent = None
         query = (permission.name == name)
@@ -124,20 +137,27 @@ class Auth(object):
             return False
         return (
             parent[self.ext.relation_names['permission'] + 's'].where(
-                query).count() > 0)
+                query
+            ).count() > 0
+        )
 
     #: operations
-    def create_group(self, role, description=''):
+    def create_group(self, role: str, description: str = '') -> _RecordReference:
         res = self.models['group'].create(
-            role=role, description=description)
+            role=role, description=description
+        )
         return res.id
 
-    def delete_group(self, group):
+    def delete_group(self, group: Union[str, int, Row]) -> int:
         if isinstance(group, str):
             group = self.group_for_role(group)
         return self.ext.db(self.models['group'].id == group).delete()
 
-    def add_membership(self, group, user=None):
+    def add_membership(
+        self,
+        group: Union[str, int, Row],
+        user: Optional[Row] = None
+    ) -> _RecordReference:
         if isinstance(group, int):
             group = self.models['group'].get(group)
         elif isinstance(group, str):
@@ -145,10 +165,15 @@ class Auth(object):
         if not user and self.user:
             user = self.user.id
         res = getattr(
-            group, self.ext.relation_names['user'] + 's').add(user)
+            group, self.ext.relation_names['user'] + 's'
+        ).add(user)
         return res.id
 
-    def remove_membership(self, group, user=None):
+    def remove_membership(
+        self,
+        group: Union[str, int, Row],
+        user: Optional[Row] = None
+    ):
         if isinstance(group, int):
             group = self.models['group'].get(group)
         elif isinstance(group, str):
@@ -156,9 +181,10 @@ class Auth(object):
         if not user and self.user:
             user = self.user.id
         return getattr(
-            group, self.ext.relation_names['user'] + 's').remove(user)
+            group, self.ext.relation_names['user'] + 's'
+        ).remove(user)
 
-    def login(self, email, password):
+    def login(self, email: str, password: str):
         user = self.models['user'].get(email=email)
         if user and user.get('password', False):
             password = self.models['user'].password.validate(password)[0]
@@ -167,25 +193,32 @@ class Auth(object):
                 return user
         return None
 
-    def change_user_status(self, user, status):
+    def change_user_status(self, user: Union[int, Row], status: str) -> int:
         return self.ext.db(self.models['user'].id == user).update(
-            registration_key=status)
+            registration_key=status
+        )
 
-    def disable_user(self, user):
+    def disable_user(self, user: Union[int, Row]) -> int:
         return self.change_user_status(user, 'disabled')
 
-    def block_user(self, user):
+    def block_user(self, user: Union[int, Row]) -> int:
         return self.change_user_status(user, 'blocked')
 
-    def allow_user(self, user):
+    def allow_user(self, user: Union[int, Row]) -> int:
         return self.change_user_status(user, '')
 
     #: emails decorators
-    def registration_mail(self, f):
+    def registration_mail(
+        self,
+        f: Callable[[Row, Dict[str, Any]], bool]
+    ) -> Callable[[Row, Dict[str, Any]], bool]:
         self.ext.mails['registration'] = f
         return f
 
-    def reset_password_mail(self, f):
+    def reset_password_mail(
+        self,
+        f: Callable[[Row, Dict[str, Any]], bool]
+    ) -> Callable[[Row, Dict[str, Any]], bool]:
         self.ext.mails['reset_password'] = f
         return f
 

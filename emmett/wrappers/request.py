@@ -10,14 +10,15 @@
 """
 
 import asyncio
-import pendulum
 import re
 
 from cgi import FieldStorage, parse_header
 from datetime import datetime
 from io import BytesIO
 from urllib.parse import parse_qs
-from typing import Optional
+from typing import Any, Optional
+
+import pendulum
 
 from ..asgi.typing import Scope, Receive, Send
 from ..datastructures import sdict
@@ -28,6 +29,13 @@ from . import ScopeWrapper
 from .helpers import FileStorage, RequestCancelled
 
 _regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
+_push_headers = {
+    "accept",
+    "accept-encoding",
+    "accept-language",
+    "cache-control",
+    "user-agent"
+}
 
 
 class Body:
@@ -85,7 +93,7 @@ class Request(ScopeWrapper):
         return Body(self._receive, self.max_content_length)
 
     @cachedprop
-    async def body(self):
+    async def body(self) -> bytes:
         if (
             self.max_content_length and
             self.content_length > self.max_content_length
@@ -98,19 +106,19 @@ class Request(ScopeWrapper):
         return rv
 
     @cachedprop
-    def now(self):
+    def now(self) -> pendulum.DateTime:
         return pendulum.instance(self._now)
 
     @cachedprop
-    def now_local(self):
-        return self.now.in_timezone(pendulum.local_timezone())
+    def now_local(self) -> pendulum.DateTime:
+        return self.now.in_timezone(pendulum.local_timezone())  # type: ignore
 
     @cachedprop
-    def content_type(self):
+    def content_type(self) -> str:
         return parse_header(self.headers.get('content-type', ''))[0]
 
     @cachedprop
-    def content_length(self):
+    def content_length(self) -> int:
         return self.headers.get('content_length', 0, cast=int)
 
     _empty_body_methods = {v: v for v in ['GET', 'HEAD', 'OPTIONS']}
@@ -122,12 +130,12 @@ class Request(ScopeWrapper):
         return await self._load_params()
 
     @cachedprop
-    async def body_params(self):
+    async def body_params(self) -> sdict[str, Any]:
         rv, _ = await self._input_params
         return rv
 
     @cachedprop
-    async def files(self):
+    async def files(self) -> sdict[str, FileStorage]:
         _, rv = await self._input_params
         return rv
 
@@ -144,7 +152,7 @@ class Request(ScopeWrapper):
     def _load_params_form_urlencoded(self, data):
         rv = sdict()
         for key, values in parse_qs(
-            data.decode(), keep_blank_values=True
+            data.decode('latin-1'), keep_blank_values=True
         ).items():
             if len(values) == 1:
                 rv[key] = values[0]
@@ -197,7 +205,7 @@ class Request(ScopeWrapper):
         return loader(self, await self.body)
 
     @cachedprop
-    def client(self):
+    def client(self) -> str:
         g = _regex_client.search(self.headers.get('x-forwarded-for', ''))
         client = (g.group() or '').split(',')[0] if g else None
         if client in (None, '', 'unknown'):
@@ -210,4 +218,16 @@ class Request(ScopeWrapper):
             else:
                 # IPv4
                 client = '127.0.0.1'
-        return client
+        return client  # type: ignore
+
+    async def push_promise(self, path: str):
+        if "http.response.push" not in self._scope.get("extensions", {}):
+            return
+        await self._send({
+            "type": "http.response.push",
+            "path": path,
+            "headers": [
+                (key.encode("latin-1"), self.headers[key].encode("latin-1"))
+                for key in _push_headers & set(self.headers.keys())
+            ]
+        })

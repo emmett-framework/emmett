@@ -15,7 +15,7 @@ def test_http_default():
 
     assert http.encoded_body is b''
     assert http.status_code == 200
-    assert http.headers == [(b'Content-Type', b'text/plain')]
+    assert http.headers == [(b'content-type', b'text/plain')]
 
 
 def test_http_bytes():
@@ -23,7 +23,7 @@ def test_http_bytes():
 
     assert http.body == b''
     assert http.status_code == 200
-    assert http.headers == [(b'Content-Type', b'text/plain')]
+    assert http.headers == [(b'content-type', b'text/plain')]
 
 
 def test_http():
@@ -34,14 +34,18 @@ def test_http():
         response[:] = [status, headers]
         return buffer.append
 
-    http = HTTP(200, 'Hello World',
-                headers={'X-Test': 'Hello Header'},
-                cookies={'cookie_test': 'hello cookie'})
+    http = HTTP(
+        200,
+        'Hello World',
+        headers={'x-test': 'Hello Header'},
+        cookies={'cookie_test': 'Set-Cookie: hello cookie'}
+    )
 
     assert http.encoded_body == b'Hello World'
     assert http.status_code == 200
     assert http.headers == [
-        (b'X-Test', b'Hello Header'), (b'Set-Cookie', b'e')]
+        (b'x-test', b'Hello Header'), (b'set-cookie', b'hello cookie')
+    ]
 
 
 def test_redirect():
@@ -51,4 +55,4 @@ def test_redirect():
         except HTTPResponse as http_redirect:
             assert ctx.response.status == 302
             assert http_redirect.status_code == 302
-            assert http_redirect.headers == [(b'Location', b'/redirect')]
+            assert http_redirect.headers == [(b'location', b'/redirect')]

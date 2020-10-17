@@ -13,22 +13,26 @@ import copy
 import hashlib
 import pickle
 
+from typing import Dict, Optional
+
 from ._internal import ImmutableList
+from .typing import KT, VT
 
 
-class sdict(dict):
+class sdict(Dict[KT, VT]):
     #: like a dictionary except `obj.foo` can be used in addition to
     #  `obj['foo']`, and setting obj.foo = None deletes item foo.
     __slots__ = ()
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
-    __getitem__ = dict.get
+
+    __setattr__ = dict.__setitem__  # type: ignore
+    __delattr__ = dict.__delitem__  # type: ignore
+    __getitem__ = dict.get  # type: ignore
 
     # see http://stackoverflow.com/questions/10364332/how-to-pickle-python-object-derived-from-dict
-    def __getattr__(self, attr):
-        if attr.startswith('__'):
+    def __getattr__(self, key: str) -> Optional[VT]:
+        if key.startswith('__'):
             raise AttributeError
-        return self.get(attr, None)
+        return self.get(key, None)  # type: ignore
 
     __repr__ = lambda self: '<sdict %s>' % dict.__repr__(self)
     __getstate__ = lambda self: None
@@ -36,18 +40,17 @@ class sdict(dict):
     __deepcopy__ = lambda self, memo: sdict(copy.deepcopy(dict(self)))
 
 
-class ConfigData(sdict):
+class ConfigData(sdict[KT, VT]):
     #: like sdict, except it autogrows creating sub-sdict attributes.
     #  Useful for configurations.
     __slots__ = ()
 
-    def _get(self, name):
-        if name not in self.keys():
-            self[name] = sdict()
-        return super(ConfigData, self).__getitem__(name)
+    def __getitem__(self, key):
+        if key not in self.keys():
+            self[key] = sdict()
+        return super().__getitem__(key)
 
-    __getitem__ = lambda o, v: o._get(v)
-    __getattr__ = lambda o, v: o._get(v)
+    __getattr__ = __getitem__
 
 
 class SessionData(sdict):

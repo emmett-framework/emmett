@@ -3,16 +3,15 @@
     emmett.asgi.protocols.ws.wsproto
     --------------------------------
 
+    Provides websocket wsproto protocol implementation
+
     :copyright: 2014 Giovanni Barillari
     :license: BSD-3-Clause
 """
 
-from . import ProtocolWrapper, protocols
+from uvicorn.protocols.websockets.wsproto_impl import WSProtocol
+
+from . import protocols
 
 
-@protocols.register('wsproto', packages=['wsproto'])
-class WSProtoProtocol(ProtocolWrapper):
-    @classmethod
-    def protocol_cls(cls):
-        from uvicorn.protocols.websockets.wsproto_impl import WSProtocol
-        return WSProtocol
+protocols.register("wsproto")(WSProtocol)

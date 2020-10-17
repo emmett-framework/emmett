@@ -93,31 +93,6 @@ You can use the Emmett command inside the original directory of your application
 $ emmett -a myapp develop
 ```
 
-or you can create a *run.py* file inside your tree:
-
-```
-/myapp
-    run.py
-    /myapp
-        __init__.py
-        views.py
-        /static
-            style.css
-        /templates
-            layout.html
-            index.html
-            login.html
-            ...
-```
-
-which can look like this:
-
-```python
-from myapp import app
-
-app.run()
-```
-
 > **A note regarding circular imports:**   
 > Every Python developer hates them, and yet we just added some of them: *views.py* depends on *\_\_init\_\_.py* while *\_\_init\_\_.py* imports *views.py*. In general, this is a bad idea, but it is actually fine here because we are not actually using the views in *\_\_init\_\_.py*. We are ensuring that the module is imported to expose the functions; also, we are doing that at the bottom of the file.
 

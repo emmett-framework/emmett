@@ -9,13 +9,17 @@
     :license: BSD-3-Clause
 """
 
-from http.cookies import SimpleCookie
+from http.cookies import Morsel, SimpleCookie
+from typing import Any
 
 from ..datastructures import sdict
 from ..helpers import get_flashed_messages
 from ..html import htmlescape
 from . import Wrapper
 from .helpers import ResponseHeaders
+
+# Workaround for adding samesite support to pre 3.8 python
+Morsel._reserved["samesite"] = "SameSite"  # type: ignore  # noqa
 
 
 class Response(Wrapper):
@@ -25,8 +29,8 @@ class Response(Wrapper):
         self.status = 200
         self.headers = ResponseHeaders({'content-type': 'text/plain'})
         self.cookies = SimpleCookie()
-        self.meta = sdict()
-        self.meta_prop = sdict()
+        self.meta: sdict[str, Any] = sdict()
+        self.meta_prop: sdict[str, Any] = sdict()
 
     @property
     def content_type(self) -> str:

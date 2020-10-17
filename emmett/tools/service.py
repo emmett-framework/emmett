@@ -17,7 +17,7 @@ from ..serializers import Serializers
 
 class JSONServicePipe(Pipe):
     __slots__ = ['decoder', 'encoder']
-    output = 'str'
+    output = 'bytes'
 
     def __init__(self):
         self.decoder = Parsers.get_for('json')

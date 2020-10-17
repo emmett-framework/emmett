@@ -79,7 +79,7 @@ async def awesome_route():
 
 ### Using signals
 
-*Changed in version 2.0*
+*Changed in version 2.1*
 
 Whenever you need to perform more specific actions depending on the status of the application, and the `on_load` method is not enough, you can use signals. Emmett provides these signal for extensions:
 
@@ -100,13 +100,13 @@ All these signals can be quite handy for specific operations. For example, let's
 
 ```python
 from emmett.pipeline import Pipe
-from emmett.extensions import Extension, listen_signal
+from emmett.extensions import Extension, Signals, listen_signal
 
 class AwesomePipe(Pipe):
     # some code
     
 class Awesomeness(Extension):
-    @listen_signal('before_routes')
+    @listen_signal(Signals.before_routes)
     def inject_pipe(self):
         self.app.pipeline.append(
             AwesomePipe()
@@ -117,7 +117,7 @@ And if you need the database, you can use the `after_database` method:
 
 ```python
 class Awesomeness(Extension):
-    @listen_signal('after_database')
+    @listen_signal(Signals.after_database)
     def bind_database(self, database):
         self.db = database
 ```

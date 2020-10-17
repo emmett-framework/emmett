@@ -16,29 +16,67 @@
 import asyncio
 import datetime
 import os
-import pendulum
 import pkgutil
 import sys
 import warnings
 
 from functools import partial
 from shutil import copyfileobj
+from typing import Any, Generic, Optional
+
+import pendulum
+
+from .typing import T
 
 
-#: internal datastructures
-class ObjectProxy(object):
-    #: Proxy to another object.
-    __slots__ = ('__obj', '__name__')
-
-    def __init__(self, obj, name=None):
-        object.__setattr__(self, '_ObjectProxy__obj', obj)
-        object.__setattr__(self, '__name__', name)
-
+class ProxyMixin:
     def _get_robj(self):
+        raise NotImplementedError
+
+    def __getitem__(self, key):
+        return self._get_robj[key]
+
+    def __setitem__(self, key, value):
+        self._get_robj()[key] = value
+
+    def __delitem__(self, key):
+        del self._get_robj()[key]
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._get_robj(), name)
+
+    def __setattr__(self, name, value):
+        setattr(self._get_robj(), name, value)
+
+    def __delattr__(self, name):
+        delattr(self._get_robj(), name)
+
+    def __bool__(self):
         try:
-            return getattr(self.__obj, self.__name__)
-        except AttributeError:
-            raise RuntimeError('no object bound to %s' % self.__name__)
+            return bool(self._get_robj())
+        except RuntimeError:
+            return False
+
+    def __eq__(self, obj) -> bool:
+        return self._get_robj() == obj
+
+    def __ne__(self, obj) -> bool:
+        return self._get_robj() != obj
+
+    def __call__(self, *args, **kwargs):
+        return self._get_robj()(*args, **kwargs)
+
+    def __iter__(self):
+        return iter(self._get_robj())
+
+    def __contains__(self, element):
+        return element in self._get_robj()
+
+    def __dir__(self):
+        try:
+            return dir(self._get_robj())
+        except RuntimeError:
+            return []
 
     @property
     def __dict__(self):
@@ -47,6 +85,9 @@ class ObjectProxy(object):
         except RuntimeError:
             raise AttributeError('__dict__')
 
+    def __str__(self):
+        return str(self._get_robj())
+
     def __repr__(self):
         try:
             obj = self._get_robj()
@@ -54,56 +95,36 @@ class ObjectProxy(object):
             return '<%s unbound>' % self.__class__.__name__
         return repr(obj)
 
-    def __bool__(self):
-        try:
-            return bool(self._get_robj())
-        except RuntimeError:
-            return False
 
-    def __dir__(self):
-        try:
-            return dir(self._get_robj())
-        except RuntimeError:
-            return []
-
-    def __getattr__(self, name):
-        return getattr(self._get_robj(), name)
-
-    def __setitem__(self, key, value):
-        self._get_robj()[key] = value
-
-    def __delitem__(self, key):
-        del self._get_robj()[key]
-
-    __setattr__ = lambda x, n, v: setattr(x._get_robj(), n, v)
-    __delattr__ = lambda x, n: delattr(x._get_robj(), n)
-    __str__ = lambda x: str(x._get_robj())
-    __getitem__ = lambda x, i: x._get_robj()[i]
-    __eq__ = lambda x, o: x._get_robj() == o
-    __ne__ = lambda x, o: x._get_robj() != o
-    __call__ = lambda x, *a, **kw: x._get_robj()(*a, **kw)
-    __iter__ = lambda x: iter(x._get_robj())
-    __contains__ = lambda x, i: i in x._get_robj()
-
-
-class ContextVarProxy(ObjectProxy):
+class ObjectProxy(ProxyMixin, Generic[T]):
     __slots__ = ('__obj', '__name__')
 
-    def __init__(self, obj, name=None):
+    def __init__(self, obj: Any, name: str):
+        object.__setattr__(self, '_ObjectProxy__obj', obj)
+        object.__setattr__(self, '__name__', name)
+
+    def _get_robj(self) -> T:
+        return getattr(self.__obj, self.__name__)
+
+
+class ContextVarProxy(ProxyMixin, Generic[T]):
+    __slots__ = ('__obj', '__name__')
+
+    def __init__(self, obj: Any, name: str):
         object.__setattr__(self, '_ContextVarProxy__obj', obj)
         object.__setattr__(self, '__name__', name)
 
-    def _get_robj(self):
+    def _get_robj(self) -> T:
         return getattr(self.__obj.get(), self.__name__)
 
 
-class ImmutableListMixin(object):
+class ImmutableListMixin:
     _hash_cache = None
 
-    def __hash__(self):
+    def __hash__(self) -> Optional[int]:  # type: ignore
         if self._hash_cache is not None:
             return self._hash_cache
-        rv = self._hash_cache = hash(tuple(self))
+        rv = self._hash_cache = hash(tuple(self))  # type: ignore
         return rv
 
     def __reduce_ex__(self, protocol):
@@ -114,14 +135,18 @@ class ImmutableListMixin(object):
 
     def __iadd__(self, other):
         _is_immutable(self)
-    __imul__ = __iadd__
+
+    def __imul__(self, other):
+        _is_immutable(self)
 
     def __setitem__(self, key, value):
         _is_immutable(self)
 
     def append(self, item):
         _is_immutable(self)
-    remove = append
+
+    def remove(self, itme):
+        _is_immutable(self)
 
     def extend(self, iterable):
         _is_immutable(self)
@@ -139,7 +164,7 @@ class ImmutableListMixin(object):
         _is_immutable(self)
 
 
-class ImmutableList(ImmutableListMixin, list):
+class ImmutableList(ImmutableListMixin, list):  # type: ignore
     def __repr__(self):
         return '%s(%s)' % (
             self.__class__.__name__, list.__repr__(self)
@@ -312,5 +337,10 @@ def _pendulum_to_naive_datetime(obj):
     )
 
 
-pendulum.DateTime.as_datetime = _pendulum_to_datetime
-pendulum.DateTime.as_naive_datetime = _pendulum_to_naive_datetime
+def _pendulum_json(obj):
+    return obj.for_json()
+
+
+pendulum.DateTime.as_datetime = _pendulum_to_datetime  # type: ignore
+pendulum.DateTime.as_naive_datetime = _pendulum_to_naive_datetime  # type: ignore
+pendulum.DateTime.__json__ = _pendulum_json  # type: ignore
