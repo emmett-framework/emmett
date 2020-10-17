@@ -1,6 +1,23 @@
 Emmett changelog
 ================
 
+Next
+----
+
+(Release date to be defined, codename to be selected)
+
+- Added type hints on all major interfaces
+- Deprecated `App.run`
+- Deprecated string signals in favour of `extensions.Signals`
+- Removed `libs.sanitizer`
+- Use `orjson` for JSON serialization
+- Refactored request flow internals
+- Added namespaces to templater
+- Added `SameSite` support to session cookies
+- Added HTTP/2 support
+- Added `Request.push_promise`
+- Added Python 3.9 support (beta)
+
 Version 2.0
 -----------
 
