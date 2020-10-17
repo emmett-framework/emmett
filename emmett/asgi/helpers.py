@@ -52,7 +52,11 @@ class BuilderRegistry(Registry):
     def __init__(self):
         self._data: Dict[str, Tuple[Callable[..., Any], List[str]]] = {}
 
-    def register(self, key: str, packages: Optional[List[str]] = None):
+    def register(
+        self,
+        key: str,
+        packages: Optional[List[str]] = None
+    ) -> Callable[[], Callable[..., Any]]:
         packages = packages or []
 
         def wrap(builder: Callable[..., Any]) -> Callable[..., Any]:
