@@ -12,7 +12,26 @@ Emmett comes with an included server based on [uvicorn](https://www.uvicorn.org/
 
     emmett serve --host 0.0.0.0 --port 80
 
-You can inspect all the available options of the `serve` command using the `--help` option.
+You can inspect all the available options of the `serve` command using the `--help` option. Here is the full list:
+
+| option | default | description |
+| --- | --- | --- |
+| host | 0.0.0.0 | Bind address |
+| port | 8000 | Bind port |
+| loop | auto | Loop implementation (possible values: auto,asyncio,uvloop) |
+| http-protocol | auto | HTTP protocol implementation (possible values: auto,h11,httptools) |
+| ws-protocol | auto | Websocket protocol implementation (possible values: auto,websockets,wsproto) |
+| log-level | warning | Logging level (possible values: debug,info,warning,error,critical) |
+| access-log | (flag) enabled | Enable/disable access log |
+| proxy-headers | (flag) disabled | Enable/disable proxy headers |
+| proxy-trust-ips | | Comma separated list of IPs to trust for proxy headers |
+| max-concurrency | | Limit number of concurrent connections |
+| backlog | 2048 | Maximum connection queue |
+| keep-alive-timeout | 0 | Connection keep-alive timeout |
+| ssl-certfile | | Path to SSL certificate file |
+| ssl-keyfile | | Path to SSL key file |
+| ssl-cert-reqs | | SSL client certificate requirements (see `ssl` module) |
+| ssl-ca-certs | | SSL CA allowed certificates |
 
 Gunicorn
 --------
