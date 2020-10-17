@@ -7,13 +7,10 @@
     :license: BSD-3-Clause
 """
 
-from . import ProtocolWrapper, protocols
+from . import protocols
 
 
-@protocols.register('auto')
-class AutoProtocol(ProtocolWrapper):
-    @classmethod
-    def protocol_cls(cls):
-        if 'httptools' in protocols.builders:
-            return protocols.get_protocol('httptools').builder.protocol_cls()
-        return protocols.get_protocol('h11').builder.protocol_cls()
+if "httptools" in protocols:
+    protocols.register("auto")(protocols.get("httptools"))
+else:
+    protocols.register("auto")(protocols.get("h11"))

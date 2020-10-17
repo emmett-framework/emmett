@@ -144,3 +144,29 @@ So you've just learned three handy aspects of Emmett:
 * `redirect` and `abort` allow you to stop the execution of your code;
 * you can set specific actions for your application to perform when it encounters a particular HTTP error code with `app.on_error()`;
 * you can use `app.render_template()` to render a specific template without the presence of an exposed function or a specific context.
+
+HTTP/2
+------
+
+*New in version 2.1*
+
+Emmett supports serving requests following the HTTP/2 standard. In order to enable serving such requests the `h11` protocol implementation should be enabled in `develop` and `serve` commands using the `--http-protocol` option.
+
+Moreover, in order for the browser to use HTTP/2 protocol, SSL should be enabled. SSL certificate and key should be passed to `develop` and `serve` commands using the relevant `--ssl-certfile` and `--ssl-keyfile` options.
+
+> **Hint:** a self-signed SSL certificate can be generated for development purposes using the `openssl` command, like: `openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes`.
+
+### Server push
+
+Server push allows for the server to send responses to the client before the client sends the request itself. This is useful when the server can predict what the client will request, thereby saving time at the possible cost of bandwidth if the prediction is wrong.
+
+Emmett supports HTTP/2 server push promises thanks to the `Request.push_promise` coroutine, which accepts as parameter the url of the static file to be sent. Here is an example:
+
+```python
+from emmett import request, url
+
+@app.route("/")
+async def index():
+    await request.push_promise(url("static", "some_asset.js"))
+    return {}
+```

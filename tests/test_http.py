@@ -38,13 +38,14 @@ def test_http():
         200,
         'Hello World',
         headers={'x-test': 'Hello Header'},
-        cookies={'cookie_test': 'hello cookie'}
+        cookies={'cookie_test': 'Set-Cookie: hello cookie'}
     )
 
     assert http.encoded_body == b'Hello World'
     assert http.status_code == 200
     assert http.headers == [
-        (b'x-test', b'Hello Header'), (b'set-cookie', b'e')]
+        (b'x-test', b'Hello Header'), (b'set-cookie', b'hello cookie')
+    ]
 
 
 def test_redirect():

@@ -32,20 +32,6 @@ class ProtocolWrapperRegistry(BuilderRegistry):
         return _wrap_builder_wrapper_with_packages(builder, packages)
 
 
-# class Protocol(object):
-#     def __init__(self, packages={}, *args, **kwargs):
-#         for key, val in packages.items():
-#             setattr(self, key, val)
-#         self._init(*args, **kwargs)
-#         self.init()
-
-#     def _init(self, *args, **kwargs):
-#         pass
-
-#     def init(self):
-#         pass
-
-
 class ProtocolWrapper(object):
     def __init__(self, packages={}, *args, **kwargs):
         for key, val in packages.items():
@@ -63,10 +49,6 @@ class ProtocolWrapper(object):
     def build_protocol(self):
         return self.protocol_cls()(*self._args, **self._kwargs)
 
-    @classmethod
-    def tick(cls):
-        return cls.protocol_cls().tick()
-
 
 def _wrap_builder_with_packages(builder, packages):
     def wrap(*args, **kwargs):
@@ -82,9 +64,6 @@ class _wrap_builder_wrapper_with_packages(object):
     def __call__(self, *args, **kwargs):
         return self.builder(
             packages=self.packages, *args, **kwargs).build_protocol()
-
-    def tick(self):
-        return self.builder.tick()
 
 
 from .http import protocols as protocols_http

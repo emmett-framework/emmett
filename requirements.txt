@@ -1,6 +1,10 @@
 click==7.1.2
-h11==0.9.0
-httptools==0.1.1; sys_platform != "win32" and sys_platform != "cygwin" and platform_python_implementation != "PyPy" or sys_platform != "win32"
+h11==0.10.0
+h2==4.0.0
+hpack==4.0.0
+httptools==0.1.1; sys_platform != "win32"
+hyperframe==6.0.0
+orjson==3.3.1
 pendulum==2.1.2
 pyaes==1.6.1
 pydal==17.3
@@ -11,6 +15,7 @@ pyyaml==5.3.1
 renoir==1.2.0
 severus==1.0.1
 six==1.15.0
-uvicorn==0.11.8
-uvloop==0.14.0; sys_platform != "win32" and sys_platform != "cygwin" and platform_python_implementation != "PyPy" or sys_platform != "win32"
+typing-extensions==3.7.4.3; python_version < "3.8"
+uvicorn==0.12.1
+uvloop==0.14.0; sys_platform != "win32"
 websockets==8.1
