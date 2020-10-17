@@ -3,6 +3,8 @@
     emmett.asgi.protocols.http.httptools
     ------------------------------------
 
+    Provides HTTP httptools protocol implementation
+
     :copyright: 2014 Giovanni Barillari
     :license: BSD-3-Clause
 """

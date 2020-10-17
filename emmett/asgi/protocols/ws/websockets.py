@@ -3,18 +3,15 @@
     emmett.asgi.protocols.ws.websockets
     -----------------------------------
 
+    Provides websocket websockets protocol implementation
+
     :copyright: 2014 Giovanni Barillari
     :license: BSD-3-Clause
 """
 
-from . import ProtocolWrapper, protocols
+from uvicorn.protocols.websockets.websockets_impl import WebSocketProtocol
+
+from . import protocols
 
 
-@protocols.register('websockets', packages=['websockets'])
-class WebsocketsProtocol(ProtocolWrapper):
-    @classmethod
-    def protocol_cls(cls):
-        from uvicorn.protocols.websockets.websockets_impl import (
-            WebSocketProtocol
-        )
-        return WebSocketProtocol
+protocols.register("websockets")(WebSocketProtocol)

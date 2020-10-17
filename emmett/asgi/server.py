@@ -47,9 +47,9 @@ def run(
     ssl_cert_reqs: int = ssl.CERT_NONE,
     ssl_ca_certs: Optional[str] = None
 ):
-    loop = loops.get_loop(loop)
+    loop = loops.get(loop)
     protocol_cls_http = protocols_http.get(proto_http)
-    protocol_cls_ws = protocols_ws.get_protocol(proto_ws)
+    protocol_cls_ws = protocols_ws.get(proto_ws)
 
     app.send_signal(Signals.after_loop, loop=loop)
 

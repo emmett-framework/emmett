@@ -305,14 +305,14 @@ def run_command(ctx, host, port, reloader, debug):
 @click.option(
     '--port', '-p', type=int, default=8000, help='The port to bind to.')
 @click.option(
-    '--loop', type=click.Choice(loops.registry.keys()), default='auto',
+    '--loop', type=click.Choice(loops.keys()), default='auto',
     help='Event loop implementation.')
 @click.option(
     '--http-protocol', type=click.Choice(protocols_http.keys()),
     default='auto', help='HTTP protocol implementation.')
 @click.option(
-    '--ws-protocol', type=click.Choice(protocols_ws.registry.keys()),
-    default='auto', help='HTTP protocol implementation.')
+    '--ws-protocol', type=click.Choice(protocols_ws.keys()),
+    default='auto', help='Websocket protocol implementation.')
 @click.option(
     '--ssl-certfile', type=str, default=None, help='SSL certificate file')
 @click.option(
@@ -392,14 +392,14 @@ def develop_command(
 @click.option(
     '--port', '-p', type=int, default=8000, help='The port to bind to.')
 @click.option(
-    '--loop', type=click.Choice(loops.registry.keys()), default='auto',
+    '--loop', type=click.Choice(loops.keys()), default='auto',
     help='Event loop implementation.')
 @click.option(
     '--http-protocol', type=click.Choice(protocols_http.keys()),
     default='auto', help='HTTP protocol implementation.')
 @click.option(
-    '--ws-protocol', type=click.Choice(protocols_ws.registry.keys()),
-    default='auto', help='HTTP protocol implementation.')
+    '--ws-protocol', type=click.Choice(protocols_ws.keys()),
+    default='auto', help='Websocket protocol implementation.')
 @click.option(
     '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='warning',
     help='Logging level.')

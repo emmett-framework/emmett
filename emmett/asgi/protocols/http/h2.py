@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+    emmett.asgi.protocols.http.h2
+    -----------------------------
+
+    Provides HTTP h2 protocol implementation
+
+    :copyright: 2014 Giovanni Barillari
+    :license: BSD-3-Clause
+"""
+
 from __future__ import annotations
 
 import asyncio

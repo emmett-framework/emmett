@@ -3,6 +3,8 @@
     emmett.asgi.helpers
     -------------------
 
+    Provides ASGI helpers
+
     :copyright: 2014 Giovanni Barillari
     :license: BSD-3-Clause
 """
@@ -10,7 +12,7 @@
 import ssl
 import sys
 
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from uvicorn.config import Config as UvicornConfig
 from uvicorn.lifespan.on import LifespanOn
@@ -44,14 +46,16 @@ class Registry:
 
 
 
-class BuilderRegistry:
-    def __init__(self):
-        self.registry = {}
-        self.builders = {}
+class BuilderRegistry(Registry):
+    __slots__ = []
 
-    def register(self, name, packages=[]):
-        def wrap(builder):
-            self.registry[name] = builder
+    def __init__(self):
+        self._data: Dict[str, Tuple[Callable[..., Any], List[str]]] = {}
+
+    def register(self, key: str, packages: Optional[List[str]] = None):
+        packages = packages or []
+
+        def wrap(builder: Callable[..., Any]) -> Callable[..., Any]:
             loaded_packages, implemented = {}, True
             try:
                 for package in packages:
@@ -60,9 +64,16 @@ class BuilderRegistry:
             except ImportError:
                 implemented = False
             if implemented:
-                self.builders[name] = (builder, loaded_packages)
+                self._data[key] = (builder, loaded_packages)
             return builder
         return wrap
+
+    def get(self, key: str) -> Callable[..., Any]:
+        try:
+            builder, packages = self._data[key]
+        except KeyError:
+            raise RuntimeError(f"'{key}' implementation not available.")
+        return builder(**packages)
 
 
 class Config(UvicornConfig):

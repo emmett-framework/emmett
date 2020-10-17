@@ -3,6 +3,8 @@
     emmett.asgi.protocols.http.h11
     ------------------------------
 
+    Provides HTTP h11 protocol implementation
+
     :copyright: 2014 Giovanni Barillari
     :license: BSD-3-Clause
 """

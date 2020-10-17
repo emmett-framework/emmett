@@ -3,7 +3,7 @@
     emmett.asgi.protocols.helpers
     -----------------------------
 
-    Provides HTTP protocols helpers.
+    Provides HTTP protocols helpers
 
     :copyright: 2014 Giovanni Barillari
     :license: BSD-3-Clause

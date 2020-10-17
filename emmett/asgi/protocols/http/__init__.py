@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from ...helpers import Registry
 
 protocols = Registry()

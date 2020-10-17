@@ -3,6 +3,8 @@
     emmett.asgi.protocols.http.auto
     -------------------------------
 
+    Provides HTTP auto protocol loader
+
     :copyright: 2014 Giovanni Barillari
     :license: BSD-3-Clause
 """
