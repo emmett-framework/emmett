@@ -13,6 +13,44 @@ Just as a remind, you can update Emmett using *pip*:
 $ pip install -U emmett
 ```
 
+Version 2.1
+-----------
+
+Emmett 2.1 introduces some minor breaking changes you should be aware of, and some new features you might been interested into.
+
+### Breaking changes
+
+#### Removed sanitizer from libs
+
+The *sanitizer* module was a very old module included in Emmett since long time ago. This module was written using the `formatter` module from standard library, deprecated since Python 3.4, and scheduled for removal in next Python versions.
+
+The only place using this library in Emmett was in `html.safe` method with the `sanitize` option activated. Considering the lack of usage from the community, the lack of maintenance of the library and in order to avoid preventions in supporting future Python versions, since Emmett 2.1 this library is not available anymore. In case you need a replacement for the sanitizer, you must implement by yourself.
+
+Moreover, calling `html.safe` with `sanitize` option set will warn about the behaviour difference.
+
+### Deprecations
+
+#### Html safe helper
+
+Due to removal of `sanitizer` library, `html.safe` is now exactly the same of `html.asis`. You should switch the usage in your code.
+
+#### Application run method
+
+The `run` method in `App` class is now deprecated. Please rely on `develop` and `serve` command from CLI.
+
+#### Extensions string signals
+
+Prior to Emmett 2.1 [extensions signals](./extensions#using-signals) were implemented as strings. Since 2.1 a new `Signals` enum is available in extensions module you should use in place of strings.
+
+### New features
+
+With version 2.1 we introduced some new features:
+
+- [HTTP/2](./request#http2) support
+- `SameSite` parameter support on [session cookies](./sessions)
+
+Emmett 2.1 also introduces (beta) support for Python 3.9, and type hints on all major interfaces.
+
 Version 2.0
 -----------
 
