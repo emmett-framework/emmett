@@ -15,6 +15,7 @@
 
 import multiprocessing
 import os
+import platform
 import signal
 import subprocess
 import ssl
@@ -168,8 +169,11 @@ def run_with_reloader(
 
     try:
         if os.environ.get('EMMETT_RUN_MAIN') == 'true':
-            # FIXME: enable on Py >= 3.8 on linux
-            # multiprocessing.set_start_method("fork")
+            if (
+                sys.version_info >= (3, 8) and
+                platform.system().lower() in ["linux", "darwin"]
+            ):
+                multiprocessing.set_start_method("fork")
             process = multiprocessing.Process(
                 target=app._run,
                 args=(host, port),
