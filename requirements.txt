@@ -4,7 +4,7 @@ h2==4.0.0
 hpack==4.0.0
 httptools==0.1.1; sys_platform != "win32"
 hyperframe==6.0.0
-orjson==3.3.1
+orjson==3.4.0
 pendulum==2.1.2
 pyaes==1.6.1
 pydal==17.3
