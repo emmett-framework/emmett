@@ -1,10 +1,10 @@
 Emmett changelog
 ================
 
-Next
-----
+Version 2.1
+-----------
 
-(Release date to be defined, codename to be selected)
+Released on October 17th 2020, codename Bell
 
 - Added type hints on all major interfaces
 - Deprecated `App.run`

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Emmett"
-version = "2.1.0.dev0"
+version = "2.1.0"
 description = "The web framework for inventors"
 authors = ["Giovanni Barillari <gi0baro@d4net.org>"]
 license = "BSD-3-Clause"
