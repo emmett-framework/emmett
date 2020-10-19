@@ -342,6 +342,10 @@ class App:
         return self.cli.command
 
     @property
+    def command_group(self):
+        return self.cli.group
+
+    @property
     def log(self) -> Logger:
         if self._logger and self._logger.name == self.logger_name:
             return self._logger
