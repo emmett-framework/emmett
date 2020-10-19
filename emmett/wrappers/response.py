@@ -15,6 +15,7 @@ from typing import Any
 from ..datastructures import sdict
 from ..helpers import get_flashed_messages
 from ..html import htmlescape
+from ..utils import cachedprop
 from . import Wrapper
 from .helpers import ResponseHeaders
 
@@ -23,14 +24,20 @@ Morsel._reserved["samesite"] = "SameSite"  # type: ignore  # noqa
 
 
 class Response(Wrapper):
-    __slots__ = ('status', 'headers', 'cookies', 'meta', 'meta_prop')
+    __slots__ = ('status', 'headers', 'cookies')
 
     def __init__(self):
         self.status = 200
         self.headers = ResponseHeaders({'content-type': 'text/plain'})
         self.cookies = SimpleCookie()
-        self.meta: sdict[str, Any] = sdict()
-        self.meta_prop: sdict[str, Any] = sdict()
+
+    @cachedprop
+    def meta(self) -> sdict[str, Any]:
+        return sdict()
+
+    @cachedprop
+    def meta_prop(self) -> sdict[str, Any]:
+        return sdict()
 
     @property
     def content_type(self) -> str:
