@@ -47,17 +47,17 @@ class ClientContext(object):
 
 class ClientHTTPHandler(HTTPHandler):
     async def dynamic_handler(self, scope, receive, send):
-        ctx_token = current._init_(
-            RequestContext,
+        ctx = RequestContext(
             self.app,
             scope,
             receive,
             send,
-            wrapper_request=Request,
-            wrapper_response=Response
+            Request,
+            Response
         )
+        ctx_token = current._init_(ctx)
         try:
-            http = await self.router.dispatch()
+            http = await self.router.dispatch(ctx.request, ctx.response)
         except HTTPResponse as http_exception:
             http = http_exception
             #: render error with handlers if in app
@@ -66,16 +66,16 @@ class ClientHTTPHandler(HTTPHandler):
                 http = HTTP(
                     http.status_code,
                     await error_handler(),
-                    current.response.headers
+                    ctx.response.headers
                 )
             #: always set cookies
-            http.set_cookies(current.response.cookies)
+            http.set_cookies(ctx.response.cookies)
         except Exception:
             self.app.log.exception('Application exception:')
             http = HTTP(
                 500,
                 await self.error_handler(),
-                headers=current.response.headers
+                headers=ctx.response.headers
             )
         finally:
             scope['emt.ctx'] = ClientContext()

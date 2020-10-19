@@ -21,9 +21,7 @@ from emmett.testing.env import ScopeBuilder
 @contextmanager
 def current_ctx(app, path):
     builder = ScopeBuilder(path)
-    token = current._init_(
-        FakeRequestContext, app, builder.get_data()[0], None, None
-    )
+    token = current._init_(FakeRequestContext(app, builder.get_data()[0]))
     yield current
     current._close_(token)
 
@@ -189,7 +187,7 @@ def test_route_args(app):
 @pytest.mark.asyncio
 async def test_routing_valid_route(app):
     with current_ctx(app, '/it/test_route') as ctx:
-        response = await app._router_http.dispatch()
+        response = await app._router_http.dispatch(ctx.request, ctx.response)
         assert response.status_code == ctx.response.status == 200
         assert response.body == 'Test Router'
         assert ctx.request.language == 'it'
@@ -197,18 +195,18 @@ async def test_routing_valid_route(app):
 
 @pytest.mark.asyncio
 async def test_routing_not_found_route(app):
-    with current_ctx(app, '/'):
+    with current_ctx(app, '/') as ctx:
         with pytest.raises(HTTP) as excinfo:
-            await app._router_http.dispatch()
+            await app._router_http.dispatch(ctx.request, ctx.response)
         assert excinfo.value.status_code == 404
         assert excinfo.value.body == 'Resource not found\n'
 
 
 @pytest.mark.asyncio
 async def test_routing_exception_route(app):
-    with current_ctx(app, '/test_404'):
+    with current_ctx(app, '/test_404') as ctx:
         with pytest.raises(HTTP) as excinfo:
-            await app._router_http.dispatch()
+            await app._router_http.dispatch(ctx.request, ctx.response)
         assert excinfo.value.status_code == 404
         assert excinfo.value.body == 'Not found, dude'
 

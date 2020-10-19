@@ -20,7 +20,7 @@ json_dump = Serializers.get_for('json')
 
 
 class FakeRequestContext(RequestContext):
-    def __init__(self, app, scope, *args):
+    def __init__(self, app, scope):
         self.app = app
         self.request = Request(scope, None, None)
         self.response = Response()
@@ -28,7 +28,7 @@ class FakeRequestContext(RequestContext):
 
 
 class FakeWSContext(WSContext):
-    def __init__(self, app, scope, *args):
+    def __init__(self, app, scope):
         self.app = app
         self.websocket = Websocket(
             scope,
@@ -48,9 +48,7 @@ class FakeWSContext(WSContext):
 @contextmanager
 def current_ctx(path, app=None):
     builder = ScopeBuilder(path)
-    token = current._init_(
-        FakeRequestContext, app, builder.get_data()[0], None, None
-    )
+    token = current._init_(FakeRequestContext(app, builder.get_data()[0]))
     yield current
     current._close_(token)
 
@@ -60,6 +58,6 @@ def ws_ctx(path, app=None):
     builder = ScopeBuilder(path)
     scope_data = builder.get_data()[0]
     scope_data.update(type='websocket', scheme='wss')
-    token = current._init_(FakeWSContext, app, scope_data, None, None)
+    token = current._init_(FakeWSContext(app, scope_data))
     yield current
     current._close_(token)
