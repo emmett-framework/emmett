@@ -265,17 +265,17 @@ class HTTPHandler(RequestHandler):
         receive: Receive,
         send: Send
     ) -> HTTPResponse:
-        ctx_token = current._init_(
-            RequestContext,
+        ctx = RequestContext(
             self.app,
             scope,
             receive,
             send,
-            wrapper_request=Request,
-            wrapper_response=Response
+            Request,
+            Response
         )
+        ctx_token = current._init_(ctx)
         try:
-            http = await self.router.dispatch()
+            http = await self.router.dispatch(ctx.request, ctx.response)
         except HTTPResponse as http_exception:
             http = http_exception
             #: render error with handlers if in app
@@ -284,10 +284,10 @@ class HTTPHandler(RequestHandler):
                 http = HTTP(
                     http.status_code,
                     await error_handler(),
-                    current.response.headers
+                    ctx.response.headers
                 )
             #: always set cookies
-            http.set_cookies(current.response.cookies)
+            http.set_cookies(ctx.response.cookies)
         except RequestCancelled:
             raise
         except Exception:
@@ -295,7 +295,7 @@ class HTTPHandler(RequestHandler):
             http = HTTP(
                 500,
                 await self.error_handler(),
-                headers=current.response.headers
+                headers=ctx.response.headers
             )
         finally:
             current._close_(ctx_token)
@@ -410,20 +410,20 @@ class WSHandler(RequestHandler):
         receive: Receive,
         send: Send
     ):
-        ctx_token = current._init_(
-            WSContext,
+        ctx = WSContext(
             self.app,
             scope,
             scope['emt.input'].get,
             send,
-            wrapper_websocket=Websocket
+            Websocket
         )
+        ctx_token = current._init_(ctx)
         try:
-            await self.router.dispatch()
+            await self.router.dispatch(ctx.websocket)
         finally:
             if (
                 not scope.get('emt._flow_cancel', False) and
-                current.websocket._accepted
+                ctx.websocket._accepted
             ):
                 await send({'type': 'websocket.close', 'code': 1000})
                 scope['emt._ws_closed'] = True

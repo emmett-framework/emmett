@@ -239,13 +239,12 @@ class HTTPRouter(Router):
                     return element, args
         return None, {}
 
-    async def dispatch(self):
-        request = current.request
+    async def dispatch(self, request, response):
         match, reqargs = self.match(request)
         if not match:
             raise HTTP(404, body="Resource not found\n")
         request.name = match.name
-        return await match.dispatch(reqargs, current.response)
+        return await match.dispatch(reqargs, response)
 
 
 class WebsocketRouter(Router):
@@ -315,8 +314,7 @@ class WebsocketRouter(Router):
                     return element, args
         return None, {}
 
-    async def dispatch(self):
-        websocket = current.websocket
+    async def dispatch(self, websocket):
         match, reqargs = self.match(websocket)
         if not match:
             raise HTTP(404, body="Resource not found\n")
