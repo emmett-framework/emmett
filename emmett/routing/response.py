@@ -41,8 +41,19 @@ class ResponseBuilder(MetaResponseBuilder):
         return self.http_cls(
             response.status,
             output,
-            response.headers,
-            response.cookies
+            headers=response.headers,
+            cookies=response.cookies
+        )
+
+
+class EmptyResponseBuilder(ResponseBuilder):
+    http_cls = HTTPResponse
+
+    def __call__(self, output: Any, response: Response) -> HTTPResponse:
+        return self.http_cls(
+            response.status,
+            headers=response.headers,
+            cookies=response.cookies
         )
 
 
@@ -54,8 +65,8 @@ class ResponseProcessor(ResponseBuilder):
         return self.http_cls(
             response.status,
             self.process(output, response),
-            response.headers,
-            response.cookies
+            headers=response.headers,
+            cookies=response.cookies
         )
 
 
@@ -66,8 +77,8 @@ class BytesResponseBuilder(MetaResponseBuilder):
         return self.http_cls(
             response.status,
             output,
-            response.headers,
-            response.cookies
+            headers=response.headers,
+            cookies=response.cookies
         )
 
 

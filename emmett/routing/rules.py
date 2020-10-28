@@ -16,7 +16,6 @@ import os
 from typing import Any, Callable
 
 from ..cache import RouteCacheRule
-from ..http import HTTPResponse
 from ..pipeline import RequestPipeline, WebsocketPipeline, Pipe
 from .routes import HTTPRoute, WebsocketRoute
 
@@ -115,9 +114,7 @@ class HTTPRoutingRule(RoutingRule):
 
     def _make_builders(self, output_type):
         builder_cls = self.router._outputs[output_type]
-        response, head = builder_cls(self), builder_cls(self)
-        head.http_cls = HTTPResponse
-        return response, head
+        return builder_cls(self), self.router._outputs['empty'](self)
 
     def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
         if not self.paths:
