@@ -21,6 +21,7 @@ from ..extensions import Signals
 from ..http import HTTP
 from .response import (
     MetaResponseBuilder,
+    EmptyResponseBuilder,
     ResponseBuilder,
     AutoResponseBuilder,
     BytesResponseBuilder,
@@ -167,6 +168,7 @@ class HTTPRouter(Router):
     _routing_rec_builder = RouteRecReq
 
     _outputs = {
+        'empty': EmptyResponseBuilder,
         'auto': AutoResponseBuilder,
         'bytes': BytesResponseBuilder,
         'str': ResponseBuilder,
