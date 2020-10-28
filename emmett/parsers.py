@@ -10,11 +10,17 @@
 from functools import partial
 from typing import Any, Callable, Dict
 
-from rapidjson import (
-    DM_ISO8601, DM_NAIVE_IS_UTC,
-    NM_NATIVE,
-    loads as _json_loads
-)
+try:
+    import orjson
+    _json_impl = orjson.loads
+    _json_opts = {}
+except ImportError:
+    import rapidjson
+    _json_impl = rapidjson.loads
+    _json_opts = {
+        "datetime_mode": rapidjson.DM_ISO8601 | rapidjson.DM_NAIVE_IS_UTC,
+        "number_mode": rapidjson.NM_NATIVE
+    }
 
 
 class Parsers(object):
@@ -33,9 +39,8 @@ class Parsers(object):
 
 
 json = partial(
-    _json_loads,
-    datetime_mode=DM_ISO8601 | DM_NAIVE_IS_UTC,
-    number_mode=NM_NATIVE
+    _json_impl,
+    **_json_opts
 )
 
 Parsers.register_for('json')(json)

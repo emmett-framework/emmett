@@ -10,9 +10,23 @@
 from functools import partial
 from typing import Any, Callable, Dict, Union
 
-from orjson import dumps as _json_dumps, OPT_NAIVE_UTC, OPT_NON_STR_KEYS
-
 from .html import tag, htmlescape
+
+try:
+    import orjson
+    _json_impl = orjson.dumps
+    _json_opts = {
+        "option": orjson.OPT_NON_STR_KEYS | orjson.OPT_NAIVE_UTC
+    }
+    _json_type = "bytes"
+except ImportError:
+    import rapidjson
+    _json_impl = rapidjson.dumps
+    _json_opts = {
+        "datetime_mode": rapidjson.DM_ISO8601 | rapidjson.DM_NAIVE_IS_UTC,
+        "number_mode": rapidjson.NM_NATIVE | rapidjson.NM_DECIMAL
+    }
+    _json_type = "str"
 
 _json_safe_table = {
     'u2028': [r'\u2028', '\\u2028'],
@@ -42,9 +56,9 @@ def _json_default(obj):
 
 
 json = partial(
-    _json_dumps,
+    _json_impl,
     default=_json_default,
-    option=OPT_NON_STR_KEYS | OPT_NAIVE_UTC
+    **_json_opts
 )
 
 

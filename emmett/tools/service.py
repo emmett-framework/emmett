@@ -12,12 +12,12 @@
 from ..ctx import current
 from ..parsers import Parsers
 from ..pipeline import Pipe
-from ..serializers import Serializers
+from ..serializers import Serializers, _json_type
 
 
 class JSONServicePipe(Pipe):
     __slots__ = ['decoder', 'encoder']
-    output = 'bytes'
+    output = _json_type
 
     def __init__(self):
         self.decoder = Parsers.get_for('json')
