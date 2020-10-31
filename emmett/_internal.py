@@ -34,7 +34,7 @@ class ProxyMixin:
         raise NotImplementedError
 
     def __getitem__(self, key):
-        return self._get_robj[key]
+        return self._get_robj()[key]
 
     def __setitem__(self, key, value):
         self._get_robj()[key] = value
