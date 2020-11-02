@@ -495,7 +495,8 @@ class App:
         root_path: Optional[str] = None,
         pipeline: Optional[List[Pipe]] = None,
         injectors: Optional[List[Injector]] = None,
-        module_class: Optional[Type[AppModule]] = None
+        module_class: Optional[Type[AppModule]] = None,
+        **kwargs: Any
     ) -> AppModule:
         module_class = module_class or self.config.modules_class
         return module_class.from_app(
@@ -509,25 +510,56 @@ class App:
             cache=cache,
             root_path=root_path,
             pipeline=pipeline or [],
-            injectors=injectors or []
+            injectors=injectors or [],
+            opts=kwargs
         )
 
 
 class AppModule:
     @classmethod
     def from_app(
-        cls, app, import_name, name, template_folder, template_path,
-        url_prefix, hostname, cache, root_path, pipeline, injectors
+        cls,
+        app: App,
+        import_name: str,
+        name: str,
+        template_folder: Optional[str],
+        template_path: Optional[str],
+        url_prefix: Optional[str],
+        hostname: Optional[str],
+        cache: Optional[RouteCacheRule],
+        root_path: Optional[str],
+        pipeline: List[Pipe],
+        injectors: List[Injector],
+        opts: Dict[str, Any] = {}
     ):
         return cls(
-            app, name, import_name, template_folder, template_path, url_prefix,
-            hostname, cache, root_path, pipeline, injectors
+            app,
+            name,
+            import_name,
+            template_folder=template_folder,
+            template_path=template_path,
+            url_prefix=url_prefix,
+            hostname=hostname,
+            cache=cache,
+            root_path=root_path,
+            pipeline=pipeline,
+            injectors=injectors,
+            **opts
         )
 
     @classmethod
     def from_module(
-        cls, appmod, import_name, name, template_folder, template_path,
-        url_prefix, hostname, cache, root_path
+        cls,
+        appmod: AppModule,
+        import_name: str,
+        name: str,
+        template_folder: Optional[str],
+        template_path: Optional[str],
+        url_prefix: Optional[str],
+        hostname: Optional[str],
+        cache: Optional[RouteCacheRule],
+        root_path: Optional[str],
+        opts: Dict[str, Any] = {}
     ):
         if '.' in name:
             raise RuntimeError(
@@ -541,9 +573,18 @@ class AppModule:
         hostname = hostname or appmod.hostname
         cache = cache or appmod.cache
         return cls(
-            appmod.app, name, import_name, template_folder, template_path,
-            module_url_prefix, hostname, cache, root_path,
-            pipeline=appmod.pipeline, injectors=appmod.injectors
+            appmod.app,
+            name,
+            import_name,
+            template_folder=template_folder,
+            template_path=template_path,
+            url_prefix=module_url_prefix,
+            hostname=hostname,
+            cache=cache,
+            root_path=root_path,
+            pipeline=appmod.pipeline,
+            injectors=appmod.injectors,
+            **opts
         )
 
     def module(
@@ -556,7 +597,8 @@ class AppModule:
         hostname: Optional[str] = None,
         cache: Optional[RouteCacheRule] = None,
         root_path: Optional[str] = None,
-        module_class: Optional[Type[AppModule]] = None
+        module_class: Optional[Type[AppModule]] = None,
+        **kwargs: Any
     ) -> AppModule:
         module_class = module_class or self.__class__
         return module_class.from_module(
@@ -568,7 +610,8 @@ class AppModule:
             url_prefix=url_prefix,
             hostname=hostname,
             cache=cache,
-            root_path=root_path
+            root_path=root_path,
+            opts=kwargs
         )
 
     def __init__(
@@ -583,7 +626,8 @@ class AppModule:
         cache: Optional[RouteCacheRule] = None,
         root_path: Optional[str] = None,
         pipeline: Optional[List[Pipe]] = None,
-        injectors: Optional[List[Injector]] = None
+        injectors: Optional[List[Injector]] = None,
+        **kwargs: Any
     ):
         self.app = app
         self.name = name
