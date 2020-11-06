@@ -101,7 +101,11 @@ class TemplateResponseBuilder(ResponseProcessor):
                 self.route.template, output
             )
         except TemplateMissingError as exc:
-            raise HTTP(404, body="{}\n".format(exc.message))
+            raise HTTP(
+                404,
+                body="{}\n".format(exc.message),
+                cookies=response.cookies
+            )
 
 
 class AutoResponseBuilder(ResponseProcessor):
@@ -132,7 +136,11 @@ class AutoResponseBuilder(ResponseProcessor):
                     self.route.template, output
                 )
             except TemplateMissingError as exc:
-                raise HTTP(404, body="{}\n".format(exc.message))
+                raise HTTP(
+                    404,
+                    body="{}\n".format(exc.message),
+                    cookies=response.cookies
+                )
         elif isinstance(output, str):
             return output
         return str(output)

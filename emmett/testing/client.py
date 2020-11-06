@@ -66,10 +66,9 @@ class ClientHTTPHandler(HTTPHandler):
                 http = HTTP(
                     http.status_code,
                     await error_handler(),
-                    ctx.response.headers
+                    headers=ctx.response.headers,
+                    cookies=ctx.response.cookies
                 )
-            #: always set cookies
-            http.set_cookies(ctx.response.cookies)
         except Exception:
             self.app.log.exception('Application exception:')
             http = HTTP(
