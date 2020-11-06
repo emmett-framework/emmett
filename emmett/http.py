@@ -78,20 +78,15 @@ class HTTPResponse(Exception):
     ):
         self.status_code: int = status_code
         self._headers: Dict[str, str] = headers
-        self._cookies: List[bytes] = []
-        self.set_cookies(cookies)
-
-    def set_cookies(self, cookies: Dict[str, str]):
-        for cookie in cookies.values():
-            self._cookies.append(str(cookie)[12:].encode('latin-1'))
+        self._cookies: Dict[str, Any] = cookies
 
     @property
     def headers(self) -> List[Tuple[bytes, bytes]]:
         rv = []
         for key, val in self._headers.items():
             rv.append((key.encode('latin-1'), val.encode('latin-1')))
-        for cookie in self._cookies:
-            rv.append((b'set-cookie', cookie))
+        for cookie in self._cookies.values():
+            rv.append((b'set-cookie', str(cookie)[12:].encode('latin-1')))
         return rv
 
     async def _send_headers(self, send):
@@ -152,9 +147,18 @@ class HTTP(HTTPResponse):
 
 
 class HTTPRedirect(HTTPResponse):
-    def __init__(self, status_code: int, location: str):
+    def __init__(
+        self,
+        status_code: int,
+        location: str,
+        cookies: Dict[str, Any] = {}
+    ):
         location = location.replace('\r', '%0D').replace('\n', '%0A')
-        super().__init__(status_code, headers={'location': location})
+        super().__init__(
+            status_code,
+            headers={'location': location},
+            cookies=cookies
+        )
 
 
 class HTTPFile(HTTPResponse):
@@ -245,5 +249,6 @@ class HTTPIO(HTTPResponse):
 
 
 def redirect(location: str, status_code: int = 303):
-    current.response.status = status_code
-    raise HTTPRedirect(status_code, location)
+    response = current.response
+    response.status = status_code
+    raise HTTPRedirect(status_code, location, response.cookies)

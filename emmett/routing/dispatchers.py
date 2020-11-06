@@ -57,12 +57,10 @@ class RequestCloseDispatcher(RequestDispatcher):
 
     async def dispatch(self, reqargs, response):
         try:
-            output = await self.f(**reqargs)
-        except Exception:
+            rv = self.response_builder(await self.f(**reqargs), response)
+        finally:
             await self._parallel_flow(self.flow_close)
-            raise
-        await self._parallel_flow(self.flow_close)
-        return self.response_builder(output, response)
+        return rv
 
 
 class RequestFlowDispatcher(RequestDispatcher):
@@ -71,12 +69,10 @@ class RequestFlowDispatcher(RequestDispatcher):
     async def dispatch(self, reqargs, response):
         await self._parallel_flow(self.flow_open)
         try:
-            output = await self.f(**reqargs)
-        except Exception:
+            rv = self.response_builder(await self.f(**reqargs), response)
+        finally:
             await self._parallel_flow(self.flow_close)
-            raise
-        await self._parallel_flow(self.flow_close)
-        return self.response_builder(output, response)
+        return rv
 
 
 class WSOpenDispatcher(Dispatcher):

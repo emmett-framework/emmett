@@ -284,10 +284,9 @@ class HTTPHandler(RequestHandler):
                 http = HTTP(
                     http.status_code,
                     await error_handler(),
-                    current.response.headers
+                    headers=current.response.headers,
+                    cookies=current.response.cookies
                 )
-            #: always set cookies
-            http.set_cookies(current.response.cookies)
         except RequestCancelled:
             raise
         except Exception:

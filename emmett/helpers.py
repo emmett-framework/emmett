@@ -24,8 +24,13 @@ _re_dbstream = re.compile(r'(?P<table>.*?)\.(?P<field>.*?)\..*')
 
 
 def abort(code: int, body: str = ''):
-    current.response.status = code
-    raise HTTP(code, body)
+    response = current.response
+    response.status = code
+    raise HTTP(
+        code,
+        body=body,
+        cookies=response.cookies
+    )
 
 
 def stream_file(path: str):
