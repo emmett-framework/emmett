@@ -61,14 +61,14 @@ class Worker(_Worker):
 
         config.update(self.EMMETT_CONFIG)
         config.update(
-            http=protocols_http.get_protocol(config.get('http', 'auto')),
-            ws=protocols_ws.get_protocol(config.get('ws', 'auto'))
+            http=protocols_http.get(config.get('http', 'auto')),
+            ws=protocols_ws.get(config.get('ws', 'auto'))
         )
 
         self.config = Config(**config)
 
     def init_process(self):
-        self.config.loop = loops.get_loop(self.config.loop)
+        self.config.loop = loops.get(self.config.loop)
         super().init_process()
 
     def init_signals(self):
