@@ -179,12 +179,16 @@ class HTTPHandler(RequestHandler):
         scope['emt.path'] = scope['path'] or '/'
         try:
             http = await self.pre_handler(scope, receive, send)
+            await asyncio.wait_for(
+                http.send(scope, send),
+                self.app.config.response_timeout
+            )
         except RequestCancelled:
             return
-        await asyncio.wait_for(
-            http.send(scope, send),
-            self.app.config.response_timeout
-        )
+        except asyncio.TimeoutError:
+            self.app.log.warn(
+                f"Timeout sending response: ({scope['emt.path']})"
+            )
 
     @cachedprop
     def error_handler(self) -> Callable[[], Awaitable[str]]:
