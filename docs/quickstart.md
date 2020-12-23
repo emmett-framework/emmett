@@ -403,7 +403,7 @@ async def not_found():
 
 @app.route("/post/<int:id>")
 async def post(id):
-    editor = request.params.editor
+    editor = request.query_params.editor
     if editor == "markdown":
         # code
     elif editor == "html":

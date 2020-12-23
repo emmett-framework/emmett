@@ -60,7 +60,7 @@ app = App(__name__)
 async def post(id):
     editor = request.query_params.editor
     if editor == "markdown":
-        text = (await request.params).text
+        text = (await request.body_params).text
     elif editor == "html":
         # code
     #..
