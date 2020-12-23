@@ -299,7 +299,7 @@ app = App(__name__)
 
 @app.route("/post/<int:id>")
 async def post(id):
-    editor = request.params.editor
+    editor = request.query_params.editor
     if editor == "markdown":
         # code
     elif editor == "html":
@@ -311,7 +311,7 @@ Now, when a client call the URL */post/123?editor=markdown*, the `editor` parame
 will be mapped into `request.query_params` and we can access its value simply calling 
 the parameter name as an attribute.
 
-> – Wait, what happens if the client calls */post/123* and my app tries to access *request.params.editor*, which is not in the URL?
+> – Wait, what happens if the client calls */post/123* and my app tries to access *request.query_params.editor*, which is not in the URL?
 
 Simple! The attribute will be `None`, so it's completely safe to call it. It won't 
 raise any exception.
