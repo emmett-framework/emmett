@@ -53,7 +53,7 @@ python-rapidjson = "~0.9.3"
 pyyaml = "~5.3.1"
 renoir = "^1.2"
 severus = "^1.0"
-uvicorn = "0.12.1"
+uvicorn = "0.13.3"
 websockets = "^8.0"
 
 httptools = { version = "~0.1.1", markers = "sys_platform != 'win32'" }

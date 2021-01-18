@@ -11,6 +11,7 @@
 
 import asyncio
 import logging
+import signal
 
 from gunicorn.workers.base import Worker as _Worker
 
@@ -72,7 +73,8 @@ class Worker(_Worker):
         super().init_process()
 
     def init_signals(self):
-        return
+        for s in self.SIGNALS:
+            signal.signal(s, signal.SIG_DFL)
 
     def run(self):
         self.config.app = self.wsgi

@@ -9,6 +9,8 @@
     :license: BSD-3-Clause
 """
 
+import asyncio
+
 import h11
 
 from uvicorn.protocols.http.h11_impl import (
@@ -102,9 +104,9 @@ class H11Protocol(_H11Protocol):
         while True:
             try:
                 event = self.conn.next_event()
-            except h11.RemoteProtocolError:
+            except h11.RemoteProtocolError as exc:
                 msg = "Invalid HTTP request received."
-                self.logger.warning(msg)
+                self.logger.warning(msg, exc_info=exc)
                 self.transport.close()
                 return
             event_type = type(event)
@@ -178,7 +180,7 @@ class H11Protocol(_H11Protocol):
                     access_logger=self.access_logger,
                     access_log=self.access_log,
                     default_headers=self.default_headers,
-                    message_event=self.message_event,
+                    message_event=asyncio.Event(),
                     on_response=self.on_response_complete,
                 )
                 task = self.loop.create_task(self.cycle.run_asgi(app))
@@ -191,7 +193,7 @@ class H11Protocol(_H11Protocol):
                 self.cycle.body += event.data
                 if len(self.cycle.body) > HIGH_WATER_LIMIT:
                     self.flow.pause_reading()
-                self.message_event.set()
+                self.cycle.message_event.set()
 
             elif event_type is h11.EndOfMessage:
                 if self.conn.our_state is h11.DONE:
@@ -199,4 +201,4 @@ class H11Protocol(_H11Protocol):
                     self.conn.start_next_cycle()
                     continue
                 self.cycle.more_body = False
-                self.message_event.set()
+                self.cycle.message_event.set()

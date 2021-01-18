@@ -93,7 +93,8 @@ class H2Protocol(HTTPProtocol):
         on_request_received(self, event)
 
     def data_received(self, data: bytes):
-        super().data_received(data)
+        self._might_unset_keepalive()
+
         try:
             events = self.conn.receive_data(data)
         except h2.exceptions.ProtocolError:
@@ -123,6 +124,7 @@ class H2Protocol(HTTPProtocol):
             return
 
         if not self.streams:
+            self._might_unset_keepalive()
             self.timeout_keep_alive_task = self.loop.call_later(
                 self.timeout_keep_alive, self.timeout_keep_alive_handler
             )
@@ -200,8 +202,7 @@ class H2ASGICycle(ASGICycle):
                     self.scope["method"],
                     get_path_with_query_string(self.scope),
                     self.scope["http_version"],
-                    status_code,
-                    extra={"status_code": status_code, "scope": self.scope},
+                    status_code
                 )
 
             self.conn.send_headers(self.stream_id, headers, end_stream=False)
@@ -217,6 +218,7 @@ class H2ASGICycle(ASGICycle):
                 self.transport.write(self.conn.data_to_send())
                 if not more_body:
                     self.response_completed = True
+                    self.message_event.set()
             else:
                 msg = "Got unexpected ASGI message '%s'."
                 raise RuntimeError(msg % message_type)
@@ -269,14 +271,14 @@ def on_request_received(protocol: H2Protocol, event: h2.events.RequestReceived):
     else:
         app = protocol.app
 
-    cycle = H2ASGICycle(
+    protocol.message_event = asyncio.Event()
+    protocol.streams[event.stream_id] = cycle = H2ASGICycle(
         scope=scope,
         conn=protocol.conn,
         protocol=protocol,
         stream_id=event.stream_id,
         host=host
     )
-    protocol.streams[event.stream_id] = cycle
     task = protocol.loop.create_task(cycle.run_asgi(app))
     task.add_done_callback(protocol.tasks.discard)
     protocol.tasks.add(task)

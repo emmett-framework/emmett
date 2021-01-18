@@ -15,7 +15,7 @@ import ssl
 
 from typing import Optional
 
-from uvicorn.main import Server
+from uvicorn.server import Server
 
 from ..extensions import Signals
 from ..logger import LOG_LEVELS
