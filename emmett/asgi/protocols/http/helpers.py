@@ -12,8 +12,6 @@
 import asyncio
 import logging
 
-from typing import Optional
-
 from uvicorn.main import ServerState
 from uvicorn.protocols.utils import (
     get_local_addr,
@@ -79,7 +77,6 @@ class HTTPProtocol(asyncio.Protocol):
         "limit_concurrency",
         "logger",
         "loop",
-        "message_event",
         "root_path",
         "scheme",
         "server_state",
@@ -118,9 +115,6 @@ class HTTPProtocol(asyncio.Protocol):
         self.addr_remote = None
         self.scheme = None
 
-        # Per-request state
-        self.message_event: Optional[asyncio.Event] = None
-
     def connection_made(self, transport: asyncio.Transport):
         self.connections.add(self)
 
@@ -141,8 +135,6 @@ class HTTPProtocol(asyncio.Protocol):
             prefix = "%s:%d - " % tuple(self.addr_remote) if self.addr_remote else ""
             self.logger.log(TRACE_LOG_LEVEL, "%sConnection lost", prefix)
 
-        if self.message_event is not None:
-            self.message_event.set()
         if self.flow is not None:
             self.flow.resume_writing()
 
@@ -218,7 +210,7 @@ class ASGICycle:
         self.access_logger = protocol.access_logger
         self.access_log_enabled = protocol.access_log_enabled
         self.default_headers = protocol.default_headers
-        self.message_event = protocol.message_event
+        self.message_event = asyncio.Event()
         self.on_response = protocol.on_response_complete
 
         self.disconnected = False

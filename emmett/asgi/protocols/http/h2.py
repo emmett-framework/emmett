@@ -26,7 +26,14 @@ import h2.exceptions
 
 from uvicorn.protocols.utils import get_client_addr, get_path_with_query_string
 
-from .helpers import ASGICycle, Config, HTTPProtocol, ServerState, _service_unavailable
+from .helpers import (
+    TRACE_LOG_LEVEL,
+    ASGICycle,
+    Config,
+    HTTPProtocol,
+    ServerState,
+    _service_unavailable
+)
 
 HIGH_WATER_LIMIT = 65536
 
@@ -62,6 +69,18 @@ class H2Protocol(HTTPProtocol):
         if init:
             self.conn.initiate_connection()
             self.transport.write(self.conn.data_to_send())
+
+    def connection_lost(self, exc):
+        self.connections.discard(self)
+
+        if self.logger.level <= TRACE_LOG_LEVEL:
+            prefix = "%s:%d - " % tuple(self.addr_remote) if self.addr_remote else ""
+            self.logger.log(TRACE_LOG_LEVEL, "%sConnection lost", prefix)
+
+        for stream in self.streams.values():
+            stream.message_event.set()
+        if self.flow is not None:
+            self.flow.resume_writing()
 
     def handle_upgrade_from_h11(
         self,
@@ -271,7 +290,6 @@ def on_request_received(protocol: H2Protocol, event: h2.events.RequestReceived):
     else:
         app = protocol.app
 
-    protocol.message_event = asyncio.Event()
     protocol.streams[event.stream_id] = cycle = H2ASGICycle(
         scope=scope,
         conn=protocol.conn,
@@ -287,7 +305,7 @@ def on_request_received(protocol: H2Protocol, event: h2.events.RequestReceived):
 @eventsreg.register(h2.events.DataReceived)
 def on_data_received(protocol: H2Protocol, event: h2.events.DataReceived):
     try:
-        protocol.streams[event.stream_id].body += event.data
+        stream = protocol.streams[event.stream_id]
     except KeyError:
         protocol.conn.reset_stream(
             event.stream_id,
@@ -295,9 +313,10 @@ def on_data_received(protocol: H2Protocol, event: h2.events.DataReceived):
         )
         return
 
-    if len(protocol.streams[event.stream_id].body) > HIGH_WATER_LIMIT:
+    stream.body += event.data
+    if len(stream.body) > HIGH_WATER_LIMIT:
         protocol.flow.pause_reading()
-    protocol.message_event.set()
+    stream.message_event.set()
 
 
 @eventsreg.register(h2.events.StreamEnded)
