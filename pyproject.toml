@@ -74,5 +74,5 @@ orjson = ["orjson"]
 "Issue Tracker" = "https://github.com/emmett-framework/emmett/issues"
 
 [build-system]
-requires = ["poetry>=1.0.0"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
