@@ -13,6 +13,28 @@ Just as a remind, you can update Emmett using *pip*:
 $ pip install -U emmett
 ```
 
+Version 2.2
+-----------
+
+Emmett 2.2 introduces some minor changes you should be aware of, and some new features you might be interested into.
+
+### Minor changes
+
+The following changes are considered *minor* changes, since they affect only default values, and can be consequentially set to the previous ones:
+
+- The default `SameSite` value for sessions cookies is now *Lax* instead of *None*
+- The default logging level in `serve` command is now *info* in place of *warning*
+
+Mind that Emmett 2.2 also drops support for previous 2.x deprecations.
+
+### New features
+
+With version 2.2 we introduced the following new features:
+
+- [Commands groups](./cli#custom-commands) support in the CLI
+- [Static paths customisation](./app_and_modules#application-modules) in application modules
+- [Workers support](./deployment#included-server) in the included server
+
 Version 2.1
 -----------
 
