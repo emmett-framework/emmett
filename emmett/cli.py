@@ -18,15 +18,15 @@ import os
 import re
 import ssl
 import sys
-import traceback
 import types
 
 import click
 
 from .__version__ import __version__ as fw_version
-from ._internal import warn_of_deprecation
+from ._internal import locate_app, get_app_module
 from .asgi.loops import loops
 from .asgi.protocols import protocols_http, protocols_ws
+from .asgi.server import run as asgi_run
 from .logger import LOG_LEVELS
 
 
@@ -60,27 +60,6 @@ def find_app_module():
         if len(modules) == 1:
             rv = modules[0]
     return rv
-
-
-def find_best_app(module):
-    #: Given a module instance this tries to find the best possible
-    #  application in the module.
-    from .app import App
-
-    # Search for the most common names first.
-    for attr_name in ('app', 'application'):
-        app = getattr(module, attr_name, None)
-        if isinstance(app, App):
-            return app
-
-    # Otherwise find the only object that is an App instance.
-    matches = [v for k, v in module.__dict__.items() if isinstance(v, App)]
-
-    if len(matches) == 1:
-        return matches[0]
-    raise RuntimeError(
-        f"Failed to find Emmett application in module '{module.__name__}'."
-    )
 
 
 def find_db(module, var_name=None):
@@ -126,29 +105,6 @@ def prepare_import(path):
         sys.path.insert(0, path)
 
     return ".".join(module_name[::-1])
-
-
-def get_app_module(module_name, raise_on_failure=True):
-    try:
-        __import__(module_name)
-    except ImportError:
-        if sys.exc_info()[-1].tb_next:
-            raise RuntimeError(
-                f"While importing '{module_name}', an ImportError was raised:"
-                f"\n\n{traceback.format_exc()}"
-            )
-        elif raise_on_failure:
-            raise RuntimeError(f"Could not import '{module_name}'.")
-        else:
-            return
-    return sys.modules[module_name]
-
-
-def locate_app(module_name, app_name, raise_on_failure=True):
-    module = get_app_module(module_name, raise_on_failure=raise_on_failure)
-    if app_name:
-        return getattr(module, app_name, None)
-    return find_best_app(module)
 
 
 class ScriptInfo(object):
@@ -241,7 +197,6 @@ class EmmettGroup(click.Group):
         #self.create_app = create_app
 
         if add_default_commands:
-            self.add_command(run_command)
             self.add_command(develop_command)
             self.add_command(shell_command)
             self.add_command(routes_command)
@@ -284,21 +239,6 @@ class EmmettGroup(click.Group):
         return super().main(*args, **kwargs)
 
 
-@click.command('run', short_help='Deprecated - Runs a development server.')
-@click.option(
-    '--host', '-h', default='127.0.0.1', help='The interface to bind to.')
-@click.option(
-    '--port', '-p', type=int, default=8000, help='The port to bind to.')
-@click.option(
-    '--reloader', type=bool, default=True, help='Runs with reloader.')
-@click.option(
-    '--debug', type=bool, default=True, help='Runs in debug mode.')
-@click.pass_context
-def run_command(ctx, host, port, reloader, debug):
-    warn_of_deprecation('command run', 'command develop')
-    ctx.forward(develop_command)
-
-
 @click.command('develop', short_help='Runs a development server.')
 @click.option(
     '--host', '-h', default='127.0.0.1', help='The interface to bind to.')
@@ -325,65 +265,53 @@ def run_command(ctx, host, port, reloader, debug):
 @click.option(
     '--reloader/--no-reloader', is_flag=True, default=True,
     help='Runs with reloader.')
-@click.option(
-    '--debug', type=bool, default=True, help='Runs in debug mode.')
 @pass_script_info
 def develop_command(
     info, host, port,
     loop, http_protocol, ws_protocol,
     ssl_certfile, ssl_keyfile, ssl_cert_reqs, ssl_ca_certs,
-    reloader,
-    debug
+    reloader
 ):
     os.environ["EMMETT_RUN_ENV"] = 'true'
-    app = info.load_app()
-    app.debug = debug
+    app_target = info._get_import_name()
+
     if os.environ.get('EMMETT_RUN_MAIN') != 'true':
         click.echo(
             ' '.join([
                 "> Starting Emmett development server on app",
-                click.style(app.import_name, fg="cyan", bold=True)
+                click.style(app_target[0], fg="cyan", bold=True)
             ])
         )
         click.echo(
             ' '.join([
                 click.style("> Emmett application", fg="green"),
-                click.style(app.import_name, fg="cyan", bold=True),
+                click.style(app_target[0], fg="cyan", bold=True),
                 click.style("running on", fg="green"),
                 click.style(f"http://{host}:{port}", fg="cyan"),
                 click.style("(press CTRL+C to quit)", fg="green")
             ])
         )
+
     if reloader:
         from ._reloader import run_with_reloader
-        run_with_reloader(
-            app,
-            host,
-            port,
-            loop=loop,
-            proto_http=http_protocol,
-            proto_ws=ws_protocol,
-            log_level='debug',
-            access_log=True,
-            ssl_certfile=ssl_certfile,
-            ssl_keyfile=ssl_keyfile,
-            ssl_cert_reqs=ssl_cert_reqs,
-            ssl_ca_certs=ssl_ca_certs
-        )
+        runner = run_with_reloader
     else:
-        app._run(
-            host,
-            port,
-            loop=loop,
-            proto_http=http_protocol,
-            proto_ws=ws_protocol,
-            log_level='debug',
-            access_log=True,
-            ssl_certfile=ssl_certfile,
-            ssl_keyfile=ssl_keyfile,
-            ssl_cert_reqs=ssl_cert_reqs,
-            ssl_ca_certs=ssl_ca_certs
-        )
+        runner = asgi_run
+
+    runner(
+        app_target,
+        host,
+        port,
+        loop=loop,
+        proto_http=http_protocol,
+        proto_ws=ws_protocol,
+        log_level='debug',
+        access_log=True,
+        ssl_certfile=ssl_certfile,
+        ssl_keyfile=ssl_keyfile,
+        ssl_cert_reqs=ssl_cert_reqs,
+        ssl_ca_certs=ssl_ca_certs
+    )
 
 
 @click.command('serve', short_help='Serve the app.')
@@ -391,6 +319,8 @@ def develop_command(
     '--host', '-h', default='0.0.0.0', help='The interface to bind to.')
 @click.option(
     '--port', '-p', type=int, default=8000, help='The port to bind to.')
+@click.option(
+    "--workers", type=int, default=1, help="Number of worker processes. Defaults to 1.")
 @click.option(
     '--loop', type=click.Choice(loops.keys()), default='auto',
     help='Event loop implementation.')
@@ -401,7 +331,7 @@ def develop_command(
     '--ws-protocol', type=click.Choice(protocols_ws.keys()),
     default='auto', help='Websocket protocol implementation.')
 @click.option(
-    '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='warning',
+    '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='info',
     help='Logging level.')
 @click.option(
     '--access-log/--no-access-log', is_flag=True, default=True,
@@ -432,19 +362,21 @@ def develop_command(
     '--ssl-ca-certs', type=str, default=None, help='CA certificates file')
 @pass_script_info
 def serve_command(
-    info, host, port,
+    info, host, port, workers,
     loop, http_protocol, ws_protocol,
     log_level, access_log,
     proxy_headers, proxy_trust_ips,
     max_concurrency, backlog, keep_alive_timeout,
     ssl_certfile, ssl_keyfile, ssl_cert_reqs, ssl_ca_certs
 ):
-    app = info.load_app()
-    app._run(
-        host, port,
+    app_target = info._get_import_name()
+    asgi_run(
+        app_target,
+        host=host, port=port,
         loop=loop, proto_http=http_protocol, proto_ws=ws_protocol,
         log_level=log_level, access_log=access_log,
         proxy_headers=proxy_headers, proxy_trust_ips=proxy_trust_ips,
+        workers=workers,
         limit_concurrency=max_concurrency,
         backlog=backlog,
         timeout_keep_alive=keep_alive_timeout,

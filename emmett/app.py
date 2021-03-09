@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import os
-import ssl
 import sys
 
 from logging import Logger
@@ -24,7 +23,6 @@ from yaml import SafeLoader as ymlLoader, load as ymlload
 
 from ._internal import get_root_path, create_missing_app_folders, warn_of_deprecation
 from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
-from .asgi.server import run as asgi_run
 from .cache import RouteCacheRule
 from .ctx import current
 from .datastructures import sdict, ConfigData
@@ -421,64 +419,6 @@ class App:
     def make_shell_context(self, context: Dict[str, Any] = {}) -> Dict[str, Any]:
         context['app'] = self
         return context
-
-    def _run(
-        self,
-        host,
-        port,
-        loop='auto',
-        proto_http='auto',
-        proto_ws='auto',
-        log_level=None,
-        access_log=None,
-        proxy_headers=False,
-        proxy_trust_ips=None,
-        limit_concurrency=None,
-        backlog=2048,
-        timeout_keep_alive=0,
-        ssl_certfile: Optional[str] = None,
-        ssl_keyfile: Optional[str] = None,
-        ssl_cert_reqs: int = ssl.CERT_NONE,
-        ssl_ca_certs: Optional[str] = None
-    ):
-        asgi_run(
-            self, host, port,
-            loop=loop, proto_http=proto_http, proto_ws=proto_ws,
-            log_level=log_level, access_log=access_log,
-            proxy_headers=proxy_headers, proxy_trust_ips=proxy_trust_ips,
-            limit_concurrency=limit_concurrency,
-            backlog=backlog,
-            timeout_keep_alive=timeout_keep_alive,
-            ssl_certfile=ssl_certfile,
-            ssl_keyfile=ssl_keyfile,
-            ssl_cert_reqs=ssl_cert_reqs,
-            ssl_ca_certs=ssl_ca_certs
-        )
-
-    def run(
-        self,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
-        reloader: bool = True,
-        debug: bool = True
-    ):
-        warn_of_deprecation("App.run", "CLI develop and serve commands", stack=3)
-        if host is None:
-            host = "127.0.0.1"
-        if port is None:
-            port = 8000
-        self.debug = debug
-        if os.environ.get('EMMETT_RUN_MAIN') != 'true':
-            quit_msg = "(press CTRL+C to quit)"
-            self.log.info(
-                f"> Emmett application {self.import_name} running on "
-                f"http://{host}:{port} {quit_msg}"
-            )
-        if reloader:
-            from ._reloader import run_with_reloader
-            run_with_reloader(self, host, port)
-        else:
-            self._run(host, port)
 
     def test_client(self, use_cookies: bool = True, **kwargs) -> EmmettTestClient:
         tclass = self.test_client_class or EmmettTestClient

@@ -13,15 +13,19 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import asyncio
 import datetime
 import os
 import pkgutil
 import sys
+import traceback
 import warnings
 
 from functools import partial
 from shutil import copyfileobj
+from types import ModuleType
 from typing import Any, Generic, Optional
 
 import pendulum
@@ -232,6 +236,54 @@ async def loop_copyfileobj(fsrc, fdst, length=None):
     return await asyncio.get_running_loop().run_in_executor(
         None, partial(copyfileobj, fsrc, fdst, length)
     )
+
+
+#: application loaders
+def get_app_module(
+    module_name: str,
+    raise_on_failure: bool = True
+) -> Optional[ModuleType]:
+    try:
+        __import__(module_name)
+    except ImportError:
+        if sys.exc_info()[-1].tb_next:
+            raise RuntimeError(
+                f"While importing '{module_name}', an ImportError was raised:"
+                f"\n\n{traceback.format_exc()}"
+            )
+        elif raise_on_failure:
+            raise RuntimeError(f"Could not import '{module_name}'.")
+        else:
+            return
+    return sys.modules[module_name]
+
+
+def find_best_app(module: ModuleType) -> Any:
+    #: Given a module instance this tries to find the best possible
+    #  application in the module.
+    from .app import App # noqa
+
+    # Search for the most common names first.
+    for attr_name in ('app', 'application'):
+        app = getattr(module, attr_name, None)
+        if isinstance(app, App):
+            return app
+
+    # Otherwise find the only object that is an App instance.
+    matches = [v for k, v in module.__dict__.items() if isinstance(v, App)]
+
+    if len(matches) == 1:
+        return matches[0]
+    raise RuntimeError(
+        f"Failed to find Emmett application in module '{module.__name__}'."
+    )
+
+
+def locate_app(module_name: str, app_name: str, raise_on_failure: bool = True) -> Any:
+    module = get_app_module(module_name, raise_on_failure=raise_on_failure)
+    if app_name:
+        return getattr(module, app_name, None)
+    return find_best_app(module)
 
 
 #: deprecation helpers

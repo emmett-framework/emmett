@@ -15,7 +15,6 @@
 
 import multiprocessing
 import os
-import platform
 import signal
 import subprocess
 import ssl
@@ -26,6 +25,9 @@ from itertools import chain
 from typing import Optional
 
 import click
+
+from ._internal import locate_app
+from .asgi.server import run as _asgi_run
 
 
 def _iter_module_files():
@@ -147,7 +149,7 @@ reloader_loops['auto'] = reloader_loops['stat']
 
 
 def run_with_reloader(
-    app,
+    app_target,
     host,
     port,
     loop='auto',
@@ -163,20 +165,17 @@ def run_with_reloader(
     interval=1,
     reloader_type='auto'
 ):
-    """Run the given function in an independent python interpreter."""
     reloader = reloader_loops[reloader_type](extra_files, interval)
     signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
 
     try:
         if os.environ.get('EMMETT_RUN_MAIN') == 'true':
-            if (
-                sys.version_info >= (3, 8) and
-                platform.system().lower() in ["linux", "darwin"]
-            ):
-                multiprocessing.set_start_method("fork")
+            # FIXME: find a better way to have app files in stat checker
+            locate_app(*app_target)
+
             process = multiprocessing.Process(
-                target=app._run,
-                args=(host, port),
+                target=_asgi_run,
+                args=(app_target, host, port),
                 kwargs={
                     "loop": loop,
                     "proto_http": proto_http,
