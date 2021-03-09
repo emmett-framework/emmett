@@ -1,6 +1,18 @@
 Emmett changelog
 ================
 
+Next
+----
+
+(Release date to be defined, codename to be selected)
+
+- Slightly refactored request flow
+- Added `App.command_group` decorator
+- Added additional arguments acceptance in `AppModule`
+- Added static paths customisation for `AppModule`
+- Added `workers` options to `serve` command
+- Changed default `SameSite` policy for session cookies to `Lax`
+
 Version 2.1
 -----------
 
