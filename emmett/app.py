@@ -371,6 +371,10 @@ class App:
         for key, val in rc.items():
             c[key] = dict_to_sdict(val)
 
+    #: Register modules
+    def _register_module(self, mod: AppModule):
+        self._modules[mod.name] = mod
+
     #: Creates the extensions' environments and configs
     def __init_extension(self, ext):
         if ext.namespace is None:
@@ -489,6 +493,8 @@ class App:
         name: str,
         template_folder: Optional[str] = None,
         template_path: Optional[str] = None,
+        static_folder: Optional[str] = None,
+        static_path: Optional[str] = None,
         url_prefix: Optional[str] = None,
         hostname: Optional[str] = None,
         cache: Optional[RouteCacheRule] = None,
@@ -505,6 +511,8 @@ class App:
             name,
             template_folder=template_folder,
             template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
             url_prefix=url_prefix,
             hostname=hostname,
             cache=cache,
@@ -524,6 +532,8 @@ class AppModule:
         name: str,
         template_folder: Optional[str],
         template_path: Optional[str],
+        static_folder: Optional[str],
+        static_path: Optional[str],
         url_prefix: Optional[str],
         hostname: Optional[str],
         cache: Optional[RouteCacheRule],
@@ -538,6 +548,8 @@ class AppModule:
             import_name,
             template_folder=template_folder,
             template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
             url_prefix=url_prefix,
             hostname=hostname,
             cache=cache,
@@ -555,6 +567,8 @@ class AppModule:
         name: str,
         template_folder: Optional[str],
         template_path: Optional[str],
+        static_folder: Optional[str],
+        static_path: Optional[str],
         url_prefix: Optional[str],
         hostname: Optional[str],
         cache: Optional[RouteCacheRule],
@@ -578,6 +592,8 @@ class AppModule:
             import_name,
             template_folder=template_folder,
             template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
             url_prefix=module_url_prefix,
             hostname=hostname,
             cache=cache,
@@ -593,6 +609,8 @@ class AppModule:
         name: str,
         template_folder: Optional[str] = None,
         template_path: Optional[str] = None,
+        static_folder: Optional[str] = None,
+        static_path: Optional[str] = None,
         url_prefix: Optional[str] = None,
         hostname: Optional[str] = None,
         cache: Optional[RouteCacheRule] = None,
@@ -607,6 +625,8 @@ class AppModule:
             name,
             template_folder=template_folder,
             template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
             url_prefix=url_prefix,
             hostname=hostname,
             cache=cache,
@@ -621,6 +641,8 @@ class AppModule:
         import_name: str,
         template_folder: Optional[str] = None,
         template_path: Optional[str] = None,
+        static_folder: Optional[str] = None,
+        static_path: Optional[str] = None,
         url_prefix: Optional[str] = None,
         hostname: Optional[str] = None,
         cache: Optional[RouteCacheRule] = None,
@@ -635,12 +657,20 @@ class AppModule:
         if root_path is None:
             root_path = get_root_path(self.import_name)
         self.root_path = root_path
-        #: template_folder is referred to application template_path
+        #: - `template_folder` is referred to application `template_path`
+        #  - `template_path` is referred to module root_directory unless absolute
         self.template_folder = template_folder
-        #: template_path is referred to module root_directory
         if template_path and not template_path.startswith("/"):
-            template_path = self.root_path + template_path
+            template_path = os.path.join(self.root_path, template_path)
         self.template_path = template_path
+        #: - `static_folder` is referred to application `static_path`
+        #  - `static_path` is referred to module root_directory unless absolute
+        if static_path and not static_path.startswith("/"):
+            static_path = os.path.join(self.root_path, static_path)
+        self._static_path = (
+            os.path.join(self.app.static_path, static_folder) if static_folder else
+            (static_path or self.app.static_path)
+        )
         self.url_prefix = url_prefix
         self.hostname = hostname
         self.cache = cache
@@ -648,7 +678,7 @@ class AppModule:
         self._super_injectors = injectors or []
         self.pipeline = []
         self.injectors = []
-        self.app._modules[self.name] = self
+        self.app._register_module(self)
 
     @property
     def pipeline(self) -> List[Pipe]:

@@ -117,6 +117,7 @@ class Url:
             path = '/static'
         # routes urls with 'dot' notation
         if '/' not in path:
+            module = None
             # urls like 'function' refers to same module
             if '.' not in path:
                 namespace = current.app.config.url_default_namespace or \
@@ -133,8 +134,7 @@ class Url:
                 path = module + path
             # find correct route
             try:
-                url_components = \
-                    current.app._router_http.routes_out[path]['path']
+                url_components = current.app._router_http.routes_out[path]['path']
                 url_host = current.app._router_http.routes_out[path]['host']
                 builder = HttpUrlBuilder(url_components)
                 # try to use the correct hostname
@@ -146,7 +146,11 @@ class Url:
                     except Exception:
                         pass
             except KeyError:
-                raise RuntimeError(f'invalid url("{path}",...)')
+                if path.endswith('.static'):
+                    module = module or path.rsplit('.', 1)[0]
+                    builder = HttpUrlBuilder([f'/static/__{module}__'])
+                else:
+                    raise RuntimeError(f'invalid url("{path}",...)')
         # handle classic urls
         else:
             builder = HttpUrlBuilder([path])
@@ -199,8 +203,7 @@ class Url:
         if '/' not in path:
             # urls like 'function' refers to same module
             if '.' not in path:
-                namespace = current.app.config.url_default_namespace or \
-                    current.app.name
+                namespace = current.app.config.url_default_namespace or current.app.name
                 path = namespace + "." + path
             # urls like '.function' refers to main app module
             elif path.startswith('.'):
@@ -213,8 +216,7 @@ class Url:
                 path = module + path
             # find correct route
             try:
-                url_components = \
-                    current.app._router_ws.routes_out[path]['path']
+                url_components = current.app._router_ws.routes_out[path]['path']
                 url_host = current.app._router_ws.routes_out[path]['host']
                 builder = UrlBuilder(url_components)
                 # try to use the correct hostname
@@ -222,8 +224,7 @@ class Url:
                     # TODO: remap host
                     try:
                         if current.request.host != url_host:
-                            scheme = \
-                                self.http_to_ws_schemes[current.request.scheme]
+                            scheme = self.http_to_ws_schemes[current.request.scheme]
                             host = url_host
                     except Exception:
                         pass

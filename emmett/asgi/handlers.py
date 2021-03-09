@@ -29,9 +29,11 @@ from ..wrappers.websocket import Websocket
 from .typing import Event, EventHandler, EventLooper, Receive, Scope, Send
 
 REGEX_STATIC = re.compile(
-    r'^/static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
+    r'^/static/(?P<m>__[\w\-\.]+__/)?(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$'
+)
 REGEX_STATIC_LANG = re.compile(
-    r'^/(?P<l>\w+/)?static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
+    r'^/(?P<l>\w{2}/)?static/(?P<m>__[\w\-\.]__+/)?(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$'
+)
 
 
 class EventHandlerWrapper:
@@ -221,10 +223,15 @@ class HTTPHandler(RequestHandler):
     ) -> Tuple[Optional[str], Optional[str]]:
         match = REGEX_STATIC_LANG.match(path)
         if match:
-            lang, version, file_name = match.group('l', 'v', 'f')
-            static_file = os.path.join(self.app.static_path, file_name)
+            lang, mname, version, file_name = match.group('l', 'm', 'v', 'f')
+            if mname:
+                mod = self.app._modules.get(mname)
+                spath = mod._static_path if mod else self.app.static_path
+            else:
+                spath = self.app.static_path
+            static_file = os.path.join(spath, file_name)
             if lang:
-                lang_file = os.path.join(self.app.static_path, lang, file_name)
+                lang_file = os.path.join(spath, lang, file_name)
                 if os.path.exists(lang_file):
                     static_file = lang_file
             return static_file, version
@@ -234,8 +241,12 @@ class HTTPHandler(RequestHandler):
         self, path: str
     ) -> Tuple[Optional[str], Optional[str]]:
         if path.startswith('/static'):
-            version, file_name = REGEX_STATIC.match(path).group('v', 'f')
-            static_file = os.path.join(self.app.static_path, file_name)
+            mname, version, file_name = REGEX_STATIC.match(path).group('m', 'v', 'f')
+            if mname:
+                mod = self.app._modules.get(mname[2:-3])
+                static_file = os.path.join(mod._static_path, file_name) if mod else None
+            else:
+                static_file = os.path.join(self.app.static_path, file_name)
             return static_file, version
         return None, None
 

@@ -40,13 +40,16 @@ class Auth:
         name: str = 'auth',
         template_folder: str = 'auth',
         template_path: Optional[str] = None,
+        static_folder: Optional[str] = None,
+        static_path: Optional[str] = None,
         url_prefix: Optional[str] = 'auth',
         hostname: Optional[str] = None,
         cache: Optional[RouteCacheRule] = None,
         root_path: Optional[str] = None,
         pipeline: Optional[List[Pipe]] = None,
         injectors: Optional[List[Injector]] = None,
-        module_class: Type[AuthModule] = AuthModule
+        module_class: Type[AuthModule] = AuthModule,
+        **kwargs: Any
     ) -> AuthModule:
         return module_class.from_app(
             self.ext.app,
@@ -54,12 +57,15 @@ class Auth:
             name,
             template_folder=template_folder,
             template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
             url_prefix=url_prefix,
             hostname=hostname,
             cache=cache,
             root_path=root_path,
             pipeline=pipeline or [],
-            injectors=injectors or []
+            injectors=injectors or [],
+            opts=kwargs
         )
 
     @property

@@ -9,23 +9,53 @@
     :license: BSD-3-Clause
 """
 
-from ...app import AppModule
+from __future__ import annotations
+
+from typing import Any, List, Optional
+
+from ...app import App, AppModule
+from ...cache import RouteCacheRule
 from ...helpers import flash, stream_dbfile
 from ...http import redirect
 from ...locals import request, session
-from ...pipeline import RequirePipe
+from ...pipeline import Injector, Pipe, RequirePipe
 from ...routing.urls import url
 
 
 class AuthModule(AppModule):
     def __init__(
-        self, app, name, import_name, template_folder=None, template_path=None,
-        url_prefix=None, hostname=None, cache=None, root_path=None,
-        pipeline=[], injectors=[]
+        self,
+        app: App,
+        name: str,
+        import_name: str,
+        template_folder: Optional[str] = None,
+        template_path: Optional[str] = None,
+        static_folder: Optional[str] = None,
+        static_path: Optional[str] = None,
+        url_prefix: Optional[str] = None,
+        hostname: Optional[str] = None,
+        cache: Optional[RouteCacheRule] = None,
+        root_path: Optional[str] = None,
+        pipeline: Optional[List[Pipe]] = None,
+        injectors: Optional[List[Injector]] = None,
+        **kwargs: Any
     ):
-        super(AuthModule, self).__init__(
-            app, name, import_name, template_folder, template_path, url_prefix,
-            hostname, cache, root_path, pipeline, injectors)
+        super().__init__(
+            app=app,
+            name=name,
+            import_name=import_name,
+            template_folder=template_folder,
+            template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
+            url_prefix=url_prefix,
+            hostname=hostname,
+            cache=cache,
+            root_path=root_path,
+            pipeline=pipeline,
+            injectors=injectors,
+            **kwargs
+        )
         self.init()
 
     def init(self):
