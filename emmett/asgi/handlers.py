@@ -29,9 +29,11 @@ from ..wrappers.websocket import Websocket
 from .typing import Event, EventHandler, EventLooper, Receive, Scope, Send
 
 REGEX_STATIC = re.compile(
-    r'^/static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
+    r'^/static/(?P<m>__[\w\-\.]+__/)?(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$'
+)
 REGEX_STATIC_LANG = re.compile(
-    r'^/(?P<l>\w+/)?static/(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$')
+    r'^/(?P<l>\w{2}/)?static/(?P<m>__[\w\-\.]__+/)?(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$'
+)
 
 
 class EventHandlerWrapper:
@@ -179,12 +181,16 @@ class HTTPHandler(RequestHandler):
         scope['emt.path'] = scope['path'] or '/'
         try:
             http = await self.pre_handler(scope, receive, send)
+            await asyncio.wait_for(
+                http.send(scope, send),
+                self.app.config.response_timeout
+            )
         except RequestCancelled:
             return
-        await asyncio.wait_for(
-            http.send(scope, send),
-            self.app.config.response_timeout
-        )
+        except asyncio.TimeoutError:
+            self.app.log.warn(
+                f"Timeout sending response: ({scope['emt.path']})"
+            )
 
     @cachedprop
     def error_handler(self) -> Callable[[], Awaitable[str]]:
@@ -217,10 +223,15 @@ class HTTPHandler(RequestHandler):
     ) -> Tuple[Optional[str], Optional[str]]:
         match = REGEX_STATIC_LANG.match(path)
         if match:
-            lang, version, file_name = match.group('l', 'v', 'f')
-            static_file = os.path.join(self.app.static_path, file_name)
+            lang, mname, version, file_name = match.group('l', 'm', 'v', 'f')
+            if mname:
+                mod = self.app._modules.get(mname)
+                spath = mod._static_path if mod else self.app.static_path
+            else:
+                spath = self.app.static_path
+            static_file = os.path.join(spath, file_name)
             if lang:
-                lang_file = os.path.join(self.app.static_path, lang, file_name)
+                lang_file = os.path.join(spath, lang, file_name)
                 if os.path.exists(lang_file):
                     static_file = lang_file
             return static_file, version
@@ -230,8 +241,12 @@ class HTTPHandler(RequestHandler):
         self, path: str
     ) -> Tuple[Optional[str], Optional[str]]:
         if path.startswith('/static'):
-            version, file_name = REGEX_STATIC.match(path).group('v', 'f')
-            static_file = os.path.join(self.app.static_path, file_name)
+            mname, version, file_name = REGEX_STATIC.match(path).group('m', 'v', 'f')
+            if mname:
+                mod = self.app._modules.get(mname[2:-3])
+                static_file = os.path.join(mod._static_path, file_name) if mod else None
+            else:
+                static_file = os.path.join(self.app.static_path, file_name)
             return static_file, version
         return None, None
 
@@ -265,17 +280,17 @@ class HTTPHandler(RequestHandler):
         receive: Receive,
         send: Send
     ) -> HTTPResponse:
-        ctx_token = current._init_(
-            RequestContext,
+        ctx = RequestContext(
             self.app,
             scope,
             receive,
             send,
-            wrapper_request=Request,
-            wrapper_response=Response
+            Request,
+            Response
         )
+        ctx_token = current._init_(ctx)
         try:
-            http = await self.router.dispatch()
+            http = await self.router.dispatch(ctx.request, ctx.response)
         except HTTPResponse as http_exception:
             http = http_exception
             #: render error with handlers if in app
@@ -284,8 +299,8 @@ class HTTPHandler(RequestHandler):
                 http = HTTP(
                     http.status_code,
                     await error_handler(),
-                    headers=current.response.headers,
-                    cookies=current.response.cookies
+                    headers=ctx.response.headers,
+                    cookies=ctx.response.cookies
                 )
         except RequestCancelled:
             raise
@@ -294,7 +309,7 @@ class HTTPHandler(RequestHandler):
             http = HTTP(
                 500,
                 await self.error_handler(),
-                headers=current.response.headers
+                headers=ctx.response.headers
             )
         finally:
             current._close_(ctx_token)
@@ -409,20 +424,20 @@ class WSHandler(RequestHandler):
         receive: Receive,
         send: Send
     ):
-        ctx_token = current._init_(
-            WSContext,
+        ctx = WSContext(
             self.app,
             scope,
             scope['emt.input'].get,
             send,
-            wrapper_websocket=Websocket
+            Websocket
         )
+        ctx_token = current._init_(ctx)
         try:
-            await self.router.dispatch()
+            await self.router.dispatch(ctx.websocket)
         finally:
             if (
                 not scope.get('emt._flow_cancel', False) and
-                current.websocket._accepted
+                ctx.websocket._accepted
             ):
                 await send({'type': 'websocket.close', 'code': 1000})
                 scope['emt._ws_closed'] = True

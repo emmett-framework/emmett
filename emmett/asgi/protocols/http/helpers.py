@@ -77,7 +77,6 @@ class HTTPProtocol(asyncio.Protocol):
         "limit_concurrency",
         "logger",
         "loop",
-        "message_event",
         "root_path",
         "scheme",
         "server_state",
@@ -116,9 +115,6 @@ class HTTPProtocol(asyncio.Protocol):
         self.addr_remote = None
         self.scheme = None
 
-        # Per-request state
-        self.message_event = asyncio.Event()
-
     def connection_made(self, transport: asyncio.Transport):
         self.connections.add(self)
 
@@ -139,24 +135,26 @@ class HTTPProtocol(asyncio.Protocol):
             prefix = "%s:%d - " % tuple(self.addr_remote) if self.addr_remote else ""
             self.logger.log(TRACE_LOG_LEVEL, "%sConnection lost", prefix)
 
-        self.message_event.set()
-
         if self.flow is not None:
             self.flow.resume_writing()
 
     def eof_received(self):
         pass
 
-    def data_received(self, data: bytes):
+    def _might_unset_keepalive(self):
         if self.timeout_keep_alive_task is not None:
             self.timeout_keep_alive_task.cancel()
             self.timeout_keep_alive_task = None
+
+    def data_received(self, data: bytes):
+        self._might_unset_keepalive()
 
     def on_response_complete(self):
         self.server_state.total_requests += 1
         if self.transport.is_closing():
             return
 
+        self._might_unset_keepalive()
         self.timeout_keep_alive_task = self.loop.call_later(
             self.timeout_keep_alive, self.timeout_keep_alive_handler
         )
@@ -212,7 +210,7 @@ class ASGICycle:
         self.access_logger = protocol.access_logger
         self.access_log_enabled = protocol.access_log_enabled
         self.default_headers = protocol.default_headers
-        self.message_event = protocol.message_event
+        self.message_event = asyncio.Event()
         self.on_response = protocol.on_response_complete
 
         self.disconnected = False

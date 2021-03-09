@@ -39,7 +39,7 @@ As you can see, `SessionManager.cookies` needs a secret key to crypt the session
 | --- | --- | --- |
 | expire | 3600 | the duration in seconds after which the session will expire |
 | secure | `False` | tells the manager to allow *https* sessions only |
-| samesite | None | set `SameSite` option for the cookie |
+| samesite | Lax | set `SameSite` option for the cookie |
 | domain | | allows to set a specific domain for the cookie |
 | cookie\_name | | allows to set a specific name for the cookie |
 | cookie\_data | | allows to pass additional cookie data to the manager |
@@ -68,7 +68,7 @@ As you can see, `SessionManager.files` doesn't require specific parameters, but 
 | --- | --- | --- |
 | expire | 3600 | the duration in seconds after which the session will expire |
 | secure | `False` | tells the manager to allow sessions only on *https* protocol |
-| samesite | None | set `SameSite` option for the cookie |
+| samesite | Lax | set `SameSite` option for the cookie |
 | domain | | allows to set a specific domain for the cookie |
 | cookie\_name | | allows to set a specific name for the cookie |
 | cookie\_data | | allows to pass additional cookie data to the manager |
@@ -101,7 +101,7 @@ As you can see `SessionManager.redis` needs a redis connection as first paramete
 | prefix | `'emtsess:'` | the prefix for the redis keys (default set to |
 | expire | 3600 | the duration in seconds after which the session will expire |
 | secure | `False` | tells the manager to allow sessions only on *https* protocol |
-| samesite | None | set `SameSite` option for the cookie |
+| samesite | Lax | set `SameSite` option for the cookie |
 | domain | | allows to set a specific domain for the cookie |
 | cookie\_name | | allows to set a specific name for the cookie |
 | cookie\_data | | allows to pass additional cookie data to the manager |

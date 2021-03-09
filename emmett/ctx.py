@@ -84,7 +84,6 @@ class WSContext(Context):
         )
 
 
-
 class Current:
     __slots__ = ['_ctx']
 
@@ -92,10 +91,8 @@ class Current:
         object.__setattr__(self, '_ctx', contextvars.ContextVar('ctx'))
         self._ctx.set(Context())
 
-    def _init_(self, ctx_cls, app, scope, receive, send, *args, **kwargs):
-        return self._ctx.set(
-            ctx_cls(app, scope, receive, send, *args, **kwargs)
-        )
+    def _init_(self, ctx):
+        return self._ctx.set(ctx)
 
     def _close_(self, token):
         self._ctx.reset(token)

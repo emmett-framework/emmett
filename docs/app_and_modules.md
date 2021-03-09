@@ -20,8 +20,12 @@ The signature of this class's `__init__` method looks like this:
 
 ```python
 def __init__(
-    self, import_name, root_path=None, url_prefix=None,
-    template_folder='templates', config_folder='config'
+    self,
+    import_name: str,
+    root_path: Optional[str] = None,
+    url_prefix: Optional[str] = None,
+    template_folder: str = 'templates',
+    config_folder: str = 'config'
 ):
     # internal code
 ```
@@ -36,17 +40,12 @@ Let's see the full parameters list in detail:
 | template_folder | allows you to set a different folder for your application's templates (by default Emmett uses the *templates* folder |
 | config_folder | allows you to set a different configuration folder for your application, if you wish to load your configuration from files |
 
-Since we introduced the `config_folder` parameter, let's see some details
-about application configuration.
+Since we introduced the `config_folder` parameter, let's see some details about application configuration.
 
 ### Application's configuration
 
-The `App` object provides a `config` attribute to let you configure your
-application easily. The `config` object is something like a Python dictionary,
-with a friendly syntax and the characteristic of *sub-namespace auto-creation*.   
-What does that mean? That you likely want to have the configuration
-divided into *categories*, separating the database configuration values
-from the particulars of your authorization layer or an extension. 
+The `App` object provides a `config` attribute to let you configure your application easily. The `config` object is something like a Python dictionary, with a friendly syntax and the characteristic of *sub-namespace auto-creation*.   
+What does that mean? That you likely want to have the configuration divided into *categories*, separating the database configuration values from the particulars of your authorization layer or an extension. 
 You can simply write:
 
 ```python
@@ -62,8 +61,7 @@ app.config.Haml.set_as_default = True
 
 without creating dictionaries for `db` or `Haml` directly.
 
-You can also load configuration from external files like *yaml*, 
-so let's see an example. With this application structure:
+You can also load configuration from external files like *yaml*, so let's see an example. With this application structure:
 
 ```
 /app.py
@@ -94,15 +92,12 @@ app.config_from_yaml('app.yml')
 app.config_from_yaml('db.yml', 'db')
 ```
 
-and your configuration will be loaded. As you can see, 
-when calling `config_from_yaml()`, you can pass the name
-of the namespace under which Emmett should load the configuration.
-
+and your configuration will be loaded. As you can see, when calling `config_from_yaml()`, you can pass the name of the namespace under which Emmett should load the configuration.
 
 Application modules
 -------------------
 
-*Changed in 1.0*
+*Changed in version 2.2*
 
 When your app's structure starts to come together, you might benefit of packing routes together in common structures, so you can use the same route prefix or hostname, or to have a common pipeline.
 
@@ -138,6 +133,8 @@ A part from the prefix, you can use several parameters when creating modules. He
 | name | name for the module, will be used by Emmett as the namespace for internal routing |
 | template_folder | allows you to set a specific sub-folder of your application template path for module templates |
 | template_path | allows you to set a specific folder inside your module root path for module templates |
+| static_folder | allows you to set a specific sub-folder of your application static path for module assets |
+| static_path | allows you to set a specific folder inside your module root path for module assets |
 | url_prefix | allows you to set a prefix path for module URLs |
 | hostname | allows you to set a specific hostname for module |
 | root_path | same as we seen for the `App` object |

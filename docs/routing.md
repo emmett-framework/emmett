@@ -229,6 +229,8 @@ We need to clarify that the third notation can be used only during the *request 
 
 ### Static files
 
+*Changed in version 2.2*
+
 Quite often, you will need to link static contents (images, CSS, JavaScript) into your application. After creating a folder called *static* in your package or next to your module, it will be available at */static* on the application.
 
 To generate URLs for static files, use the special `static` first argument:
@@ -237,7 +239,14 @@ To generate URLs for static files, use the special `static` first argument:
 url('static', 'js/common.js')
 ```
 
-that will point to the file in *static/js/common.js*
+that will point to the file in *static/js/common.js*.
+
+In case you defined custom static folders or paths inside your [application modules](./app_and_modules#application-modules), you can generate the appropriate URLs using the appropriate notations, for example:
+
+- `url('module.static', 'js/common.js')`
+- `url('.static', 'js/common.js')`
+
+with the latter available within the module itself.
 
 Calling `url()` for static files instead of manually write the URL for the file is useful because you can enable the static *versioning* in your Emmett application.
 
@@ -248,7 +257,7 @@ app.config.static_version_urls = True
 app.config.static_version = "1.0.0"
 ```
 
-then a call to `url('static', 'myfile.js')` will produce the URL */static/1.0.0/myfile.js* automatically. When you release a new version of your application with changed static files, you just need to update the `static_version` string.
+then a call to `url('static', 'myfile.js')` will produce the URL */static/_1.0.0/myfile.js* automatically. When you release a new version of your application with changed static files, you just need to update the `static_version` string.
 
 Multiple paths
 --------------

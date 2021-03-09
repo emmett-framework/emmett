@@ -54,3 +54,26 @@ The command will then be available on the command line:
 ```bash
 > emmett setup
 ```
+
+### Command groups
+
+*New in version 2.2*
+
+You might also want to define several commands within the same *logical group*. In this scenario, the `command_group` decorator is what you're looking for:
+
+```python
+@app.command_group('tasks')
+def tasks_cmd():
+    pass
+
+
+@tasks_cmd.command('create')
+def tasks_create_cmd():
+    # some code here
+```
+
+As you can see we defined a `tasks` command group, and a nested `create` command. We can invoke the upper command using:
+
+    > emmett tasks create
+
+In case you need more information, please check the [click documentation](https://click.palletsprojects.com/en/7.x/commands/) about commands and groups.

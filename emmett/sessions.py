@@ -30,7 +30,7 @@ class SessionPipe(Pipe):
         self,
         expire: int = 3600,
         secure: bool = False,
-        samesite: str = "None",
+        samesite: str = "Lax",
         domain: Optional[str] = None,
         cookie_name: Optional[str] = None,
         cookie_data: Optional[Dict[str, Any]] = None
@@ -92,7 +92,7 @@ class CookieSessionPipe(SessionPipe):
         key,
         expire=3600,
         secure=False,
-        samesite="None",
+        samesite="Lax",
         domain=None,
         cookie_name=None,
         cookie_data=None
@@ -171,7 +171,7 @@ class FileSessionPipe(BackendStoredSessionPipe):
         self,
         expire=3600,
         secure=False,
-        samesite="None",
+        samesite="Lax",
         domain=None,
         cookie_name=None,
         cookie_data=None,
@@ -252,7 +252,7 @@ class RedisSessionPipe(BackendStoredSessionPipe):
         prefix="emtsess:",
         expire=3600,
         secure=False,
-        samesite="None",
+        samesite="Lax",
         domain=None,
         cookie_name=None,
         cookie_data=None
@@ -311,7 +311,7 @@ class SessionManager:
         key: str,
         expire: int = 3600,
         secure: bool = False,
-        samesite: str = "None",
+        samesite: str = "Lax",
         domain: Optional[str] = None,
         cookie_name: Optional[str] = None,
         cookie_data: Optional[Dict[str, Any]] = None
@@ -332,7 +332,7 @@ class SessionManager:
         cls,
         expire: int = 3600,
         secure: bool = False,
-        samesite: str = "None",
+        samesite: str = "Lax",
         domain: Optional[str] = None,
         cookie_name: Optional[str] = None,
         cookie_data: Optional[Dict[str, Any]] = None,
@@ -356,7 +356,7 @@ class SessionManager:
         prefix: str = "emtsess:",
         expire: int = 3600,
         secure: bool = False,
-        samesite: str = "None",
+        samesite: str = "Lax",
         domain: Optional[str] = None,
         cookie_name: Optional[str] = None,
         cookie_data: Optional[Dict[str, Any]] = None

@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import os
-import ssl
 import sys
 
 from logging import Logger
@@ -24,7 +23,6 @@ from yaml import SafeLoader as ymlLoader, load as ymlload
 
 from ._internal import get_root_path, create_missing_app_folders, warn_of_deprecation
 from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
-from .asgi.server import run as asgi_run
 from .cache import RouteCacheRule
 from .ctx import current
 from .datastructures import sdict, ConfigData
@@ -342,6 +340,10 @@ class App:
         return self.cli.command
 
     @property
+    def command_group(self):
+        return self.cli.group
+
+    @property
     def log(self) -> Logger:
         if self._logger and self._logger.name == self.logger_name:
             return self._logger
@@ -366,6 +368,10 @@ class App:
         c = self.config if namespace is None else self.config[namespace]
         for key, val in rc.items():
             c[key] = dict_to_sdict(val)
+
+    #: Register modules
+    def _register_module(self, mod: AppModule):
+        self._modules[mod.name] = mod
 
     #: Creates the extensions' environments and configs
     def __init_extension(self, ext):
@@ -414,64 +420,6 @@ class App:
         context['app'] = self
         return context
 
-    def _run(
-        self,
-        host,
-        port,
-        loop='auto',
-        proto_http='auto',
-        proto_ws='auto',
-        log_level=None,
-        access_log=None,
-        proxy_headers=False,
-        proxy_trust_ips=None,
-        limit_concurrency=None,
-        backlog=2048,
-        timeout_keep_alive=0,
-        ssl_certfile: Optional[str] = None,
-        ssl_keyfile: Optional[str] = None,
-        ssl_cert_reqs: int = ssl.CERT_NONE,
-        ssl_ca_certs: Optional[str] = None
-    ):
-        asgi_run(
-            self, host, port,
-            loop=loop, proto_http=proto_http, proto_ws=proto_ws,
-            log_level=log_level, access_log=access_log,
-            proxy_headers=proxy_headers, proxy_trust_ips=proxy_trust_ips,
-            limit_concurrency=limit_concurrency,
-            backlog=backlog,
-            timeout_keep_alive=timeout_keep_alive,
-            ssl_certfile=ssl_certfile,
-            ssl_keyfile=ssl_keyfile,
-            ssl_cert_reqs=ssl_cert_reqs,
-            ssl_ca_certs=ssl_ca_certs
-        )
-
-    def run(
-        self,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
-        reloader: bool = True,
-        debug: bool = True
-    ):
-        warn_of_deprecation("App.run", "CLI develop and serve commands", stack=3)
-        if host is None:
-            host = "127.0.0.1"
-        if port is None:
-            port = 8000
-        self.debug = debug
-        if os.environ.get('EMMETT_RUN_MAIN') != 'true':
-            quit_msg = "(press CTRL+C to quit)"
-            self.log.info(
-                f"> Emmett application {self.import_name} running on "
-                f"http://{host}:{port} {quit_msg}"
-            )
-        if reloader:
-            from ._reloader import run_with_reloader
-            run_with_reloader(self, host, port)
-        else:
-            self._run(host, port)
-
     def test_client(self, use_cookies: bool = True, **kwargs) -> EmmettTestClient:
         tclass = self.test_client_class or EmmettTestClient
         return tclass(self, use_cookies=use_cookies, **kwargs)
@@ -485,13 +433,16 @@ class App:
         name: str,
         template_folder: Optional[str] = None,
         template_path: Optional[str] = None,
+        static_folder: Optional[str] = None,
+        static_path: Optional[str] = None,
         url_prefix: Optional[str] = None,
         hostname: Optional[str] = None,
         cache: Optional[RouteCacheRule] = None,
         root_path: Optional[str] = None,
         pipeline: Optional[List[Pipe]] = None,
         injectors: Optional[List[Injector]] = None,
-        module_class: Optional[Type[AppModule]] = None
+        module_class: Optional[Type[AppModule]] = None,
+        **kwargs: Any
     ) -> AppModule:
         module_class = module_class or self.config.modules_class
         return module_class.from_app(
@@ -500,30 +451,69 @@ class App:
             name,
             template_folder=template_folder,
             template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
             url_prefix=url_prefix,
             hostname=hostname,
             cache=cache,
             root_path=root_path,
             pipeline=pipeline or [],
-            injectors=injectors or []
+            injectors=injectors or [],
+            opts=kwargs
         )
 
 
 class AppModule:
     @classmethod
     def from_app(
-        cls, app, import_name, name, template_folder, template_path,
-        url_prefix, hostname, cache, root_path, pipeline, injectors
+        cls,
+        app: App,
+        import_name: str,
+        name: str,
+        template_folder: Optional[str],
+        template_path: Optional[str],
+        static_folder: Optional[str],
+        static_path: Optional[str],
+        url_prefix: Optional[str],
+        hostname: Optional[str],
+        cache: Optional[RouteCacheRule],
+        root_path: Optional[str],
+        pipeline: List[Pipe],
+        injectors: List[Injector],
+        opts: Dict[str, Any] = {}
     ):
         return cls(
-            app, name, import_name, template_folder, template_path, url_prefix,
-            hostname, cache, root_path, pipeline, injectors
+            app,
+            name,
+            import_name,
+            template_folder=template_folder,
+            template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
+            url_prefix=url_prefix,
+            hostname=hostname,
+            cache=cache,
+            root_path=root_path,
+            pipeline=pipeline,
+            injectors=injectors,
+            **opts
         )
 
     @classmethod
     def from_module(
-        cls, appmod, import_name, name, template_folder, template_path,
-        url_prefix, hostname, cache, root_path
+        cls,
+        appmod: AppModule,
+        import_name: str,
+        name: str,
+        template_folder: Optional[str],
+        template_path: Optional[str],
+        static_folder: Optional[str],
+        static_path: Optional[str],
+        url_prefix: Optional[str],
+        hostname: Optional[str],
+        cache: Optional[RouteCacheRule],
+        root_path: Optional[str],
+        opts: Dict[str, Any] = {}
     ):
         if '.' in name:
             raise RuntimeError(
@@ -537,9 +527,20 @@ class AppModule:
         hostname = hostname or appmod.hostname
         cache = cache or appmod.cache
         return cls(
-            appmod.app, name, import_name, template_folder, template_path,
-            module_url_prefix, hostname, cache, root_path,
-            pipeline=appmod.pipeline, injectors=appmod.injectors
+            appmod.app,
+            name,
+            import_name,
+            template_folder=template_folder,
+            template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
+            url_prefix=module_url_prefix,
+            hostname=hostname,
+            cache=cache,
+            root_path=root_path,
+            pipeline=appmod.pipeline,
+            injectors=appmod.injectors,
+            **opts
         )
 
     def module(
@@ -548,11 +549,14 @@ class AppModule:
         name: str,
         template_folder: Optional[str] = None,
         template_path: Optional[str] = None,
+        static_folder: Optional[str] = None,
+        static_path: Optional[str] = None,
         url_prefix: Optional[str] = None,
         hostname: Optional[str] = None,
         cache: Optional[RouteCacheRule] = None,
         root_path: Optional[str] = None,
-        module_class: Optional[Type[AppModule]] = None
+        module_class: Optional[Type[AppModule]] = None,
+        **kwargs: Any
     ) -> AppModule:
         module_class = module_class or self.__class__
         return module_class.from_module(
@@ -561,10 +565,13 @@ class AppModule:
             name,
             template_folder=template_folder,
             template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
             url_prefix=url_prefix,
             hostname=hostname,
             cache=cache,
-            root_path=root_path
+            root_path=root_path,
+            opts=kwargs
         )
 
     def __init__(
@@ -574,12 +581,15 @@ class AppModule:
         import_name: str,
         template_folder: Optional[str] = None,
         template_path: Optional[str] = None,
+        static_folder: Optional[str] = None,
+        static_path: Optional[str] = None,
         url_prefix: Optional[str] = None,
         hostname: Optional[str] = None,
         cache: Optional[RouteCacheRule] = None,
         root_path: Optional[str] = None,
         pipeline: Optional[List[Pipe]] = None,
-        injectors: Optional[List[Injector]] = None
+        injectors: Optional[List[Injector]] = None,
+        **kwargs: Any
     ):
         self.app = app
         self.name = name
@@ -587,12 +597,20 @@ class AppModule:
         if root_path is None:
             root_path = get_root_path(self.import_name)
         self.root_path = root_path
-        #: template_folder is referred to application template_path
+        #: - `template_folder` is referred to application `template_path`
+        #  - `template_path` is referred to module root_directory unless absolute
         self.template_folder = template_folder
-        #: template_path is referred to module root_directory
         if template_path and not template_path.startswith("/"):
-            template_path = self.root_path + template_path
+            template_path = os.path.join(self.root_path, template_path)
         self.template_path = template_path
+        #: - `static_folder` is referred to application `static_path`
+        #  - `static_path` is referred to module root_directory unless absolute
+        if static_path and not static_path.startswith("/"):
+            static_path = os.path.join(self.root_path, static_path)
+        self._static_path = (
+            os.path.join(self.app.static_path, static_folder) if static_folder else
+            (static_path or self.app.static_path)
+        )
         self.url_prefix = url_prefix
         self.hostname = hostname
         self.cache = cache
@@ -600,7 +618,7 @@ class AppModule:
         self._super_injectors = injectors or []
         self.pipeline = []
         self.injectors = []
-        self.app._modules[self.name] = self
+        self.app._register_module(self)
 
     @property
     def pipeline(self) -> List[Pipe]:
