@@ -1,17 +1,19 @@
 Emmett changelog
 ================
 
-Next
-----
+Version 2.2
+-----------
 
-(Release date to be defined, codename to be selected)
+Released on March 11th 2021, codename Copernicus
 
 - Slightly refactored request flow
 - Added `App.command_group` decorator
 - Added additional arguments acceptance in `AppModule`
 - Added static paths customisation for `AppModule`
 - Added `workers` options to `serve` command
+- Changed default logging level to `info` in `serve` command
 - Changed default `SameSite` policy for session cookies to `Lax`
+- Added official Python 3.9 support
 
 Version 2.1
 -----------
