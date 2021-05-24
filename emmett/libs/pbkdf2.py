@@ -58,7 +58,7 @@ _pack_int = Struct('>I').pack
 def pbkdf2_hex(data, salt, iterations=1000, keylen=24, hashfunc=None):
     """Like :func:`pbkdf2_bin` but returns a hex encoded string."""
     rv = pbkdf2_bin(data, salt, iterations, keylen, hashfunc)
-    return str(codecs.encode(rv, 'hex_codec'))
+    return codecs.encode(rv, 'hex_codec').decode("utf8")
 
 
 def pbkdf2_bin(data, salt, iterations=1000, keylen=24, hashfunc=None):
