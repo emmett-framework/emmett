@@ -16,7 +16,33 @@ $ pip install -U emmett
 Version 2.2
 -----------
 
-Emmett 2.2 introduces some minor changes you should be aware of, and some new features you might be interested into.
+Emmett 2.2 introduces some changes you should be aware of, and some new features you might be interested into.
+
+### Breaking changes
+
+#### Fixed pbkdf2 library values representation
+
+Emmett versions prior to `2.2.2` contain a bug in the library responsible of *PBKDF2* hashes generation. The produced hashes contain wrong characters due to a wrong decoding format. This means that any stored value produced by the library should be fixed, otherwise further hash comparisons will fail.
+
+Previous generated values look like this:
+
+    pbkdf2(2000,20,sha512)$adcc9967adbd17f6$b'c68deb7f0690c2cafb99b1f323313b17117337ac'
+
+while the correct format is:
+
+    pbkdf2(2000,20,sha512)$adcc9967adbd17f6$c68deb7f0690c2cafb99b1f323313b17117337ac
+
+In case your application use the [Auth system](https://emmett.sh/docs/2.2.x/auth) with default configuration, the passwords' hashes stored in the database contain the wrong characters, and you should fix them manually. Here is a code snippet you can use:
+
+```python
+with db.connection():
+    for row in User.where(lambda u: u.password.contains("b'")).select():
+        password_components = row.password.split("$")
+        row.update_record(
+            password="$".join(password_components[:-1] + [password_components[-1][2:-1]])
+        )
+    db.commit()
+```
 
 ### Minor changes
 
