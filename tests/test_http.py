@@ -15,7 +15,7 @@ def test_http_default():
 
     assert http.encoded_body is b''
     assert http.status_code == 200
-    assert http.headers == [(b'content-type', b'text/plain')]
+    assert list(http.headers) == [(b'content-type', b'text/plain')]
 
 
 def test_http_bytes():
@@ -23,7 +23,7 @@ def test_http_bytes():
 
     assert http.body == b''
     assert http.status_code == 200
-    assert http.headers == [(b'content-type', b'text/plain')]
+    assert list(http.headers) == [(b'content-type', b'text/plain')]
 
 
 def test_http():
@@ -43,7 +43,7 @@ def test_http():
 
     assert http.encoded_body == b'Hello World'
     assert http.status_code == 200
-    assert http.headers == [
+    assert list(http.headers) == [
         (b'x-test', b'Hello Header'), (b'set-cookie', b'hello cookie')
     ]
 
@@ -55,4 +55,4 @@ def test_redirect():
         except HTTPResponse as http_redirect:
             assert ctx.response.status == 302
             assert http_redirect.status_code == 302
-            assert http_redirect.headers == [(b'location', b'/redirect')]
+            assert list(http_redirect.headers) == [(b'location', b'/redirect')]
