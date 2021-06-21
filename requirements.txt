@@ -1,15 +1,14 @@
 click==7.1.2
 h11==0.10.0
-h2==4.0.0
-httptools==0.1.1; sys_platform != "win32"
-hyperframe==6.0.0
+h2==4.0.0;
+httptools==0.1.2; sys_platform != "win32"
 pendulum==2.1.2
 pyaes==1.6.1
 pydal==17.3
 python-rapidjson==1.0
 pyyaml==5.4.1
-renoir==1.3.2
+renoir==1.4.0
 severus==1.1.1
 uvicorn==0.13.4
 uvloop==0.15.2; sys_platform != "win32"
-websockets==8.1
+websockets==9.1
