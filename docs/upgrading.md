@@ -36,7 +36,7 @@ In case your application use the [Auth system](https://emmett.sh/docs/2.2.x/auth
 
 ```python
 with db.connection():
-    for row in User.where(lambda u: u.password.contains("b'")).select():
+    for row in User.where(lambda u: u.password.like("%b'%")).select():
         password_components = row.password.split("$")
         row.update_record(
             password="$".join(password_components[:-1] + [password_components[-1][2:-1]])
