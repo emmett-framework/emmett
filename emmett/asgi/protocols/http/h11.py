@@ -46,7 +46,8 @@ class H11Protocol(_H11Protocol):
             output.append(b"\r\n")
             protocol = self.ws_protocol_class(
                 config=self.config,
-                server_state=self.server_state
+                server_state=self.server_state,
+                on_connection_lost=self.on_connection_lost
             )
             protocol.connection_made(self.transport)
             protocol.data_received(b"".join(output))
@@ -64,6 +65,7 @@ class H11Protocol(_H11Protocol):
             protocol = self.h2_protocol_class(
                 config=self.config,
                 server_state=self.server_state,
+                on_connection_lost=self.on_connection_lost,
                 _loop=self.loop
             )
             protocol.handle_upgrade_from_h11(self.transport, event, self.headers)
