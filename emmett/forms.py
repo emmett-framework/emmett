@@ -594,6 +594,10 @@ class FormStyle:
     def widget_json(attr, field, value, _id=None):
         return FormStyle.widget_text(attr, field, value, _id=_id or field.name)
 
+    @staticmethod
+    def widget_jsonb(attr, field, value, _id=None):
+        return FormStyle.widget_text(attr, field, value, _id=_id or field.name)
+
     def __init__(self, attributes):
         self.attr = attributes
 
