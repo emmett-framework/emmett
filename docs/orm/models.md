@@ -83,11 +83,14 @@ Available type methods for Field definition are:
 | upload | `str` |
 | list:string | `list` of `str` |
 | list:int | `list` of `int` |
-| json | `json` |
+| json | `dict` or `list` |
+| jsonb | `dict` or `list` |
 
 If you don't specify a type for the `Field` class, and create an instance directly, it will be set as *string* as default value.
 
 Using the right field type ensure the right columns types inside your tables, and allows you to benefit from the default validation implemented by Emmett.
+
+> **Note:** some fields' types are engine specific, for instance `jsonb` field is valid only with PostgreSQL engine.
 
 Validation
 ----------

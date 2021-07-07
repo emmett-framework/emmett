@@ -272,6 +272,37 @@ So, for example, you can query the events of a specific year quite easily:
 db(Event.happens_at.year() == 1985)
 ```
 
+### Engine specific operators
+
+#### PostgreSQL json operators
+
+Emmett provides additional query operators specific to PostgreSQL engine. The following table describes the mapping between Emmett's ORM methods and the relevant PostgreSQL json/jsonb operators:
+
+| operator | expression |
+| --- | --- |
+| jcontains | `jsonb @> jsonb` |
+| jhas | `jsonb ?(|&) text` |
+| jin | `jsonb <@ jsonb` |
+| jget | `json(b) -> integer|text` |
+| jgetv | `json(b) ->> integer|text` |
+| jpath | `json(b) #> text` |
+| jpathv | `json(b) #>> text` |
+
+While `jcontains`, `jhas` and `jin` are boolean operators, the other ones expect a right operand:
+
+```python
+db(Model.jsonb_field.jhas("key"))
+db(Model.jsonb_field.jget("key") == "val")
+```
+
+Moreover, the `jhas` operator implements an `all` parameter for list arguments, so you can produce the different queries:
+
+```python
+Model.jsonb_field.jhas("key")  # "models"."jsonb_field" ? 'key'
+Model.jsonb_field.jhas(["key1", "key2"], all=False)  # "models"."jsonb_field" ?| array['key1','key2']
+Model.jsonb_field.jhas(["key1", "key2"], all=True)  # "models"."jsonb_field" ?& array['key1','key2']
+```
+
 Selecting records
 -----------------
 
