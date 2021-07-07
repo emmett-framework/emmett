@@ -12,17 +12,23 @@
 from functools import wraps
 from pydal.adapters import adapters
 from pydal.adapters.mssql import (
-    MSSQL1, MSSQL3, MSSQL4, MSSQL1N, MSSQL3N, MSSQL4N
+    MSSQL1,
+    MSSQL3,
+    MSSQL4,
+    MSSQL1N,
+    MSSQL3N,
+    MSSQL4N
 )
 from pydal.adapters.postgres import (
-    Postgre, PostgrePsyco, PostgrePG8000,
-    PostgreNew, PostgrePsycoNew, PostgrePG8000New,
-    PostgreBoolean, PostgrePsycoBoolean, PostgrePG8000Boolean
+    Postgre,
+    PostgrePsyco,
+    PostgrePG8000,
+    PostgreNew,
+    PostgrePsycoNew,
+    PostgrePG8000New
 )
-from pydal.adapters.sqlite import SQLite as _SQLite
-from pydal.dialects.postgre import PostgreDialectBooleanJSON
-from pydal.parsers.postgre import PostgreBooleanAutoJSONParser
 
+from .engines import adapters
 from .objects import Field
 
 
@@ -40,59 +46,6 @@ adapters._registry_.update({
     'postgres3:psycopg2': PostgrePsyco,
     'postgres3:pg8000': PostgrePG8000
 })
-
-
-@adapters.register_for('sqlite', 'sqlite:memory')
-class SQLite(_SQLite):
-    def _initialize_(self, do_connect):
-        super(SQLite, self)._initialize_(do_connect)
-        self.driver_args['isolation_level'] = None
-
-    def begin(self, lock_type=None):
-        statement = 'BEGIN %s;' % lock_type if lock_type else 'BEGIN;'
-        self.execute(statement)
-
-
-@adapters.register_for('postgres')
-class PostgresAdapter(PostgreBoolean):
-    def _load_dependencies(self):
-        super()._load_dependencies()
-        self.dialect = PostgreDialectBooleanJSON(self)
-        self.parser = PostgreBooleanAutoJSONParser(self)
-
-    def _config_json(self):
-        pass
-
-    def _mock_reconnect(self):
-        pass
-
-
-@adapters.register_for('postgres:psycopg2')
-class PostgresPsycoPG2Adapter(PostgrePsycoBoolean):
-    def _load_dependencies(self):
-        super()._load_dependencies()
-        self.dialect = PostgreDialectBooleanJSON(self)
-        self.parser = PostgreBooleanAutoJSONParser(self)
-
-    def _config_json(self):
-        pass
-
-    def _mock_reconnect(self):
-        pass
-
-
-@adapters.register_for('postgres:pg8000')
-class PostgresPG8000Adapter(PostgrePG8000Boolean):
-    def _load_dependencies(self):
-        super()._load_dependencies()
-        self.dialect = PostgreDialectBooleanJSON(self)
-        self.parser = PostgreBooleanAutoJSONParser(self)
-
-    def _config_json(self):
-        pass
-
-    def _mock_reconnect(self):
-        pass
 
 
 def _wrap_on_obj(f, adapter):
