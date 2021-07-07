@@ -235,6 +235,10 @@ class Field(_Field):
         return cls('json', *args, **kwargs)
 
     @classmethod
+    def jsonb(cls, *args, **kwargs):
+        return cls('jsonb', *args, **kwargs)
+
+    @classmethod
     def password(cls, *args, **kwargs):
         return cls('password', *args, **kwargs)
 
