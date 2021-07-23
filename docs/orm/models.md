@@ -106,7 +106,7 @@ validation = {
 ```
 
 The validation rules you define will be used to validate the forms created from the models on the user input and inserts.   
-While you can find the complete list of available validators in the [appropriate chapter](../validation) of the documentation, here we list the default validation implemented by Emmett on fields:
+While you can find the complete list of available validators in the [appropriate chapter](../validations) of the documentation, here we list the default validation implemented by Emmett on fields:
 
 | Field type | default validation | allow blank value |
 | --- | --- | --- |
@@ -268,7 +268,8 @@ form_labels = {
     'started': T("Opening date:")
 }
 ```
-Labels will decorate the input fields in your forms. In this example we used the [Emmett translator](./languages) object to automatically translate the string in the correct language.
+
+Labels will decorate the input fields in your forms. In this example we used the [Emmett translator](../languages) object to automatically translate the string in the correct language.
 
 You can also use the `label` parameter of `Field` class:
 
