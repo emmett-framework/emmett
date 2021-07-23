@@ -83,11 +83,14 @@ Available type methods for Field definition are:
 | upload | `str` |
 | list:string | `list` of `str` |
 | list:int | `list` of `int` |
-| json | `json` |
+| json | `dict` or `list` |
+| jsonb | `dict` or `list` |
 
 If you don't specify a type for the `Field` class, and create an instance directly, it will be set as *string* as default value.
 
 Using the right field type ensure the right columns types inside your tables, and allows you to benefit from the default validation implemented by Emmett.
+
+> **Note:** some fields' types are engine specific, for instance `jsonb` field is valid only with PostgreSQL engine.
 
 Validation
 ----------
@@ -313,6 +316,16 @@ And you can also use the `widget` parameter of `Field` class:
 
 ```python
 started = Field.datetime(widget=my_custom_widget)
+```
+
+#### Additional widgets
+
+In case you want to use [additional widgets](../forms#additional-widgets) in `FormStyle` class, simply pass the relevant method in `form_widgets` dictionary:
+
+```python
+form_widgets = {
+    'field': FormStyle.widget_radio
+}
 ```
 
 The setup helper

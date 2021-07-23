@@ -17,7 +17,7 @@ import stat
 
 from email.utils import formatdate
 from hashlib import md5
-from typing import Any, BinaryIO, Dict, List, Tuple
+from typing import Any, BinaryIO, Dict, Generator, Tuple
 
 from ._internal import loop_open_file
 from .ctx import current
@@ -81,13 +81,11 @@ class HTTPResponse(Exception):
         self._cookies: Dict[str, Any] = cookies
 
     @property
-    def headers(self) -> List[Tuple[bytes, bytes]]:
-        rv = []
+    def headers(self) -> Generator[Tuple[bytes, bytes], None, None]:
         for key, val in self._headers.items():
-            rv.append((key.encode('latin-1'), val.encode('latin-1')))
+            yield key.encode('latin-1'), val.encode('latin-1')
         for cookie in self._cookies.values():
-            rv.append((b'set-cookie', str(cookie)[12:].encode('latin-1')))
-        return rv
+            yield b'set-cookie', str(cookie)[12:].encode('latin-1')
 
     async def _send_headers(self, send):
         await send({

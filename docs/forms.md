@@ -156,11 +156,29 @@ Also, you understood that `Form` also accepts `Field` objects as arguments.
 
 Customizing forms
 -----------------
+
 Good applications also need good styles. This is why Emmett forms allows you to
 set a specific style with the `formstyle` attribute. But how should you edit the
 style of your form?
 
 Well, in Emmett, the style of a form is decided by the `FormStyle` class.
+
+### Additional widgets
+
+Emmett's default `FormStyle` also provides some additional widgets you can use in place of the default ones.
+
+#### Radio widget
+
+Under default circumstances, Emmett will produce a `select` tag for those fields which should be part of a pre-defined set. In case you prefer to generate inputs of type radio, you can use `FormStyle.widget_radio`:
+
+```python
+form = await Form({
+    'type': Field(
+        validation={'in': ['type1', 'type2']},
+        widget=FormStyle.widget_radio
+    )
+})
+```
 
 ### Creating your style
 *sub-section under development*

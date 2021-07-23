@@ -19,6 +19,8 @@ import pendulum
 
 from .utils import cachedprop
 
+_ctxv = contextvars.ContextVar("_emt_ctxv")
+
 
 class Context:
     __slots__ = ["app", "__dict__"]
@@ -85,52 +87,49 @@ class WSContext(Context):
 
 
 class Current:
-    __slots__ = ['_ctx']
+    __slots__ = []
+
+    ctx = property(_ctxv.get)
 
     def __init__(self):
-        object.__setattr__(self, '_ctx', contextvars.ContextVar('ctx'))
-        self._ctx.set(Context())
+        _ctxv.set(Context())
 
     def _init_(self, ctx):
-        return self._ctx.set(ctx)
+        return _ctxv.set(ctx)
 
     def _close_(self, token):
-        self._ctx.reset(token)
+        _ctxv.reset(token)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self._ctx.get(), name)
+        return getattr(self.ctx, name)
 
     def __setattr__(self, name: str, value: Any):
-        setattr(self._ctx.get(), name, value)
+        setattr(self.ctx, name, value)
 
     def __delattr__(self, name: str):
-        delattr(self._ctx.get(), name)
+        delattr(self.ctx, name)
 
     def __getitem__(self, name: str) -> Any:
         try:
-            return getattr(self._ctx.get(), name)
+            return getattr(self.ctx, name)
         except AttributeError as e:
             raise KeyError from e
 
     def __setitem__(self, name: str, value: Any):
-        setattr(self._ctx.get(), name, value)
+        setattr(self.ctx, name, value)
 
     def __delitem__(self, name: str):
-        delattr(self._ctx.get(), name)
+        delattr(self.ctx, name)
 
     def __contains__(self, name: str) -> bool:
-        return hasattr(self._ctx.get(), name)
+        return hasattr(self.ctx, name)
 
     def get(self, name: str, default: Any = None) -> Any:
-        return getattr(self._ctx.get(), name, default)
+        return getattr(self.ctx, name, default)
 
     @property
     def T(self):
-        return self._ctx.get().app.translator
-
-    @property
-    def ctx(self):
-        return self._ctx.get()
+        return self.ctx.app.translator
 
 
 current = Current()

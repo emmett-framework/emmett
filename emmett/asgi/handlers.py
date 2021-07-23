@@ -452,8 +452,7 @@ async def _event_looper(
     event: Any = None
 ) -> Tuple[Union[EventHandler, EventHandlerWrapper], Event]:
     event = await receive()
-    event_handler = handler.get_event_handler(event['type'])
-    return event_handler, event
+    return handler.get_event_handler(event['type']), event
 
 
 async def _event_missing(

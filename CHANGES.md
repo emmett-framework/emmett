@@ -1,6 +1,16 @@
 Emmett changelog
 ================
 
+Next
+----
+
+(Release date to be defined, codename to be selected)
+
+- Minor enhancements on request flow
+- Added ORM support for PostgreSQL json/jsonb fields and operators
+- Added `widget_radio` to `forms.FormStyle`
+- Added `dict` values support for `in` validations
+
 Version 2.2
 -----------
 
