@@ -57,7 +57,7 @@ uvicorn = "0.14.0"
 websockets = "^9.1"
 
 httptools = { version = "~0.2.0", markers = "sys_platform != 'win32'" }
-uvloop = { version = "~0.15.2", markers = "sys_platform != 'win32'" }
+uvloop = { version = "~0.15.3", markers = "sys_platform != 'win32'" }
 
 orjson = { version = "~3.5.1", optional = true }
 

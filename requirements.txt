@@ -10,5 +10,5 @@ pyyaml==5.4.1
 renoir==1.4.0
 severus==1.1.1
 uvicorn==0.14.0
-uvloop==0.15.2; sys_platform != "win32"
+uvloop==0.15.3; sys_platform != "win32"
 websockets==9.1
