@@ -317,6 +317,16 @@ And you can also use the `widget` parameter of `Field` class:
 started = Field.datetime(widget=my_custom_widget)
 ```
 
+#### Additional widgets
+
+In case you want to use [additional widgets](../forms#additional-widgets) in `FormStyle` class, simply pass the relevant method in `form_widgets` dictionary:
+
+```python
+form_widgets = {
+    'field': FormStyle.widget_radio
+}
+```
+
 The setup helper
 ----------------
 Sometimes you need to access your model attributes when defining other features, but, until now, we couldn't access the class or the instance itself. To avoid this problem, you can use the `setup` method of the model:
