@@ -146,7 +146,7 @@ class Engine(MetaEngine):
         else:
             csql_info = dict(
                 index_name=self.dialect.quote(column.name + '__idx'),
-                field_name=self.dialect.quote(rfieldname),
+                field_name=self.dialect.quote(column.name),
                 constraint_name=self.dialect.quote(constraint_name),
                 foreign_key='%s (%s)' % (
                     self.dialect.quote(rtablename),
