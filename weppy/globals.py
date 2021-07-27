@@ -17,6 +17,11 @@ import pendulum
 import re
 import threading
 from datetime import datetime
+try:
+    from cgi import parse_qs
+except:
+    from urllib.parse import parse_qs
+
 from ._compat import SimpleCookie, iteritems, to_native
 from ._internal import ObjectProxy, LimitedStream
 from .datastructures import sdict, Accept, EnvironHeaders
@@ -99,7 +104,7 @@ class Request(object):
     @cachedprop
     def query_params(self):
         query_string = self.environ.get('QUERY_STRING', '')
-        dget = cgi.parse_qs(query_string, keep_blank_values=1)
+        dget = parse_qs(query_string, keep_blank_values=1)
         params = sdict(dget)
         for key, value in iteritems(params):
             if isinstance(value, list) and len(value) == 1:

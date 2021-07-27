@@ -120,7 +120,7 @@ def secure_dumps(data, encryption_key, hash_key=None, compression_level=None):
     key = _pad(to_bytes(encryption_key[:32]))
     aes = pyaes.AESModeOfOperationCFB(key, iv=key[:16], segment_size=8)
     encrypted_data = base64.urlsafe_b64encode(aes.encrypt(_pad(dump)))
-    signature = hmac.new(to_bytes(hash_key), encrypted_data).hexdigest()
+    signature = hmac.new(to_bytes(hash_key), encrypted_data, digestmod='md5').hexdigest()
     return signature + ':' + to_native(encrypted_data)
 
 
@@ -131,7 +131,7 @@ def secure_loads(data, encryption_key, hash_key=None, compression_level=None):
         hash_key = hashlib_sha1(encryption_key).hexdigest()
     signature, encrypted_data = data.split(':', 1)
     actual_signature = hmac.new(
-        to_bytes(hash_key), to_bytes(encrypted_data)).hexdigest()
+        to_bytes(hash_key), to_bytes(encrypted_data), digestmod='md5').hexdigest()
     if signature != actual_signature:
         return None
     key = _pad(to_bytes(encryption_key[:32]))

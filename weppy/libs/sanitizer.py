@@ -19,7 +19,10 @@ else:
     from html.parser import HTMLParser
     from urllib.parse import urlparse
     from html.entities import entitydefs
-from cgi import escape
+try:
+    from cgi import escape
+except:
+    from html import escape
 from formatter import AbstractFormatter
 
 from xml.sax.saxutils import quoteattr

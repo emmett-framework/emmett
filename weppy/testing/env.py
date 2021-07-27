@@ -17,6 +17,11 @@ import cgi
 import sys
 from datetime import datetime
 from io import BytesIO
+try:
+    from cgi import parse_qs
+except:
+    from urllib.parse import parse_qs
+
 from .._compat import text_type, iteritems, itervalues
 from ..datastructures import sdict
 from .helpers import Headers, filesdict, stream_encode_multipart
@@ -95,7 +100,7 @@ class EnvironBuilder(object):
 
     @staticmethod
     def _parse_querystring(query_string):
-        dget = cgi.parse_qs(query_string, keep_blank_values=1)
+        dget = parse_qs(query_string, keep_blank_values=1)
         params = sdict(dget)
         for key, value in iteritems(params):
             if isinstance(value, list) and len(value) == 1:
