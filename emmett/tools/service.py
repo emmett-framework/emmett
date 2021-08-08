@@ -27,10 +27,10 @@ class JSONServicePipe(Pipe):
         current.response.headers._data['content-type'] = 'application/json'
         return self.encoder(await next_pipe(**kwargs))
 
-    def receive(self, data):
+    def on_receive(self, data):
         return self.decoder(data)
 
-    def send(self, data):
+    def on_send(self, data):
         return self.encoder(data)
 
 
@@ -45,7 +45,7 @@ class XMLServicePipe(Pipe):
         current.response.headers._data['content-type'] = 'text/xml'
         return self.encoder(await next_pipe(**kwargs))
 
-    def send(self, data):
+    def on_send(self, data):
         return self.encoder(data)
 
 
