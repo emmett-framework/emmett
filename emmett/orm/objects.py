@@ -101,6 +101,9 @@ class Field(_Field):
                     self._custom_requires = [self._custom_requires]
         self._validation = {}
         self._vparser = ValidateFromDict()
+        #: ensure 'length' is an integer
+        if 'length' in kwargs:
+            kwargs['length'] = int(kwargs['length'])
         #: store args and kwargs for `_make_field`
         self._args = args
         self._kwargs = kwargs
