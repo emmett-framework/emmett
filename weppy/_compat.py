@@ -9,8 +9,9 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import sys
 import hashlib
+import hmac
+import sys
 
 PY2 = sys.version_info[0] == 2
 _identity = lambda x: x
@@ -36,6 +37,9 @@ if PY2:
     xrange = xrange
     hashlib_md5 = hashlib.md5
     hashlib_sha1 = hashlib.sha1
+    hmac_new = lambda key, msg=None, digestmod=hashlib_md5: hmac.new(
+        key, msg, digestmod=digestmod
+    )
 
     def implements_iterator(cls):
         cls.next = cls.__next__
@@ -71,6 +75,7 @@ if PY2:
 else:
     import pickle
     import copyreg
+    from functools import reduce
     from html import escape
     from http.cookies import SimpleCookie
     from io import StringIO
@@ -85,10 +90,12 @@ else:
     string_types = (str,)
     basestring = str
 
-    from functools import reduce
     xrange = range
     hashlib_md5 = lambda s: hashlib.md5(bytes(s, 'utf8'))
     hashlib_sha1 = lambda s: hashlib.sha1(bytes(s, 'utf8'))
+    hmac_new = lambda key, msg=None, digestmod='md5': hmac.new(
+        key, msg, digestmod=digestmod
+    )
 
     implements_iterator = _identity
     implements_bool = _identity

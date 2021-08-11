@@ -15,7 +15,6 @@
 
 import base64
 import hashlib
-import hmac
 import os
 import pyaes
 import random
@@ -24,9 +23,10 @@ import threading
 import time
 import uuid as uuidm
 import zlib
+
 from collections import OrderedDict
 
-from ._compat import PY2, xrange, pickle, hashlib_sha1, to_bytes, to_native
+from ._compat import PY2, xrange, pickle, hashlib_sha1, hmac_new, to_bytes, to_native
 from .libs.pbkdf2 import pbkdf2_hex
 
 
@@ -65,7 +65,7 @@ def simple_hash(text, key='', salt='', digest_alg='md5'):
                           int(keylen), get_digest(alg))
     elif key:  # use hmac
         digest_alg = get_digest(digest_alg)
-        h = hmac.new(to_bytes(key + salt), to_bytes(text), digest_alg)
+        h = hmac_new(to_bytes(key + salt), to_bytes(text), digest_alg)
     else:  # compatible with third party systems
         h = hashlib.new(digest_alg)
         h.update(to_bytes(text + salt))
@@ -120,7 +120,7 @@ def secure_dumps(data, encryption_key, hash_key=None, compression_level=None):
     key = _pad(to_bytes(encryption_key[:32]))
     aes = pyaes.AESModeOfOperationCFB(key, iv=key[:16], segment_size=8)
     encrypted_data = base64.urlsafe_b64encode(aes.encrypt(_pad(dump)))
-    signature = hmac.new(to_bytes(hash_key), encrypted_data, digestmod='md5').hexdigest()
+    signature = hmac_new(to_bytes(hash_key), encrypted_data).hexdigest()
     return signature + ':' + to_native(encrypted_data)
 
 
@@ -130,8 +130,8 @@ def secure_loads(data, encryption_key, hash_key=None, compression_level=None):
     if not hash_key:
         hash_key = hashlib_sha1(encryption_key).hexdigest()
     signature, encrypted_data = data.split(':', 1)
-    actual_signature = hmac.new(
-        to_bytes(hash_key), to_bytes(encrypted_data), digestmod='md5').hexdigest()
+    actual_signature = hmac_new(
+        to_bytes(hash_key), to_bytes(encrypted_data)).hexdigest()
     if signature != actual_signature:
         return None
     key = _pad(to_bytes(encryption_key[:32]))
