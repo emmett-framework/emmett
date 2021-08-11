@@ -60,6 +60,7 @@ httptools = { version = "~0.2.0", markers = "sys_platform != 'win32'" }
 uvloop = { version = "~0.15.3", markers = "sys_platform != 'win32'" }
 
 orjson = { version = "~3.5.1", optional = true }
+emmett-crypto = { version = "^0.1.0", optional = true }
 
 [tool.poetry.dev-dependencies]
 ipaddress = "^1.0"
@@ -69,6 +70,7 @@ pytest-asyncio = "^0.10"
 
 [tool.poetry.extras]
 orjson = ["orjson"]
+crypto = ["emmett-crypto"]
 
 [tool.poetry.urls]
 "Issue Tracker" = "https://github.com/emmett-framework/emmett/issues"
