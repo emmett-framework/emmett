@@ -32,6 +32,11 @@ from collections import OrderedDict
 from ._shortcuts import hashlib_sha1, to_bytes
 from .libs.pbkdf2 import pbkdf2_hex
 
+try:
+    from emmett_crypto import kdf
+except:
+    kdf = None
+
 
 class CSRFStorage(OrderedDict):
     def _clean(self):
@@ -64,9 +69,21 @@ def simple_hash(text, key='', salt='', digest_alg='md5'):
         h = digest_alg(text + key + salt)
     elif digest_alg.startswith('pbkdf2'):  # latest and coolest!
         iterations, keylen, alg = digest_alg[7:-1].split(',')
+        if kdf:
+            return kdf.pbkdf2_hex(
+                text,
+                salt,
+                iterations=int(iterations),
+                keylen=int(keylen),
+                hash_algorithm=kdf.PBKDF2_HMAC[alg]
+            )
         return pbkdf2_hex(
-            to_bytes(text), to_bytes(salt), int(iterations), int(keylen),
-            get_digest(alg))
+            to_bytes(text),
+            to_bytes(salt),
+            int(iterations),
+            int(keylen),
+            get_digest(alg)
+        )
     elif key:  # use hmac
         digest_alg = get_digest(digest_alg)
         h = hmac.new(to_bytes(key + salt), msg=to_bytes(text), digestmod=digest_alg)
@@ -112,9 +129,9 @@ DIGEST_ALG_BY_SIZE = {
 def _pad(s, n=32, padchar='.'):
     expected_len = ((len(s) + n) - len(s) % n)
     return s.ljust(expected_len, to_bytes(padchar))
-    #return s + (32 - len(s) % 32) * padchar
 
 
+# DEPRECATED: remove this method in future versions
 def secure_dumps(data, encryption_key, hash_key=None, compression_level=None):
     if not hash_key:
         hash_key = hashlib_sha1(encryption_key).hexdigest()
@@ -128,6 +145,7 @@ def secure_dumps(data, encryption_key, hash_key=None, compression_level=None):
     return signature + ':' + encrypted_data.decode('utf8')
 
 
+# DEPRECATED: remove this method in future versions
 def secure_loads(data, encryption_key, hash_key=None, compression_level=None):
     if ':' not in data:
         return None
