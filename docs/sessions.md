@@ -46,6 +46,8 @@ As you can see, `SessionManager.cookies` needs a secret key to crypt the session
 | encryption\_mode | legacy | allows to set the encryption method (`legacy` or `modern`) |
 | compression\_level | 0 | allows to set the compression level for the data stored (0 means disabled) |
 
+> **Note:** in order to use *modern* value for `encryption_mode`, you need to install Emmett with `crypto` extra. This module is written in Rust language, so in case no pre-build wheel is available for your platform, you will need Rust toolchain on your system to compile it from source.
+
 Storing sessions on filesystem
 ------------------------------
 
