@@ -18,7 +18,7 @@ Basically, you can use `session` object to store and retrieve data, but before y
 Storing sessions in cookies
 ---------------------------
 
-*Changed in version 2.1*
+*Changed in version 2.3*
 
 You can store session contents directly in the cookies of the client using the Emmett's `SessionManager.cookies` pipe:
 
@@ -43,6 +43,8 @@ As you can see, `SessionManager.cookies` needs a secret key to crypt the session
 | domain | | allows to set a specific domain for the cookie |
 | cookie\_name | | allows to set a specific name for the cookie |
 | cookie\_data | | allows to pass additional cookie data to the manager |
+| encryption\_mode | legacy | allows to set the encryption method (`legacy` or `modern`) |
+| compression\_level | 0 | allows to set the compression level for the data stored (0 means disabled) |
 
 Storing sessions on filesystem
 ------------------------------

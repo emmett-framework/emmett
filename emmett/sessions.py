@@ -15,6 +15,7 @@ import os
 import pickle
 import tempfile
 import time
+import zlib
 
 from typing import Any, Dict, Optional, Type, TypeVar
 
@@ -102,7 +103,8 @@ class CookieSessionPipe(SessionPipe):
         domain=None,
         cookie_name=None,
         cookie_data=None,
-        encryption_mode="legacy"
+        encryption_mode="legacy",
+        compression_level=0
     ):
         super().__init__(
             expire=expire,
@@ -126,27 +128,36 @@ class CookieSessionPipe(SessionPipe):
             self._decrypt_data = self._decrypt_data_modern
         else:
             raise ValueError("Invalid encryption_mode")
+        self.compression_level = compression_level
 
     def _encrypt_data_legacy(self) -> str:
-        return secure_dumps(sdict(current.session), self.key)
+        return secure_dumps(
+            sdict(current.session),
+            self.key,
+            compression_level=self.compression_level
+        )
 
     def _encrypt_data_modern(self) -> str:
-        return crypto_symmetric.encrypt_b64(
-            pickle.dumps(sdict(current.session)),
-            self.key
-        )
+        data = pickle.dumps(sdict(current.session))
+        if self.compression_level:
+            data = zlib.compress(data, self.compression_level)
+        return crypto_symmetric.encrypt_b64(data, self.key)
 
     def _decrypt_data_legacy(self, data: str) -> SessionData:
         return SessionData(
-            secure_loads(data, self.key),
+            secure_loads(data, self.key, compression_level=self.compression_level),
             expires=self.expire
         )
 
     def _decrypt_data_modern(self, data: str) -> SessionData:
-        return SessionData(
-            pickle.loads(crypto_symmetric.decrypt_b64(data, self.key)),
-            expires=self.expire
-        )
+        try:
+            ddata = crypto_symmetric.decrypt_b64(data, self.key)
+            if self.compression_level:
+                ddata = zlib.decompress(ddata)
+            rv = pickle.loads(ddata)
+        except Exception:
+            rv = None
+        return SessionData(rv, expires=self.expire)
 
     def _load_session(self, wrapper: ScopeWrapper) -> SessionData:
         cookie_data = wrapper.cookies[self.cookie_name].value
@@ -353,7 +364,8 @@ class SessionManager:
         domain: Optional[str] = None,
         cookie_name: Optional[str] = None,
         cookie_data: Optional[Dict[str, Any]] = None,
-        encryption_mode: str = "legacy"
+        encryption_mode: str = "legacy",
+        compression_level: int = 0
     ) -> CookieSessionPipe:
         return cls._build_pipe(
             CookieSessionPipe,
@@ -364,7 +376,8 @@ class SessionManager:
             domain=domain,
             cookie_name=cookie_name,
             cookie_data=cookie_data,
-            encryption_mode=encryption_mode
+            encryption_mode=encryption_mode,
+            compression_level=compression_level
         )
 
     @classmethod
