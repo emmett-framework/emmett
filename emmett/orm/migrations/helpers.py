@@ -10,6 +10,7 @@
 """
 
 from collections.abc import Iterable
+from contextlib import contextmanager
 from uuid import uuid4
 
 from ...datastructures import _unique_list
@@ -51,6 +52,34 @@ class Dispatcher(object):
                 return self._registry[target]
         else:
             raise ValueError("no dispatch function for object: %s" % obj)
+
+
+class DryRunAdapter:
+    def __init__(self, adapter, logger):
+        self.adapter = adapter
+        self.__dlogger = logger
+
+    def __getattr__(self, name):
+        return getattr(self.adapter, name)
+
+    def execute(self, sql):
+        self.__dlogger(sql)
+
+
+class DryRunDatabase:
+    def __init__(self, db, logger):
+        self.db = db
+        self._adapter = DryRunAdapter(db._adapter, logger)
+
+    def __getattr__(self, name):
+        return getattr(self.db, name)
+
+    def __getitem__(self, key):
+        return self.db[key]
+
+    @contextmanager
+    def connection(self, *args, **kwargs):
+        yield None
 
 
 def to_tuple(x, default=None):
