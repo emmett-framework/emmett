@@ -13,7 +13,7 @@ import click
 
 from ...datastructures import sdict
 from .base import Schema, Column
-from .helpers import make_migration_id, to_tuple
+from .helpers import DryRunDatabase, make_migration_id, to_tuple
 from .operations import MigrationOp, UpgradeOps, DowngradeOps
 from .scripts import ScriptDir
 
@@ -105,6 +105,10 @@ class Command(object):
                 click.style(revid_dst, fg="cyan", bold=True),
             ])
         )
+
+    @staticmethod
+    def _log_dry_run(msg):
+        click.secho(msg, fg='yellow')
 
     def _store_current_revision_(self, ctx, source, dest):
         _store_logs = {
@@ -237,7 +241,8 @@ class Command(object):
                     "No revision state found on the schema.", fg="yellow"
                 )
 
-    def up(self, rev_id):
+    def up(self, rev_id, dry_run=False):
+        log_verb = "Previewing" if dry_run else "Performing"
         for ctx in self.envs:
             self.load_schema(ctx)
             start_point = ctx._current_revision_
@@ -246,22 +251,28 @@ class Command(object):
             )
             click.echo(
                 " ".join([
-                    "> Performing upgrades against",
+                    f"> {log_verb} upgrades against",
                     click.style(ctx.db._uri, bold=True)
                 ])
             )
-            with ctx.db.connection():
+            db = (
+                DryRunDatabase(ctx.db, self._log_dry_run) if dry_run else
+                ctx.db
+            )
+            with db.connection():
                 for revision in revisions:
                     click.echo(
                         " ".join([
-                            "> Performing upgrade:",
+                            f"> {log_verb} upgrade:",
                             click.style(str(revision), fg="cyan", bold=True)
                         ])
                     )
-                    migration = revision.migration_class(self.app, ctx.db)
+                    migration = revision.migration_class(self.app, db)
                     try:
                         migration.up()
-                        ctx.db.commit()
+                        db.commit()
+                        if dry_run:
+                            continue
                         self._store_current_revision_(
                             ctx, migration.revises, migration.revision
                         )
@@ -278,7 +289,7 @@ class Command(object):
                             ])
                         )
                     except Exception:
-                        ctx.db.rollback()
+                        db.rollback()
                         click.echo(
                             " ".join([
                                 click.style("> Failed upgrading to", fg="red"),
@@ -289,7 +300,8 @@ class Command(object):
                         )
                         raise
 
-    def down(self, rev_id):
+    def down(self, rev_id, dry_run=False):
+        log_verb = "Previewing" if dry_run else "Performing"
         for ctx in self.envs:
             self.load_schema(ctx)
             start_point = ctx._current_revision_
@@ -297,22 +309,28 @@ class Command(object):
                 rev_id, start_point)
             click.echo(
                 " ".join([
-                    "> Performing downgrades against",
+                    f"> {log_verb} downgrades against",
                     click.style(ctx.db._uri, bold=True)
                 ])
             )
-            with ctx.db.connection():
+            db = (
+                DryRunDatabase(ctx.db, self._log_dry_run) if dry_run else
+                ctx.db
+            )
+            with db.connection():
                 for revision in revisions:
                     click.echo(
                         " ".join([
-                            "> Performing downgrade:",
+                            f"> {log_verb} downgrade:",
                             click.style(str(revision), fg="cyan", bold=True)
                         ])
                     )
-                    migration = revision.migration_class(self.app, ctx.db)
+                    migration = revision.migration_class(self.app, db)
                     try:
                         migration.down()
-                        ctx.db.commit()
+                        db.commit()
+                        if dry_run:
+                            continue
                         self._store_current_revision_(
                             ctx, migration.revision, migration.revises
                         )
@@ -329,7 +347,7 @@ class Command(object):
                             ])
                         )
                     except Exception:
-                        ctx.db.rollback()
+                        db.rollback()
                         click.echo(
                             " ".join([
                                 click.style(
@@ -367,9 +385,9 @@ def status(app, dals, verbose):
     Command(app, dals).status(verbose)
 
 
-def up(app, dals, revision):
-    Command(app, dals).up(revision)
+def up(app, dals, revision, dry_run):
+    Command(app, dals).up(revision, dry_run)
 
 
-def down(app, dals, revision):
-    Command(app, dals).down(revision)
+def down(app, dals, revision, dry_run):
+    Command(app, dals).down(revision, dry_run)

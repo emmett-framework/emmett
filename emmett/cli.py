@@ -482,27 +482,39 @@ def migrations_new(info, message, head):
 
 
 @migrations_cli.command(
-    'up', short_help='Upgrades the database to the selected migration.')
-@click.option('--revision', '-r', default='head',
-              help='The migration to upgrade to.')
+    'up', short_help='Upgrades the database to the selected migration.'
+)
+@click.option('--revision', '-r', default='head', help='The migration to upgrade to.')
+@click.option(
+    '--dry-run',
+    default=False,
+    is_flag=True,
+    help='Only print SQL instructions, without actually applying the migration.'
+)
 @pass_script_info
-def migrations_up(info, revision):
+def migrations_up(info, revision, dry_run):
     from .orm.migrations.commands import up
     app = info.load_app()
     dbs = info.load_db()
-    up(app, dbs, revision)
+    up(app, dbs, revision, dry_run)
 
 
 @migrations_cli.command(
-    'down', short_help='Downgrades the database to the selected migration.')
-@click.option('--revision', '-r', required=True,
-              help='The migration to downgrade to.')
+    'down', short_help='Downgrades the database to the selected migration.'
+)
+@click.option('--revision', '-r', required=True, help='The migration to downgrade to.')
+@click.option(
+    '--dry-run',
+    default=False,
+    is_flag=True,
+    help='Only print SQL instructions, without actually applying the migration.'
+)
 @pass_script_info
-def migrations_down(info, revision):
+def migrations_down(info, revision, dry_run):
     from .orm.migrations.commands import down
     app = info.load_app()
     dbs = info.load_db()
-    down(app, dbs, revision)
+    down(app, dbs, revision, dry_run)
 
 
 def main(as_module=False):
