@@ -13,6 +13,7 @@ Next
 - Use optional `emmett-crypto` package for cryptographic functions
 - Deprecated `security.secure_dumps` and `security.secure_loads` in favour of new crypto package
 - Add `on_delete` option to `belongs_to` and `refers_to`
+- Add `--dry-run` option to migrations `up` and `down` commands
 
 Version 2.2
 -----------
