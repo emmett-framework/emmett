@@ -17,12 +17,8 @@ import pendulum
 import re
 import threading
 from datetime import datetime
-try:
-    from cgi import parse_qs
-except:
-    from urllib.parse import parse_qs
 
-from ._compat import SimpleCookie, iteritems, to_native
+from ._compat import SimpleCookie, iteritems, parse_qs, to_native
 from ._internal import ObjectProxy, LimitedStream
 from .datastructures import sdict, Accept, EnvironHeaders
 from .helpers import get_flashed_messages

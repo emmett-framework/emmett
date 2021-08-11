@@ -16,10 +16,13 @@ PY2 = sys.version_info[0] == 2
 _identity = lambda x: x
 
 if PY2:
-    from Cookie import SimpleCookie
-    from cStringIO import StringIO
     import cPickle as pickle
     import copy_reg as copyreg
+    from Cookie import SimpleCookie
+    from cStringIO import StringIO
+    from cgi import parse_qs
+    from cgi import escape
+
     iterkeys = lambda d: d.iterkeys()
     itervalues = lambda d: d.itervalues()
     iteritems = lambda d: d.iteritems()
@@ -66,10 +69,13 @@ if PY2:
         return obj.encode(charset, errors)
 
 else:
-    from http.cookies import SimpleCookie
-    from io import StringIO
     import pickle
     import copyreg
+    from html import escape
+    from http.cookies import SimpleCookie
+    from io import StringIO
+    from urllib.parse import parse_qs
+
     iterkeys = lambda d: iter(d.keys())
     itervalues = lambda d: iter(d.values())
     iteritems = lambda d: iter(d.items())

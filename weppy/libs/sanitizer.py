@@ -10,7 +10,8 @@
 
 """
 
-from weppy._compat import PY2
+from weppy._compat import PY2, escape
+
 if PY2:
     from htmllib import HTMLParser
     from urlparse import urlparse
@@ -19,10 +20,7 @@ else:
     from html.parser import HTMLParser
     from urllib.parse import urlparse
     from html.entities import entitydefs
-try:
-    from cgi import escape
-except:
-    from html import escape
+
 from formatter import AbstractFormatter
 
 from xml.sax.saxutils import quoteattr

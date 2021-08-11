@@ -13,16 +13,12 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import cgi
 import sys
+
 from datetime import datetime
 from io import BytesIO
-try:
-    from cgi import parse_qs
-except:
-    from urllib.parse import parse_qs
 
-from .._compat import text_type, iteritems, itervalues
+from .._compat import text_type, iteritems, itervalues, parse_qs
 from ..datastructures import sdict
 from .helpers import Headers, filesdict, stream_encode_multipart
 from .urls import iri_to_uri, url_fix, url_parse, url_unparse, url_encode
