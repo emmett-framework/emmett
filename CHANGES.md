@@ -10,6 +10,9 @@ Next
 - Added ORM support for PostgreSQL json/jsonb fields and operators
 - Added `widget_radio` to `forms.FormStyle`
 - Added `dict` values support for `in` validations
+- Use optional `emmett-crypto` package for cryptographic functions
+- Deprecated `security.secure_dumps` and `security.secure_loads` in favour of new crypto package
+- Add `on_delete` option to `belongs_to` and `refers_to`
 
 Version 2.2
 -----------

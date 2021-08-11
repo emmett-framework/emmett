@@ -228,11 +228,20 @@ class Model(metaclass=MetaModel):
             rv.field = splitted[1]
         return rv
 
-    def __parse_belongs_relation(self, item):
-        rv = sdict()
+    def __parse_belongs_relation(self, item, on_delete):
+        rv = sdict(on_delete=on_delete)
         if isinstance(item, dict):
             rv.name = list(item)[0]
-            rv.model = item[rv.name]
+            rdata = item[rv.name]
+            if isinstance(rdata, dict):
+                if "target" in rdata:
+                    rv.model = rdata["target"]
+                else:
+                    rv.model = camelize(rv.name)
+                if "on_delete" in rdata:
+                    rv.on_delete = rdata["on_delete"]
+            else:
+                rv.model = rdata
             if rv.model == "self":
                 rv.model = self.__class__.__name__
         else:
@@ -320,24 +329,21 @@ class Model(metaclass=MetaModel):
                 _references.append(list(getattr(self, key).values()))
             else:
                 _references.append([])
-        isbelongs = True
+        isbelongs, ondelete = True, 'cascade'
         for _references_obj in _references:
             for item in _references_obj:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference = self.__parse_belongs_relation(item)
+                reference = self.__parse_belongs_relation(item, ondelete)
                 if reference.model != self.__class__.__name__:
                     tablename = self.db[reference.model]._tablename
                 else:
                     tablename = self.tablename
-                if isbelongs:
-                    fieldobj = Field(_ftype_builder(tablename))
-                else:
-                    fieldobj = Field(
-                        _ftype_builder(tablename),
-                        ondelete='nullify',
-                        _isrefers=True
-                    )
+                fieldobj = Field(
+                    _ftype_builder(tablename),
+                    ondelete=reference.on_delete,
+                    _isrefers=not isbelongs
+                )
                 setattr(self.__class__, reference.name, fieldobj)
                 self.fields.append(
                     getattr(self, reference.name)._make_field(
@@ -346,6 +352,7 @@ class Model(metaclass=MetaModel):
                 )
                 belongs_references[reference.name] = reference.model
             isbelongs = False
+            ondelete = 'nullify'
         setattr(self.__class__, '_belongs_ref_', belongs_references)
         #: has_one are mapped with rowattr
         hasone_references = {}
