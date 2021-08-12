@@ -1,10 +1,10 @@
 Emmett changelog
 ================
 
-Next
-----
+Version 2.3
+-----------
 
-(Release date to be defined, codename to be selected)
+Released on August 12th 2021, codename Da Vinci
 
 - Minor enhancements on request flow
 - Added ORM support for PostgreSQL json/jsonb fields and operators
