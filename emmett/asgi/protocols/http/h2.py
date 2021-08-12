@@ -15,7 +15,7 @@ import asyncio
 
 from collections import defaultdict
 from functools import partial
-from typing import Any, List, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 from urllib.parse import unquote
 
 import h11
@@ -24,6 +24,7 @@ import h2.connection
 import h2.events
 import h2.exceptions
 
+from uvicorn.protocols.http.flow_control import HIGH_WATER_LIMIT
 from uvicorn.protocols.utils import get_client_addr, get_path_with_query_string
 
 from .helpers import (
@@ -34,8 +35,6 @@ from .helpers import (
     ServerState,
     _service_unavailable
 )
-
-HIGH_WATER_LIMIT = 65536
 
 
 class EventsRegistry(defaultdict):
@@ -54,8 +53,19 @@ class H2Protocol(HTTPProtocol):
 
     alpn_protocols = ["h2"]
 
-    def __init__(self, config: Config, server_state: ServerState, _loop=None):
-        super().__init__(config=config, server_state=server_state, _loop=_loop)
+    def __init__(
+        self,
+        config: Config,
+        server_state: ServerState,
+        on_connection_lost: Optional[Callable[[], None]] = None,
+        _loop=None
+    ):
+        super().__init__(
+            config=config,
+            server_state=server_state,
+            on_connection_lost=on_connection_lost,
+            _loop=_loop
+        )
         self.conn = h2.connection.H2Connection(
             config=h2.config.H2Configuration(
                 client_side=False,
@@ -81,6 +91,11 @@ class H2Protocol(HTTPProtocol):
             stream.message_event.set()
         if self.flow is not None:
             self.flow.resume_writing()
+        if exc is None:
+            self.transport.close()
+
+        if self.on_connection_lost:
+            self.on_connection_lost()
 
     def handle_upgrade_from_h11(
         self,

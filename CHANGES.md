@@ -1,6 +1,20 @@
 Emmett changelog
 ================
 
+Version 2.3
+-----------
+
+Released on August 12th 2021, codename Da Vinci
+
+- Minor enhancements on request flow
+- Added ORM support for PostgreSQL json/jsonb fields and operators
+- Added `widget_radio` to `forms.FormStyle`
+- Added `dict` values support for `in` validations
+- Use optional `emmett-crypto` package for cryptographic functions
+- Deprecated `security.secure_dumps` and `security.secure_loads` in favour of new crypto package
+- Add `on_delete` option to `belongs_to` and `refers_to`
+- Add `--dry-run` option to migrations `up` and `down` commands
+
 Version 2.2
 -----------
 

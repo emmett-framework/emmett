@@ -594,6 +594,27 @@ class FormStyle:
     def widget_json(attr, field, value, _id=None):
         return FormStyle.widget_text(attr, field, value, _id=_id or field.name)
 
+    @staticmethod
+    def widget_jsonb(attr, field, value, _id=None):
+        return FormStyle.widget_text(attr, field, value, _id=_id or field.name)
+
+    @staticmethod
+    def widget_radio(field, value):
+        options, _ = FormStyle._field_options(field)
+        return cat(*[
+            tag.div(
+                tag.input(
+                    _id=f"{field.name}_{k}",
+                    _name=field.name,
+                    _value=k,
+                    _type="radio",
+                    _checked=("checked" if str(k) == str(value) else None)
+                ),
+                tag.label(n, _for=f"{field.name}_{k}"),
+                _class="option_wrap"
+            ) for k, n in options
+        ])
+
     def __init__(self, attributes):
         self.attr = attributes
 

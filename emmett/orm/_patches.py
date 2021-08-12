@@ -13,9 +13,7 @@ from pydal.adapters.base import BaseAdapter
 from pydal.connection import ConnectionPool
 from pydal.helpers.classes import ConnectionConfigurationMixin
 
-
 from .adapters import (
-    SQLite,
     _initialize,
     _begin,
     _in_transaction,
@@ -37,6 +35,7 @@ from .connection import (
     _cursors_getter,
     _connect_and_configure
 )
+from .engines.sqlite import SQLite
 
 
 def _patch_adapter_cls():

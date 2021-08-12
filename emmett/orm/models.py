@@ -152,7 +152,6 @@ class Model(metaclass=MetaModel):
     db = None
     table = None
 
-    #sign_table = False
     auto_validation = True
 
     @classmethod
@@ -165,8 +164,7 @@ class Model(metaclass=MetaModel):
             else:
                 attr_name, default = attr, {}
             if not isinstance(default, dict):
-                raise SyntaxError(
-                    "{} is not a dictionary".format(attr_name))
+                raise SyntaxError(f"{attr_name} is not a dictionary")
             setattr(cls, attr_name, default)
 
     @classmethod
@@ -230,11 +228,20 @@ class Model(metaclass=MetaModel):
             rv.field = splitted[1]
         return rv
 
-    def __parse_belongs_relation(self, item):
-        rv = sdict()
+    def __parse_belongs_relation(self, item, on_delete):
+        rv = sdict(on_delete=on_delete)
         if isinstance(item, dict):
             rv.name = list(item)[0]
-            rv.model = item[rv.name]
+            rdata = item[rv.name]
+            if isinstance(rdata, dict):
+                if "target" in rdata:
+                    rv.model = rdata["target"]
+                else:
+                    rv.model = camelize(rv.name)
+                if "on_delete" in rdata:
+                    rv.on_delete = rdata["on_delete"]
+            else:
+                rv.model = rdata
             if rv.model == "self":
                 rv.model = self.__class__.__name__
         else:
@@ -277,7 +284,8 @@ class Model(metaclass=MetaModel):
             if isinstance(rv.model, dict):
                 if 'method' in rv.model:
                     rv.field = rv.model.get(
-                        'field', decamelize(self.__class__.__name__))
+                        'field', decamelize(self.__class__.__name__)
+                    )
                     rv.cast = rv.model.get('cast')
                     rv.method = rv.model['method']
                     del rv.model
@@ -308,8 +316,10 @@ class Model(metaclass=MetaModel):
     def _define_relations_(self):
         _ftype_builder = lambda v: 'reference {}'.format(v)
         self._virtual_relations_ = OrderedDict()
-        bad_args_error = "belongs_to, has_one and has_many only accept " + \
-            "strings or dicts as arguments"
+        bad_args_error = (
+            "belongs_to, has_one and has_many "
+            "only accept strings or dicts as arguments"
+        )
         #: belongs_to and refers_to are mapped with 'reference' type Field
         _references = []
         _reference_keys = ['_all_belongs_ref_', '_all_refers_ref_']
@@ -319,29 +329,30 @@ class Model(metaclass=MetaModel):
                 _references.append(list(getattr(self, key).values()))
             else:
                 _references.append([])
-        isbelongs = True
+        isbelongs, ondelete = True, 'cascade'
         for _references_obj in _references:
             for item in _references_obj:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
-                reference = self.__parse_belongs_relation(item)
+                reference = self.__parse_belongs_relation(item, ondelete)
                 if reference.model != self.__class__.__name__:
                     tablename = self.db[reference.model]._tablename
                 else:
                     tablename = self.tablename
-                if isbelongs:
-                    fieldobj = Field(_ftype_builder(tablename))
-                else:
-                    fieldobj = Field(
-                        _ftype_builder(tablename), ondelete='nullify',
-                        _isrefers=True)
+                fieldobj = Field(
+                    _ftype_builder(tablename),
+                    ondelete=reference.on_delete,
+                    _isrefers=not isbelongs
+                )
                 setattr(self.__class__, reference.name, fieldobj)
                 self.fields.append(
                     getattr(self, reference.name)._make_field(
-                        reference.name, self)
+                        reference.name, self
+                    )
                 )
                 belongs_references[reference.name] = reference.model
             isbelongs = False
+            ondelete = 'nullify'
         setattr(self.__class__, '_belongs_ref_', belongs_references)
         #: has_one are mapped with rowattr
         hasone_references = {}
@@ -350,8 +361,9 @@ class Model(metaclass=MetaModel):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item, False)
-                self._virtual_relations_[reference.name] = \
-                    rowattr(reference.name)(HasOneWrap(reference))
+                self._virtual_relations_[reference.name] = rowattr(
+                    reference.name
+                )(HasOneWrap(reference))
                 hasone_references[reference.name] = reference
         setattr(self.__class__, '_hasone_ref_', hasone_references)
         #: has_many are mapped with rowattr
@@ -368,19 +380,19 @@ class Model(metaclass=MetaModel):
                     #: maps has_many('things'),
                     #  has_many({'things': 'othername'})
                     wrapper = HasManyWrap
-                self._virtual_relations_[reference.name] = \
-                    rowattr(reference.name)(wrapper(reference))
+                self._virtual_relations_[reference.name] = rowattr(
+                    reference.name
+                )(wrapper(reference))
                 hasmany_references[reference.name] = reference
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
 
     def _define_virtuals_(self):
         self._all_rowattrs_ = {}
         self._all_rowmethods_ = {}
-        err = 'rowattr or rowmethod cannot have the name of an ' + \
-            'existent field!'
+        err = 'rowattr or rowmethod cannot have the name of an existent field!'
         field_names = [field.name for field in self.fields]
         for attr in ['_virtual_relations_', '_all_virtuals_']:
-            for name, obj in getattr(self, attr, {}).items():
+            for _, obj in getattr(self, attr, {}).items():
                 if obj.field_name in field_names:
                     raise RuntimeError(err)
                 wrapped = wrap_virtual_on_model(self, obj.f)
@@ -402,10 +414,6 @@ class Model(metaclass=MetaModel):
         globals()[clsname] = self._rowclass_
 
     def _define_(self):
-        #if self.sign_table:
-        #    from .tools import Auth
-        #    fakeauth = Auth(DAL(None))
-        #    self.fields.extend([fakeauth.signature])
         self.__define_indexes()
         self.__define_validation()
         self.__define_access()
@@ -455,18 +463,18 @@ class Model(metaclass=MetaModel):
             self.table[field].represent = value
 
     def __define_computations(self):
-        err = 'computations should have the name of an existing field to ' +\
-            'compute!'
+        err = 'computations should have the name of an existing field to compute!'
         field_names = [field.name for field in self.fields]
-        for name, obj in self._all_computations_.items():
+        for obj in self._all_computations_.values():
             if obj.field_name not in field_names:
                 raise RuntimeError(err)
             # TODO add check virtuals
-            self.table[obj.field_name].compute = \
+            self.table[obj.field_name].compute = (
                 lambda row, obj=obj, self=self: obj.f(self, row)
+            )
 
     def __define_callbacks(self):
-        for name, obj in self._all_callbacks_.items():
+        for obj in self._all_callbacks_.values():
             for t in obj.t:
                 if t in ["_before_insert", "_before_delete", "_after_delete"]:
                     getattr(self.table, t).append(
@@ -474,11 +482,12 @@ class Model(metaclass=MetaModel):
                     )
                 else:
                     getattr(self.table, t).append(
-                        lambda a, b, obj=obj, self=self: obj.f(self, a, b))
+                        lambda a, b, obj=obj, self=self: obj.f(self, a, b)
+                    )
 
     def __define_scopes(self):
         self._scopes_ = {}
-        for name, obj in self._all_scopes_.items():
+        for obj in self._all_scopes_.values():
             self._scopes_[obj.name] = obj
             if not hasattr(self.__class__, obj.name):
                 setattr(
@@ -526,16 +535,14 @@ class Model(metaclass=MetaModel):
                 if not isinstance(key, tuple):
                     key = [key]
                 if any(field not in self.table for field in key):
-                    raise SyntaxError(
-                        'Invalid field specified in indexes: %s' % str(key))
+                    raise SyntaxError(f'Invalid field specified in indexes: {key}')
                 idx_name = self.__create_index_name(*key)
                 idx_dict = {'fields': key, 'expressions': [], 'unique': False}
             elif isinstance(value, dict):
                 idx_name = self.__prepend_table_on_index_name(key)
                 idx_dict = self.__parse_index_dict(value)
             else:
-                raise SyntaxError(
-                    'Values in indexes dict should be booleans or dicts')
+                raise SyntaxError('Values in indexes dict should be booleans or dicts')
             self._indexes_[idx_name] = idx_dict
 
     def __define_form_utils(self):
@@ -568,22 +575,10 @@ class Model(metaclass=MetaModel):
 
     @classmethod
     def create(cls, *args, **kwargs):
-        #rv = sdict(id=None)
-        #vals = sdict()
-        #errors = sdict()
         if args:
             if isinstance(args[0], (dict, sdict)):
                 for key in list(args[0]):
                     kwargs[key] = args[0][key]
-        #for field in cls.table.fields:
-        #    value = kwargs.get(field)
-        #    vals[field], error = cls.table[field].validate(value)
-        #    if error:
-        #        errors[field] = error
-        #if not errors:
-        #    rv.id = cls.table.insert(**vals)
-        #rv.errors = errors
-        #return rv
         return cls.table.validate_and_insert(**kwargs)
 
     @classmethod
@@ -595,7 +590,7 @@ class Model(metaclass=MetaModel):
             if callable(default):
                 default = default()
             value = row.get(field, default)
-            rv, error = cls.table[field].validate(value)
+            _, error = cls.table[field].validate(value)
             if error:
                 errors[field] = error
         return errors
@@ -628,8 +623,10 @@ class Model(metaclass=MetaModel):
     def _update_record(self, row, **fields):
         newfields = fields or dict(row)
         for fieldname in list(newfields.keys()):
-            if fieldname not in self.table.fields or \
-               self.table[fieldname].type == 'id':
+            if (
+                fieldname not in self.table.fields or
+                self.table[fieldname].type == 'id'
+            ):
                 del newfields[fieldname]
         self.db(self.table._id == row.id, ignore_common_filters=True).update(
             **newfields

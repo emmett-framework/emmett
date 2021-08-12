@@ -296,7 +296,7 @@ class Engine(MetaEngine):
     def _alter_column_sql(self, table_name, column_name, changes):
         sql = 'ALTER TABLE %(tname)s ALTER COLUMN %(cname)s %(changes)s;'
         sql_changes_map = {
-            'type': "TYPE %s",
+            'type': "%s" if self.adapter.dbengine in ["mysql", "mssql"] else "TYPE %s",
             'notnull': {
                 True: "SET NOT NULL",
                 False: "DROP NOT NULL"

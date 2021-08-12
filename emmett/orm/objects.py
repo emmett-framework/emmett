@@ -60,23 +60,21 @@ class Field(_Field):
 
     def __init__(self, type='string', *args, **kwargs):
         self.modelname = None
-        self._auto_validation = True
         #: convert type
         self._type = self._internal_types.get(type, type)
         #: convert 'rw' -> 'readable', 'writeable'
         if 'rw' in kwargs:
-            if isinstance(kwargs['rw'], (tuple, list)):
-                read, write = kwargs['rw']
+            _rw = kwargs.pop('rw')
+            if isinstance(_rw, (tuple, list)):
+                read, write = _rw
             else:
-                read = write = kwargs['rw']
+                read = write = _rw
             kwargs['readable'] = read
             kwargs['writable'] = write
-            del kwargs['rw']
         #: convert 'info' -> 'comment'
-        _info = kwargs.get('info')
+        _info = kwargs.pop('info', None)
         if _info:
             kwargs['comment'] = _info
-            del kwargs['info']
         #: convert ondelete parameter
         _ondelete = kwargs.get('ondelete')
         if _ondelete:
@@ -87,26 +85,25 @@ class Field(_Field):
                 )
             kwargs['ondelete'] = self._internal_delete[_ondelete]
         #: process 'refers_to' fields
-        self._isrefers = kwargs.get('_isrefers')
-        if self._isrefers:
-            del kwargs['_isrefers']
+        self._isrefers = kwargs.pop('_isrefers', None)
         #: get auto validation preferences
-        if 'auto_validation' in kwargs:
-            self._auto_validation = kwargs['auto_validation']
-            del kwargs['auto_validation']
+        self._auto_validation = kwargs.pop('auto_validation', True)
         #: intercept validation (will be processed by `_make_field`)
         self._requires = {}
         self._custom_requires = []
         if 'validation' in kwargs:
-            if isinstance(kwargs['validation'], dict):
-                self._requires = kwargs['validation']
+            _validation = kwargs.pop('validation')
+            if isinstance(_validation, dict):
+                self._requires = _validation
             else:
-                self._custom_requires = kwargs['validation']
+                self._custom_requires = _validation
                 if not isinstance(self._custom_requires, list):
                     self._custom_requires = [self._custom_requires]
-            del kwargs['validation']
         self._validation = {}
         self._vparser = ValidateFromDict()
+        #: ensure 'length' is an integer
+        if 'length' in kwargs:
+            kwargs['length'] = int(kwargs['length'])
         #: store args and kwargs for `_make_field`
         self._args = args
         self._kwargs = kwargs
@@ -233,6 +230,10 @@ class Field(_Field):
     @classmethod
     def json(cls, *args, **kwargs):
         return cls('json', *args, **kwargs)
+
+    @classmethod
+    def jsonb(cls, *args, **kwargs):
+        return cls('jsonb', *args, **kwargs)
 
     @classmethod
     def password(cls, *args, **kwargs):

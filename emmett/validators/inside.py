@@ -82,8 +82,22 @@ class inSet(Validator):
             isinstance(theset[0], (tuple, list)) and
             len(theset[0]) == 2
         ):
-            self.theset = [str(item) for item, label in theset]
-            self.labels = [str(label) for item, label in theset]
+            lset, llabels = [], []
+            for item, label in theset:
+                lset.append(str(item))
+                llabels.append(str(label))
+            self.theset = lset
+            self.labels = llabels
+        elif (
+            theset and
+            isinstance(theset, dict)
+        ):
+            lset, llabels = [], []
+            for item, label in theset.items():
+                lset.append(str(item))
+                llabels.append(str(label))
+            self.theset = lset
+            self.labels = llabels
         else:
             self.theset = [str(item) for item in theset]
             self.labels = labels

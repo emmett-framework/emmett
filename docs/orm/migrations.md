@@ -10,7 +10,7 @@ While the `Database` class in Emmett can be initialized to automatically migrate
 The migration engine is instead based on *revisions*: this will use migration files containing the instructions to be performed on the database side and will store the current migration status on the database itself, fact that prevents inconsistencies on the migration status of your application if you are running the code from several machines.
 
 Emmett provides different migration commands, that can be used in order to generate, apply and revert migrations on your database. Moreover, to avoid you the pain of writing a lot of migration code aside with your models, Emmett will automatically generate the migration scripts for you starting from your models' code.    
-In the next sections we will describe all of this using the *bloggy* application we saw in the [tutorial chapter](././tutorial) as an example.
+In the next sections we will describe all of this using the *bloggy* application we saw in the [tutorial chapter](../tutorial) as an example.
 
 > **Note:** we **strongly reccomend** you to not enable automatic migrations on applications that run on production environments. The automatic migrations and the ones performed by the migration engine have some slight differences; while we will document operations supported by the second system, the detection performed by the automatic one depends on the [pydal](https://github.com/web2py/pydal) library, and are not officially supported by the Emmett development. If you need more informations about this you should check the [web2py docs](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Migrations).
 

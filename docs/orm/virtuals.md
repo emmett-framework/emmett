@@ -22,13 +22,15 @@ class Item(Model):
     total = Field.float()
     
     @compute('total')
-    def compute_total(self, row):
-        return row.price*row.quantity
+    def compute_total(self, fields):
+        return fields.price * fields.quantity
 ```
 
 As you can see, the `compute` decorator needs and accepts just one parameter: the name of the field where to store the result of the computation.
 
-The function that performs the computation has to accept the row as its first parameter, and it will be called both on inserts and updates.
+The function that performs the computation has to accept the operation fields as its first parameter, and it will be called both on inserts and updates.
+
+> **Note:** `compute` decorated methods receives **only the fields' values involved in the operation**. This means that fields will contain only the values passed by the insert/update operation and the relative default values.
 
 Virtual attributes
 ------------------

@@ -340,6 +340,29 @@ As you can see the `where` value must be a `lambda` function accepting just one 
 
 > **Hint:** you can also specify `where` conditions on existing `scope` relations, to combine the queries.
 
+### Deletion policies on relations
+
+*New in version 2.3*
+
+As we saw above, under the default behaviour Emmett will set the deletion policies to `cascade` for `belogs_to` relations and to `nullify` for `refers_to` relations. You can customise this behaviour using the appropriate `on_delete` key during the definition:
+
+```python
+belongs_to({'user': {'on_delete': 'nothing'}})
+```
+
+The possible values for `on_delete` are:
+
+| value | SQL instruction |
+| --- | --- |
+| cascade | `CASCADE` |
+| nullify | `SET NULL` |
+| nothing | `NO ACTION` |
+
+Mind that when using this notation, you should use the `target` key to specify different naming schemes:
+
+```python
+belongs_to({'owner': {'target': 'User', 'on_delete': 'nothing'}})
+```
 
 Operations with relations
 -------------------------
