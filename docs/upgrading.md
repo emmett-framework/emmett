@@ -13,6 +13,44 @@ Just as a remind, you can update Emmett using *pip*:
 $ pip install -U emmett
 ```
 
+Version 2.3
+-----------
+
+Emmett 2.3 introduces some deprecations and some new features you might be interested into.
+
+### Deprecations
+
+#### Cookie sessions encryption
+
+Since its birth, Emmett tried to maximise its compatibility across platforms, and consequentially provided the cryptographic functions needed for its security modules in pure Python versions.
+
+Nevertheless, those implemetations clearly provide poor performances, and we opted for rewriting them using Rust producing the [emmett-crypto](https://github.com/emmett-framework/crypto) package. This refactoring also gave us the chance to upgrade and modernise the algorithm used to encrypt the session data when using the [cookies implementation](./sessions#storing-sessions-in-cookies). 
+
+Since the new algorithm is not compatible with the previous one, and the new implementation is an optional extra dependency in Emmett 2.3, we decided to deprecate the existing one letting you to decide when to switch to the new one, as such switch will invalidate all the active sessions.
+
+This is why the `SessionManager.cookies` constructor in Emmett 2.3 has a new `encryption_mode` argument with default value set to *legacy*. In order to upgrade to new code, you should change your dependencies file to install Emmett with the crypto extras, like:
+
+    pip install -U emmett[crypto]
+
+and change the value for the `encryption_mode` parameter to *modern*:
+
+```python
+SessionManager.cookies('myverysecretkey', encryption_mode='modern')
+```
+
+> **Note:** since `emmett-crypto` module is written in Rust language, in case no pre-build wheel is available for your platform, you will need the Rust toolchain on your system to compile it from source.
+
+### New features
+
+With version 2.3 we introduced the following new features:
+
+- [PostgreSQL json/jsonb](./orm/operations#engine-specific-operators) fields and operators support in ORM
+- [Radio widget](./forms#additional-widgets) in forms
+- [On deletion policies](./orm/relations#deletion-policies-on-relations) in `belongs_to` and `refers_to` relations
+- A `--dry-run` option to [migrations](./orm/migrations) `up` and `down` commands
+
+Also, in Emmett 2.3 we added an optional extra `crypto` dependency which re-implements cryptographic functions using Rust programming language.
+
 Version 2.2
 -----------
 
