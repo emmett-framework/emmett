@@ -91,7 +91,7 @@ class HTTPResponse(Exception):
         await send({
             'type': 'http.response.start',
             'status': self.status_code,
-            'headers': self.headers
+            'headers': list(self.headers)
         })
 
     async def _send_body(self, send):
