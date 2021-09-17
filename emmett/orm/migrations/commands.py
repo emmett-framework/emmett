@@ -9,19 +9,23 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
+from typing import Any, List
+
 import click
 
 from ...datastructures import sdict
-from .base import Schema, Column
+from .base import Database, Schema, Column
 from .helpers import DryRunDatabase, make_migration_id, to_tuple
 from .operations import MigrationOp, UpgradeOps, DowngradeOps
 from .scripts import ScriptDir
 
 
-class Command(object):
-    def __init__(self, app, dals):
+class Command:
+    def __init__(self, app: Any, dals: List[Database]):
         self.app = app
-        self.envs = []
+        self.envs: List[sdict] = []
         self._load_envs(dals)
 
     def _load_envs(self, dals):
