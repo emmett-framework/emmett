@@ -123,8 +123,7 @@ class JSONBPostgreRepresenter(PostgreArraysRepresenter):
         return serializers.json(value)
 
 
-@adapters.register_for('postgres')
-class PostgresAdapter(PostgreBoolean):
+class PostgresAdapterMixin:
     def _load_dependencies(self):
         super()._load_dependencies()
         self.dialect = JSONBPostgreDialect(self)
@@ -136,33 +135,25 @@ class PostgresAdapter(PostgreBoolean):
 
     def _mock_reconnect(self):
         pass
+
+    def lastrowid(self, table):
+        if self._last_insert:
+            return self.cursor.fetchone()[0]
+        sequence_name = table._sequence_name
+        self.execute("SELECT currval(%s);" % self.adapt(sequence_name))
+        return self.cursor.fetchone()[0]
+
+
+@adapters.register_for('postgres')
+class PostgresAdapter(PostgresAdapterMixin, PostgreBoolean):
+    pass
 
 
 @adapters.register_for('postgres:psycopg2')
-class PostgresPsycoPG2Adapter(PostgrePsycoBoolean):
-    def _load_dependencies(self):
-        super()._load_dependencies()
-        self.dialect = JSONBPostgreDialect(self)
-        self.parser = JSONBPostgreParser(self)
-        self.representer = JSONBPostgreRepresenter(self)
-
-    def _config_json(self):
-        pass
-
-    def _mock_reconnect(self):
-        pass
+class PostgresPsycoPG2Adapter(PostgresAdapterMixin, PostgrePsycoBoolean):
+    pass
 
 
 @adapters.register_for('postgres:pg8000')
-class PostgresPG8000Adapter(PostgrePG8000Boolean):
-    def _load_dependencies(self):
-        super()._load_dependencies()
-        self.dialect = JSONBPostgreDialect(self)
-        self.parser = JSONBPostgreParser(self)
-        self.representer = JSONBPostgreRepresenter(self)
-
-    def _config_json(self):
-        pass
-
-    def _mock_reconnect(self):
-        pass
+class PostgresPG8000Adapter(PostgresAdapterMixin, PostgrePG8000Boolean):
+    pass

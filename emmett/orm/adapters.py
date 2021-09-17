@@ -9,7 +9,10 @@
     :license: BSD-3-Clause
 """
 
+import sys
+
 from functools import wraps
+
 from pydal.adapters import adapters
 from pydal.adapters.mssql import (
     MSSQL1,
@@ -27,9 +30,12 @@ from pydal.adapters.postgres import (
     PostgrePsycoNew,
     PostgrePG8000New
 )
+from pydal.parsers import ParserMethodWrapper, for_type as _parser_for_type
+from pydal.representers import TReprMethodWrapper, for_type as _representer_for_type
 
 from .engines import adapters
-from .objects import Field
+from .helpers import RowReferenceMixin, typed_row_reference
+from .objects import Field, Row
 
 
 adapters._registry_.update({
@@ -56,11 +62,13 @@ def _wrap_on_obj(f, adapter):
 
 
 def patch_adapter(adapter):
+    adapter.insert = _wrap_on_obj(insert, adapter)
     adapter.parse = _wrap_on_obj(parse, adapter)
-    adapter._parse_expand_colnames = _wrap_on_obj(
-        _parse_expand_colnames, adapter)
+    adapter._parse_expand_colnames = _wrap_on_obj(_parse_expand_colnames, adapter)
     adapter._parse = _wrap_on_obj(_parse, adapter)
     patch_dialect(adapter.dialect)
+    patch_parser(adapter.parser)
+    patch_representer(adapter.representer)
 
 
 def patch_dialect(dialect):
@@ -69,8 +77,48 @@ def patch_dialect(dialect):
         'firebird': _create_table_firebird
     }
     dialect.create_table = _wrap_on_obj(
-        _create_table_map.get(dialect.adapter.dbengine, _create_table),
-        dialect)
+        _create_table_map.get(dialect.adapter.dbengine, _create_table), dialect
+    )
+    dialect.add_foreign_key_constraint = _wrap_on_obj(_add_fk_constraint, dialect)
+    dialect.drop_constraint = _wrap_on_obj(_drop_constraint, dialect)
+
+
+def patch_parser(parser):
+    parser.registered['reference'] = ParserMethodWrapper(
+        parser,
+        _parser_for_type('reference')(_parser_reference).f,
+        parser._before_registry_['reference']
+    )
+
+
+def patch_representer(representer):
+    representer.registered_t['reference'] = TReprMethodWrapper(
+        representer,
+        _representer_for_type('reference')(_representer_reference),
+        representer._tbefore_registry_['reference']
+    )
+
+
+def insert(adapter, table, fields):
+    query = adapter._insert(table, fields)
+    try:
+        adapter.execute(query)
+    except:
+        e = sys.exc_info()[1]
+        if hasattr(table, '_on_insert_error'):
+            return table._on_insert_error(table, fields, e)
+        raise e
+    if hasattr(table, '_primarykey'):
+        pkdict = dict([
+            (k[0].name, k[1]) for k in fields if k[0].name in table._primarykey
+        ])
+        if pkdict:
+            return pkdict
+    id = adapter.lastrowid(table)
+    if hasattr(table, '_primarykey') and len(table._primarykey) == 1:
+        id = {table._primarykey[0]: id}
+    rid = typed_row_reference(id, table)
+    return rid
 
 
 def parse(adapter, rows, fields, colnames, blob_decode=True, cacheable=False):
@@ -166,6 +214,48 @@ def _create_table_firebird(dialect, tablename, fields):
         trigger_sql % (trigger_name, dialect.quote(tablename), sequence_name)
     ])
     return rv
+
+
+def _add_fk_constraint(
+    dialect,
+    name,
+    table_local,
+    table_foreign,
+    columns_local,
+    columns_foreign,
+    on_delete
+):
+    return (
+        f"ALTER TABLE {dialect.quote(table_local)} "
+        f"ADD CONSTRAINT {dialect.quote(name)} "
+        f"FOREIGN KEY ({','.join([dialect.quote(v) for v in columns_local])}) "
+        f"REFERENCES {dialect.quote(table_foreign)}"
+        f"({','.join([dialect.quote(v) for v in columns_foreign])}) "
+        f"ON DELETE {on_delete};"
+    )
+
+
+def _drop_constraint(dialect, name, table):
+    return f"ALTER TABLE {dialect.quote(table)} DROP CONSTRAINT {dialect.quote(name)};"
+
+
+def _parser_reference(parser, value, referee):
+    if '.' not in referee:
+        value = typed_row_reference(value, parser.adapter.db[referee])
+    return value
+
+
+def _representer_reference(representer, value, referenced):
+    rtname, _, rfname = referenced.partition('.')
+    rfname = rfname or 'id'
+    rtype = representer.adapter.db[rtname][rfname].type
+    if isinstance(value, (Row, RowReferenceMixin)):
+        value = value['id']
+    if rtype in ('id', 'integer'):
+        return str(int(value))
+    if rtype == 'string':
+        return str(value)
+    return representer.adapter.represent(value, rtype)
 
 
 def _initialize(adapter, *args, **kwargs):
