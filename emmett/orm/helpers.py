@@ -9,16 +9,96 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
 import re
 import time
 
 from functools import wraps
+from typing import TYPE_CHECKING, Any, Callable
+
 from pydal._globals import THREAD_LOCAL
 from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
 from pydal.objects import Field as _Field
 
 from ..datastructures import sdict
 from ..utils import cachedprop
+
+if TYPE_CHECKING:
+    from .objects import Table
+
+
+class RowReferenceMeta:
+    __slots__ = ['table', 'caster']
+
+    def __init__(self, table: Table, caster: Callable[[Any], Any]):
+        self.table = table
+        self.caster = caster
+
+    def fetch(self, val):
+        return self.table._db(self.table._id == self.caster(val)).select(
+            limitby=(0, 1),
+            orderby_on_limitby=False
+        ).first()
+
+
+class RowReferenceMixin:
+    def __allocate(self):
+        if not self._refrecord:
+            self._refrecord = self._refmeta.fetch(self)
+        if not self._refrecord:
+            raise RuntimeError(
+                "Using a recursive select but encountered a broken " +
+                "reference: %s %r" % (self._table, self)
+            )
+
+    def __getattr__(self, key: str) -> Any:
+        if key == 'id':
+            return self._refmeta.caster(self)
+        if key in self._refmeta.table:
+            self.__allocate()
+        if self._refrecord:
+            return self._refrecord.get(key, None)
+        return None
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.__getattr__(key, default)
+
+    def __setattr__(self, key: str, value: Any):
+        if key.startswith('_'):
+            self._refmeta.caster.__setattr__(self, key, value)
+            return
+        self.__allocate()
+        self._refrecord[key] = value
+
+    def __getitem__(self, key):
+        if key == 'id':
+            return self._refmeta.caster(self)
+        self.__allocate()
+        return self._refrecord.get(key, None)
+
+    def __setitem__(self, key, value):
+        self.__allocate()
+        self._refrecord[key] = value
+
+    def __repr__(self) -> str:
+        return repr(self._refmeta.caster(self))
+
+
+class RowReferenceInt(RowReferenceMixin, int):
+    def __new__(cls, id, table: Table, *args: Any, **kwargs: Any):
+        rv = super().__new__(cls, id, *args, **kwargs)
+        int.__setattr__(rv, '_refmeta', RowReferenceMeta(table, int))
+        int.__setattr__(rv, '_refrecord', None)
+        return rv
+
+
+class RowReferenceStr(RowReferenceMixin, str):
+    def __new__(cls, id, table: Table, *args: Any, **kwargs: Any):
+        rv = super().__new__(cls, id, *args, **kwargs)
+        str.__setattr__(rv, '_refmeta', RowReferenceMeta(table, str))
+        str.__setattr__(rv, '_refrecord', None)
+        return rv
 
 
 class Reference(object):
@@ -153,9 +233,9 @@ class RelationBuilder(object):
                 #: join table way
                 last_belongs = step_model
                 last_via = via
-                _query = (db[belongs_model].id == db[step_model][rname])
-                sel_field = db[belongs_model].ALL
-                step_model = belongs_model
+                _query = (db[belongs_model.model].id == db[step_model][rname])
+                sel_field = db[belongs_model.model].ALL
+                step_model = belongs_model.model
             else:
                 #: shortcut way
                 last_belongs = None
@@ -285,3 +365,11 @@ def wrap_virtual_on_model(model, virtual):
     def wrapped(row, *args, **kwargs):
         return virtual(model, row, *args, **kwargs)
     return wrapped
+
+
+def typed_row_reference(id: Any, table: Table):
+    return {
+        'id': RowReferenceInt,
+        'integer': RowReferenceInt,
+        'string': RowReferenceStr
+    }[table._id.type](id, table)

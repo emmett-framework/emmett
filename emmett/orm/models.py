@@ -29,7 +29,7 @@ from .wrappers import HasOneWrap, HasManyWrap, HasManyViaWrap
 
 class MetaModel(type):
     _inheritable_dict_attrs_ = [
-        'indexes', 'validation', ('fields_rw', {'id': False}),
+        'indexes', 'validation', ('fields_rw', {'id': False}), 'foreign_keys',
         'default_values', 'update_values', 'repr_values',
         'form_labels', 'form_info', 'form_widgets'
     ]
@@ -213,6 +213,8 @@ class Model(metaclass=MetaModel):
             self.migrate = self.config.get('migrate', self.db._migrate)
         if not hasattr(self, 'format'):
             self.format = None
+        if not hasattr(self, 'primary_keys'):
+            self.primary_keys = []
 
     @property
     def config(self):
@@ -229,21 +231,25 @@ class Model(metaclass=MetaModel):
         return rv
 
     def __parse_belongs_relation(self, item, on_delete):
-        rv = sdict(on_delete=on_delete)
+        rv = sdict(fk="id", on_delete=on_delete)
         if isinstance(item, dict):
             rv.name = list(item)[0]
             rdata = item[rv.name]
+            target = None
             if isinstance(rdata, dict):
                 if "target" in rdata:
-                    rv.model = rdata["target"]
-                else:
-                    rv.model = camelize(rv.name)
+                    target = rdata["target"]
                 if "on_delete" in rdata:
                     rv.on_delete = rdata["on_delete"]
             else:
-                rv.model = rdata
-            if rv.model == "self":
-                rv.model = self.__class__.__name__
+                target = rdata
+            if not target:
+                target = camelize(rv.name)
+            if "." in target:
+                target, rv.fk = target.split(".")
+            if target == "self":
+                target = self.__class__.__name__
+            rv.model = target
         else:
             rv.name = item
             rv.model = camelize(item)
@@ -304,9 +310,10 @@ class Model(metaclass=MetaModel):
     def _define_props_(self):
         #: create pydal's Field elements
         self.fields = []
-        idfield = Field('id')._make_field('id', self)
-        setattr(self.__class__, 'id', idfield)
-        self.fields.append(idfield)
+        if not self.primary_keys and 'id' not in self._all_fields_:
+            idfield = Field('id')._make_field('id', model=self)
+            setattr(self.__class__, 'id', idfield)
+            self.fields.append(idfield)
         for name, obj in self._all_fields_.items():
             if obj.modelname is not None:
                 obj = Field(obj._type, *obj._args, **obj._kwargs)
@@ -335,6 +342,7 @@ class Model(metaclass=MetaModel):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_belongs_relation(item, ondelete)
+                reference.ftype = self.db[reference.model][reference.fk].type
                 if reference.model != self.__class__.__name__:
                     tablename = self.db[reference.model]._tablename
                 else:
@@ -350,7 +358,7 @@ class Model(metaclass=MetaModel):
                         reference.name, self
                     )
                 )
-                belongs_references[reference.name] = reference.model
+                belongs_references[reference.name] = reference
             isbelongs = False
             ondelete = 'nullify'
         setattr(self.__class__, '_belongs_ref_', belongs_references)
@@ -385,6 +393,7 @@ class Model(metaclass=MetaModel):
                 )(wrapper(reference))
                 hasmany_references[reference.name] = reference
         setattr(self.__class__, '_hasmany_ref_', hasmany_references)
+        self.__define_fks()
 
     def _define_virtuals_(self):
         self._all_rowattrs_ = {}
@@ -442,6 +451,8 @@ class Model(metaclass=MetaModel):
 
     def __define_access(self):
         for field, value in self.fields_rw.items():
+            if field == 'id' and field not in self.table:
+                continue
             if isinstance(value, (tuple, list)):
                 readable, writable = value
             else:
@@ -495,14 +506,20 @@ class Model(metaclass=MetaModel):
                     classmethod(wrap_scope_on_model(obj.f))
                 )
 
-    def __prepend_table_on_index_name(self, name):
-        return '%s_widx__%s' % (self.tablename, name)
+    def __prepend_table_name(self, name, ns):
+        return '%s_%s__%s' % (self.tablename, ns, name)
 
     def __create_index_name(self, *values):
         components = []
         for value in values:
             components.append(value.replace('_', ''))
-        return self.__prepend_table_on_index_name("_".join(components))
+        return self.__prepend_table_name("_".join(components), 'widx')
+
+    def __create_fk_contraint_name(self, *values):
+        components = []
+        for value in values:
+            components.append(value.replace('_', ''))
+        return self.__prepend_table_name("fk__" + "_".join(components), 'ecnt')
 
     def __parse_index_dict(self, value):
         rv = {}
@@ -539,11 +556,68 @@ class Model(metaclass=MetaModel):
                 idx_name = self.__create_index_name(*key)
                 idx_dict = {'fields': key, 'expressions': [], 'unique': False}
             elif isinstance(value, dict):
-                idx_name = self.__prepend_table_on_index_name(key)
+                idx_name = self.__prepend_table_name(key, 'widx')
                 idx_dict = self.__parse_index_dict(value)
             else:
                 raise SyntaxError('Values in indexes dict should be booleans or dicts')
             self._indexes_[idx_name] = idx_dict
+
+    def __define_fks(self):
+        self._foreign_keys_ = {}
+        implicit_defs = {}
+        grouped_rels = {}
+        for rname, rel in self._belongs_ref_.items():
+            rmodel = self.db[rel.model]._model_
+            if not rmodel.primary_keys and getattr(rmodel, 'id').type == 'id':
+                continue
+            if len(rmodel.primary_keys) > 1:
+                match = None
+                for key, val in self.foreign_keys.items():
+                    if (
+                        rel.fk in rmodel.primary_keys and
+                        set(val["foreign_fields"]) == set(rmodel.primary_keys)
+                    ):
+                        match = key
+                        break
+                if not match:
+                    raise SyntaxError(
+                        f"{self.__class__.__name__}.{rname} relation targets a "
+                        "compound primary key table. A matching foreign key "
+                        "needs to be defined into `foreign_keys`."
+                    )
+                trels = grouped_rels[rmodel.tablename] = grouped_rels.get(
+                    rmodel.tablename, {
+                        'rels': {},
+                        'on_delete': self.foreign_keys[match].get(
+                            "on_delete", "cascade"
+                        )
+                    }
+                )
+                trels['rels'][rname] = rel
+            else:
+                # NOTE: we need this since pyDAL doesn't support id/refs types != int
+                implicit_defs[rname] = {
+                    'table': rmodel.tablename,
+                    'fields_local': [rname],
+                    'fields_foreign': [rel.fk],
+                    'on_delete': Field._internal_delete[rel.on_delete]
+                }
+        for rname, rel in implicit_defs.items():
+            constraint_name =  self.__create_fk_contraint_name(
+                rel['table'], *rel['fields_local']
+            )
+            self._foreign_keys_[constraint_name] = {**rel}
+        for tname, rels in grouped_rels.items():
+            constraint_name = self.__create_fk_contraint_name(
+                tname, *[rel.name for rel in rels['rels'].values()]
+            )
+            self._foreign_keys_[constraint_name] = {
+                'table': tname,
+                'fields_local': [rel.name for rel in rels['rels'].values()],
+                'fields_foreign': [rel.fk for rel in rels['rels'].values()],
+                'on_delete': Field._internal_delete[rels['on_delete']]
+            }
+
 
     def __define_form_utils(self):
         #: labels

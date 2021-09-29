@@ -30,9 +30,20 @@ from .helpers import (
 
 
 class Table(_Table):
-    def __init__(self, *args, **kwargs):
-        super(Table, self).__init__(*args, **kwargs)
+    def __init__(self, db, tablename, *fields, **kwargs):
+        _primary_keys, _notnulls = list(kwargs.get('primarykey', [])), {}
+        _notnulls = {
+            field.name: field.notnull
+            for field in fields if hasattr(field, 'notnull')
+        }
+        super(Table, self).__init__(db, tablename, *fields, **kwargs)
         self._unique_fields_validation_ = {}
+        self._primary_keys = _primary_keys
+        #: avoid pyDAL mess in ops and migrations
+        if len(self._primary_keys) == 1 and getattr(self, '_primarykey', None):
+            del self._primarykey
+        for key in self._primary_keys:
+            self[key].notnull = _notnulls[key]
 
     def _create_references(self):
         self._referenced_by = []
@@ -416,9 +427,9 @@ class Set(_Set):
         rel = self._model_._belongs_ref_.get(arg)
         if rel:
             r = RelationBuilder(
-                (rel, arg), self._model_._instance_()
+                (rel.model, arg), self._model_._instance_()
             ).belongs_query()
-            return r, self._model_.db[rel], 'belongs'
+            return r, self._model_.db[rel.model], 'belongs'
         #: match has_one
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
