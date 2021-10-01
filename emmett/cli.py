@@ -51,7 +51,7 @@ def find_app_module():
     elif len(files) == 1:
         rv = files[0]
     elif len(dirs) == 1:
-        rv = dirs[1]
+        rv = dirs[0]
     else:
         modules = []
         for path in dirs:
