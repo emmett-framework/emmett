@@ -31,7 +31,7 @@ jobs:
         poetry config virtualenvs.in-project true
     - name: Install dependencies
       run: |
-        poetry install -v
+        poetry install -v --extras crypto
     - name: Test
       run: |
         poetry run pytest -v tests
@@ -58,7 +58,7 @@ jobs:
         poetry config virtualenvs.in-project true
     - name: Install dependencies
       run: |
-        poetry install -v
+        poetry install -v --extras crypto
     - name: Test
       run: |
         poetry run pytest -v tests
@@ -88,7 +88,7 @@ jobs:
     - name: Install dependencies
       shell: bash
       run: |
-        poetry install -v
+        poetry install -v --extras crypto
     - name: Test
       shell: bash
       run: |
