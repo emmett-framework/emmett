@@ -281,10 +281,10 @@ Emmett provides additional query operators specific to PostgreSQL engine. The fo
 | operator | expression |
 | --- | --- |
 | jcontains | `jsonb @> jsonb` |
-| jhas | `jsonb ?(|&) text` |
+| jhas | `jsonb ?(\|&) text` |
 | jin | `jsonb <@ jsonb` |
-| jget | `json(b) -> integer|text` |
-| jgetv | `json(b) ->> integer|text` |
+| jget | `json(b) -> integer\|text` |
+| jgetv | `json(b) ->> integer\|text` |
 | jpath | `json(b) #> text` |
 | jpathv | `json(b) #>> text` |
 
