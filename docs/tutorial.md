@@ -203,18 +203,19 @@ Now the database of our application is ready. But, wait, how do we add an admin 
 ```python
 @app.command('setup')
 def setup():
-    # create the user
-    user = User.create(
-        email="doc@emmettbrown.com",
-        first_name="Emmett",
-        last_name="Brown",
-        password="fluxcapacitor"
-    )
-    # create an admin group
-    admins = auth.create_group("admin")
-    # add user to admins group
-    auth.add_membership(admins, user.id)
-    db.commit()
+    with db.connection():
+        # create the user
+        user = User.create(
+            email="doc@emmettbrown.com",
+            first_name="Emmett",
+            last_name="Brown",
+            password="fluxcapacitor"
+        )
+        # create an admin group
+        admins = auth.create_group("admin")
+        # add user to admins group
+        auth.add_membership(admins, user.id)
+        db.commit()
 ```
 
 The code is quite self-explanatory: it will add an user who can sign in with the *doc@emmettbrown.com* email and *fluxcapacitor* password, then it creates an admin group and adds the *Emmett* user to this group.
