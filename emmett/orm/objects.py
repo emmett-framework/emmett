@@ -15,9 +15,17 @@ import decimal
 import types
 
 from collections import OrderedDict, defaultdict
+from typing import Optional
 from pydal.objects import (
-    Table as _Table, Field as _Field, Set as _Set,
-    Row as _Row, Rows as _Rows, IterRows as _IterRows, Query, Expression)
+    Table as _Table,
+    Field as _Field,
+    Set as _Set,
+    Row as _Row,
+    Rows as _Rows,
+    IterRows as _IterRows,
+    Query,
+    Expression
+)
 
 from ..ctx import current
 from ..datastructures import sdict
@@ -26,7 +34,12 @@ from ..serializers import xml_encode
 from ..utils import cachedprop
 from ..validators import ValidateFromDict
 from .helpers import (
-    _IDReference, JoinedIDReference, RelationBuilder, wrap_scope_on_set)
+    _IDReference,
+    JoinedIDReference,
+    RelationBuilder, wrap_scope_on_set
+)
+
+type_int = int
 
 
 class Table(_Table):
@@ -116,6 +129,7 @@ class Field(_Field):
         if 'length' in kwargs:
             kwargs['length'] = int(kwargs['length'])
         #: store args and kwargs for `_make_field`
+        self._ormkw = kwargs.pop('_kw', {})
         self._args = args
         self._kwargs = kwargs
         #: increase creation counter (used to keep order of fields)
@@ -261,6 +275,36 @@ class Field(_Field):
     @classmethod
     def string_list(cls, *args, **kwargs):
         return cls('list:string', *args, **kwargs)
+
+    @classmethod
+    def geography(
+        cls,
+        geometry_type: str = 'GEOMETRY',
+        srid: Optional[type_int] = None,
+        dimension: Optional[type_int] = None,
+        **kwargs
+    ):
+        kwargs['_kw'] = {
+            "geometry_type": geometry_type,
+            "srid": srid,
+            "dimension": dimension
+        }
+        return cls("geography", **kwargs)
+
+    @classmethod
+    def geometry(
+        cls,
+        geometry_type: str = 'GEOMETRY',
+        srid: Optional[type_int] = None,
+        dimension: Optional[type_int] = None,
+        **kwargs
+    ):
+        kwargs['_kw'] = {
+            "geometry_type": geometry_type,
+            "srid": srid,
+            "dimension": dimension
+        }
+        return cls(f"geometry", **kwargs)
 
     def cast(self, value, **kwargs):
         return Expression(

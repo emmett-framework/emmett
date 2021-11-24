@@ -88,7 +88,8 @@ class Column(sdict):
             field.unique,
             field.notnull,
             length=field.length,
-            ondelete=field.ondelete
+            ondelete=field.ondelete,
+            **field._ormkw
         )
         if _feasible_as_dbms_default(field.default):
             rv.default = field.default

@@ -347,7 +347,11 @@ class AlterColumnOp(AlterTableOp):
                     {
                         "existing_length": self.existing_length,
                         "existing_notnull": self.existing_notnull,
-                        "existing_default": self.existing_default
+                        "existing_default": self.existing_default,
+                        **{
+                            nkey: nval for nkey, nval in self.kw.items()
+                            if nkey.startswith('existing_')
+                        }
                     },
                     self.existing_type,
                     self.modify_type
@@ -399,6 +403,26 @@ class AlterColumnOp(AlterTableOp):
                     self.modify_default
                 )
             )
+
+        for key, val in self.kw.items():
+            if key.startswith("modify_"):
+                attr = key.split("modify_")[-1]
+                col_diff.append(
+                    (
+                        key,
+                        tname,
+                        cname,
+                        {
+                            "existing_type": self.existing_type,
+                            **{
+                                nkey: nval for nkey, nval in self.kw.items()
+                                if nkey.startswith('existing_')
+                            }
+                        },
+                        self.kw.get(f"existing_{attr}"),
+                        val
+                    )
+                )
 
         return col_diff
 

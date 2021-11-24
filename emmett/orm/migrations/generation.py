@@ -389,6 +389,11 @@ class Comparator:
         self.ops[-1].existing_type = metacolumn.type
         if dbcolumn.type != metacolumn.type:
             self.ops[-1].modify_type = dbcolumn.type
+        if dbcolumn.geometry_type and metacolumn.geometry_type:
+            for key in ("geometry_type", "srid", "dimension"):
+                self.ops[-1].kw[f"existing_{key}"] = metacolumn[key]
+                if dbcolumn[key] != metacolumn[key]:
+                    self.ops[-1].kw[f"modify_{key}"] = dbcolumn[key]
 
     def lengths(self, dbcolumn: Column, metacolumn: Column):
         self.ops[-1].existing_length = metacolumn.length
@@ -529,6 +534,10 @@ def _render_column(column: Column) -> str:
         opts.append(("length", column.length))
     elif column.type.startswith('reference'):
         opts.append(("ondelete", column.ondelete))
+    elif column.type.startswith("geo"):
+        for key in ("geometry_type", "srid", "dimension"):
+            if column[key] is not None:
+                opts.append((key, column[key]))
 
     kw_str = ""
     if opts:
@@ -580,6 +589,9 @@ def _alter_column(op: AlterColumnOp) -> str:
         text += ",\n%sexisting_notnull=%r" % (indent, op.existing_notnull)
     if op.modify_default is DEFAULT_VALUE and op.existing_default:
         text += ",\n%sexisting_default=%s" % (indent, op.existing_default)
+    for key, val in op.kw.items():
+        if key.startswith("existing_") or key.startswith("modify_"):
+            text += ",\n%s%s=%r" % (indent, key, val)
 
     text += ")"
     return text

@@ -75,19 +75,15 @@ class MetaEngine:
         rv = {}
         for change in changes:
             if change[0] == "modify_type":
-                rv['type'] = [
-                    change[4], change[5], change[3]['existing_length']
-                ]
+                rv['type'] = [change[4], change[5], change[3]['existing_length']]
             elif change[0] == "modify_length":
-                rv['length'] = [
-                    change[4], change[5], change[3]['existing_type']
-                ]
+                rv['length'] = [change[4], change[5], change[3]['existing_type']]
             elif change[0] == "modify_notnull":
                 rv['notnull'] = [change[4], change[5]]
             elif change[0] == "modify_default":
-                rv['default'] = [
-                    change[4], change[5], change[3]['existing_type']
-                ]
+                rv['default'] = [change[4], change[5], change[3]['existing_type']]
+            else:
+                rv[change[0].split("modify_")[-1]] = [change[4], change[5], change[3]]
         return rv
 
 
@@ -200,20 +196,19 @@ class Engine(MetaEngine):
                 )
             )
 
-    def _gen_geo(self, tablename, column):
+    def _gen_geo(self, column_type, geometry_type, srid, dimension):
         if not hasattr(self.adapter, 'srid'):
             raise RuntimeError('Adapter does not support geometry')
-        geotype, parms = column.type[:-1].split('(')
-        if geotype not in self.adapter.types:
+        if column_type not in self.adapter.types:
             raise SyntaxError(
-                f'Field: unknown field type: {column.type} for {column.name}'
+                f'Field: unknown field type: {column_type}'
             )
-        if self.adaper.dbengine == 'postgres' and geotype == 'geometry':
-            # TODO
-            raise NotImplementedError(
-                f'Migration with {column.type} columns not supported on PostgreSQL.'
-            )
-        return self.adapter.types[geotype]
+        return "{ctype}({gtype},{srid},{dimension})".format(
+            self.adapter.types[column_type],
+            geometry_type,
+            srid or self.adapter.srid,
+            dimension or 2
+        )
 
     def _new_column_sql(
         self,
@@ -231,7 +226,12 @@ class Engine(MetaEngine):
                 precision=precision, scale=scale
             )
         elif column.type.startswith('geo'):
-            csql = self._gen_geo(tablename, column)
+            csql = self._gen_geo(
+                column.type,
+                column.geometry_type,
+                column.srid,
+                column.dimension
+            )
         elif column.type not in self.adapter.types:
             raise SyntaxError(
                 f'Field: unknown field type: {column.type} for {column.nmae}'
@@ -306,6 +306,12 @@ class Engine(MetaEngine):
             self.dialect.quote(table_name), self.dialect.quote(column_name))
 
     def _represent_changes(self, changes, field):
+        geo_attrs = ("geometry_type", "srid", "dimension")
+        geo_changes, geo_data = {}, {}
+        for key in set(changes.keys()) & set(geo_attrs):
+            geo_changes[key] = changes.pop(key)
+            geo_data.update(geo_changes[key][3])
+
         if 'default' in changes and changes['default'][1] is not None:
             ftype = changes['default'][2] or field.type
             if 'type' in changes:
@@ -324,7 +330,14 @@ class Engine(MetaEngine):
                 csql = self.adapter.types[coltype[:7]] % \
                     dict(precision=precision, scale=scale)
             elif coltype.startswith('geo'):
-                csql = self._gen_geo()
+                gen_attrs = []
+                for key in geo_attrs:
+                    val = (
+                        geo_changes.get(f"{key}", (None, None))[1] or
+                        geo_data[f"existing_{key}"]
+                    )
+                    gen_attrs.append(val)
+                csql = self._gen_geo(coltype, gen_attrs)
             else:
                 csql = self.adapter.types[coltype] % {
                     'length': changes['type'][2] or field.length
@@ -333,10 +346,18 @@ class Engine(MetaEngine):
         elif 'length' in changes:
             change = changes.pop('length')
             ftype = change[2] or field.type
-            changes['type'] = [
-                None,
-                self.adapter.types[ftype] % {'length': change[1]}
-            ]
+            changes['type'] = [None, self.adapter.types[ftype] % {'length': change[1]}]
+        elif geo_changes:
+            coltype = geo_data["existing_type"] or field.type
+            gen_attrs = []
+            for key in geo_attrs:
+                val = (
+                    geo_changes.get(f"{key}", (None, None))[1] or
+                    geo_data[f"existing_{key}"]
+                )
+                gen_attrs.append(val)
+            changes['type'] = [None, self._gen_geo(coltype, *gen_attrs)]
+
 
     def _alter_column_sql(self, table_name, column_name, changes):
         sql = 'ALTER TABLE %(tname)s ALTER COLUMN %(cname)s %(changes)s;'
