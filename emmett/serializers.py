@@ -95,3 +95,7 @@ def xml(value, encoding='UTF-8', key='document', quote=True):
     rv = ('<?xml version="1.0" encoding="%s"?>' % encoding) + \
         str(xml_encode(value, key, quote))
     return rv
+
+@Serializers.register_for('bin')
+def bin(value):
+    return value

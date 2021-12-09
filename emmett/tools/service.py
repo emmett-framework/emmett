@@ -48,11 +48,25 @@ class XMLServicePipe(Pipe):
     def on_send(self, data):
         return self.encoder(data)
 
+class ASISServicePipe(Pipe):
+    __slots__ = ['encoder']
+    output = 'bytes'
+
+    def __init__(self):
+        self.encoder = Serializers.get_for('bin')
+
+    async def pipe_request(self, next_pipe, **kwargs):
+        current.response.headers._data['content-type'] = 'application/octet-stream'
+        return self.encoder(await next_pipe(**kwargs))
+
+    def on_send(self, data):
+        return self.encoder(data)
 
 def ServicePipe(procedure: str) -> Pipe:
     pipe_cls = {
         'json': JSONServicePipe,
-        'xml': XMLServicePipe
+        'xml': XMLServicePipe,
+        'bin': ASISServicePipe,
     }.get(procedure)
     if not pipe_cls:
         raise RuntimeError(

@@ -52,6 +52,10 @@ class service(Decorator):
     def xml(f):
         return service('xml')(f)
 
+    @staticmethod
+    def bin(f):
+        return service('bin')(f)
+
     def build_pipe(self):
         from .service import ServicePipe
         return ServicePipe(self.procedure)
