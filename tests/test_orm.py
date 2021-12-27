@@ -22,7 +22,18 @@ from emmett.orm import (
     has_one, has_many, belongs_to,
     scope
 )
+from emmett.orm.errors import MissingFieldsForCompute
 from emmett.validators import isntEmpty, hasLength
+
+
+CALLBACK_OPS = {
+    "before_insert": [],
+    "before_update": [],
+    "before_delete": [],
+    "after_insert": [],
+    "after_update": [],
+    "after_delete": []
+}
 
 
 def _represent_f(value):
@@ -33,32 +44,19 @@ def _widget_f(field, value):
     return value
 
 
-def _call_bi(fields):
-    return fields[:-1]
-
-
-def _call_ai(fields, id):
-    return fields[:-1], id + 1
-
-
-def _call_u(set, fields):
-    return set, fields[:-1]
-
-
-def _call_d(set):
-    return set
-
-
 class Stuff(Model):
     a = Field.string()
     b = Field()
     price = Field.float()
     quantity = Field.int()
     total = Field.float()
+    total_watch = Field.float()
     invisible = Field()
 
     validation = {
-        "a": {'presence': True}
+        "a": {'presence': True},
+        "total": {"allow": "empty"},
+        "total_watch": {"allow": "empty"}
     }
 
     fields_rw = {
@@ -85,36 +83,37 @@ class Stuff(Model):
         "a": _widget_f
     }
 
-    # def setup(self):
-    #     self.table.b.requires = notInDb(self.db, self.table.b)
-
     @compute('total')
     def eval_total(self, row):
         return row.price * row.quantity
 
+    @compute('total_watch', watch=['price', 'quantity'])
+    def eval_total_watch(self, row):
+        return row.price * row.quantity
+
     @before_insert
     def bi(self, fields):
-        return _call_bi(fields)
+        CALLBACK_OPS['before_insert'].append(fields)
 
     @after_insert
     def ai(self, fields, id):
-        return _call_ai(fields, id)
+        CALLBACK_OPS['after_insert'].append((fields, id))
 
     @before_update
     def bu(self, set, fields):
-        return _call_u(set, fields)
+        CALLBACK_OPS['before_update'].append((set, fields))
 
     @after_update
     def au(self, set, fields):
-        return _call_u(set, fields)
+        CALLBACK_OPS['after_update'].append((set, fields))
 
     @before_delete
     def bd(self, set):
-        return _call_d(set)
+        CALLBACK_OPS['before_delete'].append(set)
 
     @after_delete
     def ad(self, set):
-        return _call_d(set)
+        CALLBACK_OPS['after_delete'].append(set)
 
     @rowattr('totalv')
     def eval_total_v(self, row):
@@ -354,27 +353,49 @@ def test_widgets(db):
 
 
 def test_computations(db):
+    #: no watch
     row = sdict(price=12.95, quantity=3)
     rv = db.Stuff.total.compute(row)
     assert rv == 12.95 * 3
+    #: watch fulfill
+    row = sdict(price=12.95, quantity=3)
+    rv = db.Stuff.total_watch.compute(row)
+    assert rv == 12.95 * 3
+    #: watch missing field
+    row = sdict(price=12.95)
+    with pytest.raises(MissingFieldsForCompute):
+        db.Stuff.total_watch.compute(row)
+    #: update flow
+    res = Stuff.create(a="foo", price=12.95, quantity=1)
+    row = Stuff.get(res.id)
+    with pytest.raises(MissingFieldsForCompute):
+        row.update_record(quantity=2)
+    row.update_record(price=row.price, quantity=2)
+    assert row.total == row.price * 2
+    assert row.total_watch == row.price * 2
 
 
 def test_callbacks(db):
-    fields = ["a", "b", "c"]
+    fields = {"a": 1, "b": 2, "c": 3}
     id = 12
-    rv = db.Stuff._before_insert[-1](fields)
-    assert rv == fields[:-1]
-    rv = db.Stuff._after_insert[-1](fields, id)
-    assert rv[0] == fields[:-1] and rv[1] == id + 1
+    db.Stuff._before_insert[-1](fields)
+    assert CALLBACK_OPS["before_insert"][-1] == fields
+    db.Stuff._after_insert[-1](fields, id)
+    res = CALLBACK_OPS["after_insert"][-1]
+    assert res[0] == fields and res[1] == id
     set = {"a": "b"}
-    rv = db.Stuff._before_update[-1](set, fields)
-    assert rv[0] == set and rv[1] == fields[:-1]
-    rv = db.Stuff._after_update[-1](set, fields)
-    assert rv[0] == set and rv[1] == fields[:-1]
-    rv = db.Stuff._before_delete[-1](set)
-    assert rv == set
-    rv = db.Stuff._after_delete[-1](set)
-    assert rv == set
+    db.Stuff._before_update[-1](set, fields)
+    res = CALLBACK_OPS["before_update"][-1]
+    assert res[0] == set and res[1] == fields
+    db.Stuff._after_update[-1](set, fields)
+    res = CALLBACK_OPS["after_update"][-1]
+    assert res[0] == set and res[1] == fields
+    db.Stuff._before_delete[-1](set)
+    res = CALLBACK_OPS["before_delete"][-1]
+    assert res == set
+    db.Stuff._after_delete[-1](set)
+    res = CALLBACK_OPS["after_delete"][-1]
+    assert res == set
 
 
 def test_rowattrs(db):

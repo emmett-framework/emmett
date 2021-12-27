@@ -479,9 +479,8 @@ class Model(metaclass=MetaModel):
         for obj in self._all_computations_.values():
             if obj.field_name not in field_names:
                 raise RuntimeError(err)
-            # TODO add check virtuals
             self.table[obj.field_name].compute = (
-                lambda row, obj=obj, self=self: obj.f(self, row)
+                lambda row, obj=obj, self=self: obj.compute(self, row)
             )
 
     def __define_callbacks(self):
@@ -702,10 +701,11 @@ class Model(metaclass=MetaModel):
                 self.table[fieldname].type == 'id'
             ):
                 del newfields[fieldname]
-        self.db(self.table._id == row.id, ignore_common_filters=True).update(
+        res = self.db(self.table._id == row.id, ignore_common_filters=True).update(
             **newfields
         )
-        row.update(newfields)
+        if res:
+            row.update(self.get(row.id))
         return row
 
     @rowmethod('delete_record')

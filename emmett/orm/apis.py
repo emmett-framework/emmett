@@ -10,6 +10,9 @@
 """
 
 from collections import OrderedDict
+from typing import List
+
+from .errors import MissingFieldsForCompute
 from .helpers import Reference, Callback
 
 
@@ -48,14 +51,28 @@ class has_many(Reference):
 class compute(object):
     _inst_count_ = 0
 
-    def __init__(self, field_name):
+    def __init__(self, field_name: str, watch: List[str] = []):
         self.field_name = field_name
+        self.watch_fields = set(watch)
         self._inst_count_ = compute._inst_count_
         compute._inst_count_ += 1
 
     def __call__(self, f):
         self.f = f
         return self
+
+    def compute(self, model, op_row):
+        if self.watch_fields:
+            row_keyset = set(op_row.keys())
+            if row_keyset & self.watch_fields:
+                if not self.watch_fields.issubset(row_keyset):
+                    raise MissingFieldsForCompute(
+                        f"Compute field '{self.field_name}' missing required "
+                        f"({','.join(self.watch_fields - row_keyset)})"
+                    )
+            else:
+                return
+        return self.f(model, op_row)
 
 
 class rowattr(object):
