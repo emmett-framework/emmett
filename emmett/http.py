@@ -19,9 +19,12 @@ from email.utils import formatdate
 from hashlib import md5
 from typing import Any, BinaryIO, Dict, Generator, Tuple
 
+from granian.rsgi import Response as RSGIResponse
+
 from ._internal import loop_open_file
 from .ctx import current
 from .libs.contenttype import contenttype
+
 
 status_codes = {
     100: '100 CONTINUE',
@@ -87,6 +90,13 @@ class HTTPResponse(Exception):
         for cookie in self._cookies.values():
             yield b'set-cookie', str(cookie)[12:].encode('latin-1')
 
+    @property
+    def rsgi_headers(self) -> Generator[Tuple[str, str], None, None]:
+        for key, val in self._headers.items():
+            yield key, val
+        for cookie in self._cookies.values():
+            yield 'set-cookie', str(cookie)[12:]
+
     async def _send_headers(self, send):
         await send({
             'type': 'http.response.start',
@@ -97,9 +107,15 @@ class HTTPResponse(Exception):
     async def _send_body(self, send):
         await send({'type': 'http.response.body'})
 
-    async def send(self, scope, send):
+    async def asgi(self, scope, send):
         await self._send_headers(send)
         await self._send_body(send)
+
+    def rsgi(self):
+        return RSGIResponse.empty(
+            self.status_code,
+            list(self.rsgi_headers)
+        )
 
 
 class HTTPBytes(HTTPResponse):
@@ -119,6 +135,13 @@ class HTTPBytes(HTTPResponse):
             'body': self.body,
             'more_body': False
         })
+
+    def rsgi(self):
+        return RSGIResponse.bytes(
+            self.body,
+            self.status_code,
+            list(self.rsgi_headers)
+        )
 
 
 class HTTP(HTTPResponse):
@@ -142,6 +165,13 @@ class HTTP(HTTPResponse):
             'body': self.encoded_body,
             'more_body': False
         })
+
+    def rsgi(self):
+        return RSGIResponse.str(
+            self.body,
+            self.status_code,
+            list(self.rsgi_headers)
+        )
 
 
 class HTTPRedirect(HTTPResponse):
@@ -183,7 +213,7 @@ class HTTPFile(HTTPResponse):
             'etag': etag
         }
 
-    async def send(self, scope, send):
+    async def asgi(self, scope, send):
         try:
             stat_data = os.stat(self.file_path)
             if not stat.S_ISREG(stat_data.st_mode):
@@ -210,6 +240,23 @@ class HTTPFile(HTTPResponse):
                     'more_body': more_body,
                 })
 
+    def rsgi(self):
+        try:
+            stat_data = os.stat(self.file_path)
+            if not stat.S_ISREG(stat_data.st_mode):
+                return HTTP(403).rsgi()
+            self._headers.update(self._get_stat_headers(stat_data))
+        except IOError as e:
+            if e.errno == errno.EACCES:
+                return HTTP(403).rsgi()
+            return HTTP(404).rsgi()
+
+        return RSGIResponse.file(
+            self.file_path,
+            self.status_code,
+            list(self.rsgi_headers)
+        )
+
 
 class HTTPIO(HTTPResponse):
     def __init__(
@@ -229,7 +276,7 @@ class HTTPIO(HTTPResponse):
             'content-length': content_length
         }
 
-    async def send(self, scope, send):
+    async def asgi(self, scope, send):
         self._headers.update(self._get_io_headers())
         await self._send_headers(send)
         await self._send_body(send)

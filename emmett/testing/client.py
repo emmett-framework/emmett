@@ -20,9 +20,9 @@ import types
 from io import BytesIO
 
 from ..asgi.handlers import HTTPHandler
+from ..asgi.wrappers import Request
 from ..ctx import RequestContext, current
 from ..http import HTTP, HTTPResponse
-from ..wrappers.request import Request
 from ..wrappers.response import Response
 from ..utils import cachedprop
 from .env import ScopeBuilder
@@ -55,17 +55,18 @@ class ClientContext:
 
 class ClientHTTPHandler(HTTPHandler):
     async def dynamic_handler(self, scope, receive, send):
-        ctx = RequestContext(
-            self.app,
+        request = Request(
             scope,
             receive,
             send,
-            Request,
-            Response
+            max_content_length=self.app.config.request_max_content_length,
+            body_timeout=self.app.config.request_body_timeout
         )
+        response = Response()
+        ctx = RequestContext(self.app, request, response)
         ctx_token = current._init_(ctx)
         try:
-            http = await self.router.dispatch(ctx.request, ctx.response)
+            http = await self.router.dispatch(request, response)
         except HTTPResponse as http_exception:
             http = http_exception
             #: render error with handlers if in app
@@ -74,15 +75,15 @@ class ClientHTTPHandler(HTTPHandler):
                 http = HTTP(
                     http.status_code,
                     await error_handler(),
-                    headers=ctx.response.headers,
-                    cookies=ctx.response.cookies
+                    headers=response.headers,
+                    cookies=response.cookies
                 )
         except Exception:
             self.app.log.exception('Application exception:')
             http = HTTP(
                 500,
                 await self.error_handler(),
-                headers=ctx.response.headers
+                headers=response.headers
             )
         finally:
             scope['emt.ctx'] = ClientContext(ctx)

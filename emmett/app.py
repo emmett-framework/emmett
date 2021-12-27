@@ -22,7 +22,7 @@ import click
 from yaml import SafeLoader as ymlLoader, load as ymlload
 
 from ._internal import get_root_path, create_missing_app_folders, warn_of_deprecation
-from .asgi.handlers import HTTPHandler, LifeSpanHandler, WSHandler
+from .asgi import handlers as asgi_handlers
 from .cache import RouteCacheRule
 from .ctx import current
 from .datastructures import sdict, ConfigData
@@ -34,6 +34,7 @@ from .language.translator import Translator
 from .pipeline import Pipe, Injector
 from .routing.router import HTTPRouter, WebsocketRouter, RoutingCtx
 from .routing.urls import url
+from .rsgi import handlers as rsgi_handlers
 from .templating.templater import Templater
 from .testing import EmmettTestClient
 from .typing import ErrorHandlerType
@@ -186,9 +187,13 @@ class App:
         self._router_http = HTTPRouter(self, url_prefix=url_prefix)
         self._router_ws = WebsocketRouter(self, url_prefix=url_prefix)
         self._asgi_handlers = {
-            'http': HTTPHandler(self),
-            'lifespan': LifeSpanHandler(self),
-            'websocket': WSHandler(self)
+            'http': asgi_handlers.HTTPHandler(self),
+            'lifespan': asgi_handlers.LifeSpanHandler(self),
+            'websocket': asgi_handlers.WSHandler(self)
+        }
+        self._rsgi_handlers = {
+            'http': rsgi_handlers.HTTPHandler(self),
+            'ws': rsgi_handlers.WSHandler(self)
         }
         self.error_handlers: Dict[int, Callable[[], Awaitable[str]]] = {}
         self.template_default_extension = '.html'
@@ -215,6 +220,7 @@ class App:
 
     def _configure_asgi_handlers(self):
         self._asgi_handlers['http']._configure_methods()
+        self._rsgi_handlers['http']._configure_methods()
 
     @cachedprop
     def name(self):
@@ -426,6 +432,12 @@ class App:
 
     def __call__(self, scope, receive, send):
         return self._asgi_handlers[scope['type']](scope, receive, send)
+
+    def __rsgi__(self, scope, protocol):
+        return self._rsgi_handlers[scope.proto](scope, protocol)
+
+    def __rsgi_init__(self, loop):
+        self.send_signal(Signals.after_loop, loop=loop)
 
     def module(
         self,

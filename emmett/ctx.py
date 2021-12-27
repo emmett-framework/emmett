@@ -39,21 +39,12 @@ class RequestContext(Context):
     def __init__(
         self,
         app,
-        scope,
-        receive,
-        send,
-        wrapper_request,
-        wrapper_response
+        request,
+        response
     ):
         self.app = app
-        self.request = wrapper_request(
-            scope,
-            receive,
-            send,
-            app.config.request_max_content_length,
-            app.config.request_body_timeout
-        )
-        self.response = wrapper_response()
+        self.request = request
+        self.response = response
         self.session = None
 
     @property
@@ -70,13 +61,9 @@ class RequestContext(Context):
 class WSContext(Context):
     __slots__ = ["websocket", "session"]
 
-    def __init__(self, app, scope, receive, send, wrapper_websocket):
+    def __init__(self, app, websocket):
         self.app = app
-        self.websocket = wrapper_websocket(
-            scope,
-            receive,
-            send
-        )
+        self.websocket = websocket
         self.session = None
 
     @cachedprop

@@ -24,7 +24,7 @@ from .ctx import current
 from .datastructures import sdict, SessionData
 from .pipeline import Pipe
 from .security import secure_loads, secure_dumps, uuid
-from .wrappers import ScopeWrapper
+from .wrappers import IngressWrapper
 
 try:
     from emmett_crypto import symmetric as crypto_symmetric
@@ -51,7 +51,7 @@ class SessionPipe(Pipe):
         )
         self.cookie_data = cookie_data or {}
 
-    def _load_session(self, wrapper: ScopeWrapper):
+    def _load_session(self, wrapper: IngressWrapper):
         raise NotImplementedError
 
     def _new_session(self) -> SessionData:

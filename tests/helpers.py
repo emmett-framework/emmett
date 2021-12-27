@@ -8,13 +8,11 @@
 
 from contextlib import contextmanager
 
-from emmett.asgi.handlers import RequestContext, WSContext
-from emmett.ctx import current
+from emmett.asgi.wrappers import Request, Websocket
+from emmett.ctx import RequestContext, WSContext, current
 from emmett.serializers import Serializers
 from emmett.testing.env import ScopeBuilder
-from emmett.wrappers.request import Request
 from emmett.wrappers.response import Response
-from emmett.wrappers.websocket import Websocket
 
 json_dump = Serializers.get_for('json')
 

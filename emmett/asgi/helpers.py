@@ -128,6 +128,10 @@ class Config(UvicornConfig):
         return self.ssl_certfile is not None and self.ssl_keyfile is not None
 
 
+class RequestCancelled(Exception):
+    ...
+
+
 def _create_ssl_context(
     certfile: str,
     keyfile: str,
