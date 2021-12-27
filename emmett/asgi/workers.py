@@ -14,11 +14,11 @@ import logging
 import signal
 
 from gunicorn.workers.base import Worker as _Worker
+from uvicorn.server import Server
 
-from ..extensions import Signals
+from .helpers import Config
 from .loops import loops
 from .protocols import protocols_http, protocols_ws
-from .server import Config, Server
 
 
 class Worker(_Worker):
@@ -82,7 +82,6 @@ class Worker(_Worker):
 
     def run(self):
         self.config.app = self.wsgi
-        self.config.app.send_signal(Signals.after_loop, loop=self.config.loop)
         server = Server(config=self.config)
         loop = asyncio.get_event_loop()
         loop.run_until_complete(server.serve(sockets=self.sockets))

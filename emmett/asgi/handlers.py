@@ -24,14 +24,14 @@ from typing import Any, Awaitable, Callable, Optional, Tuple, Union
 
 from ..ctx import RequestContext, WSContext, current
 from ..debug import smart_traceback, debug_handler
+from ..extensions import Signals
 from ..http import HTTPBytes, HTTPResponse, HTTPFile, HTTP
 from ..libs.contenttype import contenttype
 from ..utils import cachedprop
-from ..wrappers.helpers import RequestCancelled
-from ..wrappers.request import Request
 from ..wrappers.response import Response
-from ..wrappers.websocket import Websocket
+from .helpers import RequestCancelled
 from .typing import Event, EventHandler, EventLooper, Receive, Scope, Send
+from .wrappers import Request, Websocket
 
 REGEX_STATIC = re.compile(
     r'^/static/(?P<m>__[\w\-\.]+__/)?(?P<v>_\d+\.\d+\.\d+/)?(?P<f>.*?)$'
@@ -131,6 +131,7 @@ class LifeSpanHandler(Handler):
         send: Send,
         event: Event
     ) -> EventLooper:
+        self.app.send_signal(Signals.after_loop, loop=asyncio.get_event_loop())
         await send({'type': 'lifespan.startup.complete'})
         return _event_looper
 
@@ -191,7 +192,7 @@ class HTTPHandler(RequestHandler):
         try:
             http = await self.pre_handler(scope, receive, send)
             await asyncio.wait_for(
-                http.send(scope, send),
+                http.asgi(scope, send),
                 self.app.config.response_timeout
             )
         except RequestCancelled:
@@ -312,17 +313,18 @@ class HTTPHandler(RequestHandler):
         receive: Receive,
         send: Send
     ) -> HTTPResponse:
-        ctx = RequestContext(
-            self.app,
+        request = Request(
             scope,
             receive,
             send,
-            Request,
-            Response
+            max_content_length=self.app.config.request_max_content_length,
+            body_timeout=self.app.config.request_body_timeout
         )
+        response = Response()
+        ctx = RequestContext(self.app, request, response)
         ctx_token = current._init_(ctx)
         try:
-            http = await self.router.dispatch(ctx.request, ctx.response)
+            http = await self.router.dispatch(request, response)
         except HTTPResponse as http_exception:
             http = http_exception
             #: render error with handlers if in app
@@ -331,8 +333,8 @@ class HTTPHandler(RequestHandler):
                 http = HTTP(
                     http.status_code,
                     await error_handler(),
-                    headers=ctx.response.headers,
-                    cookies=ctx.response.cookies
+                    headers=response.headers,
+                    cookies=response.cookies
                 )
         except RequestCancelled:
             raise
@@ -341,7 +343,7 @@ class HTTPHandler(RequestHandler):
             http = HTTP(
                 500,
                 await self.error_handler(),
-                headers=ctx.response.headers
+                headers=response.headers
             )
         finally:
             current._close_(ctx_token)
@@ -376,10 +378,8 @@ class WSHandler(RequestHandler):
         send: Send
     ):
         scope['emt.input'] = asyncio.Queue()
-        task_events = asyncio.create_task(
-            self.handle_events(scope, receive, send))
-        task_request = asyncio.create_task(
-            self.handle_request(scope, receive, send))
+        task_events = asyncio.create_task(self.handle_events(scope, receive, send))
+        task_request = asyncio.create_task(self.handle_request(scope, send))
         _, pending = await asyncio.wait(
             [task_request, task_events], return_when=asyncio.FIRST_COMPLETED
         )
@@ -420,13 +420,12 @@ class WSHandler(RequestHandler):
     async def handle_request(
         self,
         scope: Scope,
-        receive: Receive,
         send: Send
     ):
         scope['emt.path'] = scope['path'] or '/'
         scope['emt._ws_closed'] = False
         try:
-            await self.pre_handler(scope, receive, send)
+            await self.pre_handler(scope, send)
         except HTTPResponse:
             if not scope['emt._ws_closed']:
                 await send({'type': 'websocket.close', 'code': 1006})
@@ -441,27 +440,22 @@ class WSHandler(RequestHandler):
     def _prefix_handler(
         self,
         scope: Scope,
-        receive: Receive,
         send: Send
     ) -> Awaitable[None]:
         path = scope['emt.path']
         if not path.startswith(self.router._prefix_main):
             raise HTTP(404)
         scope['emt.path'] = path[self.router._prefix_main_len:] or '/'
-        return self.dynamic_handler(scope, receive, send)
+        return self.dynamic_handler(scope, send)
 
     async def dynamic_handler(
         self,
         scope: Scope,
-        receive: Receive,
         send: Send
     ):
         ctx = WSContext(
             self.app,
-            scope,
-            scope['emt.input'].get,
-            send,
-            Websocket
+            Websocket(scope, scope['emt.input'].get, send)
         )
         ctx_token = current._init_(ctx)
         try:

@@ -16,7 +16,6 @@
 import code
 import os
 import re
-import ssl
 import sys
 import types
 
@@ -25,9 +24,8 @@ import click
 from .__version__ import __version__ as fw_version
 from ._internal import locate_app, get_app_module
 from .asgi.loops import loops
-from .asgi.protocols import protocols_http, protocols_ws
-from .asgi.server import run as asgi_run
 from .logger import LOG_LEVELS
+from .server import run as sgi_run
 
 
 def find_app_module():
@@ -245,32 +243,21 @@ class EmmettGroup(click.Group):
 @click.option(
     '--port', '-p', type=int, default=8000, help='The port to bind to.')
 @click.option(
+    '--interface', type=click.Choice(['rsgi', 'asgi']), default='rsgi',
+    help='Application interface.')
+@click.option(
     '--loop', type=click.Choice(loops.keys()), default='auto',
     help='Event loop implementation.')
-@click.option(
-    '--http-protocol', type=click.Choice(protocols_http.keys()),
-    default='auto', help='HTTP protocol implementation.')
-@click.option(
-    '--ws-protocol', type=click.Choice(protocols_ws.keys()),
-    default='auto', help='Websocket protocol implementation.')
 @click.option(
     '--ssl-certfile', type=str, default=None, help='SSL certificate file')
 @click.option(
     '--ssl-keyfile', type=str, default=None, help='SSL key file')
 @click.option(
-    '--ssl-cert-reqs', type=int, default=ssl.CERT_NONE,
-    help='Whether client certificate is required (see ssl module)')
-@click.option(
-    '--ssl-ca-certs', type=str, default=None, help='CA certificates file')
-@click.option(
     '--reloader/--no-reloader', is_flag=True, default=True,
     help='Runs with reloader.')
 @pass_script_info
 def develop_command(
-    info, host, port,
-    loop, http_protocol, ws_protocol,
-    ssl_certfile, ssl_keyfile, ssl_cert_reqs, ssl_ca_certs,
-    reloader
+    info, host, port, interface, loop, ssl_certfile, ssl_keyfile, reloader
 ):
     os.environ["EMMETT_RUN_ENV"] = 'true'
     app_target = info._get_import_name()
@@ -296,21 +283,17 @@ def develop_command(
         from ._reloader import run_with_reloader
         runner = run_with_reloader
     else:
-        runner = asgi_run
+        runner = sgi_run
 
     runner(
+        interface,
         app_target,
         host,
         port,
         loop=loop,
-        proto_http=http_protocol,
-        proto_ws=ws_protocol,
         log_level='debug',
-        access_log=True,
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,
-        ssl_cert_reqs=ssl_cert_reqs,
-        ssl_ca_certs=ssl_ca_certs
     )
 
 
@@ -322,68 +305,38 @@ def develop_command(
 @click.option(
     "--workers", type=int, default=1, help="Number of worker processes. Defaults to 1.")
 @click.option(
+    '--interface', type=click.Choice(['rsgi', 'asgi']), default='rsgi',
+    help='Application interface.')
+@click.option(
     '--loop', type=click.Choice(loops.keys()), default='auto',
     help='Event loop implementation.')
-@click.option(
-    '--http-protocol', type=click.Choice(protocols_http.keys()),
-    default='auto', help='HTTP protocol implementation.')
-@click.option(
-    '--ws-protocol', type=click.Choice(protocols_ws.keys()),
-    default='auto', help='Websocket protocol implementation.')
 @click.option(
     '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='info',
     help='Logging level.')
 @click.option(
-    '--access-log/--no-access-log', is_flag=True, default=True,
-    help='Enable/Disable access log.')
-@click.option(
-    '--proxy-headers/--no-proxy-headers', is_flag=True, default=False,
-    help='Enable/Disable proxy headers.')
-@click.option(
-    '--proxy-trust-ips', type=str, default=None,
-    help='Comma seperated list of IPs to trust with proxy headers')
-@click.option(
-    '--max-concurrency', type=int,
-    help='The maximum number of concurrent connections.')
-@click.option(
     '--backlog', type=int, default=2048,
     help='Maximum number of connections to hold in backlog')
-@click.option(
-    '--keep-alive-timeout', type=int, default=0,
-    help='Keep alive timeout for connections.')
 @click.option(
     '--ssl-certfile', type=str, default=None, help='SSL certificate file')
 @click.option(
     '--ssl-keyfile', type=str, default=None, help='SSL key file')
-@click.option(
-    '--ssl-cert-reqs', type=int, default=ssl.CERT_NONE,
-    help='Whether client certificate is required (see ssl module)')
-@click.option(
-    '--ssl-ca-certs', type=str, default=None, help='CA certificates file')
 @pass_script_info
 def serve_command(
-    info, host, port, workers,
-    loop, http_protocol, ws_protocol,
-    log_level, access_log,
-    proxy_headers, proxy_trust_ips,
-    max_concurrency, backlog, keep_alive_timeout,
-    ssl_certfile, ssl_keyfile, ssl_cert_reqs, ssl_ca_certs
+    info, host, port, workers, interface, loop, log_level, backlog,
+    ssl_certfile, ssl_keyfile
 ):
     app_target = info._get_import_name()
-    asgi_run(
+    sgi_run(
+        interface,
         app_target,
-        host=host, port=port,
-        loop=loop, proto_http=http_protocol, proto_ws=ws_protocol,
-        log_level=log_level, access_log=access_log,
-        proxy_headers=proxy_headers, proxy_trust_ips=proxy_trust_ips,
+        host=host,
+        port=port,
+        loop=loop,
+        log_level=log_level,
         workers=workers,
-        limit_concurrency=max_concurrency,
         backlog=backlog,
-        timeout_keep_alive=keep_alive_timeout,
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,
-        ssl_cert_reqs=ssl_cert_reqs,
-        ssl_ca_certs=ssl_ca_certs
     )
 
 

@@ -9,101 +9,29 @@
     :license: BSD-3-Clause
 """
 
-import asyncio
-import re
-
+from abc import abstractmethod
 from cgi import FieldStorage, parse_header
-from datetime import datetime
 from io import BytesIO
 from urllib.parse import parse_qs
-from typing import Any, Optional
+from typing import Any
 
 import pendulum
 
-from ..asgi.typing import Scope, Receive, Send
 from ..datastructures import sdict
-from ..http import HTTP
 from ..parsers import Parsers
 from ..utils import cachedprop
-from . import ScopeWrapper
-from .helpers import FileStorage, RequestCancelled
-
-_regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
-_push_headers = {
-    "accept",
-    "accept-encoding",
-    "accept-language",
-    "cache-control",
-    "user-agent"
-}
+from . import IngressWrapper
+from .helpers import FileStorage
 
 
-class Body:
-    __slots__ = ('_data', '_receive', '_max_content_length')
-
-    def __init__(self, receive, max_content_length=None):
-        self._data = bytearray()
-        self._receive = receive
-        self._max_content_length = max_content_length
-
-    def append(self, data: bytes):
-        if data == b'':
-            return
-        self._data.extend(data)
-        if (
-            self._max_content_length is not None and
-            len(self._data) > self._max_content_length
-        ):
-            raise HTTP(413, 'Request entity too large')
-
-    async def __load(self) -> bytes:
-        while True:
-            event = await self._receive()
-            if event['type'] == 'http.request':
-                self.append(event['body'])
-                if not event.get('more_body', False):
-                    break
-            elif event['type'] == 'http.disconnect':
-                raise RequestCancelled
-        return bytes(self._data)
-
-    def __await__(self):
-        return self.__load().__await__()
-
-
-class Request(ScopeWrapper):
+class Request(IngressWrapper):
     __slots__ = ['_now', 'method']
 
-    def __init__(
-        self,
-        scope: Scope,
-        receive: Receive,
-        send: Send,
-        max_content_length: Optional[int] = None,
-        body_timeout: Optional[int] = None
-    ):
-        super().__init__(scope, receive, send)
-        self.max_content_length = max_content_length
-        self.body_timeout = body_timeout
-        self._now = datetime.utcnow()
-        self.method = scope['method']
+    method: str
 
-    @cachedprop
-    def _input(self):
-        return Body(self._receive, self.max_content_length)
-
-    @cachedprop
-    async def body(self) -> bytes:
-        if (
-            self.max_content_length and
-            self.content_length > self.max_content_length
-        ):
-            raise HTTP(413, 'Request entity too large')
-        try:
-            rv = await asyncio.wait_for(self._input, timeout=self.body_timeout)
-        except asyncio.TimeoutError:
-            raise HTTP(408, 'Request timeout')
-        return rv
+    @property
+    @abstractmethod
+    async def body(self) -> bytes: ...
 
     @cachedprop
     def now(self) -> pendulum.DateTime:
@@ -160,11 +88,15 @@ class Request(ScopeWrapper):
             rv[key] = values
         return rv, sdict()
 
+    @property
+    def _multipart_headers(self):
+        return self.headers
+
     def _load_params_form_multipart(self, data):
         params, files = sdict(), sdict()
         field_storage = FieldStorage(
             BytesIO(data),
-            headers=self.headers,
+            headers=self._multipart_headers,
             environ={'REQUEST_METHOD': self.method},
             keep_blank_values=True
         )
@@ -204,26 +136,5 @@ class Request(ScopeWrapper):
             self.content_type, self._load_params_missing)
         return loader(self, await self.body)
 
-    @cachedprop
-    def client(self) -> str:
-        g = _regex_client.search(self.headers.get('x-forwarded-for', ''))
-        client = (
-            (g.group() or '').split(',')[0] if g else (
-                self._scope['client'][0] if self._scope['client'] else None
-            )
-        )
-        if client in (None, '', 'unknown', 'localhost'):
-            client = '::1' if self.host.startswith('[') else '127.0.0.1'
-        return client  # type: ignore
-
-    async def push_promise(self, path: str):
-        if "http.response.push" not in self._scope.get("extensions", {}):
-            return
-        await self._send({
-            "type": "http.response.push",
-            "path": path,
-            "headers": [
-                (key.encode("latin-1"), self.headers[key].encode("latin-1"))
-                for key in _push_headers & set(self.headers.keys())
-            ]
-        })
+    @abstractmethod
+    async def push_promise(self, path: str): ...

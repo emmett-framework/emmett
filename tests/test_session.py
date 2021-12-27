@@ -8,11 +8,10 @@
 
 import pytest
 
-from emmett.asgi.handlers import RequestContext
-from emmett.ctx import current
+from emmett.asgi.wrappers import Request
+from emmett.ctx import RequestContext, current
 from emmett.sessions import SessionManager
 from emmett.testing.env import ScopeBuilder
-from emmett.wrappers.request import Request
 from emmett.wrappers.response import Response
 
 
