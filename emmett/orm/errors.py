@@ -17,3 +17,19 @@ class MaxConnectionsExceeded(RuntimeError):
 
 class MissingFieldsForCompute(RuntimeError):
     ...
+
+
+class SaveException(RuntimeError):
+    ...
+
+
+class InsertFailureOnSave(SaveException):
+    ...
+
+
+class UpdateFailureOnSave(SaveException):
+    ...
+
+
+class ValidationError(RuntimeError):
+    ...

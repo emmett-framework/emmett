@@ -6,7 +6,7 @@ from .models import Model
 from .apis import (
     belongs_to, refers_to, has_one, has_many,
     compute, rowattr, rowmethod,
-    before_insert, before_update, before_delete,
-    after_insert, after_update, after_delete,
+    before_insert, before_update, before_delete, before_save,
+    after_insert, after_update, after_delete, after_save,
     scope
 )

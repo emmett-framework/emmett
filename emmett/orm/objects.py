@@ -50,6 +50,8 @@ class Table(_Table):
             for field in fields if hasattr(field, 'notnull')
         }
         super(Table, self).__init__(db, tablename, *fields, **kwargs)
+        self._before_save = []
+        self._after_save = []
         self._unique_fields_validation_ = {}
         self._primary_keys = _primary_keys
         #: avoid pyDAL mess in ops and migrations
@@ -62,6 +64,24 @@ class Table(_Table):
         self._referenced_by = []
         self._referenced_by_list = []
         self._references = []
+
+    def _fields_and_values_for_save(self, row, op_method):
+        fields = {key: row[key] for key in self._model_._fieldset_editable}
+        return op_method(fields)
+
+    def _insert_from_save(self, row):
+        if any(f(row) for f in self._before_save):
+            return row
+        fields = self._fields_and_values_for_save(
+            row, self._fields_and_values_for_insert
+        )
+        ret = self.insert(**fields)
+        if ret:
+            row.id = ret.id
+        if row.id and self._after_save:
+            for f in self._after_save:
+                f(row)
+        return row
 
 
 class Field(_Field):
@@ -434,6 +454,20 @@ class Set(_Set):
             response.updated = ret
         return response
 
+    def _update_from_save(self, model, row):
+        table = model.table
+        if any(f(row) for f in table._before_save):
+            return False
+        fields = table._fields_and_values_for_save(
+            row, table._fields_and_values_for_update
+        )
+        if any(f(self, fields) for f in table._before_update):
+            return False
+        ret = self.db._adapter.update(table, self.query, fields.op_values())
+        ret and [f(self, fields) for f in table._after_update]
+        ret and [f(row) for f in table._after_save]
+        return bool(ret)
+
     def join(self, *args):
         rv = self
         if self._model_ is not None:
@@ -788,17 +822,24 @@ class JoinedSet(Set):
         #: use iterselect for performance
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
+        plainrows = []
         rowmap = OrderedDict()
         inclusions = defaultdict(
             lambda: {
                 jname: OrderedDict() for jname, jtable in (many_j + many_l)})
         for row in rows:
+            if self._stable_ not in row:
+                plainrows.append(row)
+                continue
             rid = row[self._stable_].id
             rowmap[rid] = rowmap.get(rid, row[self._stable_])
             for parser in parsers:
                 parser(rowmap, inclusions, row, rid)
+        if not rowmap and plainrows:
+            return Rows(self.db, plainrows, rows.colnames)
         return self._build_records_from_joined(
-            rowmap, inclusions, rows.colnames)
+            rowmap, inclusions, rows.colnames
+        )
 
     def _build_jparsers(self, belongs, one, many):
         rv = []

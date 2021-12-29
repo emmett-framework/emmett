@@ -116,6 +116,14 @@ def after_delete(f):
     return Callback(f, '_after_delete')
 
 
+def before_save(f):
+    return Callback(f, '_before_save')
+
+
+def after_save(f):
+    return Callback(f, '_after_save')
+
+
 class scope(object):
     def __init__(self, name):
         self.name = name

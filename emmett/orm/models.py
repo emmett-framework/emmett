@@ -9,9 +9,11 @@
     :license: BSD-3-Clause
 """
 
+import operator
 import types
 
 from collections import OrderedDict
+from functools import reduce
 
 from ..datastructures import sdict
 from ..utils import cachedprop
@@ -19,6 +21,7 @@ from .apis import (
     compute, rowattr, rowmethod, scope, belongs_to, refers_to, has_one,
     has_many
 )
+from .errors import InsertFailureOnSave, UpdateFailureOnSave, ValidationError
 from .helpers import (
     Callback, ReferenceData, make_tablename, camelize, decamelize,
     wrap_scope_on_model, wrap_virtual_on_model
@@ -414,6 +417,20 @@ class Model(metaclass=MetaModel):
                 self.fields.append(f)
 
     def _build_rowclass_(self):
+        #: build helpers for rows
+        save_excluded_fields = (
+            set(self.primary_keys or ['id']) |
+            set(self._all_rowattrs_.keys()) |
+            set(self._all_rowmethods_.keys())
+        )
+        self._fieldset_editable = set([
+            field.name for field in self.fields
+        ]) - save_excluded_fields
+        self._fieldset_update = set([
+            field.name for field in self.fields
+            if getattr(field, "update", None) is not None
+        ]) & self._fieldset_editable
+        #: create dynamic row class
         clsname = self.__class__.__name__ + "Row"
         attrs = {
             k: cachedprop(v, name=k) for k, v in self._all_rowattrs_.items()
@@ -432,6 +449,7 @@ class Model(metaclass=MetaModel):
         self.__define_computations()
         self.__define_callbacks()
         self.__define_scopes()
+        self.__define_query_helpers()
         self.__define_form_utils()
         self.setup()
 
@@ -486,7 +504,13 @@ class Model(metaclass=MetaModel):
     def __define_callbacks(self):
         for obj in self._all_callbacks_.values():
             for t in obj.t:
-                if t in ["_before_insert", "_before_delete", "_after_delete"]:
+                if t in [
+                    "_before_insert",
+                    "_before_delete",
+                    "_after_delete",
+                    "_before_save",
+                    "_after_save"
+                ]:
                     getattr(self.table, t).append(
                         lambda a, obj=obj, self=self: obj.f(self, a)
                     )
@@ -617,6 +641,51 @@ class Model(metaclass=MetaModel):
                 'on_delete': Field._internal_delete[rels['on_delete']]
             }
 
+    def _row_refrecord_id(self, row):
+        return bool(row.id)
+
+    def _row_refrecord_pk(self, row):
+        return bool(row[self.primary_keys[0]])
+
+    def _row_refrecord_pks(self, row):
+        return all(bool(row[v]) for v in self.primary_keys)
+
+    def _row_record_query_id(self, row):
+        return self.table.id == row.id
+
+    def _row_record_query_pk(self, row):
+        return self.table[self.primary_keys[0]] == row[self.primary_keys[0]]
+
+    def _row_record_query_pks(self, row):
+        return reduce(
+            operator.and_, [self.table[pk] == row[pk] for pk in self.primary_keys]
+        )
+
+    def __define_query_helpers(self):
+        if not self.primary_keys:
+            self._row_has_id = self._row_refrecord_id
+            self._query_id = self.table.id != None
+            self._query_row = self._row_record_query_id
+            self._order_by_id_asc = self.table.id
+            self._order_by_id_desc = ~self.table.id
+        elif len(self.primary_keys) == 1:
+            self._row_has_id = self._row_refrecord_pk
+            self._query_id = self.table[self.primary_keys[0]] != None
+            self._query_row = self._row_record_query_pk
+            self._order_by_id_asc = self.table[self.primary_keys[0]]
+            self._order_by_id_desc = ~self.table[self.primary_keys[0]]
+        else:
+            self._row_has_id = self._row_refrecord_pks
+            self._query_id = reduce(
+                operator.and_, [self.table[key] != None for key in self.primary_keys]
+            )
+            self._query_row = self._row_record_query_pks
+            self._order_by_id_asc = reduce(
+                operator.or_, [self.table[key] for key in self.primary_keys]
+            )
+            self._order_by_id_desc = reduce(
+                operator.or_, [~self.table[key] for key in self.primary_keys]
+            )
 
     def __define_form_utils(self):
         #: labels
@@ -638,12 +707,17 @@ class Model(metaclass=MetaModel):
 
     @classmethod
     def new(cls, **attributes):
-        row = cls._instance_()._rowclass_()
-        for field in cls.table.fields:
-            val = attributes.get(field, cls.table[field].default)
+        inst = cls._instance_()
+        row = inst._rowclass_()
+        for field in inst._fieldset_editable & set(attributes.keys()):
+            row[field] = attributes[field]
+        for field in inst._fieldset_editable - set(attributes.keys()):
+            val = cls.table[field].default
             if callable(val):
                 val = val()
             row[field] = val
+        for field in (inst.primary_keys or ["id"]):
+            row[field] = None
         return row
 
     @classmethod
@@ -676,15 +750,21 @@ class Model(metaclass=MetaModel):
 
     @classmethod
     def all(cls):
-        return cls.db.where(cls.table, model=cls)
+        return cls.db.where(cls._instance_()._query_id, model=cls)
 
     @classmethod
     def first(cls):
-        return cls.all().select(orderby=cls.id, limitby=(0, 1)).first()
+        return cls.all().select(
+            orderby=cls._instance_()._order_by_id_asc,
+            limitby=(0, 1)
+        ).first()
 
     @classmethod
     def last(cls):
-        return cls.all().select(orderby=~cls.id, limitby=(0, 1)).first()
+        return cls.all().select(
+            orderby=cls._instance_()._order_by_id_desc,
+            limitby=(0, 1)
+        ).first()
 
     @classmethod
     def get(cls, *args, **kwargs):
@@ -701,13 +781,50 @@ class Model(metaclass=MetaModel):
                 self.table[fieldname].type == 'id'
             ):
                 del newfields[fieldname]
-        res = self.db(self.table._id == row.id, ignore_common_filters=True).update(
-            **newfields
-        )
+        res = self.db(
+            self._query_row(row), ignore_common_filters=True
+        ).update(**newfields)
         if res:
             row.update(self.get(row.id))
         return row
 
     @rowmethod('delete_record')
     def _delete_record(self, row):
-        return self.db(self.db[self.tablename]._id == row.id).delete()
+        return self.db(self._query_row(row)).delete()
+
+    @rowmethod('validation_errors')
+    def _row_validation_errors(self, row):
+        return self.validate(row)
+
+    @rowmethod('is_valid')
+    def _row_is_valid(self, row):
+        return not bool(self.validate(row))
+
+    @rowmethod('save')
+    def _row_save(self, row, raise_on_error: bool = False) -> bool:
+        is_update = self._row_has_id(row)
+        if is_update:
+            for field_name in self._fieldset_update:
+                val = self.table[field_name].update
+                if callable(val):
+                    val = val()
+                row[field_name] = val
+        if not row.is_valid():
+            if raise_on_error:
+                raise ValidationError
+            return False
+        if is_update:
+            res = self.db(
+                self._query_row(row), ignore_common_filters=True
+            )._update_from_save(self, row)
+            if not res:
+                if raise_on_error:
+                    raise UpdateFailureOnSave
+                return False
+        else:
+            self.table._insert_from_save(row)
+            if not self._row_has_id(row):
+                if raise_on_error:
+                    raise InsertFailureOnSave
+                return False
+        return True
