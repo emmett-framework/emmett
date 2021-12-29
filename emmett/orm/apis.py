@@ -124,6 +124,24 @@ def after_save(f):
     return Callback(f, '_after_save')
 
 
+def before_commit(f):
+    return Callback(f, '_before_commit')
+
+
+def after_commit(f):
+    return Callback(f, '_after_commit')
+
+
+def _commit_callback_op(kind, op):
+    def _deco(f):
+        return Callback(f, f'_{kind}_commit_{op}')
+    return _deco
+
+
+before_commit.operation = lambda op: _commit_callback_op('before', op)
+after_commit.operation = lambda op: _commit_callback_op('after', op)
+
+
 class scope(object):
     def __init__(self, name):
         self.name = name

@@ -18,13 +18,24 @@ from functools import reduce
 from ..datastructures import sdict
 from ..utils import cachedprop
 from .apis import (
-    compute, rowattr, rowmethod, scope, belongs_to, refers_to, has_one,
+    compute,
+    rowattr,
+    rowmethod,
+    scope,
+    belongs_to,
+    refers_to,
+    has_one,
     has_many
 )
 from .errors import InsertFailureOnSave, UpdateFailureOnSave, ValidationError
 from .helpers import (
-    Callback, ReferenceData, make_tablename, camelize, decamelize,
-    wrap_scope_on_model, wrap_virtual_on_model
+    Callback,
+    ReferenceData,
+    make_tablename,
+    camelize,
+    decamelize,
+    wrap_scope_on_model,
+    wrap_virtual_on_model
 )
 from .objects import Field, Row
 from .wrappers import HasOneWrap, HasManyWrap, HasManyViaWrap
@@ -426,6 +437,7 @@ class Model(metaclass=MetaModel):
         self._fieldset_editable = set([
             field.name for field in self.fields
         ]) - save_excluded_fields
+        self._fieldset_all = self._fieldset_editable | set(self.primary_keys or ['id'])
         self._fieldset_update = set([
             field.name for field in self.fields
             if getattr(field, "update", None) is not None
@@ -436,7 +448,7 @@ class Model(metaclass=MetaModel):
             k: cachedprop(v, name=k) for k, v in self._all_rowattrs_.items()
         }
         attrs.update(self._all_rowmethods_)
-        self._rowclass_ = type(clsname, (Row,), attrs)
+        self._rowclass_ = type(clsname, (StructuredRow,), attrs)
         globals()[clsname] = self._rowclass_
 
     def _define_(self):
@@ -509,7 +521,15 @@ class Model(metaclass=MetaModel):
                     "_before_delete",
                     "_after_delete",
                     "_before_save",
-                    "_after_save"
+                    "_after_save",
+                    "_before_commit_insert",
+                    "_before_commit_update",
+                    "_before_commit_delete",
+                    "_before_commit_save",
+                    "_after_commit_insert",
+                    "_after_commit_update",
+                    "_after_commit_delete",
+                    "_after_commit_save"
                 ]:
                     getattr(self.table, t).append(
                         lambda a, obj=obj, self=self: obj.f(self, a)
@@ -708,17 +728,17 @@ class Model(metaclass=MetaModel):
     @classmethod
     def new(cls, **attributes):
         inst = cls._instance_()
-        row = inst._rowclass_()
+        rowattrs = {}
         for field in inst._fieldset_editable & set(attributes.keys()):
-            row[field] = attributes[field]
+            rowattrs[field] = attributes[field]
         for field in inst._fieldset_editable - set(attributes.keys()):
             val = cls.table[field].default
             if callable(val):
                 val = val()
-            row[field] = val
+            rowattrs[field] = val
         for field in (inst.primary_keys or ["id"]):
-            row[field] = None
-        return row
+            rowattrs[field] = None
+        return inst._rowclass_(rowattrs)
 
     @classmethod
     def create(cls, *args, **kwargs):
@@ -771,6 +791,12 @@ class Model(metaclass=MetaModel):
         if len(args) == 1:
             return cls.table[args[0]]
         return cls.table(**kwargs)
+
+    @rowmethod('clone')
+    def _row_clone(self, row):
+        return self._rowclass_(
+            {key: row[key] for key in self._fieldset_all & set(row.keys())}
+        )
 
     @rowmethod('update_record')
     def _update_record(self, row, **fields):
@@ -827,4 +853,36 @@ class Model(metaclass=MetaModel):
                 if raise_on_error:
                     raise InsertFailureOnSave
                 return False
+        row._changes.clear()
         return True
+
+
+class StructuredRow(Row):
+    __slots__ = ["_changes"]
+
+    def __init__(self, *args, **kwargs):
+        object.__setattr__(self, "_changes", {})
+        super().__init__(*args, **kwargs)
+
+    def __setattr__(self, key, value):
+        prev = self._changes[key][0] if key in self._changes else self.__dict__.get(key)
+        self.__dict__[key] = value
+        if (prev is None and value is not None) or prev != value:
+            self._changes[key] = (prev, value)
+
+    def __setitem__(self, key, value):
+        self.__setattr__(key, value)
+
+    @property
+    def changes(self):
+        return sdict(self._changes)
+
+    @property
+    def has_changed(self):
+        return bool(self._changes)
+
+    def has_changed_value(self, key):
+        return key in self._changes
+
+    def get_value_change(self, key):
+        return self._changes.get(key, None)
