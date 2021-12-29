@@ -31,5 +31,9 @@ class UpdateFailureOnSave(SaveException):
     ...
 
 
+class DestroyException(RuntimeError):
+    ...
+
+
 class ValidationError(RuntimeError):
     ...

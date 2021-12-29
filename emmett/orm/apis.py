@@ -124,6 +124,14 @@ def after_save(f):
     return Callback(f, '_after_save')
 
 
+def before_destroy(f):
+    return Callback(f, '_before_destroy')
+
+
+def after_destroy(f):
+    return Callback(f, '_after_destroy')
+
+
 def before_commit(f):
     return Callback(f, '_before_commit')
 

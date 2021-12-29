@@ -21,6 +21,7 @@ from emmett.orm import (
     before_update, after_update,
     before_delete, after_delete,
     before_save, after_save,
+    before_destroy, after_destroy,
     before_commit, after_commit,
     rowattr, rowmethod,
     has_one, has_many, belongs_to,
@@ -337,7 +338,16 @@ class CartElement(Model):
         row.price_denorm = row.quantity * row.product.price
 
     @after_save
-    def _refresh_cart(self, row):
+    def _refresh_cart_after_update(self, row):
+        row.cart.save()
+
+    @before_destroy
+    def _undo_quantity_on_removal(self, row):
+        row.quantity = 0
+        row.price_denorm = 0
+
+    @after_destroy
+    def _refresh_cart_after_removal(self, row):
         row.cart.save()
 
     @rowattr("price")
@@ -522,6 +532,29 @@ def test_save(db):
     cart = Cart.get(cart.id)
     assert cart.total == p1.price + p2.price * 3
     assert cart.total_denorm == p1.price + p2.price * 3
+    assert cart.revision != cart_rev
+
+
+def test_destroy(db):
+    p1 = db.Product.insert(name="foo", price=2.99)
+    p2 = db.Product.insert(name="bar", price=7.49)
+    cart = db.Cart.insert()
+
+    item = CartElement.new(cart=cart, product=p1)
+    item.save()
+    item = CartElement.new(cart=cart, product=p2, quantity=3)
+    item.save()
+
+    cart = Cart.get(cart.id)
+    cart_rev = cart.revision
+
+    item.destroy()
+    assert not item.id
+    assert not item.price
+    assert not item.price_denorm
+    cart = Cart.get(cart.id)
+    assert cart.total == p1.price
+    assert cart.total_denorm == p1.price
     assert cart.revision != cart_rev
 
 

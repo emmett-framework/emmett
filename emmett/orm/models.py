@@ -27,7 +27,12 @@ from .apis import (
     has_one,
     has_many
 )
-from .errors import InsertFailureOnSave, UpdateFailureOnSave, ValidationError
+from .errors import (
+    InsertFailureOnSave,
+    UpdateFailureOnSave,
+    ValidationError,
+    DestroyException
+)
 from .helpers import (
     Callback,
     ReferenceData,
@@ -522,6 +527,8 @@ class Model(metaclass=MetaModel):
                     "_after_delete",
                     "_before_save",
                     "_after_save",
+                    "_before_destroy",
+                    "_after_destroy",
                     "_before_commit_insert",
                     "_before_commit_update",
                     "_before_commit_delete",
@@ -853,6 +860,18 @@ class Model(metaclass=MetaModel):
                 if raise_on_error:
                     raise InsertFailureOnSave
                 return False
+        row._changes.clear()
+        return True
+
+    @rowmethod('destroy')
+    def _row_destroy(self, row, raise_on_error: bool = False) -> bool:
+        res = self.db(
+            self._query_row(row), ignore_common_filters=True
+        )._delete_from_destroy(self, row)
+        if not res:
+            if raise_on_error:
+                raise DestroyException
+            return False
         row._changes.clear()
         return True
 

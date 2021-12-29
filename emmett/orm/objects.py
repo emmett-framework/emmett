@@ -55,16 +55,20 @@ class Table(_Table):
         super(Table, self).__init__(db, tablename, *fields, **kwargs)
         self._before_save = []
         self._after_save = []
+        self._before_destroy = []
+        self._after_destroy = []
         self._before_commit = []
         self._before_commit_insert = []
         self._before_commit_update = []
         self._before_commit_delete = []
         self._before_commit_save = []
+        self._before_commit_destroy = []
         self._after_commit = []
         self._after_commit_insert = []
         self._after_commit_update = []
         self._after_commit_delete = []
         self._after_commit_save = []
+        self._after_commit_destroy = []
         self._unique_fields_validation_ = {}
         self._primary_keys = _primary_keys
         #: avoid pyDAL mess in ops and migrations
@@ -562,6 +566,39 @@ class Set(_Set):
             ))
         ret and [f(self, fields) for f in table._after_update]
         ret and [f(row) for f in table._after_save]
+        return bool(ret)
+
+    def _delete_from_destroy(self, model, row):
+        table = model.table
+        if any(f(row) for f in table._before_destroy):
+            return False
+        if any(f(self) for f in table._before_delete):
+            return 0
+        ret = self.db._adapter.delete(table, self.query)
+        if ret:
+            row.id = None
+        txn = self._db._adapter.top_transaction()
+        if txn:
+            txn._add_op(TransactionOp(
+                TransactionOps.delete,
+                table,
+                TransactionOpContext(
+                    dbset=self,
+                    ret=ret
+                )
+            ))
+            txn._add_op(TransactionOp(
+                TransactionOps.destroy,
+                table,
+                TransactionOpContext(
+                    dbset=self,
+                    ret=ret,
+                    row=row.clone(),
+                    changes=row.changes
+                )
+            ))
+        ret and [f(self) for f in table._after_delete]
+        ret and [f(row) for f in table._after_destroy]
         return bool(ret)
 
     def join(self, *args):
@@ -1197,6 +1234,7 @@ class TransactionOps(str, Enum):
     update = "update"
     delete = "delete"
     save = "save"
+    destroy = "destroy"
 
 
 class TransactionOpContext:
