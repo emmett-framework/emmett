@@ -15,7 +15,9 @@ import decimal
 import types
 
 from collections import OrderedDict, defaultdict
-from typing import Optional
+from enum import Enum
+from typing import Any, Optional
+
 from pydal.objects import (
     Table as _Table,
     Field as _Field,
@@ -36,7 +38,8 @@ from ..validators import ValidateFromDict
 from .helpers import (
     _IDReference,
     JoinedIDReference,
-    RelationBuilder, wrap_scope_on_set
+    RelationBuilder,
+    wrap_scope_on_set
 )
 
 type_int = int
@@ -50,6 +53,22 @@ class Table(_Table):
             for field in fields if hasattr(field, 'notnull')
         }
         super(Table, self).__init__(db, tablename, *fields, **kwargs)
+        self._before_save = []
+        self._after_save = []
+        self._before_destroy = []
+        self._after_destroy = []
+        self._before_commit = []
+        self._before_commit_insert = []
+        self._before_commit_update = []
+        self._before_commit_delete = []
+        self._before_commit_save = []
+        self._before_commit_destroy = []
+        self._after_commit = []
+        self._after_commit_insert = []
+        self._after_commit_update = []
+        self._after_commit_delete = []
+        self._after_commit_save = []
+        self._after_commit_destroy = []
         self._unique_fields_validation_ = {}
         self._primary_keys = _primary_keys
         #: avoid pyDAL mess in ops and migrations
@@ -58,10 +77,107 @@ class Table(_Table):
         for key in self._primary_keys:
             self[key].notnull = _notnulls[key]
 
+    @cachedprop
+    def _has_commit_insert_callbacks(self):
+        return any([
+            self._before_commit,
+            self._after_commit,
+            self._before_commit_insert,
+            self._after_commit_insert
+        ])
+
+    @cachedprop
+    def _has_commit_update_callbacks(self):
+        return any([
+            self._before_commit,
+            self._after_commit,
+            self._before_commit_update,
+            self._after_commit_update
+        ])
+
+    @cachedprop
+    def _has_commit_delete_callbacks(self):
+        return any([
+            self._before_commit,
+            self._after_commit,
+            self._before_commit_delete,
+            self._after_commit_delete
+        ])
+
+    @cachedprop
+    def _has_commit_save_callbacks(self):
+        return any([
+            self._before_commit,
+            self._after_commit,
+            self._before_commit_save,
+            self._after_commit_save
+        ])
+
+    @cachedprop
+    def _has_commit_destroy_callbacks(self):
+        return any([
+            self._before_commit,
+            self._after_commit,
+            self._before_commit_destroy,
+            self._after_commit_destroy
+        ])
+
     def _create_references(self):
         self._referenced_by = []
         self._referenced_by_list = []
         self._references = []
+
+    def _fields_and_values_for_save(self, row, op_method):
+        fields = {key: row[key] for key in self._model_._fieldset_editable}
+        return op_method(fields)
+
+    def insert(self, **fields):
+        row = self._fields_and_values_for_insert(fields)
+        if any(f(row) for f in self._before_insert):
+            return 0
+        ret = self._db._adapter.insert(self, row.op_values())
+        if self._has_commit_insert_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn:
+                txn._add_op(TransactionOp(
+                    TransactionOps.insert,
+                    self,
+                    TransactionOpContext(
+                        values=row,
+                        ret=ret
+                    )
+                ))
+        if ret and self._after_insert:
+            for f in self._after_insert:
+                f(row, ret)
+        return ret
+
+    def _insert_from_save(self, row):
+        if any(f(row) for f in self._before_save):
+            return row
+        fields = self._fields_and_values_for_save(
+            row, self._fields_and_values_for_insert
+        )
+        ret = self.insert(**fields)
+        if ret:
+            row.id = ret.id
+        if self._has_commit_save_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn:
+                txn._add_op(TransactionOp(
+                    TransactionOps.save,
+                    self,
+                    TransactionOpContext(
+                        values=fields,
+                        ret=ret,
+                        row=row.clone(),
+                        changes=row.changes
+                    )
+                ))
+        if row.id and self._after_save:
+            for f in self._after_save:
+                f(row)
+        return row
 
 
 class Field(_Field):
@@ -372,7 +488,7 @@ class Set(_Set):
     def _run_select_(self, *fields, **options):
         return super(Set, self).select(*fields, **options)
 
-    def _get_table_from_query(self):
+    def _get_table_from_query(self) -> Table:
         if self._model_:
             return self._model_.table
         return self.db._adapter.get_table(self.query)
@@ -396,7 +512,38 @@ class Set(_Set):
         if any(f(self, row) for f in table._before_update):
             return 0
         ret = self.db._adapter.update(table, self.query, row.op_values())
+        if table._has_commit_update_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn:
+                txn._add_op(TransactionOp(
+                    TransactionOps.update,
+                    table,
+                    TransactionOpContext(
+                        values=row,
+                        dbset=self,
+                        ret=ret
+                    )
+                ))
         ret and [f(self, row) for f in table._after_update]
+        return ret
+
+    def delete(self):
+        table = self._get_table_from_query()
+        if any(f(self) for f in table._before_delete):
+            return 0
+        ret = self.db._adapter.delete(table, self.query)
+        if table._has_commit_delete_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn:
+                txn._add_op(TransactionOp(
+                    TransactionOps.delete,
+                    table,
+                    TransactionOpContext(
+                        dbset=self,
+                        ret=ret
+                    )
+                ))
+        ret and [f(self) for f in table._after_delete]
         return ret
 
     def validate_and_update(self, **update_fields):
@@ -433,6 +580,79 @@ class Set(_Set):
                 ret and [f(self, row) for f in table._after_update]
             response.updated = ret
         return response
+
+    def _update_from_save(self, model, row):
+        table: Table = model.table
+        if any(f(row) for f in table._before_save):
+            return False
+        fields = table._fields_and_values_for_save(
+            row, table._fields_and_values_for_update
+        )
+        if any(f(self, fields) for f in table._before_update):
+            return False
+        ret = self.db._adapter.update(table, self.query, fields.op_values())
+        if table._has_commit_update_callbacks or table._has_commit_save_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn and table._has_commit_update_callbacks:
+                txn._add_op(TransactionOp(
+                    TransactionOps.update,
+                    table,
+                    TransactionOpContext(
+                        values=fields,
+                        dbset=self,
+                        ret=ret
+                    )
+                ))
+            if txn and table._has_commit_save_callbacks:
+                txn._add_op(TransactionOp(
+                    TransactionOps.save,
+                    table,
+                    TransactionOpContext(
+                        values=fields,
+                        dbset=self,
+                        ret=ret,
+                        row=row.clone(),
+                        changes=row.changes
+                    )
+                ))
+        ret and [f(self, fields) for f in table._after_update]
+        ret and [f(row) for f in table._after_save]
+        return bool(ret)
+
+    def _delete_from_destroy(self, model, row):
+        table: Table = model.table
+        if any(f(row) for f in table._before_destroy):
+            return False
+        if any(f(self) for f in table._before_delete):
+            return 0
+        ret = self.db._adapter.delete(table, self.query)
+        if ret:
+            row.id = None
+        if table._has_commit_delete_callbacks or table._has_commit_destroy_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn and table._has_commit_delete_callbacks:
+                txn._add_op(TransactionOp(
+                    TransactionOps.delete,
+                    table,
+                    TransactionOpContext(
+                        dbset=self,
+                        ret=ret
+                    )
+                ))
+            if txn and table._has_commit_destroy_callbacks:
+                txn._add_op(TransactionOp(
+                    TransactionOps.destroy,
+                    table,
+                    TransactionOpContext(
+                        dbset=self,
+                        ret=ret,
+                        row=row.clone(),
+                        changes=row.changes
+                    )
+                ))
+        ret and [f(self) for f in table._after_delete]
+        ret and [f(row) for f in table._after_destroy]
+        return bool(ret)
 
     def join(self, *args):
         rv = self
@@ -788,17 +1008,24 @@ class JoinedSet(Set):
         #: use iterselect for performance
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
+        plainrows = []
         rowmap = OrderedDict()
         inclusions = defaultdict(
             lambda: {
                 jname: OrderedDict() for jname, jtable in (many_j + many_l)})
         for row in rows:
+            if self._stable_ not in row:
+                plainrows.append(row)
+                continue
             rid = row[self._stable_].id
             rowmap[rid] = rowmap.get(rid, row[self._stable_])
             for parser in parsers:
                 parser(rowmap, inclusions, row, rid)
+        if not rowmap and plainrows:
+            return Rows(self.db, plainrows, rows.colnames)
         return self._build_records_from_joined(
-            rowmap, inclusions, rows.colnames)
+            rowmap, inclusions, rows.colnames
+        )
 
     def _build_jparsers(self, belongs, one, many):
         rv = []
@@ -872,7 +1099,8 @@ class JoinedSet(Set):
 class Row(_Row):
     _as_dict_types_ = tuple(
         [type(None)] + [int, float, bool, list, dict, str] +
-        [datetime.datetime, datetime.date, datetime.time])
+        [datetime.datetime, datetime.date, datetime.time]
+    )
 
     def as_dict(self, datetime_to_str=False, custom_types=None):
         rv = {}
@@ -1052,3 +1280,43 @@ class JoinRows(Rows):
         else:
             items = [item for item in self]
         return items
+
+
+class TransactionOps(str, Enum):
+    insert = "insert"
+    update = "update"
+    delete = "delete"
+    save = "save"
+    destroy = "destroy"
+
+
+class TransactionOpContext:
+    __slots__ = ["values", "dbset", "return_value", "row", "changes"]
+
+    def __init__(
+        self,
+        values: Any = None,
+        dbset: Optional[Set] = None,
+        ret: Any = None,
+        row: Optional[Row] = None,
+        changes: Optional[sdict] = None
+    ):
+        self.values = values
+        self.dbset = dbset
+        self.return_value = ret
+        self.row = row
+        self.changes = changes
+
+
+class TransactionOp:
+    __slots__ = ["op_type", "table", "context"]
+
+    def __init__(
+        self,
+        op_type: TransactionOps,
+        table: Table,
+        context: TransactionOpContext
+    ):
+        self.op_type = op_type
+        self.table = table
+        self.context = context
