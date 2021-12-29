@@ -77,6 +77,51 @@ class Table(_Table):
         for key in self._primary_keys:
             self[key].notnull = _notnulls[key]
 
+    @cachedprop
+    def _has_commit_insert_callbacks(self):
+        return any([
+            self._before_commit,
+            self._after_commit,
+            self._before_commit_insert,
+            self._after_commit_insert
+        ])
+
+    @cachedprop
+    def _has_commit_update_callbacks(self):
+        return any([
+            self._before_commit,
+            self._after_commit,
+            self._before_commit_update,
+            self._after_commit_update
+        ])
+
+    @cachedprop
+    def _has_commit_delete_callbacks(self):
+        return any([
+            self._before_commit,
+            self._after_commit,
+            self._before_commit_delete,
+            self._after_commit_delete
+        ])
+
+    @cachedprop
+    def _has_commit_save_callbacks(self):
+        return any([
+            self._before_commit,
+            self._after_commit,
+            self._before_commit_save,
+            self._after_commit_save
+        ])
+
+    @cachedprop
+    def _has_commit_destroy_callbacks(self):
+        return any([
+            self._before_commit,
+            self._after_commit,
+            self._before_commit_destroy,
+            self._after_commit_destroy
+        ])
+
     def _create_references(self):
         self._referenced_by = []
         self._referenced_by_list = []
@@ -85,6 +130,27 @@ class Table(_Table):
     def _fields_and_values_for_save(self, row, op_method):
         fields = {key: row[key] for key in self._model_._fieldset_editable}
         return op_method(fields)
+
+    def insert(self, **fields):
+        row = self._fields_and_values_for_insert(fields)
+        if any(f(row) for f in self._before_insert):
+            return 0
+        ret = self._db._adapter.insert(self, row.op_values())
+        if self._has_commit_insert_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn:
+                txn._add_op(TransactionOp(
+                    TransactionOps.insert,
+                    self,
+                    TransactionOpContext(
+                        values=row,
+                        ret=ret
+                    )
+                ))
+        if ret and self._after_insert:
+            for f in self._after_insert:
+                f(row, ret)
+        return ret
 
     def _insert_from_save(self, row):
         if any(f(row) for f in self._before_save):
@@ -95,42 +161,23 @@ class Table(_Table):
         ret = self.insert(**fields)
         if ret:
             row.id = ret.id
-        txn = self._db._adapter.top_transaction()
-        if txn:
-            txn._add_op(TransactionOp(
-                TransactionOps.save,
-                self,
-                TransactionOpContext(
-                    values=fields,
-                    ret=ret,
-                    row=row.clone(),
-                    changes=row.changes
-                )
-            ))
+        if self._has_commit_save_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn:
+                txn._add_op(TransactionOp(
+                    TransactionOps.save,
+                    self,
+                    TransactionOpContext(
+                        values=fields,
+                        ret=ret,
+                        row=row.clone(),
+                        changes=row.changes
+                    )
+                ))
         if row.id and self._after_save:
             for f in self._after_save:
                 f(row)
         return row
-
-    def insert(self, **fields):
-        row = self._fields_and_values_for_insert(fields)
-        if any(f(row) for f in self._before_insert):
-            return 0
-        ret = self._db._adapter.insert(self, row.op_values())
-        txn = self._db._adapter.top_transaction()
-        if txn:
-            txn._add_op(TransactionOp(
-                TransactionOps.insert,
-                self,
-                TransactionOpContext(
-                    values=row,
-                    ret=ret
-                )
-            ))
-        if ret and self._after_insert:
-            for f in self._after_insert:
-                f(row, ret)
-        return ret
 
 
 class Field(_Field):
@@ -441,7 +488,7 @@ class Set(_Set):
     def _run_select_(self, *fields, **options):
         return super(Set, self).select(*fields, **options)
 
-    def _get_table_from_query(self):
+    def _get_table_from_query(self) -> Table:
         if self._model_:
             return self._model_.table
         return self.db._adapter.get_table(self.query)
@@ -465,17 +512,18 @@ class Set(_Set):
         if any(f(self, row) for f in table._before_update):
             return 0
         ret = self.db._adapter.update(table, self.query, row.op_values())
-        txn = self._db._adapter.top_transaction()
-        if txn:
-            txn._add_op(TransactionOp(
-                TransactionOps.update,
-                table,
-                TransactionOpContext(
-                    values=row,
-                    dbset=self,
-                    ret=ret
-                )
-            ))
+        if table._has_commit_update_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn:
+                txn._add_op(TransactionOp(
+                    TransactionOps.update,
+                    table,
+                    TransactionOpContext(
+                        values=row,
+                        dbset=self,
+                        ret=ret
+                    )
+                ))
         ret and [f(self, row) for f in table._after_update]
         return ret
 
@@ -484,16 +532,17 @@ class Set(_Set):
         if any(f(self) for f in table._before_delete):
             return 0
         ret = self.db._adapter.delete(table, self.query)
-        txn = self._db._adapter.top_transaction()
-        if txn:
-            txn._add_op(TransactionOp(
-                TransactionOps.delete,
-                table,
-                TransactionOpContext(
-                    dbset=self,
-                    ret=ret
-                )
-            ))
+        if table._has_commit_delete_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn:
+                txn._add_op(TransactionOp(
+                    TransactionOps.delete,
+                    table,
+                    TransactionOpContext(
+                        dbset=self,
+                        ret=ret
+                    )
+                ))
         ret and [f(self) for f in table._after_delete]
         return ret
 
@@ -533,7 +582,7 @@ class Set(_Set):
         return response
 
     def _update_from_save(self, model, row):
-        table = model.table
+        table: Table = model.table
         if any(f(row) for f in table._before_save):
             return False
         fields = table._fields_and_values_for_save(
@@ -542,34 +591,36 @@ class Set(_Set):
         if any(f(self, fields) for f in table._before_update):
             return False
         ret = self.db._adapter.update(table, self.query, fields.op_values())
-        txn = self._db._adapter.top_transaction()
-        if txn:
-            txn._add_op(TransactionOp(
-                TransactionOps.update,
-                table,
-                TransactionOpContext(
-                    values=fields,
-                    dbset=self,
-                    ret=ret
-                )
-            ))
-            txn._add_op(TransactionOp(
-                TransactionOps.save,
-                table,
-                TransactionOpContext(
-                    values=fields,
-                    dbset=self,
-                    ret=ret,
-                    row=row.clone(),
-                    changes=row.changes
-                )
-            ))
+        if table._has_commit_update_callbacks or table._has_commit_save_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn and table._has_commit_update_callbacks:
+                txn._add_op(TransactionOp(
+                    TransactionOps.update,
+                    table,
+                    TransactionOpContext(
+                        values=fields,
+                        dbset=self,
+                        ret=ret
+                    )
+                ))
+            if txn and table._has_commit_save_callbacks:
+                txn._add_op(TransactionOp(
+                    TransactionOps.save,
+                    table,
+                    TransactionOpContext(
+                        values=fields,
+                        dbset=self,
+                        ret=ret,
+                        row=row.clone(),
+                        changes=row.changes
+                    )
+                ))
         ret and [f(self, fields) for f in table._after_update]
         ret and [f(row) for f in table._after_save]
         return bool(ret)
 
     def _delete_from_destroy(self, model, row):
-        table = model.table
+        table: Table = model.table
         if any(f(row) for f in table._before_destroy):
             return False
         if any(f(self) for f in table._before_delete):
@@ -577,26 +628,28 @@ class Set(_Set):
         ret = self.db._adapter.delete(table, self.query)
         if ret:
             row.id = None
-        txn = self._db._adapter.top_transaction()
-        if txn:
-            txn._add_op(TransactionOp(
-                TransactionOps.delete,
-                table,
-                TransactionOpContext(
-                    dbset=self,
-                    ret=ret
-                )
-            ))
-            txn._add_op(TransactionOp(
-                TransactionOps.destroy,
-                table,
-                TransactionOpContext(
-                    dbset=self,
-                    ret=ret,
-                    row=row.clone(),
-                    changes=row.changes
-                )
-            ))
+        if table._has_commit_delete_callbacks or table._has_commit_destroy_callbacks:
+            txn = self._db._adapter.top_transaction()
+            if txn and table._has_commit_delete_callbacks:
+                txn._add_op(TransactionOp(
+                    TransactionOps.delete,
+                    table,
+                    TransactionOpContext(
+                        dbset=self,
+                        ret=ret
+                    )
+                ))
+            if txn and table._has_commit_destroy_callbacks:
+                txn._add_op(TransactionOp(
+                    TransactionOps.destroy,
+                    table,
+                    TransactionOpContext(
+                        dbset=self,
+                        ret=ret,
+                        row=row.clone(),
+                        changes=row.changes
+                    )
+                ))
         ret and [f(self) for f in table._after_delete]
         ret and [f(row) for f in table._after_destroy]
         return bool(ret)
