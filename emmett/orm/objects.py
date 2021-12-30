@@ -76,6 +76,8 @@ class Table(_Table):
             del self._primarykey
         for key in self._primary_keys:
             self[key].notnull = _notnulls[key]
+        if not hasattr(self, '_id'):
+            self._id = None
 
     @cachedprop
     def _has_commit_insert_callbacks(self):
@@ -127,8 +129,8 @@ class Table(_Table):
         self._referenced_by_list = []
         self._references = []
 
-    def _fields_and_values_for_save(self, row, op_method):
-        fields = {key: row[key] for key in self._model_._fieldset_editable}
+    def _fields_and_values_for_save(self, row, fieldset, op_method):
+        fields = {key: row[key] for key in fieldset}
         return op_method(fields)
 
     def insert(self, **fields):
@@ -156,11 +158,11 @@ class Table(_Table):
         if any(f(row) for f in self._before_save):
             return row
         fields = self._fields_and_values_for_save(
-            row, self._fields_and_values_for_insert
+            row, self._model_._fieldset_initable, self._fields_and_values_for_insert
         )
         ret = self.insert(**fields)
         if ret:
-            row.id = ret.id
+            self._model_._set_row_persistence(row, ret)
         if self._has_commit_save_callbacks:
             txn = self._db._adapter.top_transaction()
             if txn:
@@ -170,11 +172,11 @@ class Table(_Table):
                     TransactionOpContext(
                         values=fields,
                         ret=ret,
-                        row=row.clone(),
+                        row=row.clone_changed(),
                         changes=row.changes
                     )
                 ))
-        if row.id and self._after_save:
+        if row._concrete and self._after_save:
             for f in self._after_save:
                 f(row)
         return row
@@ -486,7 +488,18 @@ class Set(_Set):
             self, ljdata=jdata, auto_select_tables=[self._model_.table])
 
     def _run_select_(self, *fields, **options):
-        return super(Set, self).select(*fields, **options)
+        tablemap = self.db._adapter.tables(
+            self.query,
+            options.get('join', None),
+            options.get('left', None),
+            options.get('orderby', None),
+            options.get('groupby', None)
+        )
+        fields, concrete_tables = self.db._adapter._expand_all_with_concrete_tables(
+            fields, tablemap
+        )
+        options['_concrete_tables'] = concrete_tables
+        return self.db._adapter.select(self.query, fields, options)
 
     def _get_table_from_query(self) -> Table:
         if self._model_:
@@ -496,13 +509,32 @@ class Set(_Set):
     def select(self, *fields, **options):
         obj = self
         pagination, including = (
-            options.pop('paginate', None), options.pop('including', None))
+            options.pop('paginate', None),
+            options.pop('including', None)
+        )
         if pagination:
             options['limitby'] = self._parse_paginate(pagination)
         if including and self._model_ is not None:
             options['left'], jdata = self._parse_left_rjoins(including)
             obj = self._left_join_set_builder(jdata)
         return obj._run_select_(*fields, **options)
+
+    def iterselect(self, *fields, **options):
+        pagination = options.pop('paginate', None)
+        if pagination:
+            options['limitby'] = self._parse_paginate(pagination)
+        tablemap = self.db._adapter.tables(
+            self.query,
+            options.get('join', None),
+            options.get('left', None),
+            options.get('orderby', None),
+            options.get('groupby', None)
+        )
+        fields, concrete_tables = self.db._adapter._expand_all_with_concrete_tables(
+            fields, tablemap
+        )
+        options['_concrete_tables'] = concrete_tables
+        return self.db._adapter.iterselect(self.query, fields, options)
 
     def update(self, **update_fields):
         table = self._get_table_from_query()
@@ -586,7 +618,7 @@ class Set(_Set):
         if any(f(row) for f in table._before_save):
             return False
         fields = table._fields_and_values_for_save(
-            row, table._fields_and_values_for_update
+            row, model._fieldset_editable, table._fields_and_values_for_update
         )
         if any(f(self, fields) for f in table._before_update):
             return False
@@ -611,7 +643,7 @@ class Set(_Set):
                         values=fields,
                         dbset=self,
                         ret=ret,
-                        row=row.clone(),
+                        row=row.clone_changed(),
                         changes=row.changes
                     )
                 ))
@@ -627,7 +659,7 @@ class Set(_Set):
             return 0
         ret = self.db._adapter.delete(table, self.query)
         if ret:
-            row.id = None
+            model._unset_row_persistence(row)
         if table._has_commit_delete_callbacks or table._has_commit_destroy_callbacks:
             txn = self._db._adapter.top_transaction()
             if txn and table._has_commit_delete_callbacks:
@@ -646,7 +678,7 @@ class Set(_Set):
                     TransactionOpContext(
                         dbset=self,
                         ret=ret,
-                        row=row.clone(),
+                        row=row.clone_changed(),
                         changes=row.changes
                     )
                 ))
@@ -965,15 +997,19 @@ class JoinedSet(Set):
             self, jdata=self._jdata_, ljdata=self._ljdata_ + jdata,
             auto_select_tables=self._auto_select_tables_)
 
-    def _iterselect_rows(self, *fields, **attributes):
+    def _iterselect_rows(self, *fields, **options):
         tablemap = self.db._adapter.tables(
-            self.query, attributes.get('join', None),
-            attributes.get('left', None), attributes.get('orderby', None),
-            attributes.get('groupby', None))
-        fields = self.db._adapter.expand_all(fields, tablemap)
-        colnames, sql = self.db._adapter._select_wcols(
-            self.query, fields, **attributes)
-        return JoinIterRows(self.db, sql, fields, colnames)
+            self.query,
+            options.get('join', None),
+            options.get('left', None),
+            options.get('orderby', None),
+            options.get('groupby', None)
+        )
+        fields, concrete_tables = self.db._adapter._expand_all_with_concrete_tables(
+            fields, tablemap
+        )
+        colnames, sql = self.db._adapter._select_wcols(self.query, fields, **options)
+        return JoinIterRows(self.db, sql, fields, concrete_tables, colnames)
 
     def _split_joins(self, joins):
         rv = {'belongs': [], 'one': [], 'many': []}
@@ -985,10 +1021,12 @@ class JoinedSet(Set):
         for rid, many_data in inclusions.items():
             for jname, included in many_data.items():
                 rowmap[rid][jname]._cached_resultset = Rows(
-                    self.db, list(included.values()), [])
+                    self.db, list(included.values()), []
+                )
         return JoinRows(
             self.db, list(rowmap.values()), colnames,
-            _jdata=self._jdata_ + self._ljdata_)
+            _jdata=self._jdata_ + self._ljdata_
+        )
 
     def _run_select_(self, *fields, **options):
         #: build parsers
@@ -1017,7 +1055,10 @@ class JoinedSet(Set):
             if self._stable_ not in row:
                 plainrows.append(row)
                 continue
-            rid = row[self._stable_].id
+            rid = getattr(row[self._stable_], "id", None)
+            if rid is None:
+                plainrows.append(row)
+                continue
             rowmap[rid] = rowmap.get(rid, row[self._stable_])
             for parser in parsers:
                 parser(rowmap, inclusions, row, rid)
@@ -1051,7 +1092,8 @@ class JoinedSet(Set):
     def _jbelong_parser(fieldname, tablename, db):
         def parser(rowmap, inclusions, row, rid):
             rowmap[rid][fieldname] = JoinedIDReference._from_record(
-                row[tablename], db[tablename])
+                row[tablename], db[tablename]
+            )
         return parser
 
     @staticmethod
@@ -1065,7 +1107,8 @@ class JoinedSet(Set):
         def parser(rowmap, inclusions, row, rid):
             inclusions[rid][fieldname][row[tablename].id] = \
                 inclusions[rid][fieldname].get(
-                    row[tablename].id, row[tablename])
+                    row[tablename].id, row[tablename]
+                )
         return parser
 
     @staticmethod
@@ -1074,7 +1117,8 @@ class JoinedSet(Set):
             if not row[tablename].id:
                 return
             rowmap[rid][fieldname] = JoinedIDReference._from_record(
-                row[tablename], db[tablename])
+                row[tablename], db[tablename]
+            )
         return parser
 
     @staticmethod
@@ -1224,19 +1268,20 @@ class Rows(_Rows):
         return str(self.records)
 
 
-class JoinIterRows(_IterRows):
-    def __init__(self, db, sql, fields, colnames):
+class IterRows(_IterRows):
+    def __init__(self, db, sql, fields, concrete_tables, colnames):
         self.db = db
         self.fields = fields
+        self.concrete_tables = concrete_tables
         self.colnames = colnames
-        self.fdata, self.tables = \
-            self.db._adapter._parse_expand_colnames(fields)
+        self.fdata, self.tables = self.db._adapter._parse_expand_colnames(fields)
         self.cursor = self.db._adapter.cursor
         self.db._adapter.execute(sql)
         self.db._adapter.lock_cursor(self.cursor)
         self._head = None
         self.last_item = None
         self.last_item_id = None
+        self.compact = True
         self.blob_decode = True
         self.cacheable = False
         self.sql = sql
@@ -1245,11 +1290,24 @@ class JoinIterRows(_IterRows):
         db_row = self.cursor.fetchone()
         if db_row is None:
             raise StopIteration
-        return self.db._adapter._parse(
-            db_row, self.fdata, self.tables, self.fields, self.colnames,
-            self.blob_decode)
+        row = self.db._adapter._parse(
+            db_row,
+            self.fdata,
+            self.tables,
+            self.concrete_tables,
+            self.fields,
+            self.colnames,
+            self.blob_decode
+        )
+        if self.compact:
+            keys = list(row.keys())
+            if len(keys) == 1 and keys[0] != '_extra':
+                row = row[keys[0]]
+        return row
 
     def __iter__(self):
+        if self._head:
+            yield self._head
         try:
             row = next(self)
             while row is not None:
@@ -1280,6 +1338,12 @@ class JoinRows(Rows):
         else:
             items = [item for item in self]
         return items
+
+
+class JoinIterRows(IterRows):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.compact = False
 
 
 class TransactionOps(str, Enum):

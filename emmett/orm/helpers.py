@@ -11,10 +11,11 @@
 
 from __future__ import annotations
 
+import operator
 import re
 import time
 
-from functools import wraps
+from functools import reduce, wraps
 from typing import TYPE_CHECKING, Any, Callable
 
 from pydal._globals import THREAD_LOCAL
@@ -29,10 +30,11 @@ if TYPE_CHECKING:
 
 
 class RowReferenceMeta:
-    __slots__ = ['table', 'caster']
+    __slots__ = ['table', 'pk', 'caster']
 
     def __init__(self, table: Table, caster: Callable[[Any], Any]):
         self.table = table
+        self.pk = table._id.name
         self.caster = caster
 
     def fetch(self, val):
@@ -42,8 +44,32 @@ class RowReferenceMeta:
         ).first()
 
 
+class RowReferenceMultiMeta:
+    __slots__ = ['table', 'pks', 'pks_idx', 'caster', 'casters']
+    _casters = {'integer': int, 'string': str}
+
+    def __init__(self, table: Table) -> None:
+        self.table = table
+        self.pks = list(table._primarykey)
+        self.pks_idx = {key: idx for idx, key in enumerate(self.pks)}
+        self.caster = tuple
+        self.casters = {pk: self._casters[table[pk].type] for pk in self.pks}
+
+    def fetch(self, val):
+        query = reduce(
+            operator.and_, [
+                self.table[pk] == self.casters[pk](self.caster.__getitem__(val, idx))
+                for pk, idx in self.pks_idx.items()
+            ]
+        )
+        return self.table._db(query).select(
+            limitby=(0, 1),
+            orderby_on_limitby=False
+        ).first()
+
+
 class RowReferenceMixin:
-    def __allocate(self):
+    def _allocate_(self):
         if not self._refrecord:
             self._refrecord = self._refmeta.fetch(self)
         if not self._refrecord:
@@ -53,10 +79,10 @@ class RowReferenceMixin:
             )
 
     def __getattr__(self, key: str) -> Any:
-        if key == 'id':
+        if key == self._refmeta.pk:
             return self._refmeta.caster(self)
         if key in self._refmeta.table:
-            self.__allocate()
+            self._allocate_()
         if self._refrecord:
             return self._refrecord.get(key, None)
         return None
@@ -68,17 +94,17 @@ class RowReferenceMixin:
         if key.startswith('_'):
             self._refmeta.caster.__setattr__(self, key, value)
             return
-        self.__allocate()
+        self._allocate_()
         self._refrecord[key] = value
 
     def __getitem__(self, key):
-        if key == 'id':
+        if key == self._refmeta.pk:
             return self._refmeta.caster(self)
-        self.__allocate()
+        self._allocate_()
         return self._refrecord.get(key, None)
 
     def __setitem__(self, key, value):
-        self.__allocate()
+        self._allocate_()
         self._refrecord[key] = value
 
     def __repr__(self) -> str:
@@ -99,6 +125,34 @@ class RowReferenceStr(RowReferenceMixin, str):
         str.__setattr__(rv, '_refmeta', RowReferenceMeta(table, str))
         str.__setattr__(rv, '_refrecord', None)
         return rv
+
+
+class RowReferenceMulti(RowReferenceMixin, tuple):
+    def __new__(cls, id, table: Table, *args: Any, **kwargs: Any):
+        tupid = tuple(id[key] for key in table._primarykey)
+        rv = super().__new__(cls, tupid, *args, **kwargs)
+        tuple.__setattr__(rv, '_refmeta', RowReferenceMultiMeta(table))
+        tuple.__setattr__(rv, '_refrecord', None)
+        return rv
+
+    def __getattr__(self, key: str) -> Any:
+        if key in self._refmeta.pks:
+            return self._refmeta.casters[key](
+                tuple.__getitem__(self, self._refmeta.pks_idx[key])
+            )
+        if key in self._refmeta.table:
+            self._allocate_()
+        if self._refrecord:
+            return self._refrecord.get(key, None)
+        return None
+
+    def __getitem__(self, key):
+        if key in self._refmeta.pks:
+            return self._refmeta.casters[key](
+                tuple.__getitem__(self, self._refmeta.pks_idx[key])
+            )
+        self._allocate_()
+        return self._refrecord.get(key, None)
 
 
 class Reference(object):
@@ -368,8 +422,10 @@ def wrap_virtual_on_model(model, virtual):
 
 
 def typed_row_reference(id: Any, table: Table):
+    field_type = table._id.type if table._id else None
     return {
         'id': RowReferenceInt,
         'integer': RowReferenceInt,
-        'string': RowReferenceStr
-    }[table._id.type](id, table)
+        'string': RowReferenceStr,
+        None: RowReferenceMulti
+    }[field_type](id, table)

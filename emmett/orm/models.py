@@ -29,6 +29,7 @@ from .apis import (
 )
 from .errors import (
     InsertFailureOnSave,
+    SaveException,
     UpdateFailureOnSave,
     ValidationError,
     DestroyException
@@ -432,21 +433,53 @@ class Model(metaclass=MetaModel):
                     f = Field.Virtual(obj.field_name, wrapped)
                 self.fields.append(f)
 
+    def _set_row_persistence_id(self, row, ret):
+        row.id = ret.id
+        object.__setattr__(row, '_concrete', True)
+
+    def _set_row_persistence_pk(self, row, ret):
+        row[self.primary_keys[0]] = ret[self.primary_keys[0]]
+        object.__setattr__(row, '_concrete', True)
+
+    def _set_row_persistence_pks(self, row, ret):
+        for field_name in self.primary_keys:
+            row[field_name] = ret[field_name]
+        object.__setattr__(row, '_concrete', True)
+
+    def _unset_row_persistence(self, row):
+        for field_name in self._fieldset_pk:
+            row[field_name] = None
+        object.__setattr__(row, '_concrete', False)
+
     def _build_rowclass_(self):
         #: build helpers for rows
+        self._fieldset_pk = set(self.primary_keys or ['id'])
         save_excluded_fields = (
-            set(self.primary_keys or ['id']) |
+            set(
+                field.name for field in self.fields if
+                field.name not in self._fieldset_pk and
+                getattr(field, "type", None) == "id"
+            ) |
             set(self._all_rowattrs_.keys()) |
             set(self._all_rowmethods_.keys())
         )
-        self._fieldset_editable = set([
+        self._fieldset_initable = set([
             field.name for field in self.fields
         ]) - save_excluded_fields
-        self._fieldset_all = self._fieldset_editable | set(self.primary_keys or ['id'])
+        self._fieldset_editable = set([
+            field.name for field in self.fields
+        ]) - save_excluded_fields - self._fieldset_pk
+        self._fieldset_all = self._fieldset_initable | self._fieldset_pk
         self._fieldset_update = set([
             field.name for field in self.fields
             if getattr(field, "update", None) is not None
         ]) & self._fieldset_editable
+        if not self.primary_keys:
+            self._set_row_persistence = self._set_row_persistence_id
+        elif len(self.primary_keys) == 1:
+            self._set_row_persistence = self._set_row_persistence_pk
+        else:
+            self._set_row_persistence = self._set_row_persistence_pks
         #: create dynamic row class
         clsname = self.__class__.__name__ + "Row"
         attrs = {
@@ -668,15 +701,6 @@ class Model(metaclass=MetaModel):
                 'on_delete': Field._internal_delete[rels['on_delete']]
             }
 
-    def _row_refrecord_id(self, row):
-        return bool(row.id)
-
-    def _row_refrecord_pk(self, row):
-        return bool(row[self.primary_keys[0]])
-
-    def _row_refrecord_pks(self, row):
-        return all(bool(row[v]) for v in self.primary_keys)
-
     def _row_record_query_id(self, row):
         return self.table.id == row.id
 
@@ -690,19 +714,16 @@ class Model(metaclass=MetaModel):
 
     def __define_query_helpers(self):
         if not self.primary_keys:
-            self._row_has_id = self._row_refrecord_id
             self._query_id = self.table.id != None
             self._query_row = self._row_record_query_id
             self._order_by_id_asc = self.table.id
             self._order_by_id_desc = ~self.table.id
         elif len(self.primary_keys) == 1:
-            self._row_has_id = self._row_refrecord_pk
             self._query_id = self.table[self.primary_keys[0]] != None
             self._query_row = self._row_record_query_pk
             self._order_by_id_asc = self.table[self.primary_keys[0]]
             self._order_by_id_desc = ~self.table[self.primary_keys[0]]
         else:
-            self._row_has_id = self._row_refrecord_pks
             self._query_id = reduce(
                 operator.and_, [self.table[key] != None for key in self.primary_keys]
             )
@@ -736,16 +757,17 @@ class Model(metaclass=MetaModel):
     def new(cls, **attributes):
         inst = cls._instance_()
         rowattrs = {}
-        for field in inst._fieldset_editable & set(attributes.keys()):
+        for field in inst._fieldset_initable & set(attributes.keys()):
             rowattrs[field] = attributes[field]
-        for field in inst._fieldset_editable - set(attributes.keys()):
+        for field in inst._fieldset_initable - set(attributes.keys()):
             val = cls.table[field].default
             if callable(val):
                 val = val()
             rowattrs[field] = val
         for field in (inst.primary_keys or ["id"]):
-            rowattrs[field] = None
-        return inst._rowclass_(rowattrs)
+            if inst.table[field].type == "id":
+                rowattrs[field] = None
+        return inst._rowclass_(rowattrs, __concrete=False)
 
     @classmethod
     def create(cls, *args, **kwargs):
@@ -801,8 +823,16 @@ class Model(metaclass=MetaModel):
 
     @rowmethod('clone')
     def _row_clone(self, row):
+        fields = {}
+        for key in self._fieldset_all:
+            fields[key] = row._changes[key][0] if key in row._changes else row[key]
+        return self._rowclass_(fields, __concrete=row._concrete)
+
+    @rowmethod('clone_changed')
+    def _row_clone_changed(self, row):
         return self._rowclass_(
-            {key: row[key] for key in self._fieldset_all & set(row.keys())}
+            {key: row[key] for key in self._fieldset_all},
+            __concrete=row._concrete
         )
 
     @rowmethod('update_record')
@@ -835,8 +865,13 @@ class Model(metaclass=MetaModel):
 
     @rowmethod('save')
     def _row_save(self, row, raise_on_error: bool = False) -> bool:
-        is_update = self._row_has_id(row)
-        if is_update:
+        if row._concrete:
+            if set(row._changes.keys()) & self._fieldset_pk:
+                if raise_on_error:
+                    raise SaveException(
+                        'Cannot save a record with altered primary key(s)'
+                    )
+                return False
             for field_name in self._fieldset_update:
                 val = self.table[field_name].update
                 if callable(val):
@@ -846,7 +881,7 @@ class Model(metaclass=MetaModel):
             if raise_on_error:
                 raise ValidationError
             return False
-        if is_update:
+        if row._concrete:
             res = self.db(
                 self._query_row(row), ignore_common_filters=True
             )._update_from_save(self, row)
@@ -856,7 +891,7 @@ class Model(metaclass=MetaModel):
                 return False
         else:
             self.table._insert_from_save(row)
-            if not self._row_has_id(row):
+            if not row._concrete:
                 if raise_on_error:
                     raise InsertFailureOnSave
                 return False
@@ -877,9 +912,10 @@ class Model(metaclass=MetaModel):
 
 
 class StructuredRow(Row):
-    __slots__ = ["_changes"]
+    __slots__ = ["_concrete", "_changes"]
 
     def __init__(self, *args, **kwargs):
+        object.__setattr__(self, "_concrete", kwargs.pop("__concrete", True))
         object.__setattr__(self, "_changes", {})
         super().__init__(*args, **kwargs)
 
@@ -888,6 +924,8 @@ class StructuredRow(Row):
         self.__dict__[key] = value
         if (prev is None and value is not None) or prev != value:
             self._changes[key] = (prev, value)
+        else:
+            self._changes.pop(key, None)
 
     def __setitem__(self, key, value):
         self.__setattr__(key, value)
