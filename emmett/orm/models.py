@@ -863,6 +863,21 @@ class Model(metaclass=MetaModel):
     def _row_is_valid(self, row):
         return not bool(self.validate(row))
 
+    @rowmethod('refresh')
+    def _row_refresh(self, row) -> bool:
+        if not row._concrete:
+            return False
+        last = self.db(self._query_row(row)).select(
+            limitby=(0, 1),
+            orderby_on_limitby=False
+        ).first()
+        if not last:
+            return False
+        for key in self._fieldset_all:
+            row[key] = last[key]
+        row._changes.clear()
+        return True
+
     @rowmethod('save')
     def _row_save(self, row, raise_on_error: bool = False) -> bool:
         if row._concrete:

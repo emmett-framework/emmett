@@ -211,3 +211,15 @@ def test_clone_methods(db):
     assert row3._concrete
     assert not row3.has_changed
     assert row3.foo == "test1a"
+
+
+def test_refresh(db):
+    row = One.new(foo="test1")
+    assert not row.refresh()
+
+    row.save()
+    assert row.refresh()
+
+    row.foo = "test2"
+    assert row.refresh()
+    assert row.foo == "test1"
