@@ -132,11 +132,13 @@ class MetaModel(type):
             belongs=OrderedDict(), refers=OrderedDict(),
             hasone=OrderedDict(), hasmany=OrderedDict()
         )
+        super_vfields = OrderedDict()
         for base in reversed(new_class.__mro__[1:]):
             if hasattr(base, '_declared_fields_'):
                 all_fields.update(base._declared_fields_)
             if hasattr(base, '_declared_virtuals_'):
                 all_vfields.update(base._declared_virtuals_)
+                super_vfields.update(base._declared_virtuals_)
             if hasattr(base, '_declared_computations_'):
                 all_computations.update(base._declared_computations_)
             if hasattr(base, '_declared_callbacks_'):
@@ -165,6 +167,8 @@ class MetaModel(type):
         new_class._all_refers_ref_ = all_relations.refers
         new_class._all_hasone_ref_ = all_relations.hasone
         new_class._all_hasmany_ref_ = all_relations.hasmany
+        #: store 'super' attributes on class
+        new_class._super_virtuals_ = super_vfields
         return new_class
 
 
@@ -418,10 +422,11 @@ class Model(metaclass=MetaModel):
     def _define_virtuals_(self):
         self._all_rowattrs_ = {}
         self._all_rowmethods_ = {}
+        self._super_rowmethods_ = {}
         err = 'rowattr or rowmethod cannot have the name of an existent field!'
         field_names = [field.name for field in self.fields]
         for attr in ['_virtual_relations_', '_all_virtuals_']:
-            for _, obj in getattr(self, attr, {}).items():
+            for obj in getattr(self, attr, {}).values():
                 if obj.field_name in field_names:
                     raise RuntimeError(err)
                 wrapped = wrap_virtual_on_model(self, obj.f)
@@ -432,6 +437,11 @@ class Model(metaclass=MetaModel):
                     self._all_rowattrs_[obj.field_name] = wrapped
                     f = Field.Virtual(obj.field_name, wrapped)
                 self.fields.append(f)
+        for obj in self._super_virtuals_.values():
+            wrapped = wrap_virtual_on_model(self, obj.f)
+            if not isinstance(obj, rowmethod):
+                continue
+            self._super_rowmethods_[obj.field_name] = wrapped
 
     def _set_row_persistence_id(self, row, ret):
         row.id = ret.id
@@ -486,6 +496,7 @@ class Model(metaclass=MetaModel):
             k: cachedprop(v, name=k) for k, v in self._all_rowattrs_.items()
         }
         attrs.update(self._all_rowmethods_)
+        attrs.update(_model=self)
         self._rowclass_ = type(clsname, (StructuredRow,), attrs)
         globals()[clsname] = self._rowclass_
 
@@ -749,6 +760,12 @@ class Model(metaclass=MetaModel):
     def setup(self):
         pass
 
+    def get_rowmethod(self, name: str):
+        return self._all_rowmethods_[name]
+
+    def super_rowmethod(self, name: str):
+        return self._super_rowmethods_[name]
+
     @classmethod
     def _instance_(cls):
         return cls.table._model_
@@ -779,16 +796,16 @@ class Model(metaclass=MetaModel):
 
     @classmethod
     def validate(cls, row):
-        row = sdict(row)
-        errors = sdict()
-        for field in cls.table.fields:
-            default = getattr(cls.table[field], 'default')
+        inst, row, errors = cls._instance_(), sdict(row), sdict()
+        for field_name in inst._fieldset_all:
+            field = inst.table[field_name]
+            default = getattr(field, 'default')
             if callable(default):
                 default = default()
-            value = row.get(field, default)
-            _, error = cls.table[field].validate(value)
+            value = row.get(field_name, default)
+            _, error = field.validate(value)
             if error:
-                errors[field] = error
+                errors[field_name] = error
         return errors
 
     @classmethod
@@ -821,47 +838,21 @@ class Model(metaclass=MetaModel):
             return cls.table[args[0]]
         return cls.table(**kwargs)
 
-    @rowmethod('clone')
-    def _row_clone(self, row):
-        fields = {}
-        for key in self._fieldset_all:
-            fields[key] = row._changes[key][0] if key in row._changes else row[key]
-        return self._rowclass_(fields, __concrete=row._concrete)
-
-    @rowmethod('clone_changed')
-    def _row_clone_changed(self, row):
-        return self._rowclass_(
-            {key: row[key] for key in self._fieldset_all},
-            __concrete=row._concrete
-        )
-
     @rowmethod('update_record')
     def _update_record(self, row, **fields):
         newfields = fields or dict(row)
-        for fieldname in list(newfields.keys()):
-            if (
-                fieldname not in self.table.fields or
-                self.table[fieldname].type == 'id'
-            ):
-                del newfields[fieldname]
+        for field_name in set(newfields.keys()) - self._fieldset_editable:
+            del newfields[field_name]
         res = self.db(
             self._query_row(row), ignore_common_filters=True
         ).update(**newfields)
         if res:
-            row.update(self.get(row.id))
+            row.update(self.get(**{key: row[key] for key in self._fieldset_pk}))
         return row
 
     @rowmethod('delete_record')
     def _delete_record(self, row):
         return self.db(self._query_row(row)).delete()
-
-    @rowmethod('validation_errors')
-    def _row_validation_errors(self, row):
-        return self.validate(row)
-
-    @rowmethod('is_valid')
-    def _row_is_valid(self, row):
-        return not bool(self.validate(row))
 
     @rowmethod('refresh')
     def _row_refresh(self, row) -> bool:
@@ -873,8 +864,7 @@ class Model(metaclass=MetaModel):
         ).first()
         if not last:
             return False
-        for key in self._fieldset_all:
-            row[key] = last[key]
+        row.update(last)
         row._changes.clear()
         return True
 
@@ -892,7 +882,7 @@ class Model(metaclass=MetaModel):
                 if callable(val):
                     val = val()
                 row[field_name] = val
-        if not row.is_valid():
+        if not row.is_valid:
             if raise_on_error:
                 raise ValidationError
             return False
@@ -958,3 +948,23 @@ class StructuredRow(Row):
 
     def get_value_change(self, key):
         return self._changes.get(key, None)
+
+    def clone(self):
+        fields = {}
+        for key in self._model._fieldset_all:
+            fields[key] = self._changes[key][0] if key in self._changes else self[key]
+        return self.__class__(fields, __concrete=self._concrete)
+
+    def clone_changed(self):
+        return self.__class__(
+            {key: self[key] for key in self._model._fieldset_all},
+            __concrete=self._concrete
+        )
+
+    @property
+    def validation_errors(self):
+        return self._model.validate(self)
+
+    @property
+    def is_valid(self):
+        return not bool(self._model.validate(self))

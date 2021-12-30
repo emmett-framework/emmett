@@ -10,8 +10,8 @@ import pytest
 
 from uuid import uuid4
 
-from emmett import App, sdict
-from emmett.orm import Database, Model, Field, belongs_to, has_many
+from emmett import App, sdict, now
+from emmett.orm import Database, Model, Field, belongs_to, has_many, rowmethod
 from emmett.orm.errors import ValidationError
 from emmett.orm.migrations.utils import generate_runtime_migration
 from emmett.orm.objects import Row
@@ -31,6 +31,22 @@ class Two(Model):
     bar = Field.string()
 
 
+class Override(Model):
+    foo = Field.string()
+    deleted_at = Field.datetime()
+
+    validation = {"deleted_at": {"allow": "empty"}}
+
+    @rowmethod("destroy")
+    def _row_destroy(self, row):
+        row.deleted_at = now()
+        row.save()
+
+    @rowmethod("force_destroy")
+    def _row_force_destroy(self, row):
+        self.super_rowmethod("destroy")(row)
+
+
 @pytest.fixture(scope='module')
 def _db():
     app = App(__name__)
@@ -41,7 +57,7 @@ def _db():
             auto_connect=True
         )
     )
-    db.define_models(One, Two)
+    db.define_models(One, Two, Override)
     return db
 
 @pytest.fixture(scope='function')
@@ -174,15 +190,15 @@ def test_changes(db):
 
 def test_validation_methods(db):
     row = One.new()
-    assert not row.is_valid()
-    assert set(row.validation_errors().keys()).issubset({"foo"})
+    assert not row.is_valid
+    assert set(row.validation_errors.keys()).issubset({"foo"})
     assert not row.save()
     with pytest.raises(ValidationError):
         row.save(raise_on_error=True)
 
     row.foo = "test"
-    assert row.is_valid()
-    assert not row.validation_errors()
+    assert row.is_valid
+    assert not row.validation_errors
     assert row.save()
 
 
@@ -223,3 +239,17 @@ def test_refresh(db):
     row.foo = "test2"
     assert row.refresh()
     assert row.foo == "test1"
+
+
+def test_methods_override(db):
+    row = Override.new(foo="test")
+    row.save()
+    assert row.id
+    assert not row.deleted_at
+
+    row.destroy()
+    assert row.id
+    assert row.deleted_at
+
+    row.force_destroy()
+    assert not row.id
