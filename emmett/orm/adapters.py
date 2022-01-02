@@ -359,10 +359,14 @@ def _parser_reference(parser, value, referee):
 
 def _representer_reference(representer, value, referenced):
     rtname, _, rfname = referenced.partition('.')
-    rfname = rfname or 'id'
-    rtype = representer.adapter.db[rtname][rfname].type
-    if isinstance(value, (Row, RowReferenceMixin)):
-        value = value['id']
+    rtable = representer.adapter.db[rtname]
+    if not rfname and rtable._id:
+        rfname = rtable._id.name
+    if not rfname:
+        return value
+    rtype = rtable[rfname].type
+    if isinstance(value, Row) and getattr(value, "_concrete", False):
+        value = value[(value._model.primary_keys or ["id"])[0]]
     if rtype in ('id', 'integer'):
         return str(int(value))
     if rtype == 'string':

@@ -212,8 +212,11 @@ class ReferenceData(sdict):
         return self.model_instance.tablename
 
     @property
-    def field_instance(self):
-        return self.table[self.field]
+    def fields_instances(self):
+        return tuple(
+            self.table[field]
+            for field in self.model_instance._relations_fks_[self.reverse].local_fields
+        )
 
 
 class RelationBuilder(object):
@@ -222,7 +225,10 @@ class RelationBuilder(object):
         self.model = model_instance
 
     def _make_refid(self, row):
-        return row.id if row is not None else self.model.id
+        pks = self.model.primary_keys or ["id"]
+        if row:
+            return tuple(row[pk] for pk in pks)
+        return tuple(self.model.table[pk] for pk in pks)
 
     def _extra_scopes(self, ref, model_instance=None):
         model_instance = model_instance or ref.model_instance
@@ -246,16 +252,27 @@ class RelationBuilder(object):
         return query
 
     def _get_belongs(self, modelname, value):
-        return self.model.db[modelname]._model_._belongs_ref_.get(value)
+        return self.model.db[modelname]._model_._relations_fks_.get(value)
 
     def belongs_query(self):
         return (self.model.table[self.ref[1]] == self.model.db[self.ref[0]].id)
 
     @staticmethod
     def many_query(ref, rid):
-        if ref.cast and isinstance(rid, _Field):
-            rid = rid.cast(ref.cast)
-        return ref.model_instance.table[ref.field] == rid
+        components = rid
+        if ref.cast:
+            components = []
+            for element in rid:
+                if isinstance(rid, _Field):
+                    components.append(element.cast(ref.cast))
+                else:
+                    components.append(element)
+        return reduce(
+            operator.and_, [
+                field == components[idx]
+                for idx, field in enumerate(ref.fields_instances)
+            ]
+        )
 
     def _many(self, ref, rid):
         return ref.dbset.where(
@@ -287,7 +304,14 @@ class RelationBuilder(object):
                 #: join table way
                 last_belongs = step_model
                 last_via = via
-                _query = (db[belongs_model.model].id == db[step_model][rname])
+                _query = reduce(
+                    operator.and_, [
+                        (
+                            db[belongs_model.model][fk] ==
+                            db[step_model][belongs_model.local_fields[idx]]
+                        ) for idx, fk in enumerate(belongs_model.foreign_fields)
+                    ]
+                )
                 sel_field = db[belongs_model.model].ALL
                 step_model = belongs_model.model
             else:
@@ -295,12 +319,20 @@ class RelationBuilder(object):
                 last_belongs = None
                 rname = via.field or via.name
                 midrel = db[step_model]._model_._hasmany_ref_[rname]
-                _query = self._many(midrel, db[step_model].id)
+                _query = self._many(
+                    midrel, [
+                        db[step_model][step_field]
+                        for step_field in (
+                            db[step_model]._model_.primary_keys or ["id"]
+                        )
+                    ]
+                )
                 step_model = midrel.table_name
                 sel_field = db[step_model].ALL
             query = query & _query
         query = via.dbset.where(
-            self._patch_query_with_scopes_on(via, query, step_model)).query
+            self._patch_query_with_scopes_on(via, query, step_model)
+        ).query
         return query, sel_field, sname, rid, last_belongs, last_via
 
 

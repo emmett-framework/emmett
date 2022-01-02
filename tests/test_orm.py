@@ -27,6 +27,7 @@ from emmett.orm import (
     has_one, has_many, belongs_to,
     scope
 )
+from emmett.orm.migrations.utils import generate_runtime_migration
 from emmett.orm.objects import TransactionOps
 from emmett.orm.errors import MissingFieldsForCompute
 from emmett.validators import isntEmpty, hasLength
@@ -393,11 +394,14 @@ class CommitWatcher(Model):
 
 
 @pytest.fixture(scope='module')
-def db():
+def _db():
     app = App(__name__)
     db = Database(
         app, config=sdict(
-            uri='sqlite://dal.db', auto_connect=True, auto_migrate=True))
+            uri=f'sqlite://{uuid4().hex}.db',
+            auto_connect=True
+        )
+    )
     db.define_models(
         Stuff, Person, Thing, Feature, Price, Dog, Subscription,
         Doctor, Patient, Appointment,
@@ -408,6 +412,14 @@ def db():
         CommitWatcher
     )
     return db
+
+
+@pytest.fixture(scope='function')
+def db(_db):
+    migration = generate_runtime_migration(_db)
+    migration.up()
+    yield _db
+    migration.down()
 
 
 def test_db_instance(db):
@@ -780,25 +792,40 @@ def test_modelmethods(db):
 
 
 def test_relations(db):
-    p = db.Person.insert(name="Giovanni", age=25)
-    t = db.Thing.insert(name="apple", color="red", person=p)
-    f = db.Feature.insert(name="tasty", thing=t)
+    p1 = db.Person.insert(name="Giovanni", age=25)
+    p2 = db.Person.insert(name="Giorgio", age=30)
+    t1 = db.Thing.insert(name="apple", color="red", person=p1)
+    t2 = db.Thing.insert(name="apple", color="green", person=p1)
+    f = db.Feature.insert(name="tasty", thing=t1)
     db.Price.insert(value=5, feature=f)
-    p = db.Person(name="Giovanni")
     #: belongs, has_one, has_many
-    t = p.things()
+    p1 = db.Person(name="Giovanni")
+    p2 = db.Person(name="Giorgio")
+    assert p1.things.count() == 2
+    assert p2.things.count() == 0
+    t = p1.things.where(lambda t: t.color == "red").select()
     assert len(t) == 1
-    assert t[0].name == "apple" and t[0].color == "red" and \
-        t[0].person.id == p.id
-    f = p.things()[0].features()
+    assert t[0].name == "apple" and t[0].color == "red" and t[0].person.id == p1.id
+    f = p1.things()[0].features()
     assert len(f) == 1
     assert f[0].name == "tasty" and f[0].thing.id == t[0].id and \
-        f[0].thing.person.id == p.id
-    m = p.things()[0].features()[0].price()
-    assert m.value == 5 and m.feature.id == f[0].id and \
-        m.feature.thing.id == t[0].id and m.feature.thing.person.id == p.id
+        f[0].thing.person.id == p1.id
+    m = p1.things()[0].features()[0].price()
+    assert (
+        m.value == 5 and m.feature.id == f[0].id and
+        m.feature.thing.id == t[0].id and m.feature.thing.person.id == p1.id
+    )
+    p2.things.add(t2)
+    assert p1.things.count() == 1
+    assert p2.things.count() == 1
+    t = p2.things()
+    assert len(t) == 1
+    assert t[0].name == "apple" and t[0].color == "green" and t[0].person.id == p2.id
+    p2.things.remove(t2)
+    assert p2.things.count() == 0
+    assert db(db.things).count() == 1
     #: has_many via as shortcut
-    assert len(p.features()) == 1
+    assert len(p1.features()) == 1
     #: has_many via with join tables logic
     doctor = db.Doctor.insert(name="cox")
     patient = db.Patient.insert(name="mario")
@@ -819,9 +846,14 @@ def test_relations(db):
     assert jim.organizations().first().id == org
     assert joe.memberships().first().role == 'admin'
     assert jim.memberships().first().role == 'manager'
+    org.users.remove(joe)
+    org.users.remove(jim)
+    assert len(org.users(reload=True)) == 0
+    assert len(joe.organizations(reload=True)) == 0
+    assert len(jim.organizations(reload=True)) == 0
     #: has_many with specified feld
-    db.Dog.insert(name='pongo', owner=p)
-    assert len(p.pets()) == 1 and p.pets().first().name == 'pongo'
+    db.Dog.insert(name='pongo', owner=p1)
+    assert len(p1.pets()) == 1 and p1.pets().first().name == 'pongo'
     #: has_many via with specified field
     zoo = db.Zoo.insert(name='magic zoo')
     mouse = db.Mouse.insert(name='jerry')
@@ -886,30 +918,45 @@ def test_relations_scopes(db):
     assert org.admins.count() == 1
     assert org.admins2.count() == 1
     assert org.admins3.count() == 1
+    org.users.remove(gus)
+    org.users.remove(frank)
+    assert org.admins.count() == 0
+    assert org.admins2.count() == 0
+    assert org.admins3.count() == 0
     org2 = db.Organization.insert(name="Laundry", is_cover=True)
     org2.users.add(gus, role="admin")
-    assert len(gus.cover_orgs()) == 1
+    assert gus.cover_orgs.count() == 1
     assert gus.cover_orgs().first().id == org2
+    org2.users.remove(gus)
+    assert gus.cover_orgs.count() == 0
     org.delete_record()
     org2.delete_record()
     #: creation/addition
     org = db.Organization.insert(name="Los pollos hermanos")
     org.admins.add(gus)
     assert org.admins.count() == 1
+    org.admins.remove(gus)
+    assert org.admins.count() == 0
     org.delete_record()
     org = db.Organization.insert(name="Los pollos hermanos")
     org.admins2.add(gus)
     assert org.admins2.count() == 1
+    org.admins2.remove(gus)
+    assert org.admins2.count() == 0
     org.delete_record()
     org = db.Organization.insert(name="Los pollos hermanos")
     org.admins3.add(gus)
     assert org.admins3.count() == 1
+    org.admins3.remove(gus)
+    assert org.admins3.count() == 0
     org.delete_record()
     gus = User.get(name="Gus Fring")
     org2 = db.Organization.insert(name="Laundry", is_cover=True)
     gus.cover_orgs.add(org2)
-    assert len(gus.cover_orgs()) == 1
+    assert gus.cover_orgs.count() == 1
     assert gus.cover_orgs().first().id == org2
+    gus.cover_orgs.remove(org2)
+    assert gus.cover_orgs.count() == 0
 
 
 def test_model_where(db):
@@ -918,6 +965,19 @@ def test_model_where(db):
 
 
 def test_model_first(db):
+    p = db.Person.insert(name="Walter", age=50)
+    db.Subscription.insert(
+        name="a",
+        expires_at=datetime.now() + timedelta(hours=20),
+        person=p,
+        status=1
+    )
+    db.Subscription.insert(
+        name="b",
+        expires_at=datetime.now() + timedelta(hours=20),
+        person=p,
+        status=1
+    )
     db.CustomPKType.insert(id="a")
     db.CustomPKType.insert(id="b")
     db.CustomPKName.insert(name="a")
@@ -945,6 +1005,27 @@ def test_model_first(db):
 
 
 def test_model_last(db):
+    p = db.Person.insert(name="Walter", age=50)
+    db.Subscription.insert(
+        name="a",
+        expires_at=datetime.now() + timedelta(hours=20),
+        person=p,
+        status=1
+    )
+    db.Subscription.insert(
+        name="b",
+        expires_at=datetime.now() + timedelta(hours=20),
+        person=p,
+        status=1
+    )
+    db.CustomPKType.insert(id="a")
+    db.CustomPKType.insert(id="b")
+    db.CustomPKName.insert(name="a")
+    db.CustomPKName.insert(name="b")
+    db.CustomPKMulti.insert(first_name="foo", last_name="bar")
+    db.CustomPKMulti.insert(first_name="foo", last_name="baz")
+    db.CustomPKMulti.insert(first_name="bar", last_name="baz")
+
     assert Subscription.last().id == Subscription.all().select(
         orderby=~Subscription.id,
         limitby=(0, 1)

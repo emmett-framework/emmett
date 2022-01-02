@@ -136,6 +136,21 @@ class PostgresAdapterMixin:
     def _mock_reconnect(self):
         pass
 
+    def _insert(self, table, fields):
+        self._last_insert = None
+        if fields:
+            retval = None
+            if getattr(table, "_id", None):
+                self._last_insert = (table._id, 1)
+                retval = table._id._rname
+            return self.dialect.insert(
+                table._rname,
+                ','.join(el[0]._rname for el in fields),
+                ','.join(self.expand(v, f.type) for f, v in fields),
+                retval
+            )
+        return self.dialect.insert_empty(table._rname)
+
     def lastrowid(self, table):
         if self._last_insert:
             return self.cursor.fetchone()[0]

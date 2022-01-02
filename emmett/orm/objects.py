@@ -12,10 +12,12 @@
 import copy
 import datetime
 import decimal
+import operator
 import types
 
 from collections import OrderedDict, defaultdict
 from enum import Enum
+from functools import reduce
 from typing import Any, Optional
 
 from pydal.objects import (
@@ -39,7 +41,8 @@ from .helpers import (
     _IDReference,
     JoinedIDReference,
     RelationBuilder,
-    wrap_scope_on_set
+    wrap_scope_on_set,
+    typed_row_reference
 )
 
 type_int = int
@@ -788,8 +791,12 @@ class RelationSet(object):
         return self._relation_.ref.model_instance
 
     @cachedprop
-    def _field_(self):
-        return self._relation_.ref.field_instance
+    def _fields_(self):
+        pks = self._relation_.model.primary_keys or ["id"]
+        return [
+            (relation_field.name, pks[idx])
+            for idx, relation_field in enumerate(self._relation_.ref.fields_instances)
+        ]
 
     @cachedprop
     def _scopes_(self):
@@ -819,13 +826,13 @@ class RelationSet(object):
         return kwargs.pop('reload', False)
 
     def create(self, **kwargs):
-        attributes = self._get_fields_from_scopes(
-            self._scopes_, self._model_.tablename)
-        attributes.update(**kwargs)
-        attributes[self._field_.name] = self._row_.id
-        return self._model_.create(
-            **attributes
+        attrs = self._get_fields_from_scopes(
+            self._scopes_, self._model_.tablename
         )
+        attrs.update(**kwargs)
+        for ref, local in self._fields_:
+            attrs[ref] = self._row_[local]
+        return self._model_.create(**attrs)
 
     @staticmethod
     def _get_fields_from_scopes(scopes, table_name):
@@ -840,8 +847,10 @@ class RelationSet(object):
                     components.append(component.second)
                     components.append(component.first)
                 else:
-                    if isinstance(component, Field) and \
-                       component._tablename == table_name:
+                    if (
+                        isinstance(component, Field) and
+                        component._tablename == table_name
+                    ):
                         current_kv.append(component)
                     else:
                         if current_kv:
@@ -877,20 +886,41 @@ class HasManySet(RelationSet):
         return self.select(*args, **kwargs)
 
     def add(self, obj):
-        attributes = self._get_fields_from_scopes(
-            self._scopes_, self._model_.tablename)
-        attributes[self._field_.name] = self._row_.id
-        return self.db(
-            self.db[self._field_._tablename].id == obj.id
-        ).validate_and_update(**attributes)
+        attrs = self._get_fields_from_scopes(
+            self._scopes_, self._model_.tablename
+        )
+        rev_attrs = {}
+        for ref, local in self._fields_:
+            attrs[ref] = self._row_[local]
+            rev_attrs[local] = attrs[ref]
+        rv = self.db(self._model_._query_row(obj)).validate_and_update(**attrs)
+        if rv:
+            for key, val in attrs.items():
+                obj[key] = val
+            if self._relation_.ref.reverse not in obj._compound_rel_mappers:
+                obj[self._relation_.ref.reverse] = typed_row_reference(
+                    rev_attrs if len(rev_attrs) > 1 else rev_attrs[self._fields_[0][1]],
+                    self._relation_.model.table
+                )
+        return rv
 
     def remove(self, obj):
-        if self.db[self._field_._tablename][self._field_.name]._isrefers:
-            return self.db(
-                self._field_._table.id == obj.id).validate_and_update(
-                **{self._field_.name: None}
+        attrs, is_delete = {ref: None for ref, _ in self._fields_}, False
+        if self._model_._relations_fks_[self._relation_.ref.reverse].is_refers:
+            rv = self.db(self._model_._query_row(obj)).validate_and_update(
+                **attrs
             )
-        return self.db(self._field_._table.id == obj.id).delete()
+        else:
+            is_delete = True
+            rv = self.db(self._model_._query_row(obj)).delete()
+        if rv:
+            for key, val in attrs.items():
+                obj[key] = val
+            if self._relation_.ref.reverse not in obj._compound_rel_mappers:
+                obj[self._relation_.ref.reverse] = None
+            if is_delete:
+                obj._concrete = False
+        return rv
 
 
 class HasManyViaSet(RelationSet):
@@ -899,11 +929,14 @@ class HasManyViaSet(RelationSet):
 
     @cachedprop
     def _viadata(self):
-        query, rfield, model_name, rid, via, viadata = \
-            super(HasManyViaSet, self)._get_query_()
+        query, rfield, model_name, rid, via, viadata = super()._get_query_()
         return sdict(
-            query=query, rfield=rfield, model_name=model_name, rid=rid,
-            via=via, data=viadata
+            query=query,
+            rfield=rfield,
+            model_name=model_name,
+            rid=rid,
+            via=via,
+            data=viadata
         )
 
     def _get_query_(self):
@@ -926,9 +959,15 @@ class HasManyViaSet(RelationSet):
 
     def _get_relation_fields(self):
         viadata = self._viadata.data
-        self_field = self._model_._hasmany_ref_[viadata.via].field
-        rel_field = viadata.field or viadata.name[:-1]
-        return self_field, rel_field
+        manyref = self._model_._hasmany_ref_[viadata.via]
+        fkdata = manyref.model_instance._relations_fks_
+        jref = fkdata[viadata.field or viadata.name[:-1]]
+        fields_src = manyref.fields
+        fields_dst = [
+            (local, jref.foreign_fields[idx])
+            for idx, local in enumerate(jref.local_fields)
+        ]
+        return fields_src, fields_dst
 
     def _fields_from_scopes(self):
         viadata = self._viadata.data
@@ -949,9 +988,11 @@ class HasManyViaSet(RelationSet):
         nrow = self._fields_from_scopes()
         nrow.update(**kwargs)
         #: get belongs references
-        self_field, rel_field = self._get_relation_fields()
-        nrow[self_field] = self._viadata.rid
-        nrow[rel_field] = obj.id
+        self_fields, rel_fields = self._get_relation_fields()
+        for idx, self_field in enumerate(self_fields):
+            nrow[self_field] = self._viadata.rid[idx]
+        for local_field, foreign_field in rel_fields:
+            nrow[local_field] = obj[foreign_field]
         #: validate and insert
         return self.db[self._viadata.via]._model_.create(nrow)
 
@@ -960,11 +1001,18 @@ class HasManyViaSet(RelationSet):
         if self._viadata.via is None:
             raise RuntimeError(self._via_error % 'remove')
         #: get belongs references
-        self_field, rel_field = self._get_relation_fields()
+        self_fields, rel_fields = self._get_relation_fields()
         #: delete
-        return self.db(
-            (self.db[self._viadata.via][self_field] == self._viadata.rid) &
-            (self.db[self._viadata.via][rel_field] == obj.id)).delete()
+        query = reduce(
+            operator.and_, [
+                self.db[self._viadata.via][field] == self._viadata.rid[idx]
+                for idx, field in enumerate(self_fields)
+            ] + [
+                self.db[self._viadata.via][local_field] == obj[foreign_field]
+                for local_field, foreign_field in rel_fields
+            ]
+        )
+        return self.db(query).delete()
 
 
 class JoinedSet(Set):
