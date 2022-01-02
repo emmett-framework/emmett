@@ -15,6 +15,14 @@ jobs:
       matrix:
         python-version: [3.7, 3.8, 3.9, '3.10']
 
+    services:
+      mongo:
+        image: postgres:12
+        env:
+          POSTGRES_DATABASE: test
+        ports:
+        - 5432:5432
+
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -33,6 +41,8 @@ jobs:
       run: |
         poetry install -v --extras crypto
     - name: Test
+      env:
+        POSTGRES_URI: postgres:postgres@localhost:5432/test
       run: |
         poetry run pytest -v tests
 
