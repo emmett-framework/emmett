@@ -16,10 +16,11 @@ jobs:
         python-version: [3.7, 3.8, 3.9, '3.10']
 
     services:
-      mongo:
+      postgres:
         image: postgres:12
         env:
-          POSTGRES_DATABASE: test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
         ports:
         - 5432:5432
 
