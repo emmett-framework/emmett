@@ -704,3 +704,145 @@ Here are two examples:
 As you can see both of these methods return the number of record removed.
 
 > **Note:** just like the `update_record`, the `delete_record` method requires you to select the `id` field in the rows.
+
+Using model objects
+-------------------
+
+Emmett also provides the ability to work directly with records, in addition to models' operations. 
+
+We will use the same `Event` model we presented in the above sections for the examples:
+
+```python
+class Event(Model):
+    name = Field(notnull=True)
+    location = Field(notnull=True)
+    participants = Field.int(default=0)
+    happens_at = Field.datetime()
+```
+
+Let's see all the available methods and steps in details.
+
+### Model new method
+
+Every `Model` in Emmett provides a `new` method, which produces a clean record:
+
+```python
+event = Event.new(
+    name="Lightning",
+    location="Hill Valley"
+)
+event.happens_at = datetime(
+    1955, 11, 12,
+    22, 4, 0
+)
+```
+
+Records produced from the `new` method won't have primary key(s), and will have valued fields with defaults and passed parameters.
+
+### Record save method
+
+*New in version 2.4*
+
+Records produced with `Model.new` or selected with all the model fields will have a `save` method. 
+
+The `save` methods performs an `insert` or an `update` accordingly to the record contents:
+
+```python
+# save() will produce an insert
+event = Event.new()
+event.save()
+# save() will produce an update
+event = Event.first()
+event.location = "New York"
+event.save()
+```
+
+> **Note:** differently from `update` or `update_record` methods, where you specify which fields should be updated, the `save` method will overwrite all the fields with the current record contents
+
+The `save` method will return a boolean representing the operation fulfillment, unless you call `save(raise_on_error=True)` which will produce an exception. 
+
+### Record destroy method
+
+*New in version 2.4*
+
+Records selected with all the model fields will have a `destroy` method. 
+
+The `destroy` methods performs a `delete` operation using the records' primary key(s):
+
+```python
+event = Event.first()
+event.destroy()
+```
+
+The `destroy` method will return a boolean representing the operation fulfillment, unless you call `destroy(raise_on_error=True)` which will produce an exception. 
+
+### Record refresh method
+
+*New in version 2.4*
+
+Records selected with all the model fields will have a `refresh` method. 
+
+The `refresh` methods performs a new selection of the record from the database and update the current object accordingly.
+
+```python
+event = Event.first()
+event.refresh()
+```
+
+The `refresh` method will return a boolean representing the operation fulfillment.
+
+### Record changes
+
+*New in version 2.4*
+
+Records produced with `Model.new` or selected with all the model fields will track changes to their attributes between saves.
+
+Here we list attributes and methods provided by Emmett to deal with row changes:
+
+| name | type | description |
+| --- | --- | --- |
+| has\_changed | attribute | boolean which states if record has changed |
+| has\_changed\_value | method | returns a boolean wich states if the specified attribute has changed |
+| get\_value\_change | method | returns a tuple containing the original and new values for the specified attribute or `None` |
+| changes | attribute | returns a `sdict` with all the changed attributes and their values |
+
+And here is an example:
+
+```python
+>>> event = Event.first()
+>>> event.location = "New York"
+>>> event.has_changed
+True
+>>> event.has_changed_value("location")
+True
+>>> event.get_value_change("location")
+('Hill Valley', 'New York')
+>>> event.changes
+<sdict {'location': ('Hill Valley', 'New York')}>
+```
+
+### Record validations
+
+*New in version 2.4*
+
+Records produced with `Model.new` or selected with all the model fields will provide helpers for validation.
+
+Here we list attributes and methods provided by Emmett:
+
+| name | type | description |
+| --- | --- | --- |
+| is\_valid | attribute | boolean which states if record passes validations |
+| validation\_errors | attribute | returns a `sdict` with all the validation errors |
+
+And here is an example:
+
+```python
+>>> event = Event.new(name="Lightning", location="Hill Valley")
+>>> event.is_valid
+False
+>>> event.validation_errors
+<sdict {'happens_at': 'Cannot be empty'}>
+>>> event.happens_at = datetime(1955, 11, 12, 22, 4, 0)
+>>> event.is_valid
+True
+```
