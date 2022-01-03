@@ -274,6 +274,27 @@ db(Event.happens_at.year() == 1985)
 
 ### Engine specific operators
 
+#### GIS operators
+
+Emmett provides additional query operators specific to spatial extensions. Engines providing this kind of APIs can be Spatialite or PostGIS. The following table describes Emmett's ORM methods:
+
+| operator | description |
+| --- | --- |
+| st\_asgeojson | returns a geometry as a GeoJSON element |
+| st\_astext | returns WKT representation of the geometry/geography |
+| st\_x | returns the X coordinate of a Point |
+| st\_y | returns the Y coordinate of a Point |
+| st\_distance | returns the distance between two geometry/geography values |
+| st\_simplify | returns a simplified version of a geometry (Douglas-Peucker) |
+| st\_simplifypreservetopology | returns a simplified and valid version of a geometry (Douglas-Peucker) |
+| st\_contains | returns true if no points of B lie in the exterior of A |
+| st\_equals | returns true if two geometries include the same set of points |
+| st\_intersects | returns true if two geometries intersect |
+| st\_overlaps | returns true if two geometries intersect and have the same dimension |
+| st\_touches | returns true true if two geometries have at least one point in common, but their interiors do not intersect |
+| st\_within | returns true if no points of A lie in the exterior of B |
+| st\_dwithin | returns true if two geometries are within a given distance |
+
 #### PostgreSQL json operators
 
 Emmett provides additional query operators specific to PostgreSQL engine. The following table describes the mapping between Emmett's ORM methods and the relevant PostgreSQL json/jsonb operators:

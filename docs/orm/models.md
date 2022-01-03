@@ -75,25 +75,28 @@ Available type methods for Field definition are:
 | bool | `bool` |
 | int | `int` |
 | float | `float` |
-| decimal(n,m) | `decimal.Decimal` |
+| decimal(precision,scale) | `decimal.Decimal` |
 | date | `datetime.date` |
 | time | `datetime.time` |
 | datetime | `datetime.datetime` |
 | password | `str` |
 | upload | `str` |
-| list:string | `list` of `str` |
-| list:int | `list` of `int` |
-| json | `dict` or `list` |
-| jsonb | `dict` or `list` |
+| int\_list | `List[str]` |
+| string\_list | `List[int]` |
+| json | `Union[Dict,List]` |
+| jsonb | `Union[Dict,List]` |
+| geography(type,srid,dimension) | `str` |
+| geometry(type,srid,dimension) | `str` |
 
 If you don't specify a type for the `Field` class, and create an instance directly, it will be set as *string* as default value.
 
 Using the right field type ensure the right columns types inside your tables, and allows you to benefit from the default validation implemented by Emmett.
 
-> **Note:** some fields' types are engine specific, for instance `jsonb` field is valid only with PostgreSQL engine.
+> **Note:** some fields' types are engine specific, for instance `jsonb` field is valid only with PostgreSQL engine, and `geometry` and `geography` fields require spatial APIs.
 
 Validation
 ----------
+
 To implement a validation mechanism for your fields, you can use the `validation` parameter of the `Field` class, or the mapping `dict` with the name of the fields at the `validation` attribute inside your Model. Both method will produce the same result, just pick the one you prefer:
 
 ```python
