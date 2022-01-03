@@ -1023,6 +1023,8 @@ class Model(metaclass=MetaModel):
 
     @rowmethod('destroy')
     def _row_destroy(self, row, raise_on_error: bool = False) -> bool:
+        if not row._concrete:
+            return False
         res = self.db(
             self._query_row(row), ignore_common_filters=True
         )._delete_from_destroy(self, row)
