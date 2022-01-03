@@ -7,7 +7,8 @@ Emmett provides different apis that can help you in these cases: let's see them 
 
 Computed fields
 ---------------
-*Changed in version 0.7*
+
+*Changed in version 2.4*
 
 Sometimes you need some field values to be *computed* using other fields' values. Let's say, for example, that you have a table of items where you store the quantity and price for each of them. You often need the total value of the items you have in your store, and you don't want to compute this value every time in your application code.
 
@@ -21,19 +22,44 @@ class Item(Model):
     quantity = Field.int()
     total = Field.float()
     
-    @compute('total')
+    @compute('total', watch=['price', 'quantity'])
     def compute_total(self, fields):
         return fields.price * fields.quantity
 ```
 
-As you can see, the `compute` decorator needs and accepts just one parameter: the name of the field where to store the result of the computation.
+As you can see, the `compute` decorator accepts the name of the field where to store the result of the computation and and optional `watch` list of fields.
 
 The function that performs the computation has to accept the operation fields as its first parameter, and it will be called both on inserts and updates.
 
 > **Note:** `compute` decorated methods receives **only the fields' values involved in the operation**. This means that fields will contain only the values passed by the insert/update operation and the relative default values.
 
+### Operation fields and watch parameter
+
+Since computations will be triggered on every update operation that might happen on your model, and thus such operation might involve several records, you might end up in conditions where the operation doesn't include all the fields required for the computation. For example issuing this update instruction on the upper model:
+
+```python
+Item.where(lambda i: i.quantity == 1).update(quantity=2)
+```
+
+would make impossible to re-compute the `total` value for the involved records.
+
+The `watch` parameter is designed to avoid these conditions, since – under default behaviour – in an insert or update operation involving computations Emmett will:
+
+- execute all the computations without `watch` fields, ignoring the ones failing
+- execute all the computations with where the `watch` fields presence is completely satisfied
+- raise an exception, preventing the operation to continue, for those computations where the `watch` fields presence is not completely satisfied
+
+Considering our upper example:
+
+- the `total` computation will be executed for all the operations including both `price` and `quantity` fields
+- an operation with only one of the `price` or `quantity` fields cannot be executed
+- operations not involving `price` or `quantity` fields won't trigger the computation
+
+> **Note:** to handle complex cases where you need to access the single record fields we suggest to use records' `save` method and relevant callbacks.
+
 Virtual attributes
 ------------------
+
 *Changed in version 1.0*
 
 Virtual attributes are values returned by functions that will be injected to the involved rows every time you select them.
@@ -67,6 +93,7 @@ You can access the values as the common fields:
 
 Virtual methods
 ---------------
+
 *Changed in version 1.0*
 
 Similarly to virtual attributes, these methods are helpers injected to the rows when you select them. Differently from virtual attributes, however, they will be methods indeed, and you should invoke them to access the value you're looking for.
