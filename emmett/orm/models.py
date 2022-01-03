@@ -1082,6 +1082,13 @@ class StructuredRow(Row):
     def __setitem__(self, key, value):
         self.__setattr__(key, value)
 
+    def update(self, *args, **kwargs):
+        for arg in args:
+            for key, val in arg.items():
+                self.__setattr__(key, val)
+        for key, val in kwargs.items():
+            self.__setattr__(key, val)
+
     @property
     def changes(self):
         return sdict(self._changes)

@@ -184,6 +184,22 @@ def test_changes(db):
     assert not row.has_changed_value("bar")
     assert row.get_value_change("bar") is None
 
+    row.update(bar="test2b")
+    assert row.has_changed
+    assert row.has_changed_value("bar")
+    assert row.get_value_change("bar") == (None, "test2b")
+
+    row.update({"bar": "test2c"})
+    assert row.has_changed
+    assert row.has_changed_value("bar")
+    assert row.get_value_change("bar") == (None, "test2c")
+
+    row.update(bar=None)
+    assert not row.has_changed
+    assert not row.has_changed_value("bar")
+    assert row.get_value_change("bar") is None
+
+    row.bar = "test2"
     row.save()
     assert not row.has_changed
 
