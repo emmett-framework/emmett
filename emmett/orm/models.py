@@ -614,7 +614,6 @@ class Model(metaclass=MetaModel):
         save_excluded_fields = (
             set(
                 field.name for field in self.fields if
-                field.name not in self._fieldset_pk and
                 getattr(field, "type", None) == "id"
             ) |
             set(self._all_rowattrs_.keys()) |
