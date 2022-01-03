@@ -257,3 +257,43 @@ class Post(Model):
 ```
 
 The `where` option accepts a lambda function that should accept the model as first parameter and should return any valid query using the Emmett query language.
+
+Custom primary keys
+-------------------
+
+*New in version 2.4*
+
+### Customise primary key type
+
+Under default behaviour, all models in Emmett have an integer `id` primary key. In case you need to change the type of this field, just define your own `id` field.
+
+For example, we might want to have a model with UUID strings as primary key:
+
+```python
+from uuid import uuid4
+
+class Ticket(Model):
+    id = Field.string(default=lambda: uuid4().hex)
+```
+
+### Using custom primary keys
+
+Sometimes you need to have models without an `id` field, as a specific field can be used as primary key. Other times, you need to have compound primary keys, where you have multiple fields producing your records identifier.
+
+Under these circumstances, using the `primary_keys` attribute of the `Model` class will be enough:
+
+```python
+class Ticket(Model):
+    primary_keys = ["code"]
+
+    code = Field.string(default=lambda: uuid4().hex)
+
+
+class MultiPK(Model):
+    primary_keys = ["key1", "key2"]
+
+    key1 = Field.int()
+    key2 = Field.int()
+```
+
+> **Note:** Emmett [relations](./relations) system is fully-compatible with custom and multiple primary keys.

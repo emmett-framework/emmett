@@ -14,6 +14,7 @@
 """
 
 import uuid
+
 from functools import wraps
 
 
@@ -45,6 +46,13 @@ class _transaction(callable_context_manager):
     def __init__(self, adapter, lock_type=None):
         self.adapter = adapter
         self._lock_type = lock_type
+        self._ops = []
+
+    def _add_op(self, op):
+        self._ops.append(op)
+
+    def _add_ops(self, ops):
+        self._ops.extend(ops)
 
     def _begin(self):
         if self._lock_type:
@@ -53,7 +61,18 @@ class _transaction(callable_context_manager):
             self.adapter.begin()
 
     def commit(self, begin=True):
+        for op in self._ops:
+            for callback in op.table._before_commit:
+                callback(op.op_type, op.context)
+            for callback in getattr(op.table, f"_before_commit_{op.op_type}"):
+                callback(op.context)
         self.adapter.commit()
+        for op in self._ops:
+            for callback in op.table._after_commit:
+                callback(op.op_type, op.context)
+            for callback in getattr(op.table, f"_after_commit_{op.op_type}"):
+                callback(op.context)
+        self._ops.clear()
         if begin:
             self._begin()
 
@@ -87,6 +106,14 @@ class _savepoint(callable_context_manager):
         self.adapter = adapter
         self.sid = sid or 's' + uuid.uuid4().hex
         self.quoted_sid = self.adapter.dialect.quote(self.sid)
+        self._ops = []
+        self._parent = None
+
+    def _add_op(self, op):
+        self._ops.append(op)
+
+    def _add_ops(self, ops):
+        self._ops.extend(ops)
 
     def _begin(self):
         self.adapter.execute('SAVEPOINT %s;' % self.quoted_sid)
@@ -100,6 +127,7 @@ class _savepoint(callable_context_manager):
         self.adapter.execute('ROLLBACK TO SAVEPOINT %s;' % self.quoted_sid)
 
     def __enter__(self):
+        self._parent = self.adapter.top_transaction()
         self._begin()
         self.adapter.push_transaction(self)
         return self
@@ -111,6 +139,8 @@ class _savepoint(callable_context_manager):
             else:
                 try:
                     self.commit(begin=False)
+                    if self._parent:
+                        self._parent._add_ops(self._ops)
                 except Exception:
                     self.rollback()
                     raise

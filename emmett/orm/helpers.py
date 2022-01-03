@@ -9,16 +9,218 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
+import operator
 import re
 import time
 
-from functools import wraps
+from functools import reduce, wraps
+from typing import TYPE_CHECKING, Any, Callable
+
 from pydal._globals import THREAD_LOCAL
-from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
+from pydal.helpers.classes import ExecutionHandler
 from pydal.objects import Field as _Field
 
 from ..datastructures import sdict
 from ..utils import cachedprop
+
+if TYPE_CHECKING:
+    from .objects import Table
+
+
+class RowReferenceMeta:
+    __slots__ = ['table', 'pk', 'caster']
+
+    def __init__(self, table: Table, caster: Callable[[Any], Any]):
+        self.table = table
+        self.pk = table._id.name
+        self.caster = caster
+
+    def fetch(self, val):
+        return self.table._db(self.table._id == self.caster(val)).select(
+            limitby=(0, 1),
+            orderby_on_limitby=False
+        ).first()
+
+
+class RowReferenceMultiMeta:
+    __slots__ = ['table', 'pks', 'pks_idx', 'caster', 'casters']
+    _casters = {'integer': int, 'string': str}
+
+    def __init__(self, table: Table) -> None:
+        self.table = table
+        self.pks = list(table._primarykey)
+        self.pks_idx = {key: idx for idx, key in enumerate(self.pks)}
+        self.caster = tuple
+        self.casters = {pk: self._casters[table[pk].type] for pk in self.pks}
+
+    def fetch(self, val):
+        query = reduce(
+            operator.and_, [
+                self.table[pk] == self.casters[pk](self.caster.__getitem__(val, idx))
+                for pk, idx in self.pks_idx.items()
+            ]
+        )
+        return self.table._db(query).select(
+            limitby=(0, 1),
+            orderby_on_limitby=False
+        ).first()
+
+
+class RowReferenceMixin:
+    def _allocate_(self):
+        if not self._refrecord:
+            self._refrecord = self._refmeta.fetch(self)
+        if not self._refrecord:
+            raise RuntimeError(
+                "Using a recursive select but encountered a broken " +
+                "reference: %s %r" % (self._table, self)
+            )
+
+    def __getattr__(self, key: str) -> Any:
+        if key == self._refmeta.pk:
+            return self._refmeta.caster(self)
+        if key in self._refmeta.table:
+            self._allocate_()
+        if self._refrecord:
+            return self._refrecord.get(key, None)
+        return None
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.__getattr__(key, default)
+
+    def __setattr__(self, key: str, value: Any):
+        if key.startswith('_'):
+            self._refmeta.caster.__setattr__(self, key, value)
+            return
+        self._allocate_()
+        self._refrecord[key] = value
+
+    def __getitem__(self, key):
+        if key == self._refmeta.pk:
+            return self._refmeta.caster(self)
+        self._allocate_()
+        return self._refrecord.get(key, None)
+
+    def __setitem__(self, key, value):
+        self._allocate_()
+        self._refrecord[key] = value
+
+    def __pure__(self):
+        return self._refmeta.caster(self)
+
+    def __repr__(self) -> str:
+        return repr(self._refmeta.caster(self))
+
+
+class RowReferenceInt(RowReferenceMixin, int):
+    def __new__(cls, id, table: Table, *args: Any, **kwargs: Any):
+        rv = super().__new__(cls, id, *args, **kwargs)
+        int.__setattr__(rv, '_refmeta', RowReferenceMeta(table, int))
+        int.__setattr__(rv, '_refrecord', None)
+        return rv
+
+
+class RowReferenceStr(RowReferenceMixin, str):
+    def __new__(cls, id, table: Table, *args: Any, **kwargs: Any):
+        rv = super().__new__(cls, id, *args, **kwargs)
+        str.__setattr__(rv, '_refmeta', RowReferenceMeta(table, str))
+        str.__setattr__(rv, '_refrecord', None)
+        return rv
+
+
+class RowReferenceMulti(RowReferenceMixin, tuple):
+    def __new__(cls, id, table: Table, *args: Any, **kwargs: Any):
+        tupid = tuple(id[key] for key in table._primarykey)
+        rv = super().__new__(cls, tupid, *args, **kwargs)
+        tuple.__setattr__(rv, '_refmeta', RowReferenceMultiMeta(table))
+        tuple.__setattr__(rv, '_refrecord', None)
+        return rv
+
+    def __getattr__(self, key: str) -> Any:
+        if key in self._refmeta.pks:
+            return self._refmeta.casters[key](
+                tuple.__getitem__(self, self._refmeta.pks_idx[key])
+            )
+        if key in self._refmeta.table:
+            self._allocate_()
+        if self._refrecord:
+            return self._refrecord.get(key, None)
+        return None
+
+    def __getitem__(self, key):
+        if key in self._refmeta.pks:
+            return self._refmeta.casters[key](
+                tuple.__getitem__(self, self._refmeta.pks_idx[key])
+            )
+        self._allocate_()
+        return self._refrecord.get(key, None)
+
+
+class GeoFieldWrapper(str):
+    _rule_parens = re.compile(r"^(\(+)(?:.+)$")
+
+    def __new__(cls, value, *args: Any, **kwargs: Any):
+        geometry, raw_coords = value.strip()[:-1].split("(", 1)
+        rv = super().__new__(cls, value, *args, **kwargs)
+        coords = cls._parse_coords_block(raw_coords)
+        str.__setattr__(rv, '_geometry', geometry.strip())
+        str.__setattr__(rv, '_coordinates', coords)
+        return rv
+
+    @classmethod
+    def _parse_coords_block(cls, v):
+        groups = []
+        parens_match = cls._rule_parens.match(v)
+        parens = parens_match.group(1) if parens_match else ''
+        if parens:
+            for element in v.split(parens):
+                if not element:
+                    continue
+                element = element.strip()
+                shift = -2 if element.endswith(",") else -1
+                groups.append(f"{parens}{element}"[1:shift])
+        if not groups:
+            return cls._parse_coords_group(v)
+        return tuple(
+            cls._parse_coords_block(group) for group in groups
+        )
+
+    @staticmethod
+    def _parse_coords_group(v):
+        accum = []
+        for element in v.split(","):
+            accum.append(tuple(float(v) for v in element.split(" ")))
+        return tuple(accum) if len(accum) > 1 else accum[0]
+
+    def _repr_coords(self, val=None):
+        val = val or self._coordinates
+        if isinstance(val[0], tuple):
+            accum = []
+            for el in val:
+                inner, plevel = self._repr_coords(el)
+                inner = f"({inner})" if not plevel else inner
+                accum.append(inner)
+            return ",".join(accum), False
+        return "%f %f" % val, True
+
+    @property
+    def geometry(self):
+        return self._geometry
+
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @property
+    def groups(self):
+        if not self._geometry.startswith("MULTI"):
+            return tuple()
+        return tuple(
+            self.__class__(f"{self._geometry[5:]}({self._repr_coords(coords)[0]})")
+            for coords in self._coordinates
+        )
 
 
 class Reference(object):
@@ -78,8 +280,11 @@ class ReferenceData(sdict):
         return self.model_instance.tablename
 
     @property
-    def field_instance(self):
-        return self.table[self.field]
+    def fields_instances(self):
+        return tuple(
+            self.table[field]
+            for field in self.model_instance._belongs_fks_[self.reverse].local_fields
+        )
 
 
 class RelationBuilder(object):
@@ -88,7 +293,10 @@ class RelationBuilder(object):
         self.model = model_instance
 
     def _make_refid(self, row):
-        return row.id if row is not None else self.model.id
+        pks = self.model.primary_keys or ["id"]
+        if row:
+            return tuple(row[pk] for pk in pks)
+        return tuple(self.model.table[pk] for pk in pks)
 
     def _extra_scopes(self, ref, model_instance=None):
         model_instance = model_instance or ref.model_instance
@@ -112,16 +320,32 @@ class RelationBuilder(object):
         return query
 
     def _get_belongs(self, modelname, value):
-        return self.model.db[modelname]._model_._belongs_ref_.get(value)
+        return self.model.db[modelname]._model_._belongs_fks_.get(value)
 
     def belongs_query(self):
-        return (self.model.table[self.ref[1]] == self.model.db[self.ref[0]].id)
+        return reduce(
+            operator.and_, [
+                self.model.table[local] == self.model.db[self.ref.model][foreign]
+                for local, foreign in self.ref.coupled_fields
+            ]
+        )
 
     @staticmethod
     def many_query(ref, rid):
-        if ref.cast and isinstance(rid, _Field):
-            rid = rid.cast(ref.cast)
-        return ref.model_instance.table[ref.field] == rid
+        components = rid
+        if ref.cast:
+            components = []
+            for element in rid:
+                if isinstance(rid, _Field):
+                    components.append(element.cast(ref.cast))
+                else:
+                    components.append(element)
+        return reduce(
+            operator.and_, [
+                field == components[idx]
+                for idx, field in enumerate(ref.fields_instances)
+            ]
+        )
 
     def _many(self, ref, rid):
         return ref.dbset.where(
@@ -153,20 +377,35 @@ class RelationBuilder(object):
                 #: join table way
                 last_belongs = step_model
                 last_via = via
-                _query = (db[belongs_model].id == db[step_model][rname])
-                sel_field = db[belongs_model].ALL
-                step_model = belongs_model
+                _query = reduce(
+                    operator.and_, [
+                        (
+                            db[belongs_model.model][foreign] ==
+                            db[step_model][local]
+                        ) for local, foreign in belongs_model.coupled_fields
+                    ]
+                )
+                sel_field = db[belongs_model.model].ALL
+                step_model = belongs_model.model
             else:
                 #: shortcut way
                 last_belongs = None
                 rname = via.field or via.name
                 midrel = db[step_model]._model_._hasmany_ref_[rname]
-                _query = self._many(midrel, db[step_model].id)
+                _query = self._many(
+                    midrel, [
+                        db[step_model][step_field]
+                        for step_field in (
+                            db[step_model]._model_.primary_keys or ["id"]
+                        )
+                    ]
+                )
                 step_model = midrel.table_name
                 sel_field = db[step_model].ALL
             query = query & _query
         query = via.dbset.where(
-            self._patch_query_with_scopes_on(via, query, step_model)).query
+            self._patch_query_with_scopes_on(via, query, step_model)
+        ).query
         return query, sel_field, sname, rid, last_belongs, last_via
 
 
@@ -185,18 +424,6 @@ class Callback(object):
 
     def __call__(self):
         return None
-
-
-class JoinedIDReference(_IDReference):
-    @classmethod
-    def _from_record(cls, record, table=None):
-        rv = cls(record.id)
-        rv._table = table
-        rv._record = record
-        return rv
-
-    def as_dict(self, datetime_to_str=False, custom_types=None):
-        return self._record.as_dict()
 
 
 class TimingHandler(ExecutionHandler):
@@ -285,3 +512,30 @@ def wrap_virtual_on_model(model, virtual):
     def wrapped(row, *args, **kwargs):
         return virtual(model, row, *args, **kwargs)
     return wrapped
+
+
+def typed_row_reference(id: Any, table: Table):
+    field_type = table._id.type if table._id else None
+    return {
+        'id': RowReferenceInt,
+        'integer': RowReferenceInt,
+        'string': RowReferenceStr,
+        None: RowReferenceMulti
+    }[field_type](id, table)
+
+
+def typed_row_reference_from_record(record: Any, model: Any):
+    field_type = model.table._id.type if model.table._id else None
+    refcls = {
+        'id': RowReferenceInt,
+        'integer': RowReferenceInt,
+        'string': RowReferenceStr,
+        None: RowReferenceMulti
+    }[field_type]
+    if len(model._fieldset_pk) > 1:
+        id = {pk: record[pk] for pk in model._fieldset_pk}
+    else:
+        id = record[tuple(model._fieldset_pk)[0]]
+    rv = refcls(id, model.table)
+    rv._refrecord = record
+    return rv

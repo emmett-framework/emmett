@@ -197,7 +197,8 @@ class Database(_pyDAL):
                 args = dict(
                     migrate=obj.migrate,
                     format=obj.format,
-                    table_class=Table
+                    table_class=Table,
+                    primarykey=obj.primary_keys or ['id']
                 )
                 model.table = self.define_table(
                     obj.tablename, *obj.fields, **args

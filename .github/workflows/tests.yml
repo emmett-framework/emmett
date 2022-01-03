@@ -13,7 +13,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9, '3.10']
+
+    services:
+      postgres:
+        image: postgis/postgis:12-3.2
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        ports:
+        - 5432:5432
 
     steps:
     - uses: actions/checkout@v2
@@ -21,26 +30,24 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install and set up Poetry
-      run: |
-        curl -fsS -o get-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py
-        python get-poetry.py -y
-        source $HOME/.poetry/env
-        poetry config virtualenvs.in-project true
+    - name: Install and configure Poetry
+      uses: gi0baro/setup-poetry-bin@v1
+      with:
+        virtualenvs-in-project: true
     - name: Install dependencies
       run: |
-        source $HOME/.poetry/env
-        poetry install -v
+        poetry install -v --extras crypto
     - name: Test
+      env:
+        POSTGRES_URI: postgres:postgres@localhost:5432/test
       run: |
-        source $HOME/.poetry/env
         poetry run pytest -v tests
 
   MacOS:
     runs-on: macos-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9, '3.10']
 
     steps:
     - uses: actions/checkout@v2
@@ -48,26 +55,22 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install and set up Poetry
-      run: |
-        curl -fsS -o get-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py
-        python get-poetry.py -y
-        source $HOME/.poetry/env
-        poetry config virtualenvs.in-project true
+    - name: Install and configure Poetry
+      uses: gi0baro/setup-poetry-bin@v1
+      with:
+        virtualenvs-in-project: true
     - name: Install dependencies
       run: |
-        source $HOME/.poetry/env
-        poetry install -v
+        poetry install -v --extras crypto
     - name: Test
       run: |
-        source $HOME/.poetry/env
         poetry run pytest -v tests
 
   Windows:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9, '3.10']
 
     steps:
     - uses: actions/checkout@v2
@@ -75,17 +78,15 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install and setup Poetry
-      run: |
-        curl -fsS -o get-poetry.py https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py
-        python get-poetry.py -y
-        $env:Path += ";$env:Userprofile\.poetry\bin"
-        poetry config virtualenvs.in-project true
+    - name: Install and configure Poetry
+      uses: gi0baro/setup-poetry-bin@v1
+      with:
+        virtualenvs-in-project: true
     - name: Install dependencies
+      shell: bash
       run: |
-        $env:Path += ";$env:Userprofile\.poetry\bin"
-        poetry install -v
+        poetry install -v --extras crypto
     - name: Test
+      shell: bash
       run: |
-        $env:Path += ";$env:Userprofile\.poetry\bin"
         poetry run pytest -v tests

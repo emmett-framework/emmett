@@ -70,6 +70,7 @@ class AuthModel(Model):
         self.__super_method('define_computations')()
         self.__super_method('define_callbacks')()
         self.__super_method('define_scopes')()
+        self.__super_method('define_query_helpers')()
         self.__super_method('define_form_utils')()
         self.__define_authform_utils()
         self.setup()

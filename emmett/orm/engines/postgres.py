@@ -123,8 +123,7 @@ class JSONBPostgreRepresenter(PostgreArraysRepresenter):
         return serializers.json(value)
 
 
-@adapters.register_for('postgres')
-class PostgresAdapter(PostgreBoolean):
+class PostgresAdapterMixin:
     def _load_dependencies(self):
         super()._load_dependencies()
         self.dialect = JSONBPostgreDialect(self)
@@ -136,33 +135,40 @@ class PostgresAdapter(PostgreBoolean):
 
     def _mock_reconnect(self):
         pass
+
+    def _insert(self, table, fields):
+        self._last_insert = None
+        if fields:
+            retval = None
+            if getattr(table, "_id", None):
+                self._last_insert = (table._id, 1)
+                retval = table._id._rname
+            return self.dialect.insert(
+                table._rname,
+                ','.join(el[0]._rname for el in fields),
+                ','.join(self.expand(v, f.type) for f, v in fields),
+                retval
+            )
+        return self.dialect.insert_empty(table._rname)
+
+    def lastrowid(self, table):
+        if self._last_insert:
+            return self.cursor.fetchone()[0]
+        sequence_name = table._sequence_name
+        self.execute("SELECT currval(%s);" % self.adapt(sequence_name))
+        return self.cursor.fetchone()[0]
+
+
+@adapters.register_for('postgres')
+class PostgresAdapter(PostgresAdapterMixin, PostgreBoolean):
+    pass
 
 
 @adapters.register_for('postgres:psycopg2')
-class PostgresPsycoPG2Adapter(PostgrePsycoBoolean):
-    def _load_dependencies(self):
-        super()._load_dependencies()
-        self.dialect = JSONBPostgreDialect(self)
-        self.parser = JSONBPostgreParser(self)
-        self.representer = JSONBPostgreRepresenter(self)
-
-    def _config_json(self):
-        pass
-
-    def _mock_reconnect(self):
-        pass
+class PostgresPsycoPG2Adapter(PostgresAdapterMixin, PostgrePsycoBoolean):
+    pass
 
 
 @adapters.register_for('postgres:pg8000')
-class PostgresPG8000Adapter(PostgrePG8000Boolean):
-    def _load_dependencies(self):
-        super()._load_dependencies()
-        self.dialect = JSONBPostgreDialect(self)
-        self.parser = JSONBPostgreParser(self)
-        self.representer = JSONBPostgreRepresenter(self)
-
-    def _config_json(self):
-        pass
-
-    def _mock_reconnect(self):
-        pass
+class PostgresPG8000Adapter(PostgresAdapterMixin, PostgrePG8000Boolean):
+    pass
