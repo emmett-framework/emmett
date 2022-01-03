@@ -65,6 +65,7 @@ def db(_db):
         migration.down()
 
 
+@require_postgres
 def test_field_types(_db):
     assert Geography.geo.type == "geography(GEOMETRY,4326,2)"
     assert Geography.point.type == "geography(POINT,4326,2)"
@@ -215,6 +216,7 @@ def test_gis_insert(db):
         )
 
 
+@require_postgres
 def test_gis_select(db):
     for model in [Geometry, Geography]:
         row = model.new(
