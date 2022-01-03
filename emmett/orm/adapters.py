@@ -36,7 +36,7 @@ from pydal.parsers import ParserMethodWrapper, for_type as _parser_for_type
 from pydal.representers import TReprMethodWrapper, for_type as _representer_for_type
 
 from .engines import adapters
-from .helpers import RowReferenceMixin, typed_row_reference
+from .helpers import GeoFieldWrapper, typed_row_reference
 from .objects import Expression, Field, Row, IterRows
 
 
@@ -98,6 +98,14 @@ def patch_parser(parser):
         parser,
         _parser_for_type('reference')(_parser_reference).f,
         parser._before_registry_['reference']
+    )
+    parser.registered['geography'] = ParserMethodWrapper(
+        parser,
+        _parser_for_type('geography')(_parser_geo).f
+    )
+    parser.registered['geometry'] = ParserMethodWrapper(
+        parser,
+        _parser_for_type('geometry')(_parser_geo).f
     )
 
 
@@ -355,6 +363,10 @@ def _parser_reference(parser, value, referee):
     if '.' not in referee:
         value = typed_row_reference(value, parser.adapter.db[referee])
     return value
+
+
+def _parser_geo(parser, value):
+    return GeoFieldWrapper(value)
 
 
 def _representer_reference(representer, value, referenced):

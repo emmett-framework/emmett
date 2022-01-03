@@ -204,10 +204,10 @@ class Engine(MetaEngine):
                 f'Field: unknown field type: {column_type}'
             )
         return "{ctype}({gtype},{srid},{dimension})".format(
-            self.adapter.types[column_type],
-            geometry_type,
-            srid or self.adapter.srid,
-            dimension or 2
+            ctype=self.adapter.types[column_type],
+            gtype=geometry_type,
+            srid=srid or self.adapter.srid,
+            dimension=dimension or 2
         )
 
     def _new_column_sql(
@@ -265,7 +265,6 @@ class Engine(MetaEngine):
         id_col: str ='id'
     ) -> str:
         # TODO:
-        # - postgres geometry
         # - SQLCustomType
         composed_primary_key = len(primary_keys) > 1
         fields = []

@@ -39,7 +39,7 @@ from ..utils import cachedprop
 from ..validators import ValidateFromDict
 from .helpers import (
     RelationBuilder,
-    RowReferenceMixin,
+    GeoFieldWrapper,
     wrap_scope_on_set,
     typed_row_reference,
     typed_row_reference_from_record
@@ -295,7 +295,7 @@ class Field(_Field):
             self._custom_requires
 
     #: `_make_field` will be called by `Model` class or `Form` class
-    #  it will make intenral Field class compatible with the pyDAL's one
+    #  it will make internal Field class compatible with the pyDAL's one
     def _make_field(self, name, model=None):
         if self._obj_created_:
             return self
@@ -303,6 +303,11 @@ class Field(_Field):
             self.modelname = model.__class__.__name__
         #: convert field type to pyDAL ones if needed
         ftype = self._pydal_types.get(self._type, self._type)
+        if ftype.startswith("geo") and model:
+            geometry_type = self._ormkw["geometry_type"]
+            srid = self._ormkw["srid"] or getattr(model.db._adapter, "srid", 4326)
+            dimension = self._ormkw["dimension"] or 2
+            ftype = f"{ftype}({geometry_type},{srid},{dimension})"
         #: create pyDAL's Field instance
         super(Field, self).__init__(name, ftype, *self._args, **self._kwargs)
         #: add automatic validation (if requested)
@@ -425,7 +430,7 @@ class Field(_Field):
             "srid": srid,
             "dimension": dimension
         }
-        return cls(f"geometry", **kwargs)
+        return cls("geometry", **kwargs)
 
     def cast(self, value, **kwargs):
         return Expression(
@@ -1226,10 +1231,10 @@ class Row(_Row):
         for key, val in self.items():
             if isinstance(val, Row):
                 val = val.as_dict()
-            elif isinstance(val, RowReferenceMixin):
-                val = val.__pure__()
             elif isinstance(val, decimal.Decimal):
                 val = float(val)
+            elif isinstance(val, GeoFieldWrapper):
+                val = val.coordinates
             elif not isinstance(val, self._as_dict_types_):
                 continue
             rv[key] = val

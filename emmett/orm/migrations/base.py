@@ -84,7 +84,7 @@ class Column(sdict):
     def from_field(cls, field: Field) -> Column:
         rv = cls(
             field.name,
-            field.type,
+            field._pydal_types.get(field._type, field._type),
             field.unique,
             field.notnull,
             length=field.length,

@@ -158,6 +158,71 @@ class RowReferenceMulti(RowReferenceMixin, tuple):
         return self._refrecord.get(key, None)
 
 
+class GeoFieldWrapper(str):
+    _rule_parens = re.compile(r"^(\(+)(?:.+)$")
+
+    def __new__(cls, value, *args: Any, **kwargs: Any):
+        geometry, raw_coords = value.strip()[:-1].split("(", 1)
+        rv = super().__new__(cls, value, *args, **kwargs)
+        coords = cls._parse_coords_block(raw_coords)
+        str.__setattr__(rv, '_geometry', geometry.strip())
+        str.__setattr__(rv, '_coordinates', coords)
+        return rv
+
+    @classmethod
+    def _parse_coords_block(cls, v):
+        groups = []
+        parens_match = cls._rule_parens.match(v)
+        parens = parens_match.group(1) if parens_match else ''
+        if parens:
+            for element in v.split(parens):
+                if not element:
+                    continue
+                element = element.strip()
+                shift = -2 if element.endswith(",") else -1
+                groups.append(f"{parens}{element}"[1:shift])
+        if not groups:
+            return cls._parse_coords_group(v)
+        return tuple(
+            cls._parse_coords_block(group) for group in groups
+        )
+
+    @staticmethod
+    def _parse_coords_group(v):
+        accum = []
+        for element in v.split(","):
+            accum.append(tuple(float(v) for v in element.split(" ")))
+        return tuple(accum) if len(accum) > 1 else accum[0]
+
+    def _repr_coords(self, val=None):
+        val = val or self._coordinates
+        if isinstance(val[0], tuple):
+            accum = []
+            for el in val:
+                inner, plevel = self._repr_coords(el)
+                inner = f"({inner})" if not plevel else inner
+                accum.append(inner)
+            return ",".join(accum), False
+        return "%f %f" % val, True
+
+    @property
+    def geometry(self):
+        return self._geometry
+
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @property
+    def groups(self):
+        if not self._geometry.startswith("MULTI"):
+            return tuple()
+        return tuple(
+            self.__class__(f"{self._geometry[5:]}({self._repr_coords(coords)[0]})")
+            for coords in self._coordinates
+        )
+
+
 class Reference(object):
     def __init__(self, *args, **params):
         self.reference = [arg for arg in args]
