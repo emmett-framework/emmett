@@ -1,6 +1,24 @@
 Emmett changelog
 ================
 
+Next
+----
+(Release date to be defined, codename to be selected)
+
+- Added official Python 3.10 support
+- Added relative path support in templates
+- Added support for spatial columns in ORM
+- Added support for custom/multiple primary keys in ORM
+- Added support for custom/multiple foreign keys in ORM
+- Added support for custom and multiple primary keys relations in ORM
+- Added `watch` parameter to ORM's `compute` decorator
+- Added `save` method to ORM's rows and relevant callbacks
+- Added `destroy` method to ORM's rows and relevant callbacks
+- Added `refresh` method to ORM's rows
+- Added `before_commit` and `after_commit` ORM callbacks
+- Added changes tracking to ORM's rows
+- Added support to call super `rowmethod` decorated methods in ORM models
+
 Version 2.3
 -----------
 
