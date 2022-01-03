@@ -19,7 +19,7 @@ from functools import reduce, wraps
 from typing import TYPE_CHECKING, Any, Callable
 
 from pydal._globals import THREAD_LOCAL
-from pydal.helpers.classes import Reference as _IDReference, ExecutionHandler
+from pydal.helpers.classes import ExecutionHandler
 from pydal.objects import Field as _Field
 
 from ..datastructures import sdict
@@ -106,6 +106,9 @@ class RowReferenceMixin:
     def __setitem__(self, key, value):
         self._allocate_()
         self._refrecord[key] = value
+
+    def __pure__(self):
+        return self._refmeta.caster(self)
 
     def __repr__(self) -> str:
         return repr(self._refmeta.caster(self))
@@ -215,7 +218,7 @@ class ReferenceData(sdict):
     def fields_instances(self):
         return tuple(
             self.table[field]
-            for field in self.model_instance._relations_fks_[self.reverse].local_fields
+            for field in self.model_instance._belongs_fks_[self.reverse].local_fields
         )
 
 
@@ -252,10 +255,15 @@ class RelationBuilder(object):
         return query
 
     def _get_belongs(self, modelname, value):
-        return self.model.db[modelname]._model_._relations_fks_.get(value)
+        return self.model.db[modelname]._model_._belongs_fks_.get(value)
 
     def belongs_query(self):
-        return (self.model.table[self.ref[1]] == self.model.db[self.ref[0]].id)
+        return reduce(
+            operator.and_, [
+                self.model.table[local] == self.model.db[self.ref.model][foreign]
+                for local, foreign in self.ref.coupled_fields
+            ]
+        )
 
     @staticmethod
     def many_query(ref, rid):
@@ -307,9 +315,9 @@ class RelationBuilder(object):
                 _query = reduce(
                     operator.and_, [
                         (
-                            db[belongs_model.model][fk] ==
-                            db[step_model][belongs_model.local_fields[idx]]
-                        ) for idx, fk in enumerate(belongs_model.foreign_fields)
+                            db[belongs_model.model][foreign] ==
+                            db[step_model][local]
+                        ) for local, foreign in belongs_model.coupled_fields
                     ]
                 )
                 sel_field = db[belongs_model.model].ALL
@@ -351,18 +359,6 @@ class Callback(object):
 
     def __call__(self):
         return None
-
-
-class JoinedIDReference(_IDReference):
-    @classmethod
-    def _from_record(cls, record, table=None):
-        rv = cls(record.id)
-        rv._table = table
-        rv._record = record
-        return rv
-
-    def as_dict(self, datetime_to_str=False, custom_types=None):
-        return self._record.as_dict()
 
 
 class TimingHandler(ExecutionHandler):
@@ -461,3 +457,20 @@ def typed_row_reference(id: Any, table: Table):
         'string': RowReferenceStr,
         None: RowReferenceMulti
     }[field_type](id, table)
+
+
+def typed_row_reference_from_record(record: Any, model: Any):
+    field_type = model.table._id.type if model.table._id else None
+    refcls = {
+        'id': RowReferenceInt,
+        'integer': RowReferenceInt,
+        'string': RowReferenceStr,
+        None: RowReferenceMulti
+    }[field_type]
+    if len(model._fieldset_pk) > 1:
+        id = {pk: record[pk] for pk in model._fieldset_pk}
+    else:
+        id = record[tuple(model._fieldset_pk)[0]]
+    rv = refcls(id, model.table)
+    rv._refrecord = record
+    return rv

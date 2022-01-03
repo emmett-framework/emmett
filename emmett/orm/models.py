@@ -375,7 +375,6 @@ class Model(metaclass=MetaModel):
 
     def _define_relations_(self):
         self._virtual_relations_ = OrderedDict()
-        self._relations_fks_ = {}
         self._compound_relations_ = {}
         bad_args_error = (
             "belongs_to, has_one and has_many "
@@ -385,6 +384,7 @@ class Model(metaclass=MetaModel):
         _references = []
         _reference_keys = ['_all_belongs_ref_', '_all_refers_ref_']
         belongs_references = {}
+        belongs_fks = {}
         for key in _reference_keys:
             if hasattr(self, key):
                 _references.append(list(getattr(self, key).values()))
@@ -428,24 +428,32 @@ class Model(metaclass=MetaModel):
                         references.append(refclone)
                         fks_data["fields"].append(refclone.name)
                         fks_data["foreign_fields"].append(refclone.fk)
-                    self._compound_relations_[reference.name] = sdict(
+                    belongs_fks[reference.name] = sdict(
                         model=reference.model,
-                        local_fields=fks_data["fields"],
-                        foreign_fields=fks_data["foreign_fields"]
-                    )
-                    self._relations_fks_[reference.name] = sdict(
-                        model=reference.model,
+                        name=reference.name,
                         local_fields=fks_data["fields"],
                         foreign_fields=fks_data["foreign_fields"],
+                        coupled_fields=[
+                            (local, fks_data["foreign_fields"][idx])
+                            for idx, local in enumerate(fks_data["fields"])
+                        ],
                         is_refers=reference.is_refers
+                    )
+                    self._compound_relations_[reference.name] = sdict(
+                        model=reference.model,
+                        local_fields=belongs_fks[reference.name].local_fields,
+                        foreign_fields=belongs_fks[reference.name].foreign_fields,
+                        coupled_fields=belongs_fks[reference.name].coupled_fields,
                     )
                 else:
                     reference.ftype = refmodel.table[reference.fk].type
                     references = [reference]
-                    self._relations_fks_[reference.name] = sdict(
+                    belongs_fks[reference.name] = sdict(
                         model=reference.model,
+                        name=reference.name,
                         local_fields=[reference.name],
                         foreign_fields=[reference.fk],
+                        coupled_fields=[(reference.name, reference.fk)],
                         is_refers=reference.is_refers
                     )
                 if not fk_def_key and fks_data:
@@ -475,6 +483,7 @@ class Model(metaclass=MetaModel):
             is_belongs = False
             ondelete = 'nullify'
         setattr(self.__class__, '_belongs_ref_', belongs_references)
+        setattr(self.__class__, '_belongs_fks_', belongs_fks)
         #: has_one are mapped with rowattr
         hasone_references = {}
         if hasattr(self, '_all_hasone_ref_'):
@@ -873,8 +882,8 @@ class Model(metaclass=MetaModel):
                 rowattrs[field] = None
         for field in set(inst._compound_relations_.keys()) & attrset:
             reldata = inst._compound_relations_[field]
-            for idx, local_field in enumerate(reldata.local_fields):
-                rowattrs[local_field] = attributes[field][reldata.foreign_fields[idx]]
+            for local_field, foreign_field in reldata.coupled_fields:
+                rowattrs[local_field] = attributes[field][foreign_field]
         return inst._rowclass_(rowattrs, __concrete=False)
 
     @classmethod
@@ -886,8 +895,8 @@ class Model(metaclass=MetaModel):
                     kwargs[key] = args[0][key]
         for field in set(inst._compound_relations_.keys()) & set(kwargs.keys()):
             reldata = inst._compound_relations_[field]
-            for idx, local_field in enumerate(reldata.local_fields):
-                kwargs[local_field] = kwargs[field][reldata.foreign_fields[idx]]
+            for local_field, foreign_field in reldata.coupled_fields:
+                kwargs[local_field] = kwargs[field][foreign_field]
         return cls.table.validate_and_insert(**kwargs)
 
     @classmethod
@@ -1027,20 +1036,16 @@ class Model(metaclass=MetaModel):
 
 
 class RowRelationMapper:
-    __slots__ = ["model", "local_fields", "foreign_fields", "_lastv", "_cached"]
+    __slots__ = ["model", "fields", "_lastv", "_cached"]
 
     def __init__(self, db, relation_data):
         self.model = db[relation_data.model]._model_
-        self.local_fields = relation_data.local_fields
-        self.foreign_fields = relation_data.foreign_fields
+        self.fields = relation_data.coupled_fields
         self._lastv = {}
         self._cached = None
 
     def __call__(self, obj):
-        pks = {
-            fk: obj[self.local_fields[idx]]
-            for idx, fk in enumerate(self.foreign_fields)
-        }
+        pks = {fk: obj[lk] for lk, fk in self.fields}
         if all(v is None for v in pks.values()):
             return None
         if not self._cached or pks != self._lastv:
@@ -1121,6 +1126,6 @@ def _relation_mapper_setter_(key):
     def wrap(obj, val):
         if not isinstance(val, (StructuredRow, RowReferenceMulti)):
             return
-        for idx, local_field in enumerate(obj._compound_rel_mappers[key].local_fields):
-            obj[local_field] = val[obj._compound_rel_mappers[key].foreign_fields[idx]]
+        for local_field, foreign_field in obj._compound_rel_mappers[key].fields:
+            obj[local_field] = val[foreign_field]
     return wrap

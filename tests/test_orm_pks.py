@@ -590,6 +590,140 @@ def test_via_relations(pgs):
 
 
 @require_postgres
+def test_relations_set(pgs):
+    doc1 = DoctorCustom.new(name="test1")
+    doc1.save()
+    doc2 = DoctorCustom.new(name="test2")
+    doc2.save()
+    pat1 = PatientCustom.new(name="test1")
+    pat1.save()
+    pat1.symptoms.create(name="test1a")
+    pat2 = PatientCustom.new(name="test2")
+    pat2.save()
+    pat2.symptoms.create(name="test2a")
+    pat2.symptoms.create(name="test2b")
+    doc3 = DoctorMulti.new(name="test1")
+    doc3.save()
+    doc4 = DoctorMulti.new(name="test2")
+    doc4.save()
+    pat3 = PatientMulti.new(name="test1")
+    pat3.save()
+    pat3.symptoms.create(name="test3a")
+    pat3.symptoms.create(name="test3b")
+    pat4 = PatientMulti.new(name="test2")
+    pat4.save()
+    pat4.symptoms.create(name="test4a")
+
+    doc1.patients.add(pat1, name="test1")
+
+    djoin = DoctorCustom.all().join("appointments").select()
+    assert len(djoin) == 1
+    assert djoin[0].id == doc1.id
+    assert len(djoin[0].appointments()) == 1
+
+    djoin = DoctorCustom.all().join("patients").select()
+    assert len(djoin) == 1
+    assert djoin[0].id == doc1.id
+    assert len(djoin[0].patients()) == 1
+    assert djoin[0].patients()[0].code == pat1.code
+
+    pjoin = PatientCustom.all().join("appointments").select()
+    assert len(pjoin) == 1
+    assert pjoin[0].code == pat1.code
+    assert len(pjoin[0].appointments()) == 1
+
+    pjoin = PatientCustom.all().join("doctors").select()
+    assert len(pjoin) == 1
+    assert pjoin[0].code == pat1.code
+    assert len(pjoin[0].doctors()) == 1
+    assert pjoin[0].doctors()[0].id == doc1.id
+
+    ajoin = AppointmentCustom.all().join("doctor_custom", "patient_custom").select()
+    assert len(ajoin) == 1
+    assert ajoin[0].doctor_custom.id == doc1.id
+    assert ajoin[0].patient_custom.code == pat1.code
+
+    djoin = DoctorCustom.all().select(including=["appointments"])
+    assert len(djoin) == 2
+    assert len(djoin[0].appointments()) == 1
+    assert len(djoin[1].appointments()) == 0
+
+    djoin = DoctorCustom.all().join("appointments").select(including=["patients"])
+    assert len(djoin) == 1
+    assert djoin[0].id == doc1.id
+    assert len(djoin[0].patients()) == 1
+
+    pjoin = PatientCustom.all().select(including=["appointments"])
+    assert len(pjoin) == 2
+    assert len(pjoin[0].appointments()) == 1
+    assert len(pjoin[1].appointments()) == 0
+
+    pjoin = PatientCustom.all().join("appointments").select(including=["doctors"])
+    assert len(pjoin) == 1
+    assert pjoin[0].code == pat1.code
+    assert len(pjoin[0].doctors()) == 1
+
+    doc3.patients.add(pat3, name="test1")
+
+    djoin = DoctorMulti.all().join("appointments").select()
+    assert len(djoin) == 1
+    assert djoin[0].foo == doc3.foo
+    assert djoin[0].bar == doc3.bar
+    assert len(djoin[0].appointments()) == 1
+
+    djoin = DoctorMulti.all().join("patients").select()
+    assert len(djoin) == 1
+    assert djoin[0].foo == doc3.foo
+    assert djoin[0].bar == doc3.bar
+    assert len(djoin[0].patients()) == 1
+    assert djoin[0].patients()[0].foo == pat3.foo
+    assert djoin[0].patients()[0].bar == pat3.bar
+
+    pjoin = PatientMulti.all().join("appointments").select()
+    assert len(pjoin) == 1
+    assert pjoin[0].foo == pat3.foo
+    assert pjoin[0].bar == pat3.bar
+    assert len(pjoin[0].appointments()) == 1
+
+    pjoin = PatientMulti.all().join("doctors").select()
+    assert len(pjoin) == 1
+    assert pjoin[0].foo == pat3.foo
+    assert pjoin[0].bar == pat3.bar
+    assert len(pjoin[0].doctors()) == 1
+    assert pjoin[0].doctors()[0].foo == doc3.foo
+    assert pjoin[0].doctors()[0].bar == doc3.bar
+
+    ajoin = AppointmentMulti.all().join("doctor_multi", "patient_multi").select()
+    assert len(ajoin) == 1
+    assert ajoin[0].doctor_multi.foo == doc3.foo
+    assert ajoin[0].doctor_multi.bar == doc3.bar
+    assert ajoin[0].patient_multi.foo == pat3.foo
+    assert ajoin[0].patient_multi.bar == pat3.bar
+
+    djoin = DoctorMulti.all().select(including=["appointments"])
+    assert len(djoin) == 2
+    assert len(djoin[0].appointments()) == 1
+    assert len(djoin[1].appointments()) == 0
+
+    djoin = DoctorMulti.all().join("appointments").select(including=["patients"])
+    assert len(djoin) == 1
+    assert djoin[0].foo == doc3.foo
+    assert djoin[0].bar == doc3.bar
+    assert len(djoin[0].patients()) == 1
+
+    pjoin = PatientMulti.all().select(including=["appointments"])
+    assert len(pjoin) == 2
+    assert len(pjoin[0].appointments()) == 1
+    assert len(pjoin[1].appointments()) == 0
+
+    pjoin = PatientMulti.all().join("appointments").select(including=["doctors"])
+    assert len(pjoin) == 1
+    assert pjoin[0].foo == pat3.foo
+    assert pjoin[0].bar == pat3.bar
+    assert len(pjoin[0].doctors()) == 1
+
+
+@require_postgres
 def test_row(pgs):
     sm1 = SourceMulti.new(baz="test1")
     sm1.save()

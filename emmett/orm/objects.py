@@ -38,11 +38,11 @@ from ..serializers import xml_encode
 from ..utils import cachedprop
 from ..validators import ValidateFromDict
 from .helpers import (
-    _IDReference,
-    JoinedIDReference,
     RelationBuilder,
+    RowReferenceMixin,
     wrap_scope_on_set,
-    typed_row_reference
+    typed_row_reference,
+    typed_row_reference_from_record
 )
 
 type_int = int
@@ -484,11 +484,13 @@ class Set(_Set):
 
     def _join_set_builder(self, obj, jdata, auto_select_tables):
         return JoinedSet._from_set(
-            obj, jdata=jdata, auto_select_tables=auto_select_tables)
+            obj, jdata=jdata, auto_select_tables=auto_select_tables
+        )
 
     def _left_join_set_builder(self, jdata):
         return JoinedSet._from_set(
-            self, ljdata=jdata, auto_select_tables=[self._model_.table])
+            self, ljdata=jdata, auto_select_tables=[self._model_.table]
+        )
 
     def _run_select_(self, *fields, **options):
         tablemap = self.db._adapter.tables(
@@ -716,18 +718,15 @@ class Set(_Set):
         #: match has_many
         rel = self._model_._hasmany_ref_.get(arg)
         if rel:
-            if isinstance(rel, dict) and rel.get('via'):
+            if rel.via:
                 r = RelationBuilder(rel, self._model_._instance_()).via()
                 return r[0], r[1]._table, 'many'
-            else:
-                r = RelationBuilder(rel, self._model_._instance_())
-                return r.many(), rel.table, 'many'
+            r = RelationBuilder(rel, self._model_._instance_())
+            return r.many(), rel.table, 'many'
         #: match belongs_to and refers_to
-        rel = self._model_._belongs_ref_.get(arg)
+        rel = self._model_._belongs_fks_.get(arg)
         if rel:
-            r = RelationBuilder(
-                (rel.model, arg), self._model_._instance_()
-            ).belongs_query()
+            r = RelationBuilder(rel, self._model_._instance_()).belongs_query()
             return r, self._model_.db[rel.model], 'belongs'
         #: match has_one
         rel = self._model_._hasone_ref_.get(arg)
@@ -735,8 +734,8 @@ class Set(_Set):
             r = RelationBuilder(rel, self._model_._instance_())
             return r.many(), rel.table, 'one'
         raise RuntimeError(
-            'Unable to find %s relation of %s model' %
-            (arg, self._model_.__name__))
+            f'Unable to find {arg} relation of {self._model_.__name__} model'
+        )
 
     def _parse_left_rjoins(self, args):
         if not isinstance(args, (list, tuple)):
@@ -906,7 +905,7 @@ class HasManySet(RelationSet):
 
     def remove(self, obj):
         attrs, is_delete = {ref: None for ref, _ in self._fields_}, False
-        if self._model_._relations_fks_[self._relation_.ref.reverse].is_refers:
+        if self._model_._belongs_fks_[self._relation_.ref.reverse].is_refers:
             rv = self.db(self._model_._query_row(obj)).validate_and_update(
                 **attrs
             )
@@ -960,13 +959,10 @@ class HasManyViaSet(RelationSet):
     def _get_relation_fields(self):
         viadata = self._viadata.data
         manyref = self._model_._hasmany_ref_[viadata.via]
-        fkdata = manyref.model_instance._relations_fks_
+        fkdata = manyref.model_instance._belongs_fks_
         jref = fkdata[viadata.field or viadata.name[:-1]]
         fields_src = manyref.fields
-        fields_dst = [
-            (local, jref.foreign_fields[idx])
-            for idx, local in enumerate(jref.local_fields)
-        ]
+        fields_dst = list(jref.coupled_fields)
         return fields_src, fields_dst
 
     def _fields_from_scopes(self):
@@ -1018,32 +1014,34 @@ class HasManyViaSet(RelationSet):
 class JoinedSet(Set):
     @classmethod
     def _from_set(cls, obj, jdata=[], ljdata=[], auto_select_tables=[]):
-        rv = cls(
-            obj.db, obj.query, obj.query.ignore_common_filters, obj._model_)
+        rv = cls(obj.db, obj.query, obj.query.ignore_common_filters, obj._model_)
         rv._stable_ = obj._model_.tablename
         rv._jdata_ = list(jdata)
         rv._ljdata_ = list(ljdata)
         rv._auto_select_tables_ = list(auto_select_tables)
+        rv._pks_ = obj._model_._instance_()._fieldset_pk
         return rv
 
     def _clone(self, ignore_common_filters=None, model=None, **changes):
-        rv = super(JoinedSet, self)._clone(
-            ignore_common_filters, model, **changes)
+        rv = super()._clone(ignore_common_filters, model, **changes)
         rv._stable_ = self._stable_
         rv._jdata_ = self._jdata_
         rv._ljdata_ = self._ljdata_
         rv._auto_select_tables_ = self._auto_select_tables_
+        rv._pks_ = self._pks_
         return rv
 
     def _join_set_builder(self, obj, jdata, auto_select_tables):
         return JoinedSet._from_set(
             obj, jdata=self._jdata_ + jdata, ljdata=self._ljdata_,
-            auto_select_tables=self._auto_select_tables_ + auto_select_tables)
+            auto_select_tables=self._auto_select_tables_ + auto_select_tables
+        )
 
     def _left_join_set_builder(self, jdata):
         return JoinedSet._from_set(
             self, jdata=self._jdata_, ljdata=self._ljdata_ + jdata,
-            auto_select_tables=self._auto_select_tables_)
+            auto_select_tables=self._auto_select_tables_
+        )
 
     def _iterselect_rows(self, *fields, **options):
         tablemap = self.db._adapter.tables(
@@ -1076,6 +1074,13 @@ class JoinedSet(Set):
             _jdata=self._jdata_ + self._ljdata_
         )
 
+    def _select_rowpks_extractor(self, row):
+        if not set(row.keys()).issuperset(self._pks_):
+            return None
+        if len(self._pks_) > 1:
+            return tuple(row[pk] for pk in self._pks_)
+        return row[tuple(self._pks_)[0]]
+
     def _run_select_(self, *fields, **options):
         #: build parsers
         belongs_j, one_j, many_j = self._split_joins(self._jdata_)
@@ -1098,12 +1103,14 @@ class JoinedSet(Set):
         rowmap = OrderedDict()
         inclusions = defaultdict(
             lambda: {
-                jname: OrderedDict() for jname, jtable in (many_j + many_l)})
+                jname: OrderedDict() for jname, _ in (many_j + many_l)
+            }
+        )
         for row in rows:
             if self._stable_ not in row:
                 plainrows.append(row)
                 continue
-            rid = getattr(row[self._stable_], "id", None)
+            rid = self._select_rowpks_extractor(row[self._stable_])
             if rid is None:
                 plainrows.append(row)
                 continue
@@ -1119,72 +1126,92 @@ class JoinedSet(Set):
     def _build_jparsers(self, belongs, one, many):
         rv = []
         for jname, jtable in belongs:
-            rv.append(self._jbelong_parser(jname, jtable, self.db))
+            rv.append(self._jbelong_parser(self.db, jname, jtable))
         for jname, jtable in one:
-            rv.append(self._jone_parser(jname, jtable))
+            rv.append(self._jone_parser(self.db, jname, jtable))
         for jname, jtable in many:
-            rv.append(self._jmany_parser(jname, jtable))
+            rv.append(self._jmany_parser(self.db, jname, jtable))
         return rv
 
     def _build_lparsers(self, belongs, one, many):
         rv = []
         for jname, jtable in belongs:
-            rv.append(self._lbelong_parser(jname, jtable, self.db))
+            rv.append(self._lbelong_parser(self.db, jname, jtable))
         for jname, jtable in one:
-            rv.append(self._lone_parser(jname, jtable))
+            rv.append(self._lone_parser(self.db, jname, jtable))
         for jname, jtable in many:
-            rv.append(self._lmany_parser(jname, jtable))
+            rv.append(self._lmany_parser(self.db, jname, jtable))
         return rv
 
     @staticmethod
-    def _jbelong_parser(fieldname, tablename, db):
+    def _jbelong_parser(db, fieldname, tablename):
+        rmodel = db[tablename]._model_
+
         def parser(rowmap, inclusions, row, rid):
-            rowmap[rid][fieldname] = JoinedIDReference._from_record(
-                row[tablename], db[tablename]
+            rowmap[rid][fieldname] = typed_row_reference_from_record(
+                row[tablename], rmodel
             )
         return parser
 
     @staticmethod
-    def _jone_parser(fieldname, tablename):
+    def _jone_parser(db, fieldname, tablename):
         def parser(rowmap, inclusions, row, rid):
             rowmap[rid][fieldname]._cached_resultset = row[tablename]
         return parser
 
     @staticmethod
-    def _jmany_parser(fieldname, tablename):
+    def _jmany_parser(db, fieldname, tablename):
+        rmodel = db[tablename]._model_
+        pks = rmodel.primary_keys or ["id"]
+        ext = lambda row: tuple(row[pk] for pk in pks) if len(pks) > 1 else row[pks[0]]
+
         def parser(rowmap, inclusions, row, rid):
-            inclusions[rid][fieldname][row[tablename].id] = \
+            inclusions[rid][fieldname][ext(row[tablename])] = \
                 inclusions[rid][fieldname].get(
-                    row[tablename].id, row[tablename]
+                    ext(row[tablename]), row[tablename]
                 )
         return parser
 
     @staticmethod
-    def _lbelong_parser(fieldname, tablename, db):
+    def _lbelong_parser(db, fieldname, tablename):
+        rmodel = db[tablename]._model_
+        pks = rmodel.primary_keys or ["id"]
+        check = lambda row: all(row[pk] for pk in pks)
+
         def parser(rowmap, inclusions, row, rid):
-            if not row[tablename].id:
+            if not check(row[tablename]):
                 return
-            rowmap[rid][fieldname] = JoinedIDReference._from_record(
-                row[tablename], db[tablename]
+            rowmap[rid][fieldname] = typed_row_reference_from_record(
+                row[tablename], rmodel
             )
         return parser
 
     @staticmethod
-    def _lone_parser(fieldname, tablename):
+    def _lone_parser(db, fieldname, tablename):
+        rmodel = db[tablename]._model_
+        pks = rmodel.primary_keys or ["id"]
+        check = lambda row: all(row[pk] for pk in pks)
+
         def parser(rowmap, inclusions, row, rid):
-            if not row[tablename].id:
+            if not check(row[tablename]):
                 return
             rowmap[rid][fieldname]._cached_resultset = row[tablename]
         return parser
 
     @staticmethod
-    def _lmany_parser(fieldname, tablename):
+    def _lmany_parser(db, fieldname, tablename):
+        rmodel = db[tablename]._model_
+        pks = rmodel.primary_keys or ["id"]
+        ext = lambda row: tuple(row[pk] for pk in pks) if len(pks) > 1 else row[pks[0]]
+        check = lambda row: all(row[pk] for pk in pks)
+
         def parser(rowmap, inclusions, row, rid):
-            if not row[tablename].id:
+            if not check(row[tablename]):
                 return
-            inclusions[rid][fieldname][row[tablename].id] = \
+            inclusions[rid][fieldname][ext(row[tablename])] = \
                 inclusions[rid][fieldname].get(
-                    row[tablename].id, row[tablename])
+                    ext(row[tablename]), row[tablename]
+                )
         return parser
 
 
@@ -1199,8 +1226,8 @@ class Row(_Row):
         for key, val in self.items():
             if isinstance(val, Row):
                 val = val.as_dict()
-            elif isinstance(val, _IDReference):
-                val = int(val)
+            elif isinstance(val, RowReferenceMixin):
+                val = val.__pure__()
             elif isinstance(val, decimal.Decimal):
                 val = float(val)
             elif not isinstance(val, self._as_dict_types_):
