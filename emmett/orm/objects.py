@@ -1226,14 +1226,14 @@ class Row(_Row):
         [datetime.datetime, datetime.date, datetime.time]
     )
 
-    def as_dict(self, datetime_to_str=False, custom_types=None):
+    def as_dict(self, datetime_to_str=False, custom_types=None, geo_coordinates=True):
         rv = {}
         for key, val in self.items():
             if isinstance(val, Row):
                 val = val.as_dict()
             elif isinstance(val, decimal.Decimal):
                 val = float(val)
-            elif isinstance(val, GeoFieldWrapper):
+            elif isinstance(val, GeoFieldWrapper) and geo_coordinates:
                 val = val.coordinates
             elif not isinstance(val, self._as_dict_types_):
                 continue
@@ -1250,7 +1250,7 @@ class Row(_Row):
         return xml_encode(self.as_dict(), key or 'row', quote)
 
     def __str__(self):
-        return '<Row {}>'.format(self.as_dict())
+        return '<Row {}>'.format(self.as_dict(geo_coordinates=False))
 
     def __repr__(self):
         return str(self)
