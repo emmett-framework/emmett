@@ -761,6 +761,8 @@ event.save()
 
 The `save` method will return a boolean representing the operation fulfillment, unless you call `save(raise_on_error=True)` which will produce an exception. 
 
+> **Note:** `save` will trigger both save callbacks and insert/update ones
+
 ### Record destroy method
 
 *New in version 2.4*
@@ -775,6 +777,8 @@ event.destroy()
 ```
 
 The `destroy` method will return a boolean representing the operation fulfillment, unless you call `destroy(raise_on_error=True)` which will produce an exception. 
+
+> **Note:** `destroy` will trigger both destroy callbacks and delete ones
 
 ### Record refresh method
 
