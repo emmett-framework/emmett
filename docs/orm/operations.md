@@ -75,6 +75,48 @@ In fact, you can access the attributes of the record you just created:
 
 We will see more about the `as_dict` method in the next paragraphs.
 
+### Spatial fields helpers
+
+Emmett provides some helpers on GIS fields (`geography` and `geometry` types) in order to simplify the workflow regarding these values.
+
+Whenever you have a GIS column:
+
+```python
+class City(Model):
+    name = Field.string()
+    location = Field.geography("POINT")
+```
+
+you can use the provided helpers from `emmett.orm.geo` module to produce fields' values:
+
+```python
+from emmett.orm import geo
+
+rv = City.create(
+    name="Hill Valley",
+    location=geo.Point(44, 12)
+)
+```
+
+Also, GIS fields values are sub-class of `str`, but they provides some additional attributes:
+
+```python
+>>> rv.id.location
+'POINT(44 12)'
+>>> rv.id.location.geometry
+'POINT'
+>>> rv.id.location.coordinates
+(44.0, 12.0)
+```
+
+On geometries representing collections, you also have the `groups` attribute:
+
+```python
+>>> mp = geo.MultiPoint((1, 1), (2, 2))
+>>> mp.groups
+('POINT(1.000000 1.000000)', 'POINT(2.000000 2.000000)')
+```
+
 Making queries
 --------------
 
