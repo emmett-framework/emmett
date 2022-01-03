@@ -41,8 +41,8 @@ db.posts
 > **Note:**   
 > Accessing `Model` refers to the model itself, while `db.Model` refers to the table instance you created with your model. While these two classes shares the fields of your models, so accessing `Model.fieldname` and `db.Model.fieldname` or `db.tablename.fieldname` will produce the same result, they have different properties and methods, and you should remember this difference.
 
-
 ### Tables naming
+
 Under default behavior, Emmett will create the table using the name of the class and making it plural, so that the class `Post` will create the table *posts*, `Comment` will create table *comments* and so on.   
 If you want to customize the name of the table, you can use the `tablename` attribute inside your model:
 
@@ -59,6 +59,7 @@ just ensure the name is valid for the DBMS you're using.
 
 Fields
 ------
+
 `Field` objects define your entity's properties, and will map the appropriate columns inside your tables, so in general you would write the name of the property and its type:
 
 ```python
@@ -134,6 +135,7 @@ While you can find the complete list of available validators in the [appropriate
 > `{'allow': 'blank'}` or `{'allow': 'empty'}`
 
 ### Disable default validation
+
 Sometimes you may want to disable the default validation implemented by Emmett. Depending on your needs, you have two different ways.   
 When you need to disable the default validation on a single `Field`, you can use the `auto_validation` parameter:
 
@@ -150,6 +152,7 @@ class MyModel(Model):
 
 Default values
 --------------
+
 Emmett models have a `default_values` attribute that helps you to set the default value for the field on record insertions:
 
 ```python
@@ -168,6 +171,7 @@ The values defined in this way will be used on the insertion of new records in t
 
 Update values
 -------------
+
 As for the `default_values` attribute we've seen before, `update_values` helps you to set the default value for the field on record updates:
 
 ```python
@@ -242,6 +246,7 @@ Emmett supports some advanced options on defining indexes, see the [advanced cha
 
 Values representation
 ---------------------
+
 Sometimes you need to give a better representation for the value of your entity, for example rendering dates or shows only a portion of a text field. In these cases, the `repr_values` attribute of your models will help:
 
 ```python
@@ -264,9 +269,11 @@ started = Field.datetime(representation=lambda row, value: prettydate(value))
 
 Forms helpers
 -------------
+
 The `Model` attributes listed in this section are intended to be used for forms generation.
 
 ### Form labels
+
 Labels are useful to produce good titles for your fields in forms:
 
 ```python
@@ -284,6 +291,7 @@ started = Field.datetime(label=T("Opening date:"))
 ```
 
 ### Form info
+
 As for the labels, `form_info` attribute is useful to produce hints or helping blocks for your fields in forms:
 
 ```python
@@ -299,6 +307,7 @@ started = Field.datetime(info=T("some description here"))
 ```
 
 ### Widgets
+
 Widgets are used to produce the relevant input part in the form produced from your model. Every `Field` object has a default widget depending on the type you defined, for example the *datetime* has an `<input>` html tag of type *text*. When you need to customize the look of your input blocks in the form, you can use your own widgets and pass them to the model with the appropriate attribute:
 
 ```python
@@ -333,6 +342,7 @@ form_widgets = {
 
 The setup helper
 ----------------
+
 Sometimes you need to access your model attributes when defining other features, but, until now, we couldn't access the class or the instance itself. To avoid this problem, you can use the `setup` method of the model:
 
 ```python
@@ -343,9 +353,9 @@ def setup(self):
     field = self.table.fieldname
 ```
 
-
 Model methods
 -------------
+
 You can also define methods that will be available on the Model class itself. For instance, every Emmett model comes with some pre-defined methods, for example:
 
 ```python
@@ -353,12 +363,14 @@ MyModel.form()
 ```
 will create the form for the entity defined in your model.
 
-Other methods pre-defined in Emmett are:
+Here is the list of all pre-defined methods in Emmett:
 
 | method | description |
 | --- | --- |
-| validate | validates the values passed as parameters (field=value) and return an `sdict` of errors (that would be empty if the validation passed) |
-| create | insert a new record with the values passed (field=value) if they pass the validation |
+| new | returns a new record instance with specified parameters (field=value) |
+| create | insert a new record with specified parameters (field=value) if validation succeed |
+| validate | validates the specified parameters (field=value) and returns a `sdict` of errors (that would be empty if the validation passed) |
+| form | returns a new form instance for the current model |
 
 But how can you define additional methods?   
 Let's say, for example that you want a shortcut in your `Notification` model to set all the records to be *read* for a specific user, without writing down the query manually every time:
@@ -375,6 +387,7 @@ class Notification(Model):
             lambda n: n.user == user
         ).update(read=True)
 ```
+
 now you can easily set user's notification as read:
 
 ```python
