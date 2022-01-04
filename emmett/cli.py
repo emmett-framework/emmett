@@ -428,14 +428,13 @@ def set_db_value(ctx, param, value):
 
 @cli.group('migrations', short_help='Runs migration operations.')
 @click.option(
-    '--db', help='The db instance to use', callback=set_db_value,
-    is_eager=True)
+    '--db', help='The db instance to use', callback=set_db_value, is_eager=True
+)
 def migrations_cli(db):
     pass
 
 
-@migrations_cli.command(
-    'status', short_help='Shows current database revision.')
+@migrations_cli.command('status', short_help='Shows current database revision.')
 @click.option('--verbose', '-v', default=False, is_flag=True)
 @pass_script_info
 def migrations_status(info, verbose):
@@ -457,9 +456,12 @@ def migrations_history(info, range, verbose):
 
 
 @migrations_cli.command(
-    'generate', short_help='Generate a new migration from application models.')
-@click.option('--message', '-m', default='Generated migration',
-              help='The description for the new migration.')
+    'generate', short_help='Generates a new migration from application models.'
+)
+@click.option(
+    '--message', '-m', default='Generated migration',
+    help='The description for the new migration.'
+)
 @click.option('-head', default='head', help='The migration to generate from')
 @pass_script_info
 def migrations_generate(info, message, head):
@@ -469,9 +471,11 @@ def migrations_generate(info, message, head):
     generate(app, dbs, message, head)
 
 
-@migrations_cli.command('new', short_help='Generate a new empty migration.')
-@click.option('--message', '-m', default='New migration',
-              help='The description for the new migration.')
+@migrations_cli.command('new', short_help='Generates a new empty migration.')
+@click.option(
+    '--message', '-m', default='New migration',
+    help='The description for the new migration.'
+)
 @click.option('-head', default='head', help='The migration to generate from')
 @pass_script_info
 def migrations_new(info, message, head):
@@ -515,6 +519,24 @@ def migrations_down(info, revision, dry_run):
     app = info.load_app()
     dbs = info.load_db()
     down(app, dbs, revision, dry_run)
+
+
+@migrations_cli.command(
+    'set', short_help='Overrides database revision with selected migration.'
+)
+@click.option('--revision', '-r', default='head', help='The migration to set.')
+@click.option(
+    '--auto-confirm',
+    default=False,
+    is_flag=True,
+    help='Skip asking confirmation.'
+)
+@pass_script_info
+def migrations_set(info, revision, auto_confirm):
+    from .orm.migrations.commands import set_revision
+    app = info.load_app()
+    dbs = info.load_db()
+    set_revision(app, dbs, revision, auto_confirm)
 
 
 def main(as_module=False):
