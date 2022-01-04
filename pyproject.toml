@@ -28,14 +28,12 @@ classifiers = [
 ]
 
 packages = [
-    {include = "emmett"},
+    {include = "emmett/**/*.*", format = "sdist" },
     {include = "tests", format = "sdist"}
 ]
 include = [
     "CHANGES.md",
     "LICENSE",
-    "emmett/orm/migrations/migration.tmpl",
-    "emmett/assets/**/*",
     "docs/**/*"
 ]
 

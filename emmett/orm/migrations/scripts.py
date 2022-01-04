@@ -19,9 +19,12 @@ import sys
 
 from contextlib import contextmanager
 from datetime import datetime
+from importlib import resources
+
 from renoir import Renoir
 
 from ...html import asis
+from . import __name__ as __pkg__
 from .base import Migration
 from .exceptions import (
     RangeNotAncestorError, MultipleHeads, ResolutionError, RevisionError
@@ -146,7 +149,8 @@ class ScriptDir(object):
         return filename
 
     def _generate_template(self, filename, ctx):
-        rendered = self.templater.render('migration.tmpl', ctx)
+        tmpl_source = resources.read_text(__pkg__, 'migration.tmpl')
+        rendered = self.templater._render(source=tmpl_source, context=ctx)
         with open(os.path.join(self.path, filename), 'w') as f:
             f.write(rendered)
 
