@@ -37,16 +37,21 @@ CALLBACK_OPS = {
     "before_insert": [],
     "before_update": [],
     "before_delete": [],
+    "before_save":[],
+    "before_destroy": [],
     "after_insert": [],
     "after_update": [],
-    "after_delete": []
+    "after_delete": [],
+    "after_save":[],
+    "after_destroy": []
 }
 COMMIT_CALLBACKS = {
     "all": [],
     "insert": [],
     "update": [],
     "delete": [],
-    "save": []
+    "save": [],
+    "destroy": []
 }
 
 
@@ -391,6 +396,14 @@ class CommitWatcher(Model):
     @after_commit.operation(TransactionOps.save)
     def _commit_watch_after_save(self, ctx):
         COMMIT_CALLBACKS["save"].append(("after", ctx))
+
+    @before_commit.operation(TransactionOps.destroy)
+    def _commit_watch_before_destroy(self, ctx):
+        COMMIT_CALLBACKS["destroy"].append(("before", ctx))
+
+    @after_commit.operation(TransactionOps.destroy)
+    def _commit_watch_after_destroy(self, ctx):
+        COMMIT_CALLBACKS["destroy"].append(("after", ctx))
 
 
 @pytest.fixture(scope='module')
@@ -765,6 +778,126 @@ def test_commit_callbacks(db):
 
     COMMIT_CALLBACKS["all"].clear()
     COMMIT_CALLBACKS["save"].clear()
+
+    #: destroy
+    row.destroy()
+    assert not COMMIT_CALLBACKS["all"]
+    assert not COMMIT_CALLBACKS["destroy"]
+    db.commit()
+
+    assert len(COMMIT_CALLBACKS["all"]) == 4
+    assert len(COMMIT_CALLBACKS["destroy"]) == 2
+
+    before_del, before_destroy, after_del, after_destroy = COMMIT_CALLBACKS["all"]
+
+    order, op_type, ctx = before_del
+    assert order == "before"
+    assert op_type == TransactionOps.delete
+    assert ctx.dbset
+    assert ctx.return_value == 1
+
+    order, op_type, ctx = after_del
+    assert order == "after"
+    assert op_type == TransactionOps.delete
+    assert ctx.dbset
+    assert ctx.return_value == 1
+
+    order, op_type, ctx = before_destroy
+    assert order == "before"
+    assert op_type == TransactionOps.destroy
+    assert ctx.dbset
+    assert ctx.return_value == 1
+    assert ctx.row.id == row.id
+
+    order, op_type, ctx = after_destroy
+    assert order == "after"
+    assert op_type == TransactionOps.destroy
+    assert ctx.dbset
+    assert ctx.return_value == 1
+    assert ctx.row.id == row.id
+
+    before_destroy, after_destroy = COMMIT_CALLBACKS["destroy"]
+
+    order, ctx = before_destroy
+    assert order == "before"
+    assert ctx.dbset
+    assert ctx.return_value == 1
+    assert ctx.row.id == row.id
+
+    order, ctx = after_destroy
+    assert order == "after"
+    assert ctx.dbset
+    assert ctx.return_value == 1
+    assert ctx.row.id == row.id
+
+    COMMIT_CALLBACKS["all"].clear()
+    COMMIT_CALLBACKS["destroy"].clear()
+
+
+def test_callbacks_skip(db):
+    for stack in CALLBACK_OPS.values():
+        stack.clear()
+    for stack in COMMIT_CALLBACKS.values():
+        stack.clear()
+
+    #: insert
+    row = db.CommitWatcher.insert(foo="test1", skip_callbacks=True)
+    db.commit()
+    assert not CALLBACK_OPS["before_insert"]
+    assert not CALLBACK_OPS["after_insert"]
+    assert not COMMIT_CALLBACKS["all"]
+    assert not COMMIT_CALLBACKS["insert"]
+
+    #: update
+    row.update_record(foo="test1a", skip_callbacks=True)
+    db.commit()
+    assert not CALLBACK_OPS["before_update"]
+    assert not CALLBACK_OPS["after_update"]
+    assert not COMMIT_CALLBACKS["all"]
+    assert not COMMIT_CALLBACKS["update"]
+
+    #: delete
+    row.delete_record(skip_callbacks=True)
+    db.commit()
+    assert not CALLBACK_OPS["before_delete"]
+    assert not CALLBACK_OPS["after_delete"]
+    assert not COMMIT_CALLBACKS["all"]
+    assert not COMMIT_CALLBACKS["delete"]
+
+    #: save:insert
+    row = CommitWatcher.new(foo="test2")
+    row.save(skip_callbacks=True)
+    db.commit()
+    assert not CALLBACK_OPS["before_save"]
+    assert not CALLBACK_OPS["after_save"]
+    assert not CALLBACK_OPS["before_insert"]
+    assert not CALLBACK_OPS["after_insert"]
+    assert not COMMIT_CALLBACKS["all"]
+    assert not COMMIT_CALLBACKS["save"]
+    assert not COMMIT_CALLBACKS["insert"]
+
+    #: save:update
+    row.foo = "test2a"
+    row.save(skip_callbacks=True)
+    db.commit()
+    assert not CALLBACK_OPS["before_save"]
+    assert not CALLBACK_OPS["after_save"]
+    assert not CALLBACK_OPS["before_update"]
+    assert not CALLBACK_OPS["after_update"]
+    assert not COMMIT_CALLBACKS["all"]
+    assert not COMMIT_CALLBACKS["save"]
+    assert not COMMIT_CALLBACKS["update"]
+
+    #: destroy
+    row.destroy(skip_callbacks=True)
+    db.commit()
+    assert not CALLBACK_OPS["before_destroy"]
+    assert not CALLBACK_OPS["after_destroy"]
+    assert not CALLBACK_OPS["before_delete"]
+    assert not CALLBACK_OPS["after_delete"]
+    assert not COMMIT_CALLBACKS["all"]
+    assert not COMMIT_CALLBACKS["destroy"]
+    assert not COMMIT_CALLBACKS["delete"]
 
 
 def test_rowattrs(db):

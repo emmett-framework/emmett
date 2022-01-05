@@ -727,10 +727,12 @@ class Model(metaclass=MetaModel):
                     "_before_commit_update",
                     "_before_commit_delete",
                     "_before_commit_save",
+                    "_before_commit_destroy",
                     "_after_commit_insert",
                     "_after_commit_update",
                     "_after_commit_delete",
-                    "_after_commit_save"
+                    "_after_commit_save",
+                    "_after_commit_destroy"
                 ]:
                     getattr(self.table, t).append(
                         lambda a, obj=obj, self=self: obj.f(self, a)
@@ -886,7 +888,7 @@ class Model(metaclass=MetaModel):
         return inst._rowclass_(rowattrs, __concrete=False)
 
     @classmethod
-    def create(cls, *args, **kwargs):
+    def create(cls, *args, skip_callbacks=False, **kwargs):
         inst = cls._instance_()
         if args:
             if isinstance(args[0], (dict, sdict)):
@@ -896,7 +898,7 @@ class Model(metaclass=MetaModel):
             reldata = inst._compound_relations_[field]
             for local_field, foreign_field in reldata.coupled_fields:
                 kwargs[local_field] = kwargs[field][foreign_field]
-        return cls.table.validate_and_insert(**kwargs)
+        return cls.table.validate_and_insert(skip_callbacks=skip_callbacks, **kwargs)
 
     @classmethod
     def validate(cls, row):
@@ -957,20 +959,20 @@ class Model(metaclass=MetaModel):
         return cls.table(**kwargs)
 
     @rowmethod('update_record')
-    def _update_record(self, row, **fields):
+    def _update_record(self, row, skip_callbacks=False, **fields):
         newfields = fields or dict(row)
         for field_name in set(newfields.keys()) - self._fieldset_editable:
             del newfields[field_name]
         res = self.db(
             self._query_row(row), ignore_common_filters=True
-        ).update(**newfields)
+        ).update(skip_callbacks=skip_callbacks, **newfields)
         if res:
             row.update(self.get(**{key: row[key] for key in self._fieldset_pk}))
         return row
 
     @rowmethod('delete_record')
-    def _delete_record(self, row):
-        return self.db(self._query_row(row)).delete()
+    def _delete_record(self, row, skip_callbacks=False):
+        return self.db(self._query_row(row)).delete(skip_callbacks=skip_callbacks)
 
     @rowmethod('refresh')
     def _row_refresh(self, row) -> bool:
@@ -987,7 +989,12 @@ class Model(metaclass=MetaModel):
         return True
 
     @rowmethod('save')
-    def _row_save(self, row, raise_on_error: bool = False) -> bool:
+    def _row_save(
+        self,
+        row,
+        raise_on_error: bool = False,
+        skip_callbacks: bool = False
+    ) -> bool:
         if row._concrete:
             if set(row._changes.keys()) & self._fieldset_pk:
                 if raise_on_error:
@@ -1007,13 +1014,13 @@ class Model(metaclass=MetaModel):
         if row._concrete:
             res = self.db(
                 self._query_row(row), ignore_common_filters=True
-            )._update_from_save(self, row)
+            )._update_from_save(self, row, skip_callbacks=skip_callbacks)
             if not res:
                 if raise_on_error:
                     raise UpdateFailureOnSave
                 return False
         else:
-            self.table._insert_from_save(row)
+            self.table._insert_from_save(row, skip_callbacks=skip_callbacks)
             if not row._concrete:
                 if raise_on_error:
                     raise InsertFailureOnSave
@@ -1022,12 +1029,17 @@ class Model(metaclass=MetaModel):
         return True
 
     @rowmethod('destroy')
-    def _row_destroy(self, row, raise_on_error: bool = False) -> bool:
+    def _row_destroy(
+        self,
+        row,
+        raise_on_error: bool = False,
+        skip_callbacks: bool = False
+    ) -> bool:
         if not row._concrete:
             return False
         res = self.db(
             self._query_row(row), ignore_common_filters=True
-        )._delete_from_destroy(self, row)
+        )._delete_from_destroy(self, row, skip_callbacks=skip_callbacks)
         if not res:
             if raise_on_error:
                 raise DestroyException

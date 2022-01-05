@@ -356,38 +356,34 @@ class Todo(Model):
         my_queue_system.store_activity("deletion", ctx.row, ctx.changes)
 ```
 
-Skip update callbacks
----------------------
+Skip callbacks
+--------------
 
-Sometimes you would need to skip the invocation of the update callbacks, for example when you want to mutually *touch* related entities during the update of one of the sides of the relation. In these cases, you can use the `update_naive` method on the database sets that won't trigger the callbacks invocation.    
+*Changed in version 2.4*
+
+Sometimes you would need to skip the invocation of callbacks, for example when you want to mutually *touch* related entities during the update of one of the sides of the relation. In these cases, you can use the `skip_callbacks` parameter in the method you're calling.    
 Let's see this with an example:
 
 ```python
 class User(Model):
-    email = Field()
-    changed_at = Field.datetime()
     has_one('profile')
 
-    @after_update
-    def touch_profile(self, dbset, fields):
-        row = dbset.select().first()
-        self.db(
-            db.Profile.user == row.id
-        ).update_naive(
-            changed_at=row.changed_at
-        )
+    email = Field()
+    changed_at = Field.datetime()
+
+    @after_save
+    def touch_profile(self, row):
+        profile = row.profile()
+        profile.changed_at = row.changed_at
+        profile.save(skip_callbacks=True)
 
 class Profile(Model):
     belongs_to('user')
     language = Field()
     changed_at = Field.datetime()
     
-    @after_update
-    def touch_user(self, dbset, fields):
-        row = dbset.select().first()
-        self.db(
-            db.User.id == row.user
-        ).update_naive(
-            changed_at=row.changed_at
-        )
+    @after_save
+    def touch_user(self, row):
+        row.user.changed_at = row.changed_at
+        row.user.save(skip_callbacks=True)
 ```

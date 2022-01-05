@@ -136,52 +136,60 @@ class Table(_Table):
         fields = {key: row[key] for key in fieldset}
         return op_method(fields)
 
-    def insert(self, **fields):
+    def insert(self, skip_callbacks=False, **fields):
         row = self._fields_and_values_for_insert(fields)
-        if any(f(row) for f in self._before_insert):
+        if not skip_callbacks and any(f(row) for f in self._before_insert):
             return 0
         ret = self._db._adapter.insert(self, row.op_values())
-        if self._has_commit_insert_callbacks:
-            txn = self._db._adapter.top_transaction()
-            if txn:
-                txn._add_op(TransactionOp(
-                    TransactionOps.insert,
-                    self,
-                    TransactionOpContext(
-                        values=row,
-                        ret=ret
-                    )
-                ))
-        if ret and self._after_insert:
-            for f in self._after_insert:
-                f(row, ret)
+        if not skip_callbacks:
+            if self._has_commit_insert_callbacks:
+                txn = self._db._adapter.top_transaction()
+                if txn:
+                    txn._add_op(TransactionOp(
+                        TransactionOps.insert,
+                        self,
+                        TransactionOpContext(
+                            values=row,
+                            ret=ret
+                        )
+                    ))
+            if ret:
+                for f in self._after_insert:
+                    f(row, ret)
         return ret
 
-    def _insert_from_save(self, row):
-        if any(f(row) for f in self._before_save):
+    def validate_and_insert(self, skip_callbacks=False, **fields):
+        response, new_fields = self._validate_fields(fields)
+        if not response.errors:
+            response.id = self.insert(skip_callbacks=skip_callbacks, **new_fields)
+        return response
+
+    def _insert_from_save(self, row, skip_callbacks=False):
+        if not skip_callbacks and any(f(row) for f in self._before_save):
             return row
         fields = self._fields_and_values_for_save(
             row, self._model_._fieldset_initable, self._fields_and_values_for_insert
         )
-        ret = self.insert(**fields)
+        ret = self.insert(skip_callbacks=skip_callbacks, **fields)
         if ret:
             self._model_._set_row_persistence(row, ret)
-        if self._has_commit_save_callbacks:
-            txn = self._db._adapter.top_transaction()
-            if txn:
-                txn._add_op(TransactionOp(
-                    TransactionOps.save,
-                    self,
-                    TransactionOpContext(
-                        values=fields,
-                        ret=ret,
-                        row=row.clone_changed(),
-                        changes=row.changes
-                    )
-                ))
-        if row._concrete and self._after_save:
-            for f in self._after_save:
-                f(row)
+        if not skip_callbacks:
+            if self._has_commit_save_callbacks:
+                txn = self._db._adapter.top_transaction()
+                if txn:
+                    txn._add_op(TransactionOp(
+                        TransactionOps.save,
+                        self,
+                        TransactionOpContext(
+                            values=fields,
+                            ret=ret,
+                            row=row.clone_changed(),
+                            changes=row.changes
+                        )
+                    ))
+            if row._concrete:
+                for f in self._after_save:
+                    f(row)
         return row
 
 
@@ -546,49 +554,51 @@ class Set(_Set):
         options['_concrete_tables'] = concrete_tables
         return self.db._adapter.iterselect(self.query, fields, options)
 
-    def update(self, **update_fields):
+    def update(self, skip_callbacks=False, **update_fields):
         table = self._get_table_from_query()
         row = table._fields_and_values_for_update(update_fields)
         if not row._values:
             raise ValueError("No fields to update")
-        if any(f(self, row) for f in table._before_update):
+        if not skip_callbacks and any(f(self, row) for f in table._before_update):
             return 0
         ret = self.db._adapter.update(table, self.query, row.op_values())
-        if table._has_commit_update_callbacks:
-            txn = self._db._adapter.top_transaction()
-            if txn:
-                txn._add_op(TransactionOp(
-                    TransactionOps.update,
-                    table,
-                    TransactionOpContext(
-                        values=row,
-                        dbset=self,
-                        ret=ret
-                    )
-                ))
-        ret and [f(self, row) for f in table._after_update]
+        if not skip_callbacks:
+            if table._has_commit_update_callbacks:
+                txn = self._db._adapter.top_transaction()
+                if txn:
+                    txn._add_op(TransactionOp(
+                        TransactionOps.update,
+                        table,
+                        TransactionOpContext(
+                            values=row,
+                            dbset=self,
+                            ret=ret
+                        )
+                    ))
+            ret and [f(self, row) for f in table._after_update]
         return ret
 
-    def delete(self):
+    def delete(self, skip_callbacks=False):
         table = self._get_table_from_query()
-        if any(f(self) for f in table._before_delete):
+        if not skip_callbacks and any(f(self) for f in table._before_delete):
             return 0
         ret = self.db._adapter.delete(table, self.query)
-        if table._has_commit_delete_callbacks:
-            txn = self._db._adapter.top_transaction()
-            if txn:
-                txn._add_op(TransactionOp(
-                    TransactionOps.delete,
-                    table,
-                    TransactionOpContext(
-                        dbset=self,
-                        ret=ret
-                    )
-                ))
-        ret and [f(self) for f in table._after_delete]
+        if not skip_callbacks:
+            if table._has_commit_delete_callbacks:
+                txn = self._db._adapter.top_transaction()
+                if txn:
+                    txn._add_op(TransactionOp(
+                        TransactionOps.delete,
+                        table,
+                        TransactionOpContext(
+                            dbset=self,
+                            ret=ret
+                        )
+                    ))
+            ret and [f(self) for f in table._after_delete]
         return ret
 
-    def validate_and_update(self, **update_fields):
+    def validate_and_update(self, skip_callbacks=False, **update_fields):
         table = self._get_table_from_query()
         current._dbvalidation_record_id_ = None
         if table._unique_fields_validation_ and self.count() == 1:
@@ -614,86 +624,94 @@ class Set(_Set):
             row = table._fields_and_values_for_update(new_fields)
             if not row._values:
                 raise ValueError("No fields to update")
-            if any(f(self, row) for f in table._before_update):
+            if not skip_callbacks and any(f(self, row) for f in table._before_update):
                 ret = 0
             else:
                 ret = self.db._adapter.update(
-                    table, self.query, row.op_values())
-                ret and [f(self, row) for f in table._after_update]
+                    table, self.query, row.op_values()
+                )
+                if not skip_callbacks and ret:
+                    for f in table._after_update:
+                        f(self, row)
             response.updated = ret
         return response
 
-    def _update_from_save(self, model, row):
+    def _update_from_save(self, model, row, skip_callbacks=False):
         table: Table = model.table
-        if any(f(row) for f in table._before_save):
+        if not skip_callbacks and any(f(row) for f in table._before_save):
             return False
         fields = table._fields_and_values_for_save(
             row, model._fieldset_editable, table._fields_and_values_for_update
         )
-        if any(f(self, fields) for f in table._before_update):
+        if not skip_callbacks and any(f(self, fields) for f in table._before_update):
             return False
         ret = self.db._adapter.update(table, self.query, fields.op_values())
-        if table._has_commit_update_callbacks or table._has_commit_save_callbacks:
-            txn = self._db._adapter.top_transaction()
-            if txn and table._has_commit_update_callbacks:
-                txn._add_op(TransactionOp(
-                    TransactionOps.update,
-                    table,
-                    TransactionOpContext(
-                        values=fields,
-                        dbset=self,
-                        ret=ret
-                    )
-                ))
-            if txn and table._has_commit_save_callbacks:
-                txn._add_op(TransactionOp(
-                    TransactionOps.save,
-                    table,
-                    TransactionOpContext(
-                        values=fields,
-                        dbset=self,
-                        ret=ret,
-                        row=row.clone_changed(),
-                        changes=row.changes
-                    )
-                ))
-        ret and [f(self, fields) for f in table._after_update]
-        ret and [f(row) for f in table._after_save]
+        if not skip_callbacks:
+            if table._has_commit_update_callbacks or table._has_commit_save_callbacks:
+                txn = self._db._adapter.top_transaction()
+                if txn and table._has_commit_update_callbacks:
+                    txn._add_op(TransactionOp(
+                        TransactionOps.update,
+                        table,
+                        TransactionOpContext(
+                            values=fields,
+                            dbset=self,
+                            ret=ret
+                        )
+                    ))
+                if txn and table._has_commit_save_callbacks:
+                    txn._add_op(TransactionOp(
+                        TransactionOps.save,
+                        table,
+                        TransactionOpContext(
+                            values=fields,
+                            dbset=self,
+                            ret=ret,
+                            row=row.clone_changed(),
+                            changes=row.changes
+                        )
+                    ))
+            ret and [f(self, fields) for f in table._after_update]
+            ret and [f(row) for f in table._after_save]
         return bool(ret)
 
-    def _delete_from_destroy(self, model, row):
+    def _delete_from_destroy(self, model, row, skip_callbacks=False):
         table: Table = model.table
-        if any(f(row) for f in table._before_destroy):
+        if not skip_callbacks and any(f(row) for f in table._before_destroy):
             return False
-        if any(f(self) for f in table._before_delete):
+        if not skip_callbacks and any(f(self) for f in table._before_delete):
             return 0
         ret = self.db._adapter.delete(table, self.query)
         if ret:
             model._unset_row_persistence(row)
-        if table._has_commit_delete_callbacks or table._has_commit_destroy_callbacks:
-            txn = self._db._adapter.top_transaction()
-            if txn and table._has_commit_delete_callbacks:
-                txn._add_op(TransactionOp(
-                    TransactionOps.delete,
-                    table,
-                    TransactionOpContext(
-                        dbset=self,
-                        ret=ret
-                    )
-                ))
-            if txn and table._has_commit_destroy_callbacks:
-                txn._add_op(TransactionOp(
-                    TransactionOps.destroy,
-                    table,
-                    TransactionOpContext(
-                        dbset=self,
-                        ret=ret,
-                        row=row.clone_changed(),
-                        changes=row.changes
-                    )
-                ))
-        ret and [f(self) for f in table._after_delete]
-        ret and [f(row) for f in table._after_destroy]
+        if not skip_callbacks:
+            if (
+                table._has_commit_delete_callbacks or
+                table._has_commit_destroy_callbacks
+            ):
+                txn = self._db._adapter.top_transaction()
+                if txn and table._has_commit_delete_callbacks:
+                    txn._add_op(TransactionOp(
+                        TransactionOps.delete,
+                        table,
+                        TransactionOpContext(
+                            dbset=self,
+                            ret=ret
+                        )
+                    ))
+                if txn and table._has_commit_destroy_callbacks:
+                    txn._add_op(TransactionOp(
+                        TransactionOps.destroy,
+                        table,
+                        TransactionOpContext(
+                            dbset=self,
+                            ret=ret,
+                            row=row.clone_changed(),
+                            changes=row.changes
+                        )
+                    ))
+            ret and [f(self) for f in table._after_delete]
+            ret and [f(row) for f in table._after_destroy]
         return bool(ret)
 
     def join(self, *args):
@@ -829,14 +847,14 @@ class RelationSet(object):
     def _filter_reload(self, kwargs):
         return kwargs.pop('reload', False)
 
-    def create(self, **kwargs):
+    def create(self, skip_callbacks=False, **kwargs):
         attrs = self._get_fields_from_scopes(
             self._scopes_, self._model_.tablename
         )
         attrs.update(**kwargs)
         for ref, local in self._fields_:
             attrs[ref] = self._row_[local]
-        return self._model_.create(**attrs)
+        return self._model_.create(skip_callbacks=skip_callbacks, **attrs)
 
     @staticmethod
     def _get_fields_from_scopes(scopes, table_name):
@@ -889,7 +907,7 @@ class HasManySet(RelationSet):
             return self._last_resultset(refresh)
         return self.select(*args, **kwargs)
 
-    def add(self, obj):
+    def add(self, obj, skip_callbacks=False):
         attrs = self._get_fields_from_scopes(
             self._scopes_, self._model_.tablename
         )
@@ -897,7 +915,9 @@ class HasManySet(RelationSet):
         for ref, local in self._fields_:
             attrs[ref] = self._row_[local]
             rev_attrs[local] = attrs[ref]
-        rv = self.db(self._model_._query_row(obj)).validate_and_update(**attrs)
+        rv = self.db(self._model_._query_row(obj)).validate_and_update(
+            skip_callbacks=skip_callbacks, **attrs
+        )
         if rv:
             for key, val in attrs.items():
                 obj[key] = val
@@ -908,15 +928,18 @@ class HasManySet(RelationSet):
                 )
         return rv
 
-    def remove(self, obj):
+    def remove(self, obj, skip_callbacks=False):
         attrs, is_delete = {ref: None for ref, _ in self._fields_}, False
         if self._model_._belongs_fks_[self._relation_.ref.reverse].is_refers:
             rv = self.db(self._model_._query_row(obj)).validate_and_update(
+                skip_callbacks=skip_callbacks,
                 **attrs
             )
         else:
             is_delete = True
-            rv = self.db(self._model_._query_row(obj)).delete()
+            rv = self.db(self._model_._query_row(obj)).delete(
+                skip_callbacks=skip_callbacks
+            )
         if rv:
             for key, val in attrs.items():
                 obj[key] = val
@@ -982,7 +1005,7 @@ class HasManyViaSet(RelationSet):
     def create(self, **kwargs):
         raise RuntimeError('Cannot create third objects for many relations')
 
-    def add(self, obj, **kwargs):
+    def add(self, obj, skip_callbacks=False, **kwargs):
         # works on join tables only!
         if self._viadata.via is None:
             raise RuntimeError(self._via_error % 'add')
@@ -995,9 +1018,11 @@ class HasManyViaSet(RelationSet):
         for local_field, foreign_field in rel_fields:
             nrow[local_field] = obj[foreign_field]
         #: validate and insert
-        return self.db[self._viadata.via]._model_.create(nrow)
+        return self.db[self._viadata.via]._model_.create(
+            nrow, skip_callbacks=skip_callbacks
+        )
 
-    def remove(self, obj):
+    def remove(self, obj, skip_callbacks=False):
         # works on join tables only!
         if self._viadata.via is None:
             raise RuntimeError(self._via_error % 'remove')
@@ -1013,7 +1038,7 @@ class HasManyViaSet(RelationSet):
                 for local_field, foreign_field in rel_fields
             ]
         )
-        return self.db(query).delete()
+        return self.db(query).delete(skip_callbacks=skip_callbacks)
 
 
 class JoinedSet(Set):
