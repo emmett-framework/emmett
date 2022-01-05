@@ -18,6 +18,8 @@ Next
 - Added `before_commit` and `after_commit` ORM callbacks
 - Added changes tracking to ORM's rows
 - Added support to call super `rowmethod` decorated methods in ORM models
+- Added `migrations set` command to CLI
+- Added `skip_callbacks` parameter to relevant methods in ORM
 
 Version 2.3
 -----------
@@ -30,8 +32,8 @@ Released on August 12th 2021, codename Da Vinci
 - Added `dict` values support for `in` validations
 - Use optional `emmett-crypto` package for cryptographic functions
 - Deprecated `security.secure_dumps` and `security.secure_loads` in favour of new crypto package
-- Add `on_delete` option to `belongs_to` and `refers_to`
-- Add `--dry-run` option to migrations `up` and `down` commands
+- Added `on_delete` option to `belongs_to` and `refers_to`
+- Added `--dry-run` option to migrations `up` and `down` commands
 
 Version 2.2
 -----------
