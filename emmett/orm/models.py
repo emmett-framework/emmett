@@ -359,7 +359,7 @@ class Model(metaclass=MetaModel):
             self.fields.append(idfield)
         for name, obj in self._all_fields_.items():
             if obj.modelname is not None:
-                obj = Field(obj._type, *obj._args, **obj._kwargs)
+                obj = Field(obj._type, *obj._args, _kw=obj._ormkw, **obj._kwargs)
                 setattr(self.__class__, name, obj)
             self.fields.append(obj._make_field(name, self))
 
