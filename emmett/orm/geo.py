@@ -24,7 +24,7 @@ def Line(*coordinates):
 
 def Polygon(*coordinates_groups):
     try:
-        if not isinstance(coordinates_groups[0][0], tuple):
+        if not isinstance(coordinates_groups[0][0], (tuple, list)):
             coordinates_groups = (coordinates_groups,)
     except Exception:
         pass
