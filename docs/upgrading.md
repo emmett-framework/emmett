@@ -13,6 +13,26 @@ Just as a remind, you can update Emmett using *pip*:
 $ pip install -U emmett
 ```
 
+Version 2.4
+-----------
+
+Emmett 2.4 introduces some new features you might be interested into.
+
+### New features
+ 
+- The ability to use relative paths in [templates](./templates) `extend` and `include` blocks
+- GIS/spatial [fields](./orm/models#fields) and [operators]((./orm/operations#engine-specific-operators)) support in ORM
+- [Primary keys customisation](./orm/advanced#custom-primary-keys) support in ORM
+- A `watch` parameter to ORM [compute decorator](./orm/virtuals#computed-fields)
+- A [save method](./orm/operations#record-save-method) to rows and [relevant callbacks](./orm/callbacks#before_save) in ORM
+- A [destroy method](./orm/operations#record-destroy-method) to rows and [relevant callbacks](./orm/callbacks#before_destroy) in ORM
+- [Commit callbacks](./orm/callbacks#before_commit-and_after_commit) in ORM
+- [Changes tracking](./orm/operations#record-changes) to rows in ORM
+- The `set` command to [migrations](./orm/migrations) CLI
+- The ability to [skip callbacks](./orm/callbacks#skip-callbacks) in ORM
+
+Emmett 2.4 also introduces support for Python 3.10.
+
 Version 2.3
 -----------
 
