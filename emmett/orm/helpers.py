@@ -160,6 +160,14 @@ class RowReferenceMulti(RowReferenceMixin, tuple):
 
 class GeoFieldWrapper(str):
     _rule_parens = re.compile(r"^(\(+)(?:.+)$")
+    _json_geom_map = {
+        "POINT": "Point",
+        "LINESTRING": "LineString",
+        "POLYGON": "Polygon",
+        "MULTIPOINT": "MultiPoint",
+        "MULTILINESTRING": "MultiLineString",
+        "MULTIPOLYGON": "MultiPolygon"
+    }
 
     def __new__(cls, value, *args: Any, **kwargs: Any):
         geometry, raw_coords = value.strip()[:-1].split("(", 1)
@@ -221,6 +229,12 @@ class GeoFieldWrapper(str):
             self.__class__(f"{self._geometry[5:]}({self._repr_coords(coords)[0]})")
             for coords in self._coordinates
         )
+
+    def __json__(self):
+        return {
+            "type": self._json_geom_map[self._geometry],
+            "coordinates": self._coordinates
+        }
 
 
 class Reference(object):

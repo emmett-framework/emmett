@@ -1259,7 +1259,7 @@ class Row(_Row):
             elif isinstance(val, decimal.Decimal):
                 val = float(val)
             elif isinstance(val, GeoFieldWrapper) and geo_coordinates:
-                val = val.coordinates
+                val = val.__json__()
             elif not isinstance(val, self._as_dict_types_):
                 continue
             rv[key] = val
