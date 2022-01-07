@@ -150,17 +150,19 @@ class BaseForm(HtmlTag):
             rv = sdict()
         return rv
 
-    async def _process(self):
+    def _validate_input(self):
+        for field in self.writable_fields:
+            value = self._get_input_val(field)
+            self._validate_value(field, value)
+
+    async def _process(self, write_defaults=True):
         self._load_csrf()
         self.input_params = await self._load_input_params()
         self.input_files = await self._load_input_files()
         # run processing if needed
         if self._submitted:
             self.processed = True
-            # validate input
-            for field in self.writable_fields:
-                value = self._get_input_val(field)
-                self._validate_value(field, value)
+            self._validate_input()
             # custom validation
             if not self.errors and callable(self.onvalidation):
                 self.onvalidation(self)
@@ -173,11 +175,16 @@ class BaseForm(HtmlTag):
         if self.csrf and not self.accepted:
             self.formkey = current.session._csrf.gen_token()
         # reset default values in form
-        if not self.processed or (self.accepted and not self.keepvalues):
+        if (
+            write_defaults and (
+                not self.processed or (self.accepted and not self.keepvalues)
+            )
+        ):
             for field in self.fields:
-                default_value = field.default() if callable(field.default) \
-                    else field.default
-                self.input_params[field.name] = default_value
+                self.input_params[field.name] = (
+                    field.default() if callable(field.default) else
+                    field.default
+                )
         return self
 
     def _render(self):
@@ -292,9 +299,9 @@ class Form(BaseForm):
 class ModelForm(BaseForm):
     def __init__(
         self,
-        table: Table,
+        model: Type[Model],
         record: Optional[Row] = None,
-        record_id: Optional[int] = None,
+        record_id: Any = None,
         fields: Union[Dict[str, List[str]], List[str]] = None,
         exclude_fields: List[str] = [],
         csrf: Union[str, bool] = "auto",
@@ -308,8 +315,12 @@ class ModelForm(BaseForm):
         _method: str = "POST",
         **attributes
     ):
-        self.table = table
-        self.record = record or table(record_id)
+        self.model = model._instance_()
+        self.table: Table = self.model.table
+        self.record = record or (
+            self.model.get(record_id) if record_id else
+            self.model.new()
+        )
         #: build fields for form
         fields_list_all = []
         fields_list_writable = []
@@ -317,7 +328,7 @@ class ModelForm(BaseForm):
             #: developer has selected specific fields
             if not isinstance(fields, dict):
                 fields = {'writable': fields, 'readable': fields}
-            for field in table:
+            for field in self.table:
                 if field.name not in fields['readable']:
                     continue
                 fields_list_all.append(field)
@@ -325,7 +336,7 @@ class ModelForm(BaseForm):
                     fields_list_writable.append(field)
         else:
             #: use table fields
-            for field in table:
+            for field in self.table:
                 if field.name in exclude_fields:
                     continue
                 if not field.readable:
@@ -336,14 +347,11 @@ class ModelForm(BaseForm):
                 fields_list_all.append(field)
                 if field.writable:
                     fields_list_writable.append(field)
-                # if field.type != 'id' and field.writable and \
-                #         field.name not in exclude_fields:
-                #     self.fields.append(field)
         super().__init__(
             fields=fields_list_all,
             writable_fields=fields_list_writable,
             csrf=csrf,
-            id_prefix=table._tablename + "_",
+            id_prefix=self.table._tablename + "_",
             formstyle=formstyle,
             keepvalues=keepvalues,
             onvalidation=onvalidation,
@@ -354,80 +362,80 @@ class ModelForm(BaseForm):
             _method=_method
         )
 
-    def _validate_value(self, field, value):
-        if field.type == "upload" and self.record:
+    def _get_id_value(self):
+        if len(self.model._fieldset_pk) > 1:
+            return tuple(self.record[pk] for pk in self.model.primary_keys)
+        return self.record[self.table._id.name]
+
+    def _validate_input(self):
+        record, fields = self.record.clone(), {
+            field.name: self._get_input_val(field)
+            for field in self.writable_fields
+        }
+        for field in filter(lambda f: f.type == "upload", self.writable_fields):
+            val = fields[field.name]
             if (
-                (value == b"" or value is None) and
+                (val == b"" or val is None) and
                 not self.input_params.get(field.name + "__del", False) and
                 self.record[field.name]
             ):
-                return
-        super()._validate_value(field, value)
+                fields.pop(field.name)
+        record.update(fields)
+        errors = record.validation_errors
+        for field in self.writable_fields:
+            if field.name in errors:
+                self.errors[field.name] = errors[field.name]
+            elif field.type == "upload":
+                self.files[field.name] = fields[field.name]
+            else:
+                self.params[field.name] = fields[field.name]
 
-    async def _process(self):
+    async def _process(self, **kwargs):
         #: send record id to validators if needed
         current._dbvalidation_record_id_ = None
-        if self.record:
-            current._dbvalidation_record_id_ = self.record.id
+        if self.record._concrete:
+            current._dbvalidation_record_id_ = self._get_id_value()
         #: load super `_process`
-        # await Form._process(self)
-        await super()._process()
-        #: clear current and run additional operations for DAL
-        del current._dbvalidation_record_id_
+        await super()._process(write_defaults=False)
+        #: additional record logic
         if self.accepted:
-            for field in self.writable_fields:
-                #: handle uploads
-                if field.type == "upload":
-                    upload = self.files[field.name]
-                    del_field = field.name + "__del"
-                    if not upload.filename:
-                        if self.input_params.get(del_field, False):
-                            self.params[field.name] = (
-                                self.table[field.name].default or ""
-                            )
-                            # TODO: we want to physically delete file?
-                        else:
-                            if self.record and self.record[field.name]:
-                                self.params[field.name] = self.record[field.name]
-                        continue
+            #: handle uploads
+            for field in filter(lambda f: f.type == "upload", self.writable_fields):
+                upload = self.files[field.name]
+                del_field = field.name + "__del"
+                if not upload.filename:
+                    if self.input_params.get(del_field, False):
+                        self.params[field.name] = self.table[field.name].default or ""
+                        # TODO: do we want to physically delete file?
                     else:
-                        source_file, original_filename = (
-                            upload.stream, upload.filename
-                        )
-                    newfilename = field.store(
-                        source_file, original_filename, field.uploadfolder
-                    )
-                    if isinstance(field.uploadfield, str):
-                        self.params[field.uploadfield] = source_file.read()
-                    self.params[field.name] = newfilename
-            #: add default values to hidden fields if needed
-            if not self.record:
-                fieldnames = [field.name for field in self.writable_fields]
-                for field in self.table:
-                    if field.name not in fieldnames and field.compute is None:
-                        if field.default is not None:
-                            def_val = (
-                                field.default() if callable(field.default) else
-                                field.default
-                            )
-                            self.params[field.name] = def_val
-            if self.record:
-                self.record.update_record(**self.params)
-            else:
-                self.params.id = self.table.insert(**self.params)
+                        if self.record._concrete and self.record[field.name]:
+                            self.params[field.name] = self.record[field.name]
+                    continue
+                else:
+                    source_file, original_filename = upload.stream, upload.filename
+                newfilename = field.store(
+                    source_file, original_filename, field.uploadfolder
+                )
+                if isinstance(field.uploadfield, str):
+                    self.params[field.uploadfield] = source_file.read()
+                self.params[field.name] = newfilename
+            #: perform save
+            self.record.update(self.params)
+            if self.record.save():
+                self.params.id = self._get_id_value()
+        #: clear current from validation data
+        del current._dbvalidation_record_id_
+        #: cleanup inputs
         if not self.processed or (self.accepted and not self.keepvalues):
             for field in self.fields:
-                if self.record:
-                    self.input_params[field.name] = self.record[field.name]
                 self.input_params[field.name] = field.formatter(
-                    self.input_params[field.name]
+                    self.record[field.name]
                 )
-        elif self.processed and not self.accepted and self.record:
+        elif self.processed and not self.accepted and self.record._concrete:
             for field in self.writable_fields:
                 if field.type == "upload" and field.name not in self.params:
-                    self.input_params[field.name] = self.record[field.name]
                     self.input_params[field.name] = field.formatter(
-                        self.input_params[field.name]
+                        self.record[field.name]
                     )
         return self
 
@@ -716,7 +724,7 @@ class FormStyle:
 def add_form_on_model(cls):
     @wraps(cls)
     def wrapped(model, *args, **kwargs):
-        return cls(model.table, *args, **kwargs)
+        return cls(model, *args, **kwargs)
     return wrapped
 
 

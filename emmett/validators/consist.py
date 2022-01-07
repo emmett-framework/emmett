@@ -96,6 +96,8 @@ class isTime(_is):
         return super().__call__(value.lower() if value else value)
 
     def check(self, value):
+        if isinstance(value, time):
+            return value, None
         val = self.rule.match(value)
         try:
             (h, m, s) = (int(val.group('h')), 0, 0)

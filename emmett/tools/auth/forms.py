@@ -148,8 +148,8 @@ def profile_form(auth, fields, **kwargs):
         'keepvalues': True}
     opts.update(**kwargs)
     return ModelForm(
-        auth.models['user'].table,
-        record=auth.user,
+        auth.models['user'],
+        record_id=auth.user.id,
         fields=fields,
         upload=auth.ext.exposer.url('download'),
         **opts

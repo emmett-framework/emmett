@@ -901,17 +901,19 @@ class Model(metaclass=MetaModel):
         return cls.table.validate_and_insert(skip_callbacks=skip_callbacks, **kwargs)
 
     @classmethod
-    def validate(cls, row):
-        inst, row, errors = cls._instance_(), sdict(row), sdict()
+    def validate(cls, row, write_values: bool = False):
+        inst, errors = cls._instance_(), sdict()
         for field_name in inst._fieldset_all:
             field = inst.table[field_name]
             default = getattr(field, 'default')
             if callable(default):
                 default = default()
             value = row.get(field_name, default)
-            _, error = field.validate(value)
+            new_value, error = field.validate(value)
             if error:
                 errors[field_name] = error
+            elif new_value is not None and write_values:
+                row[field_name] = new_value
         return errors
 
     @classmethod
@@ -1007,7 +1009,8 @@ class Model(metaclass=MetaModel):
                 if callable(val):
                     val = val()
                 row[field_name] = val
-        if not row.is_valid:
+        errors = self.validate(row, write_values=True)
+        if errors:
             if raise_on_error:
                 raise ValidationError
             return False
