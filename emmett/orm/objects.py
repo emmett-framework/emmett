@@ -1266,7 +1266,7 @@ class Row(_Row):
         return rv
 
     def __getstate__(self):
-        return self.as_dict()
+        return self.as_dict(geo_coordinates=False)
 
     def __json__(self):
         return self.as_dict()

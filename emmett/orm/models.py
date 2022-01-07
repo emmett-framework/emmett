@@ -1094,6 +1094,26 @@ class StructuredRow(Row):
     def __setitem__(self, key, value):
         self.__setattr__(key, value)
 
+    def __getstate__(self):
+        return {
+            "__data": self.__dict__.copy(),
+            "__struct": {
+                "_concrete": self._concrete,
+                "_changes": {},
+                "_compound_rel_mappers": {}
+            }
+        }
+
+    def __setstate__(self, state):
+        self.__dict__.update(state["__data"])
+        for key, val in state["__struct"].items():
+            object.__setattr__(self, key, val)
+        if self._model._compound_relations_:
+            for key, data in self._model._compound_relations_.items():
+                self._compound_rel_mappers[key] = RowRelationMapper(
+                    self._model.db, data
+                )
+
     def update(self, *args, **kwargs):
         for arg in args:
             for key, val in arg.items():
