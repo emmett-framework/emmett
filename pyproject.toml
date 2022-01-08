@@ -52,13 +52,13 @@ python-rapidjson = "^1.0"
 pyyaml = "^5.4"
 renoir = "^1.5"
 severus = "^1.1"
-uvicorn = "0.15.0"
-websockets = "^9.1"
+uvicorn = "0.16.0"
+websockets = "^10.0"
 
 httptools = { version = "~0.3.0", markers = "sys_platform != 'win32'" }
 uvloop = { version = "~0.16.0", markers = "sys_platform != 'win32'" }
 
-orjson = { version = "~3.5.1", optional = true }
+orjson = { version = "~3.6.5", optional = true }
 emmett-crypto = { version = "^0.2.0", optional = true }
 
 [tool.poetry.dev-dependencies]
