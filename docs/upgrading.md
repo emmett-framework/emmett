@@ -16,7 +16,9 @@ $ pip install -U emmett
 Version 2.4
 -----------
 
-Emmett 2.4 introduces some new features you might be interested into.
+Emmett 2.4 release is highly focused on the included ORM.
+
+This release doesn't introduce any deprecation or breaking change, but some new features you might be interested into.
 
 ### New features
  
