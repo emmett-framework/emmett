@@ -20,6 +20,7 @@ Next
 - Added support to call super `rowmethod` decorated methods in ORM models
 - Added `migrations set` command to CLI
 - Added `skip_callbacks` parameter to relevant methods in ORM
+- ORM now automatically adds appropriate indexes for `unique` fields
 
 Version 2.3
 -----------

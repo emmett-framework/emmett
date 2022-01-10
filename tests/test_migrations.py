@@ -198,6 +198,7 @@ def test_step_four_alter_table(app):
 
 class StepFiveThing(Model):
     name = Field()
+    code = Field(unique=True)
     value = Field.int()
     created_at = Field.datetime()
 
@@ -219,6 +220,7 @@ class StepFiveThingEdit(StepFiveThing):
 
 
 _step_five_sql_before = [
+    'CREATE UNIQUE INDEX "step_five_things_widx__code_unique" ON "step_five_things" ("code");',
     'CREATE INDEX "step_five_things_widx__name" ON "step_five_things" ("name");',
     'CREATE INDEX "step_five_things_widx__name_value" ON "step_five_things" ("name","value");'
 ]

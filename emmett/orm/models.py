@@ -791,6 +791,15 @@ class Model(metaclass=MetaModel):
 
     def __define_indexes(self):
         self._indexes_ = {}
+        #: auto-define indexes based on fields
+        for field in self.fields:
+            if getattr(field, 'unique', False):
+                idx_name = self.__prepend_table_name(f'{field.name}_unique', 'widx')
+                idx_dict = self.__parse_index_dict(
+                    {'fields': [field.name], 'unique': True}
+                )
+                self._indexes_[idx_name] = idx_dict
+        #: parse user-defined fields
         for key, value in self.indexes.items():
             if isinstance(value, bool):
                 if not value:
