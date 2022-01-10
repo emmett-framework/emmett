@@ -14,13 +14,18 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+import time
 
 from collections import OrderedDict
+from email.utils import formatdate
+from hashlib import md5
+from importlib import resources
 from typing import Any, Awaitable, Callable, Optional, Tuple, Union
 
 from ..ctx import RequestContext, WSContext, current
 from ..debug import smart_traceback, debug_handler
-from ..http import HTTPResponse, HTTPFile, HTTP
+from ..http import HTTPBytes, HTTPResponse, HTTPFile, HTTP
+from ..libs.contenttype import contenttype
 from ..utils import cachedprop
 from ..wrappers.helpers import RequestCancelled
 from ..wrappers.request import Request
@@ -160,6 +165,10 @@ class HTTPHandler(RequestHandler):
 
     def _bind_router(self):
         self.router = self.app._router_http
+        self._internal_assets_md = (
+            str(int(time.time())),
+            formatdate(time.time(), usegmt=True)
+        )
 
     def _configure_methods(self):
         self.static_matcher = (
@@ -253,6 +262,21 @@ class HTTPHandler(RequestHandler):
     async def _static_response(self, file_path: str) -> HTTPFile:
         return HTTPFile(file_path)
 
+    async def _static_content(self, content: bytes, content_type: str) -> HTTPBytes:
+        content_len = str(len(content))
+        return HTTPBytes(
+            200,
+            content,
+            headers={
+                'content-type': content_type,
+                'content-length': content_len,
+                'last-modified': self._internal_assets_md[1],
+                'etag': md5(
+                    f"{self._internal_assets_md[0]}_{content_len}".encode("utf8")
+                ).hexdigest()
+            }
+        )
+
     def _static_handler(
         self,
         scope: Scope,
@@ -263,11 +287,19 @@ class HTTPHandler(RequestHandler):
         #: handle internal assets
         if path.startswith('/__emmett__'):
             file_name = path[12:]
-            static_file = os.path.join(
-                os.path.dirname(__file__), '..', 'assets', file_name)
-            if os.path.splitext(static_file)[1] == 'html':
+            if file_name.endswith(".html"):
                 return self._http_response(404)
-            return self._static_response(static_file)
+            pkg = None
+            if '/' in file_name:
+                pkg, file_name = file_name.split('/', 1)
+            try:
+                file_contents = resources.read_binary(
+                    f'emmett.assets.{pkg}' if pkg else 'emmett.assets',
+                    file_name
+                )
+            except FileNotFoundError:
+                return self._http_response(404)
+            return self._static_content(file_contents, contenttype(file_name))
         #: handle app assets
         static_file, _ = self.static_matcher(path)
         if static_file:

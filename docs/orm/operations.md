@@ -75,6 +75,48 @@ In fact, you can access the attributes of the record you just created:
 
 We will see more about the `as_dict` method in the next paragraphs.
 
+### Spatial fields helpers
+
+Emmett provides some helpers on GIS fields (`geography` and `geometry` types) in order to simplify the workflow regarding these values.
+
+Whenever you have a GIS column:
+
+```python
+class City(Model):
+    name = Field.string()
+    location = Field.geography("POINT")
+```
+
+you can use the provided helpers from `emmett.orm.geo` module to produce fields' values:
+
+```python
+from emmett.orm import geo
+
+rv = City.create(
+    name="Hill Valley",
+    location=geo.Point(44, 12)
+)
+```
+
+Also, GIS fields values are sub-class of `str`, but they provides some additional attributes:
+
+```python
+>>> rv.id.location
+'POINT(44 12)'
+>>> rv.id.location.geometry
+'POINT'
+>>> rv.id.location.coordinates
+(44.0, 12.0)
+```
+
+On geometries representing collections, you also have the `groups` attribute:
+
+```python
+>>> mp = geo.MultiPoint((1, 1), (2, 2))
+>>> mp.groups
+('POINT(1.000000 1.000000)', 'POINT(2.000000 2.000000)')
+```
+
 Making queries
 --------------
 
@@ -273,6 +315,27 @@ db(Event.happens_at.year() == 1985)
 ```
 
 ### Engine specific operators
+
+#### GIS operators
+
+Emmett provides additional query operators specific to spatial extensions. Engines providing this kind of APIs can be Spatialite or PostGIS. The following table describes Emmett's ORM methods:
+
+| operator | description |
+| --- | --- |
+| st\_asgeojson | returns a geometry as a GeoJSON element |
+| st\_astext | returns WKT representation of the geometry/geography |
+| st\_x | returns the X coordinate of a Point |
+| st\_y | returns the Y coordinate of a Point |
+| st\_distance | returns the distance between two geometry/geography values |
+| st\_simplify | returns a simplified version of a geometry (Douglas-Peucker) |
+| st\_simplifypreservetopology | returns a simplified and valid version of a geometry (Douglas-Peucker) |
+| st\_contains | returns true if no points of B lie in the exterior of A |
+| st\_equals | returns true if two geometries include the same set of points |
+| st\_intersects | returns true if two geometries intersect |
+| st\_overlaps | returns true if two geometries intersect and have the same dimension |
+| st\_touches | returns true true if two geometries have at least one point in common, but their interiors do not intersect |
+| st\_within | returns true if no points of A lie in the exterior of B |
+| st\_dwithin | returns true if two geometries are within a given distance |
 
 #### PostgreSQL json operators
 
@@ -641,3 +704,149 @@ Here are two examples:
 As you can see both of these methods return the number of record removed.
 
 > **Note:** just like the `update_record`, the `delete_record` method requires you to select the `id` field in the rows.
+
+Using model objects
+-------------------
+
+Emmett also provides the ability to work directly with records, in addition to models' operations. 
+
+We will use the same `Event` model we presented in the above sections for the examples:
+
+```python
+class Event(Model):
+    name = Field(notnull=True)
+    location = Field(notnull=True)
+    participants = Field.int(default=0)
+    happens_at = Field.datetime()
+```
+
+Let's see all the available methods and steps in details.
+
+### Model new method
+
+Every `Model` in Emmett provides a `new` method, which produces a clean record:
+
+```python
+event = Event.new(
+    name="Lightning",
+    location="Hill Valley"
+)
+event.happens_at = datetime(
+    1955, 11, 12,
+    22, 4, 0
+)
+```
+
+Records produced from the `new` method won't have primary key(s), and will have valued fields with defaults and passed parameters.
+
+### Record save method
+
+*New in version 2.4*
+
+Records produced with `Model.new` or selected with all the model fields will have a `save` method. 
+
+The `save` methods performs an `insert` or an `update` accordingly to the record contents:
+
+```python
+# save() will produce an insert
+event = Event.new()
+event.save()
+# save() will produce an update
+event = Event.first()
+event.location = "New York"
+event.save()
+```
+
+> **Note:** differently from `update` or `update_record` methods, where you specify which fields should be updated, the `save` method will overwrite all the fields with the current record contents
+
+The `save` method will return a boolean representing the operation fulfillment, unless you call `save(raise_on_error=True)` which will produce an exception. 
+
+> **Note:** `save` will trigger both save callbacks and insert/update ones
+
+### Record destroy method
+
+*New in version 2.4*
+
+Records selected with all the model fields will have a `destroy` method. 
+
+The `destroy` methods performs a `delete` operation using the records' primary key(s):
+
+```python
+event = Event.first()
+event.destroy()
+```
+
+The `destroy` method will return a boolean representing the operation fulfillment, unless you call `destroy(raise_on_error=True)` which will produce an exception. 
+
+> **Note:** `destroy` will trigger both destroy callbacks and delete ones
+
+### Record refresh method
+
+*New in version 2.4*
+
+Records selected with all the model fields will have a `refresh` method. 
+
+The `refresh` methods performs a new selection of the record from the database and update the current object accordingly.
+
+```python
+event = Event.first()
+event.refresh()
+```
+
+The `refresh` method will return a boolean representing the operation fulfillment.
+
+### Record changes
+
+*New in version 2.4*
+
+Records produced with `Model.new` or selected with all the model fields will track changes to their attributes between saves.
+
+Here we list attributes and methods provided by Emmett to deal with row changes:
+
+| name | type | description |
+| --- | --- | --- |
+| has\_changed | attribute | boolean which states if record has changed |
+| has\_changed\_value | method | returns a boolean wich states if the specified attribute has changed |
+| get\_value\_change | method | returns a tuple containing the original and new values for the specified attribute or `None` |
+| changes | attribute | returns a `sdict` with all the changed attributes and their values |
+
+And here is an example:
+
+```python
+>>> event = Event.first()
+>>> event.location = "New York"
+>>> event.has_changed
+True
+>>> event.has_changed_value("location")
+True
+>>> event.get_value_change("location")
+('Hill Valley', 'New York')
+>>> event.changes
+<sdict {'location': ('Hill Valley', 'New York')}>
+```
+
+### Record validations
+
+*New in version 2.4*
+
+Records produced with `Model.new` or selected with all the model fields will provide helpers for validation.
+
+Here we list attributes and methods provided by Emmett:
+
+| name | type | description |
+| --- | --- | --- |
+| is\_valid | attribute | boolean which states if record passes validations |
+| validation\_errors | attribute | returns a `sdict` with all the validation errors |
+
+And here is an example:
+
+```python
+>>> event = Event.new(name="Lightning", location="Hill Valley")
+>>> event.is_valid
+False
+>>> event.validation_errors
+<sdict {'happens_at': 'Cannot be empty'}>
+>>> event.happens_at = datetime(1955, 11, 12, 22, 4, 0)
+>>> event.is_valid
+True
+```

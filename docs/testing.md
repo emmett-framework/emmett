@@ -1,5 +1,6 @@
 Testing Emmett applications
 ===========================
+
 *New in version 0.6*
 
 > Untested code is broken code
@@ -144,3 +145,30 @@ and you also need to remember to commit or rollback changes:
 db.commit()
 db.rollback()
 ```
+
+Using migrations in tests
+-------------------------
+
+*New in version 2.0*
+
+Whenever you want to test databases interactions within your applications, the relative [migrations](./orm/migrations) should be performed before your tests.
+
+Emmett approach on this is quite simple: it provides utilities to generate and apply a single composed runtime migration during tests. Let's see how it works with a *pytest* example:
+
+```python
+import pytest
+
+from emmett.orm.migrations.utils import generate_runtime_migration
+
+from myapp import db as _db
+
+
+@pytest.fixture(scope='function')
+def db():
+    migration = generate_runtime_migration(_db)
+    migration.up()
+    yield _db
+    migration.down()
+```
+
+As you can see, we called the `generate_runtime_migration` method with our application database instance, applied the generated migration before yielding the database instace, and reverted the migration immediately after. Every test function we'll write using this fixture, will have a migrated database to test.

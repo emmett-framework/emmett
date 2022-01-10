@@ -6,10 +6,12 @@
     Test Emmett migrations engine
 """
 
+import uuid
+
 import pytest
 
 from emmett import App
-from emmett.orm import Database, Model, Field
+from emmett.orm import Database, Model, Field, belongs_to, refers_to
 from emmett.orm.migrations.engine import MetaEngine, Engine
 from emmett.orm.migrations.generation import MetaData, Comparator
 
@@ -196,6 +198,7 @@ def test_step_four_alter_table(app):
 
 class StepFiveThing(Model):
     name = Field()
+    code = Field(unique=True)
     value = Field.int()
     created_at = Field.datetime()
 
@@ -217,6 +220,7 @@ class StepFiveThingEdit(StepFiveThing):
 
 
 _step_five_sql_before = [
+    'CREATE UNIQUE INDEX "step_five_things_widx__code_unique" ON "step_five_things" ("code");',
     'CREATE INDEX "step_five_things_widx__name" ON "step_five_things" ("name");',
     'CREATE INDEX "step_five_things_widx__name_value" ON "step_five_things" ("name","value");'
 ]
@@ -241,3 +245,88 @@ def test_step_five_indexes(app):
     for op in ops2.ops:
         sql = _make_sql(db, op)
         assert sql in _step_five_sql_after
+
+
+class StepSixThing(Model):
+    id = Field()
+    name = Field()
+
+    default_values = {"id": lambda: uuid.uuid4()}
+
+
+class StepSixRelate(Model):
+    belongs_to('step_six_thing')
+    name = Field()
+
+
+_step_six_sql_t1 = """CREATE TABLE "step_six_things"(
+    "id" CHAR(512) PRIMARY KEY,
+    "name" CHAR(512)
+);"""
+_step_six_sql_t2 = """CREATE TABLE "step_six_relates"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" CHAR(512),
+    "step_six_thing" CHAR(512)
+);"""
+_step_six_sql_fk = "".join([
+    'ALTER TABLE "step_six_relates" ADD CONSTRAINT ',
+    '"step_six_relates_ecnt__fk__stepsixthings_stepsixthing" FOREIGN KEY ',
+    '("step_six_thing") REFERENCES "step_six_things"("id") ON DELETE CASCADE;'
+])
+
+
+def test_step_six_id_types(app):
+    db = Database(app, auto_migrate=False)
+    db.define_models(StepSixThing, StepSixRelate)
+    ops = _make_ops(db)
+
+    assert _make_sql(db, ops.ops[0]) == _step_six_sql_t1
+    assert _make_sql(db, ops.ops[1]) == _step_six_sql_t2
+    assert _make_sql(db, ops.ops[2]) == _step_six_sql_fk
+
+
+class StepSevenThing(Model):
+    primary_keys = ['foo', 'bar']
+
+    foo = Field()
+    bar = Field()
+
+
+class StepSevenRelate(Model):
+    refers_to({'foo': 'StepSevenThing.foo'}, {'bar': 'StepSevenThing.bar'})
+    name = Field()
+
+    foreign_keys = {
+        "test": {
+            "fields": ["foo", "bar"],
+            "foreign_fields": ["foo", "bar"]
+        }
+    }
+
+
+_step_seven_sql_t1 = """CREATE TABLE "step_seven_things"(
+    "foo" CHAR(512),
+    "bar" CHAR(512),
+    PRIMARY KEY("foo", "bar")
+);"""
+_step_seven_sql_t2 = """CREATE TABLE "step_seven_relates"(
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" CHAR(512),
+    "foo" CHAR(512),
+    "bar" CHAR(512)
+);"""
+_step_seven_sql_fk = "".join([
+    'ALTER TABLE "step_seven_relates" ADD CONSTRAINT ',
+    '"step_seven_relates_ecnt__fk__stepseventhings_foo_bar" FOREIGN KEY ("foo","bar") ',
+    'REFERENCES "step_seven_things"("foo","bar") ON DELETE CASCADE;',
+])
+
+
+def test_step_seven_composed_pks(app):
+    db = Database(app, auto_migrate=False)
+    db.define_models(StepSevenThing, StepSevenRelate)
+    ops = _make_ops(db)
+
+    assert _make_sql(db, ops.ops[0]) == _step_seven_sql_t1
+    assert _make_sql(db, ops.ops[1]) == _step_seven_sql_t2
+    assert _make_sql(db, ops.ops[2]) == _step_seven_sql_fk

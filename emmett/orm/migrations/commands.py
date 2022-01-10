@@ -9,19 +9,23 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
+from typing import Any, List
+
 import click
 
 from ...datastructures import sdict
-from .base import Schema, Column
+from .base import Database, Schema, Column
 from .helpers import DryRunDatabase, make_migration_id, to_tuple
 from .operations import MigrationOp, UpgradeOps, DowngradeOps
 from .scripts import ScriptDir
 
 
-class Command(object):
-    def __init__(self, app, dals):
+class Command:
+    def __init__(self, app: Any, dals: List[Database]):
         self.app = app
-        self.envs = []
+        self.envs: List[sdict] = []
         self._load_envs(dals)
 
     def _load_envs(self, dals):
@@ -360,6 +364,43 @@ class Command(object):
                         )
                         raise
 
+    def set(self, rev_id, auto_confirm=False):
+        for ctx in self.envs:
+            self.load_schema(ctx)
+            current_revision = ctx._current_revision_
+            target_revision = ctx.scriptdir.get_revision(rev_id)
+            if not target_revision:
+                click.secho("> No matching revision found", fg="red")
+                return
+            click.echo(
+                " ".join([
+                    click.style("> Setting revision to", fg="yellow"),
+                    click.style(target_revision.revision, bold=True, fg="yellow"),
+                    click.style("against", fg="yellow"),
+                    click.style(ctx.db._uri, bold=True, fg="yellow")
+                ])
+            )
+            if not auto_confirm:
+                if not click.confirm("Do you want to continue?"):
+                    click.echo("Aborting")
+                    return
+            with ctx.db.connection():
+                self._store_current_revision_(
+                    ctx, current_revision, target_revision.revision
+                )
+                click.echo(
+                    "".join([
+                        click.style(
+                            "> Succesfully set revision to ",
+                            fg="green"
+                        ),
+                        click.style(
+                            target_revision.revision, fg="cyan", bold=True
+                        ),
+                        click.style(f": {target_revision.doc}", fg="green")
+                    ])
+                )
+
 
 def generate(app, dals, message, head):
     Command(app, dals).generate(message, head)
@@ -391,3 +432,7 @@ def up(app, dals, revision, dry_run):
 
 def down(app, dals, revision, dry_run):
     Command(app, dals).down(revision, dry_run)
+
+
+def set_revision(app, dals, revision, auto_confirm):
+    Command(app, dals).set(revision, auto_confirm)

@@ -127,15 +127,20 @@ class ValidateFromDict(object):
         ) if validator else None
 
     def parse_reference(self, field):
-        ref_table = None
-        multiple = None
+        ref_table, ref_field, multiple = None, None, None
         if field.type.startswith('reference'):
             multiple = False
         elif field.type.startswith('list:reference'):
             multiple = True
         if multiple is not None:
             ref_table = field.type.split(' ')[1]
-        return ref_table, multiple
+            model = field.table._model_
+            #: can't support (yet?) multi pks
+            if model._belongs_ref_[field.name].compound:
+                ref_table = None
+            else:
+                ref_field = model._belongs_ref_[field.name].fk
+        return ref_table, ref_field, multiple
 
     def __call__(self, field, data):
         validators = []
@@ -195,7 +200,7 @@ class ValidateFromDict(object):
                 #: allows {'in': {'dbset': lambda db: db.where(query)}}
                 _dbset = _in.get('dbset')
                 if callable(_dbset):
-                    ref_table, multiple = self.parse_reference(field)
+                    ref_table, ref_field, multiple = self.parse_reference(field)
                     if ref_table:
                         opt_keys = [key for key in list(_in) if key != 'dbset']
                         for key in opt_keys:
@@ -204,6 +209,7 @@ class ValidateFromDict(object):
                             inDB(
                                 field.db,
                                 ref_table,
+                                ref_field,
                                 dbset=_dbset,
                                 multiple=multiple,
                                 message=message,
@@ -289,11 +295,17 @@ class ValidateFromDict(object):
             validators.append(Not(self(field, data['not']), message=message))
         #: insert presence/empty validation if needed
         if presence:
-            ref_table, multiple = self.parse_reference(field)
+            ref_table, ref_field, multiple = self.parse_reference(field)
             if ref_table:
                 if not _dbset:
                     validators.append(
-                        inDB(field.db, ref_table, multiple=multiple, message=message)
+                        inDB(
+                            field.db,
+                            ref_table,
+                            ref_field,
+                            multiple=multiple,
+                            message=message
+                        )
                     )
             else:
                 validators.insert(0, isntEmpty(message=message))

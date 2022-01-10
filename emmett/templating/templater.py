@@ -46,16 +46,18 @@ class Templater(Renoir):
         path = path or self.path
         self._namespaces[namespace] = path
 
-    def _get_namespace_path_elements(self, file_name: str) -> Tuple[str, str]:
+    def _get_namespace_path_elements(
+        self, file_name: str, path: Optional[str]
+    ) -> Tuple[str, str]:
         if ":" in file_name:
             namespace, file_name = file_name.split(":")
             path = self._namespaces.get(namespace, self.path)
         else:
-            path = self.path
+            path = path or self.path
         return path, file_name
 
-    def _preload(self, file_name: str):
-        path, file_name = self._get_namespace_path_elements(file_name)
+    def _preload(self, file_name: str, path: Optional[str] = None):
+        path, file_name = self._get_namespace_path_elements(file_name, path)
         file_extension = os.path.splitext(file_name)[1]
         return reduce(
             lambda args, loader: loader(args[0], args[1]),
@@ -63,5 +65,5 @@ class Templater(Renoir):
             (path, file_name)
         )
 
-    def _no_preload(self, file_name):
-        return self._get_namespace_path_elements(file_name)
+    def _no_preload(self, file_name: str, path: Optional[str] = None):
+        return self._get_namespace_path_elements(file_name, path)

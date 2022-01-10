@@ -1,6 +1,28 @@
 Emmett changelog
 ================
 
+Version 2.4
+-----------
+
+Released on January 10th 2022, codename Edison
+
+- Added official Python 3.10 support
+- Added relative path support in templates
+- Added support for spatial columns in ORM
+- Added support for custom/multiple primary keys in ORM
+- Added support for custom/multiple foreign keys in ORM
+- Added support for custom and multiple primary keys relations in ORM
+- Added `watch` parameter to ORM's `compute` decorator
+- Added `save` method to ORM's rows and relevant callbacks
+- Added `destroy` method to ORM's rows and relevant callbacks
+- Added `refresh` method to ORM's rows
+- Added `before_commit` and `after_commit` ORM callbacks
+- Added changes tracking to ORM's rows
+- Added support to call super `rowmethod` decorated methods in ORM models
+- Added `migrations set` command to CLI
+- Added `skip_callbacks` parameter to relevant methods in ORM
+- ORM now automatically adds appropriate indexes for `unique` fields
+
 Version 2.3
 -----------
 
@@ -12,8 +34,8 @@ Released on August 12th 2021, codename Da Vinci
 - Added `dict` values support for `in` validations
 - Use optional `emmett-crypto` package for cryptographic functions
 - Deprecated `security.secure_dumps` and `security.secure_loads` in favour of new crypto package
-- Add `on_delete` option to `belongs_to` and `refers_to`
-- Add `--dry-run` option to migrations `up` and `down` commands
+- Added `on_delete` option to `belongs_to` and `refers_to`
+- Added `--dry-run` option to migrations `up` and `down` commands
 
 Version 2.2
 -----------

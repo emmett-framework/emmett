@@ -13,3 +13,27 @@
 class MaxConnectionsExceeded(RuntimeError):
     def __init__(self):
         super().__init__('Exceeded maximum connections')
+
+
+class MissingFieldsForCompute(RuntimeError):
+    ...
+
+
+class SaveException(RuntimeError):
+    ...
+
+
+class InsertFailureOnSave(SaveException):
+    ...
+
+
+class UpdateFailureOnSave(SaveException):
+    ...
+
+
+class DestroyException(RuntimeError):
+    ...
+
+
+class ValidationError(RuntimeError):
+    ...

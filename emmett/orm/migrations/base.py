@@ -9,10 +9,17 @@
     :license: BSD-3-Clause
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable, Dict, Type
+
 from ...datastructures import sdict
-from .. import Model, Field
+from .. import Database, Model, Field
 from .engine import MetaEngine, Engine
 from .helpers import WrappedOperation, _feasible_as_dbms_default
+
+if TYPE_CHECKING:
+    from .operations import Operation
 
 
 class Schema(Model):
@@ -20,81 +27,76 @@ class Schema(Model):
     version = Field()
 
 
-class Migration(object):
-    _registered_ops_ = {}
+class Migration:
+    _registered_ops_: Dict[str, Type[Operation]] = {}
 
     @classmethod
-    def register_operation(cls, name):
-        def wrap(op_cls):
+    def register_operation(
+        cls,
+        name: str
+    ) -> Callable[[Type[Operation]], Type[Operation]]:
+        def wrap(op_cls: Type[Operation]) -> Type[Operation]:
             cls._registered_ops_[name] = op_cls
             return op_cls
         return wrap
 
-    def __init__(self, app, db, is_meta=False):
+    def __init__(self, app: Any, db: Database, is_meta: bool = False):
         self.db = db
         if is_meta:
             self.engine = MetaEngine(db)
         else:
             self.engine = Engine(db)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> WrappedOperation:
         registered = self._registered_ops_.get(name)
         if registered is not None:
             return WrappedOperation(registered, name, self.engine)
-        else:
-            raise NotImplementedError
+        raise NotImplementedError
 
 
 class Column(sdict):
-    def __init__(self, name, type='string', unique=False, notnull=False,
-                 **kwargs):
+    def __init__(
+        self,
+        name: str,
+        type: str = 'string',
+        unique: bool = False,
+        notnull: bool = False,
+        **kwargs: Any
+    ):
         self.name = name
         self.type = type
         self.unique = unique
         self.notnull = notnull
         for key, val in kwargs.items():
             self[key] = val
-        self.length = self.length or 255
+        self.length: int = self.length or 255
 
-    def _build_fks(self, db, tablename):
-        if self.type.startswith('reference'):
-            referenced = self.type[10:].strip()
-            try:
-                rtablename, rfieldname = referenced.split('.')
-            except Exception:
-                rtablename = referenced
-                rfieldname = 'id'
-            if not rtablename:
-                rtablename = tablename
-            rtable = db[rtablename]
-            rfield = rtable[rfieldname]
-            if getattr(rtable, '_primarykey', None) and rfieldname in \
-                    rtable._primarykey or rfield.unique:
-                if not rfield.unique and len(rtable._primarykey) > 1:
-                    # self.tfk = [pk for pk in rtable._primarykey]
-                    raise NotImplementedError(
-                        'Column of type reference pointing to multiple ' +
-                        'columns are currently not supported.'
-                    )
-                else:
-                    self.fk = True
+    def _fk_type(self, db: Database, tablename: str):
+        if self.name not in db[tablename]._model_._belongs_ref_:
+            return
+        ref = db[tablename]._model_._belongs_ref_[self.name]
+        if ref.ftype != 'id':
+            self.type = ref.ftype
+            self.length = db[ref.model][ref.fk].length
+            self.on_delete = None
 
     @classmethod
-    def from_field(cls, field):
+    def from_field(cls, field: Field) -> Column:
         rv = cls(
             field.name,
-            field.type,
+            field._pydal_types.get(field._type, field._type),
             field.unique,
             field.notnull,
             length=field.length,
-            ondelete=field.ondelete
+            ondelete=field.ondelete,
+            **field._ormkw
         )
         if _feasible_as_dbms_default(field.default):
             rv.default = field.default
-        rv._build_fks(field.db, field.tablename)
+        rv._fk_type(field.db, field.tablename)
         return rv
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(%s)" % (
             self.__class__.__name__,
             ", ".join(["%s=%r" % (k, v) for k, v in self.items()])

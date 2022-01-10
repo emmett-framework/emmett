@@ -428,6 +428,35 @@ db1 = Database(app, app.config.db1)
 db2 = Database(app, app.config.db2)
 ```
 
+Set migration status manually
+-----------------------------
+
+*New in version 2.4*
+
+Sometimes you need to manually set the current revision schema in your database, without actually applying the involved migration(s). Some examples might be:
+
+- you handled migrations using a different system in the past and want to start using Emmett
+- you want to rewrite migrations, or *condense* several of them into a single one
+
+In such cases, you can use the `set` command of the migrations engine:
+
+```
+$ emmett migrations status  
+> Current revision(s) for sqlite://dummy.db
+8422706ae767
+
+$ emmett migrations history               
+> Migrations history:
+8422706ae767 -> 69a284b840cf (head), Generated migration
+9d6518b3cdc2 -> 8422706ae767, Generated migration
+<base> -> 9d6518b3cdc2, First migration
+
+$ emmett migrations set -r 69a284b840cf
+> Setting revision to 69a284b840cf against sqlite://dummy.db
+Do you want to continue? [y/N]: y
+> Updating schema revision from 8422706ae767 to 69a284b840cf
+> Succesfully set revision to 69a284b840cf: Generated migration
+```
 
 DBMS support
 ------------

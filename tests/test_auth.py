@@ -29,6 +29,7 @@ class Thing(Model):
 def app():
     rv = App(__name__)
     rv.config.mailer.sender = 'nina@massivedynamics.com'
+    rv.config.mailer.suppress = True
     rv.config.auth.single_template = True
     rv.config.auth.hmac_key = "foobar"
     rv.pipeline = [SessionManager.cookies('foobar')]
