@@ -1,9 +1,10 @@
 Emmett changelog
 ================
 
-Next
-----
-(Release date to be defined, codename to be selected)
+Version 2.4
+-----------
+
+Released on January 10th 2022, codename Edison
 
 - Added official Python 3.10 support
 - Added relative path support in templates
