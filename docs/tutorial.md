@@ -115,7 +115,7 @@ class Post(Model):
 
     default_values = {
         'user': lambda: session.auth.user.id,
-        'date': lambda: now
+        'date': now
     }
     validation = {
         'title': {'presence': True},
@@ -135,7 +135,7 @@ class Comment(Model):
 
     default_values = {
         'user': lambda: session.auth.user.id,
-        'date': lambda: now
+        'date': now
     }
     validation = {
         'text': {'presence': True}
