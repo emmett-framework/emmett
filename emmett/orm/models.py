@@ -321,7 +321,7 @@ class Model(metaclass=MetaModel):
             if isinstance(rv.model, dict):
                 if 'method' in rv.model:
                     if 'field' in rv.model:
-                        rv.fields = [rv.model.field]
+                        rv.fields = [rv.model['field']]
                     else:
                         if len(self.primary_keys) > 1:
                             rv.fields = [
