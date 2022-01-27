@@ -14,7 +14,6 @@
 """
 
 import decimal
-import json
 import re
 import struct
 
@@ -22,8 +21,9 @@ from datetime import date, time, datetime, timedelta
 from time import strptime
 from urllib.parse import unquote as url_unquote
 
+from ..parsers import Parsers
 from ..serializers import Serializers
-from ..utils import parse_datetime
+from ..utils import cachedprop, parse_datetime
 from .basic import Validator, ParentValidator, _is, Matches
 from .helpers import (
     _DEFAULT,
@@ -256,17 +256,25 @@ class isList(ParentValidator):
 class isJSON(_is):
     JSONErrors = (NameError, TypeError, ValueError, AttributeError, KeyError)
 
+    @cachedprop
+    def _decoder(self):
+        return Parsers.get_for('json')
+
+    @cachedprop
+    def _encoder(self):
+        return Serializers.get_for('json')
+
     def check(self, value):
         if isinstance(value, str):
             try:
-                v = json.loads(value)
+                v = self._decoder(value)
                 return v, None
             except self.JSONErrors:
                 return value, translate(self.message)
         if not isinstance(value, (dict, list)):
             return value, translate(self.message)
         try:
-            Serializers.get_for('json')(value)
+            self._encoder(value)
         except self.JSONErrors:
             return value, translate(self.message)
         return value, None
@@ -274,7 +282,7 @@ class isJSON(_is):
     def formatter(self, value):
         if value is None:
             return None
-        return json.dumps(value)
+        return self._encoder(value)
 
 
 class isAlphanumeric(Matches):

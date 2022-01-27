@@ -45,7 +45,7 @@ from .helpers import (
     RowReferenceMulti
 )
 from .objects import Field, Row
-from .wrappers import HasOneWrap, HasManyWrap, HasManyViaWrap
+from .wrappers import HasOneWrap, HasOneViaWrap, HasManyWrap, HasManyViaWrap
 
 
 class MetaModel(type):
@@ -491,9 +491,15 @@ class Model(metaclass=MetaModel):
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item, False)
+                if reference.via is not None:
+                    #: maps has_one({'thing': {'via': 'otherthings'}})
+                    wrapper = HasOneViaWrap
+                else:
+                    #: maps has_one('thing'), has_one({'thing': 'othername'})
+                    wrapper = HasOneWrap
                 self._virtual_relations_[reference.name] = rowattr(
                     reference.name
-                )(HasOneWrap(reference))
+                )(wrapper(reference))
                 hasone_references[reference.name] = reference
         setattr(self.__class__, '_hasone_ref_', hasone_references)
         #: has_many are mapped with rowattr
@@ -507,8 +513,7 @@ class Model(metaclass=MetaModel):
                     #: maps has_many({'things': {'via': 'otherthings'}})
                     wrapper = HasManyViaWrap
                 else:
-                    #: maps has_many('things'),
-                    #  has_many({'things': 'othername'})
+                    #: maps has_many('things'), has_many({'things': 'othername'})
                     wrapper = HasManyWrap
                 self._virtual_relations_[reference.name] = rowattr(
                     reference.name

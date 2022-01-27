@@ -9,9 +9,13 @@
     :license: BSD-3-Clause
 """
 
+from ..serializers import Serializers
+from ..utils import cachedprop
+
 from pydal.adapters.base import BaseAdapter
 from pydal.connection import ConnectionPool
 from pydal.helpers.classes import ConnectionConfigurationMixin
+from pydal.helpers.serializers import Serializers as _Serializers
 
 from .adapters import (
     _initialize,
@@ -66,8 +70,17 @@ def _patch_adapter_connection():
         ConnectionConfigurationMixin,
         '_reconnect_and_configure',
         _connect_and_configure
-)
+    )
+
+
+def _patch_serializers():
+    setattr(
+        _Serializers,
+        'json',
+        cachedprop(lambda _: Serializers.get_for('json'), name='json')
+    )
 
 
 _patch_adapter_cls()
 _patch_adapter_connection()
+_patch_serializers()

@@ -297,7 +297,9 @@ class ReferenceData(sdict):
     def fields_instances(self):
         return tuple(
             self.table[field]
-            for field in self.model_instance._belongs_fks_[self.reverse].local_fields
+            for field in self.model_instance._belongs_fks_.get(
+                self.reverse, sdict(local_fields=[self.reverse])
+            ).local_fields
         )
 
 
@@ -374,11 +376,17 @@ class RelationBuilder(object):
         rid = self._make_refid(row)
         sname = self.model.__class__.__name__
         stack = []
-        midrel = self.model._hasmany_ref_[self.ref.via]
+        midrel = self.model._hasmany_ref_.get(
+            self.ref.via,
+            self.model._hasone_ref_.get(self.ref.via)
+        )
         stack.append(self.ref)
         while midrel.via is not None:
             stack.insert(0, midrel)
-            midrel = self.model._hasmany_ref_[midrel.via]
+            midrel = self.model._hasmany_ref_.get(
+                midrel.via,
+                self.model._hasone_ref_.get(midrel.via)
+            )
         query = self._many(midrel, rid)
         step_model = midrel.table_name
         sel_field = db[step_model].ALL
@@ -405,16 +413,25 @@ class RelationBuilder(object):
                 #: shortcut way
                 last_belongs = None
                 rname = via.field or via.name
-                midrel = db[step_model]._model_._hasmany_ref_[rname]
-                _query = self._many(
-                    midrel, [
-                        db[step_model][step_field]
-                        for step_field in (
-                            db[step_model]._model_.primary_keys or ["id"]
-                        )
-                    ]
+                midrel = db[step_model]._model_._hasmany_ref_.get(
+                    rname,
+                    db[step_model]._model_._hasone_ref_.get(rname)
                 )
-                step_model = midrel.table_name
+                if midrel.via:
+                    nested = RelationBuilder(midrel, midrel.model_class)
+                    nested_data = nested.via()
+                    _query = nested_data[0]
+                    step_model = midrel.model_class.tablename
+                else:
+                    _query = self._many(
+                        midrel, [
+                            db[step_model][step_field]
+                            for step_field in (
+                                db[step_model]._model_.primary_keys or ["id"]
+                            )
+                        ]
+                    )
+                    step_model = midrel.table_name
                 sel_field = db[step_model].ALL
             query = query & _query
         query = via.dbset.where(

@@ -10,7 +10,7 @@
 """
 
 from .helpers import RelationBuilder
-from .objects import HasOneSet, HasManySet, HasManyViaSet
+from .objects import HasOneSet, HasOneViaSet, HasManySet, HasManyViaSet
 
 
 class Wrapper(object):
@@ -22,6 +22,11 @@ class Wrapper(object):
 class HasOneWrap(Wrapper):
     def __call__(self, model, row):
         return HasOneSet(model.db, RelationBuilder(self.ref, model), row)
+
+
+class HasOneViaWrap(Wrapper):
+    def __call__(self, model, row):
+        return HasOneViaSet(model.db, RelationBuilder(self.ref, model), row)
 
 
 class HasManyWrap(Wrapper):

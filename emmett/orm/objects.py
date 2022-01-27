@@ -274,6 +274,8 @@ class Field(_Field):
             rv['is'] = self._type
         elif self._type.startswith('decimal'):
             rv['is'] = 'decimal'
+        elif self._type == 'jsonb':
+            rv['is'] = 'json'
         if self._type == 'bigint':
             rv['is'] = 'int'
         if self._type == 'bool':
@@ -754,6 +756,9 @@ class Set(_Set):
         #: match has_one
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
+            if rel.via:
+                r = RelationBuilder(rel, self._model_._instance_()).via()
+                return r[0], r[1]._table, 'one'
             r = RelationBuilder(rel, self._model_._instance_())
             return r.many(), rel.table, 'one'
         raise RuntimeError(
@@ -950,9 +955,8 @@ class HasManySet(RelationSet):
         return rv
 
 
-class HasManyViaSet(RelationSet):
+class ViaSet(RelationSet):
     _relation_method_ = 'via'
-    _via_error = "Can't %s elements in has_many relations without a join table"
 
     @cachedprop
     def _viadata(self):
@@ -972,6 +976,27 @@ class HasManyViaSet(RelationSet):
     @property
     def _model_(self):
         return self.db[self._viadata.model_name]._model_
+
+
+class HasOneViaSet(ViaSet):
+    def _cache_resultset(self):
+        return self.select(self._viadata.rfield, limitby=(0, 1)).first()
+
+    def __call__(self, *args, **kwargs):
+        refresh = self._filter_reload(kwargs)
+        if not args:
+            if not kwargs:
+                return self._last_resultset(refresh)
+            args = [self._viadata.rfield]
+        kwargs['limitby'] = (0, 1)
+        return self.select(*args, **kwargs).first()
+
+    def create(self, **kwargs):
+        raise RuntimeError('Cannot create third objects for one via relations')
+
+
+class HasManyViaSet(ViaSet):
+    _via_error = "Can't %s elements in has_many relations without a join table"
 
     def _cache_resultset(self):
         return self.select(self._viadata.rfield)
@@ -1003,7 +1028,7 @@ class HasManyViaSet(RelationSet):
         return self._get_fields_from_scopes(scopes, rel.table_name)
 
     def create(self, **kwargs):
-        raise RuntimeError('Cannot create third objects for many relations')
+        raise RuntimeError('Cannot create third objects for many via relations')
 
     def add(self, obj, skip_callbacks=False, **kwargs):
         # works on join tables only!
