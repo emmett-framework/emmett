@@ -756,6 +756,9 @@ class Set(_Set):
         #: match has_one
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
+            if rel.via:
+                r = RelationBuilder(rel, self._model_._instance_()).via()
+                return r[0], r[1]._table, 'one'
             r = RelationBuilder(rel, self._model_._instance_())
             return r.many(), rel.table, 'one'
         raise RuntimeError(
