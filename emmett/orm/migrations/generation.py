@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 
 from ..._shortcuts import hashlib_sha1
 from ...datastructures import OrderedSet
-from ..objects import Table
+from ..objects import Rows, Table
 from .base import Column, Database
 from .helpers import Dispatcher, DEFAULT_VALUE
 from .operations import (
@@ -76,6 +76,9 @@ class MetaTable:
             self.name,
             ", ".join(["%s" % column for column in self.columns.values()])
         )
+
+    def insert(self, *args, **kwargs) -> Any:
+        return None
 
 
 class MetaIndex:
@@ -151,9 +154,40 @@ class MetaForeignKey:
         )
 
 
+class MetaDataSet:
+    def __init__(self, db: MetaData, *args, **kwargs):
+        self.db = db
+        self.args = args
+        self.kwargs = kwargs
+
+    def where(self, *args, **kwargs) -> MetaDataSet:
+        return MetaDataSet(self.db, *args, **kwargs)
+
+    def select(self, *args, **kwargs) -> Rows:
+        return Rows(self.db)
+
+    def update(self, *args, **kwargs) -> int:
+        return 0
+
+    def delete(self, *args, **kwargs) -> int:
+        return 0
+
+
 class MetaData:
     def __init__(self):
         self.tables: Dict[str, MetaTable] = {}
+
+    def __getitem__(self, key):
+        return self.tables[key]
+
+    def __getattr__(self, name):
+        return self.tables[name]
+
+    def where(self, *args, **kwargs) -> MetaDataSet:
+        return MetaDataSet(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        return self.where(*args, **kwargs)
 
     def create_table(
         self,
@@ -433,6 +467,8 @@ class Generator:
             migration = revision.migration_class(
                 None, self.meta, is_meta=True
             )
+            if migration.skip_on_compare:
+                continue
             migration.up()
 
     def generate(self) -> UpgradeOps:

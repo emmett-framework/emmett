@@ -41,11 +41,11 @@ def is_empty(value, empty_regex=None):
     if value is None:
         return value, True
     if isinstance(value, (str, bytes)):
-        value = value.strip()
-        if empty_regex is not None and empty_regex.match(value):
-            value = ''
-        return value, len(value) == 0
-    if isinstance(value, list):
+        vclean = value.strip()
+        if empty_regex is not None and empty_regex.match(vclean):
+            vclean = ''
+        return vclean, len(vclean) == 0
+    if isinstance(value, (list, dict)):
         return value, len(value) == 0
     return value, False
 
