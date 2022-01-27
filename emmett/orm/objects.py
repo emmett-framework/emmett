@@ -274,6 +274,8 @@ class Field(_Field):
             rv['is'] = self._type
         elif self._type.startswith('decimal'):
             rv['is'] = 'decimal'
+        elif self._type == 'jsonb':
+            rv['is'] = 'json'
         if self._type == 'bigint':
             rv['is'] = 'int'
         if self._type == 'bool':
