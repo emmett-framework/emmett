@@ -297,7 +297,9 @@ class ReferenceData(sdict):
     def fields_instances(self):
         return tuple(
             self.table[field]
-            for field in self.model_instance._belongs_fks_[self.reverse].local_fields
+            for field in self.model_instance._belongs_fks_.get(
+                self.reverse, sdict(local_fields=[self.reverse])
+            ).local_fields
         )
 
 
