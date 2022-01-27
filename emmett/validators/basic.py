@@ -118,7 +118,7 @@ class isEmpty(Validator):
         self.empty_regex = re.compile(empty_regex) if empty_regex is not None else None
 
     def __call__(self, value):
-        value, empty = is_empty(value, empty_regex=self.empty_regex)
+        _, empty = is_empty(value, empty_regex=self.empty_regex)
         if empty:
             return None, None
         return value, translate(self.message)
@@ -128,9 +128,9 @@ class isntEmpty(isEmpty):
     message = "Cannot be empty"
 
     def __call__(self, value):
-        value, empty = is_empty(value, empty_regex=self.empty_regex)
+        newval, empty = is_empty(value, empty_regex=self.empty_regex)
         if empty:
-            return value, translate(self.message)
+            return newval, translate(self.message)
         return value, None
 
 
