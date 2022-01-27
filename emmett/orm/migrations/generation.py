@@ -467,6 +467,8 @@ class Generator:
             migration = revision.migration_class(
                 None, self.meta, is_meta=True
             )
+            if migration.skip_on_compare:
+                continue
             migration.up()
 
     def generate(self) -> UpgradeOps:

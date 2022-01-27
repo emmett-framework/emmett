@@ -29,6 +29,7 @@ class Schema(Model):
 
 class Migration:
     _registered_ops_: Dict[str, Type[Operation]] = {}
+    skip_on_compare: bool = False
 
     @classmethod
     def register_operation(
