@@ -9,12 +9,11 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import cgi
 import re
 import threading
 from ._compat import (
     iteritems, text_type, implements_to_string, implements_bool, to_unicode,
-    to_native)
+    to_native, escape)
 from .libs.sanitizer import sanitize
 
 __all__ = ['tag', 'cat', 'safe', 'asis']
@@ -64,7 +63,7 @@ def _to_unicode(obj):
 def htmlescape(obj):
     if hasattr(obj, '__html__'):
         return obj.__html__()
-    return cgi.escape(_to_unicode(obj), True).replace(u"'", u"&#39;")
+    return escape(_to_unicode(obj), True).replace(u"'", u"&#39;")
 
 
 @implements_to_string
