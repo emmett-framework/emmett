@@ -30,12 +30,20 @@ from .helpers import TestCookieJar, Headers
 from .urls import get_host, url_parse, url_unparse
 
 
-class ClientContext(object):
-    def __init__(self):
-        self.request = Request(current.request._scope, None, None)
-        self.response = Response()
-        self.response.__dict__.update(current.response.__dict__)
-        self.session = copy.deepcopy(current.session)
+class ClientContextResponse(Response):
+    def __init__(self, original_response: Response):
+        super().__init__()
+        self.status = original_response.status
+        self.headers._data.update(original_response.headers._data)
+        self.cookies.update(original_response.cookies.copy())
+        self.__dict__.update(original_response.__dict__)
+
+
+class ClientContext:
+    def __init__(self, ctx):
+        self.request = Request(ctx.request._scope, None, None)
+        self.response = ClientContextResponse(ctx.response)
+        self.session = copy.deepcopy(ctx.session)
         self.T = current.T
 
     def __enter__(self):
@@ -77,7 +85,7 @@ class ClientHTTPHandler(HTTPHandler):
                 headers=ctx.response.headers
             )
         finally:
-            scope['emt.ctx'] = ClientContext()
+            scope['emt.ctx'] = ClientContext(ctx)
             current._close_(ctx_token)
         return http
 
