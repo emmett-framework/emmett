@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from multiprocessing import context
 import pytest
 
-from emmett import request, response, session, T
 from emmett.orm.migrations.utils import generate_runtime_migration
 from bloggy import app, db, User, auth, setup_admin
 
