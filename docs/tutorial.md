@@ -2,13 +2,13 @@ Tutorial
 ========
 
 So, you want to develop an application with Python and Emmett, huh? We should
-start with an example. 
+start with an example.
 
 We will create a simple microblog application, using Emmett and a database.
 SQLite comes out of the box with Python, so you won't need to download anything
 other than Emmett.
 
-If you want the full source code in advance, check out the 
+If you want the full source code in advance, check out the
 [example source](https://github.com/emmett-framework/emmett/tree/master/examples/bloggy).
 
 Bloggy: a micro blog
@@ -22,7 +22,7 @@ the following things:
 * show all posts' titles in reverse order (newest on top) to everyone on the index page
 * show the entire post on a specific page and allow registered users to comment
 
-> – hem, dude.. seems like quite a lot of stuff for a "micro" blogging application   
+> – hem, dude.. seems like quite a lot of stuff for a "micro" blogging application
 > – *relax! you'll see that every feature will be short work with Emmett*
 
 Application structure
@@ -238,7 +238,7 @@ Moreover, to use the authorization module, we need to add a **session manager** 
 ```python
 from emmett.sessions import SessionManager
 app.pipeline = [
-    SessionManager.cookies('GreatScott'),
+    SessionManager.cookies('GreatScott', encryption_mode='modern'),
     db.pipe,
     auth.pipe
 ]
@@ -269,12 +269,14 @@ async def one(pid):
     post = Post.get(pid)
     if not post:
         abort(404)
-    # get comments and create a form
+    # get comments
     comments = post.comments(orderby=~Comment.date)
-    form = await Comment.form(onvalidation=_validate_comment)
-    if form.accepted:
-        redirect(url('one', pid))
-    return {'post': post, 'comments': comments, 'form': form}
+    # and create a form for commenting is the user is logged in
+    if session.auth:
+        form = await Comment.form(onvalidation=_validate_comment)
+        if form.accepted:
+            redirect(url('one', pid))
+    return locals()
 ```
 
 As you can see, the `one` function will show the post text, the comments users
@@ -312,7 +314,7 @@ The templates
 -------------
 
 We should create a template for every function we exposed. However, since the
-Renoir templating system supports blocks and nesting, and we don't really want 
+Renoir templating system supports blocks and nesting, and we don't really want
 to repeat ourselves when writing code, we will start with a main layout file
 under *templates/layout.html*, and we will extend it with the functions' templates:
 
@@ -422,7 +424,7 @@ As you can see, the only difference from the template we wrote before to create 
 Some styling
 ------------
 
-Now that everything works, it's time to add some style to bloggy. 
+Now that everything works, it's time to add some style to bloggy.
 We just create a *style.css* file inside *static* folder and write down
 something like this:
 
