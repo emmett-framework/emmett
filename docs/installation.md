@@ -39,7 +39,7 @@ You should now be using your virtualenv (notice how the prompt of your shell has
 Now you can just enter the following command to get Emmett activated in your virtualenv:
 
 ```bash
-$ pip install emmett
+$ pip install emmett[crypto]
 ```
 
 And now you are good to go.
