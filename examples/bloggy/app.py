@@ -91,7 +91,9 @@ def setup():
 
 #: pipeline
 app.pipeline = [
-    SessionManager.cookies('GreatScott'), db.pipe, auth.pipe
+    SessionManager.cookies('GreatScott', encryption_mode='modern'), 
+    db.pipe, 
+    auth.pipe
 ]
 
 
@@ -111,11 +113,13 @@ async def one(pid):
     post = Post.get(pid)
     if not post:
         abort(404)
-    # get comments and create a form for commenting
+    # get comments
     comments = post.comments(orderby=~Comment.date)
-    form = await Comment.form(onvalidation=_validate_comment)
-    if form.accepted:
-        redirect(url('one', pid))
+    # and create a form for commenting if the user is logged in
+    if session.auth:
+        form = await Comment.form(onvalidation=_validate_comment)
+        if form.accepted:
+            redirect(url('one', pid))
     return locals()
 
 
