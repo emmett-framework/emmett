@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import copyreg
 import operator
 import re
 import time
@@ -570,3 +571,12 @@ def typed_row_reference_from_record(record: Any, model: Any):
     rv = refcls(id, model.table)
     rv._refrecord = record
     return rv
+
+
+def _rowref_pickler(obj):
+    return obj._refmeta.caster, (obj.__pure__(), )
+
+
+copyreg.pickle(RowReferenceInt, _rowref_pickler)
+copyreg.pickle(RowReferenceStr, _rowref_pickler)
+copyreg.pickle(RowReferenceMulti, _rowref_pickler)

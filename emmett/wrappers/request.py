@@ -207,17 +207,13 @@ class Request(ScopeWrapper):
     @cachedprop
     def client(self) -> str:
         g = _regex_client.search(self.headers.get('x-forwarded-for', ''))
-        client = (g.group() or '').split(',')[0] if g else None
-        if client in (None, '', 'unknown'):
-            g = _regex_client.search(self.headers.get('remote-addr', ''))
-            if g:
-                client = g.group()
-            elif self.host.startswith('['):
-                # IPv6
-                client = '::1'
-            else:
-                # IPv4
-                client = '127.0.0.1'
+        client = (
+            (g.group() or '').split(',')[0] if g else (
+                self._scope['client'][0] if self._scope['client'] else None
+            )
+        )
+        if client in (None, '', 'unknown', 'localhost'):
+            client = '::1' if self.host.startswith('[') else '127.0.0.1'
         return client  # type: ignore
 
     async def push_promise(self, path: str):
