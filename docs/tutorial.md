@@ -8,8 +8,7 @@ We will create a simple microblog application, using Emmett and a database.
 SQLite comes out of the box with Python, so you won't need to download anything
 other than Emmett.
 
-If you want the full source code in advance, check out the
-[example source](https://github.com/emmett-framework/emmett/tree/master/examples/bloggy).
+If you want the full source code in advance, check out the [example source](https://github.com/emmett-framework/emmett/tree/master/examples/bloggy).
 
 Bloggy: a micro blog
 --------------------
@@ -22,7 +21,7 @@ the following things:
 * show all posts' titles in reverse order (newest on top) to everyone on the index page
 * show the entire post on a specific page and allow registered users to comment
 
-> – hem, dude.. seems like quite a lot of stuff for a "micro" blogging application
+> – hem, dude.. seems like quite a lot of stuff for a "micro" blogging application   
 > – *relax! you'll see that every feature will be short work with Emmett*
 
 Application structure
@@ -271,7 +270,7 @@ async def one(pid):
         abort(404)
     # get comments
     comments = post.comments(orderby=~Comment.date)
-    # and create a form for commenting is the user is logged in
+    # and create a form for commenting if the user is logged in
     if session.auth:
         form = await Comment.form(onvalidation=_validate_comment)
         if form.accepted:
