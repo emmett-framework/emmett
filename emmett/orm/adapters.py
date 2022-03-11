@@ -14,6 +14,7 @@ import sys
 from functools import wraps
 
 from pydal.adapters import adapters
+from pydal.adapters.base import SQLAdapter
 from pydal.adapters.mssql import (
     MSSQL1,
     MSSQL3,
@@ -64,21 +65,26 @@ def _wrap_on_obj(f, adapter):
 
 
 def patch_adapter(adapter):
-    adapter.insert = _wrap_on_obj(insert, adapter)
-    adapter.iterselect = _wrap_on_obj(iterselect, adapter)
-    adapter.parse = _wrap_on_obj(parse, adapter)
-    adapter.iterparse = _wrap_on_obj(iterparse, adapter)
-    adapter._parse_expand_colnames = _wrap_on_obj(_parse_expand_colnames, adapter)
-    adapter._parse = _wrap_on_obj(_parse, adapter)
+    #: BaseAdapter interfaces
     adapter._expand_all_with_concrete_tables = _wrap_on_obj(
         _expand_all_with_concrete_tables, adapter
     )
+    adapter._parse = _wrap_on_obj(_parse, adapter)
+    adapter._parse_expand_colnames = _wrap_on_obj(_parse_expand_colnames, adapter)
+    adapter.iterparse = _wrap_on_obj(iterparse, adapter)
+    adapter.parse = _wrap_on_obj(parse, adapter)
+    patch_parser(adapter.dialect, adapter.parser)
+    patch_representer(adapter.representer)
+
+    #: SQLAdapter interfaces
+    if not isinstance(adapter, SQLAdapter):
+        return
+    adapter._select_aux = _wrap_on_obj(_select_aux, adapter)
     adapter._select_wcols_inner = adapter._select_wcols
     adapter._select_wcols = _wrap_on_obj(_select_wcols, adapter)
-    adapter._select_aux = _wrap_on_obj(_select_aux, adapter)
+    adapter.insert = _wrap_on_obj(insert, adapter)
+    adapter.iterselect = _wrap_on_obj(iterselect, adapter)
     patch_dialect(adapter.dialect)
-    patch_parser(adapter.parser)
-    patch_representer(adapter.representer)
 
 
 def patch_dialect(dialect):
@@ -93,20 +99,22 @@ def patch_dialect(dialect):
     dialect.drop_constraint = _wrap_on_obj(_drop_constraint, dialect)
 
 
-def patch_parser(parser):
+def patch_parser(dialect, parser):
     parser.registered['reference'] = ParserMethodWrapper(
         parser,
         _parser_for_type('reference')(_parser_reference).f,
         parser._before_registry_['reference']
     )
-    parser.registered['geography'] = ParserMethodWrapper(
-        parser,
-        _parser_for_type('geography')(_parser_geo).f
-    )
-    parser.registered['geometry'] = ParserMethodWrapper(
-        parser,
-        _parser_for_type('geometry')(_parser_geo).f
-    )
+    if 'geography' in dialect.types:
+        parser.registered['geography'] = ParserMethodWrapper(
+            parser,
+            _parser_for_type('geography')(_parser_geo).f
+        )
+    if 'geometry' in dialect.types:
+        parser.registered['geometry'] = ParserMethodWrapper(
+            parser,
+            _parser_for_type('geometry')(_parser_geo).f
+        )
 
 
 def patch_representer(representer):
