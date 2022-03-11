@@ -1113,7 +1113,10 @@ class StructuredRow(Row):
 
     def __getstate__(self):
         return {
-            "__data": self.__dict__.copy(),
+            "__data": {
+                key: self.__dict__[key]
+                for key in set(self.__dict__.keys()) & self._model._fieldset_all
+            },
             "__struct": {
                 "_concrete": self._concrete,
                 "_changes": {},
