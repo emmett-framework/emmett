@@ -37,14 +37,17 @@ from .errors import (
 from .helpers import (
     Callback,
     ReferenceData,
-    make_tablename,
+    RowReferenceMixin,
+    RowReferenceMulti,
     camelize,
     decamelize,
+    make_tablename,
+    typed_row_reference,
+    typed_row_reference_from_record,
     wrap_scope_on_model,
-    wrap_virtual_on_model,
-    RowReferenceMulti
+    wrap_virtual_on_model
 )
-from .objects import Field, Row
+from .objects import Field, StructuredRow
 from .wrappers import HasOneWrap, HasOneViaWrap, HasManyWrap, HasManyViaWrap
 
 
@@ -635,6 +638,10 @@ class Model(metaclass=MetaModel):
             field.name for field in self.fields
             if getattr(field, "update", None) is not None
         ]) & self._fieldset_editable
+        self._relations_wrapset = (
+            set(self._belongs_fks_.keys()) -
+            set(self._compound_relations_.keys())
+        )
         if not self.primary_keys:
             self._set_row_persistence = self._set_row_persistence_id
         elif len(self.primary_keys) == 1:
@@ -643,14 +650,18 @@ class Model(metaclass=MetaModel):
             self._set_row_persistence = self._set_row_persistence_pks
         #: create dynamic row class
         clsname = self.__class__.__name__ + "Row"
-        attrs = {
-            k: cachedprop(v, name=k) for k, v in self._all_rowattrs_.items()
-        }
+        attrs = {'_model': self}
+        attrs.update({k: RowFieldMapper(k) for k in self._fieldset_all})
+        attrs.update({k: cachedprop(v, name=k) for k, v in self._all_rowattrs_.items()})
         attrs.update(self._all_rowmethods_)
-        attrs.update(_model=self)
         attrs.update({
-            key: property(_relation_mapper_getter_(key), _relation_mapper_setter_(key))
-            for key in self._compound_relations_.keys()
+            k: RowRelationMapper(self.db, self._belongs_ref_[k])
+            for k in self._relations_wrapset
+        })
+        attrs.update({
+            k: RowCompoundRelationMapper(
+                self.db, data
+            ) for k, data in self._compound_relations_.items()
         })
         self._rowclass_ = type(clsname, (StructuredRow,), attrs)
         globals()[clsname] = self._rowclass_
@@ -885,7 +896,7 @@ class Model(metaclass=MetaModel):
         inst = cls._instance_()
         attrset = set(attributes.keys())
         rowattrs = {}
-        for field in inst._fieldset_initable & attrset:
+        for field in (inst._fieldset_initable - inst._relations_wrapset) & attrset:
             rowattrs[field] = attributes[field]
         for field in inst._fieldset_initable - attrset:
             val = cls.table[field].default
@@ -899,7 +910,18 @@ class Model(metaclass=MetaModel):
             reldata = inst._compound_relations_[field]
             for local_field, foreign_field in reldata.coupled_fields:
                 rowattrs[local_field] = attributes[field][foreign_field]
-        return inst._rowclass_(rowattrs, __concrete=False)
+        rv = inst._rowclass_(
+            rowattrs, __concrete=False,
+            **{k: attributes[k] for k in attrset - set(rowattrs)}
+        )
+        rv._fields.update({
+            field: typed_row_reference_from_record(
+                attributes[field], inst.db[inst._belongs_fks_[field].model]._model_
+            ) if isinstance(attributes[field], StructuredRow) else typed_row_reference(
+                attributes[field], inst.db[inst._belongs_fks_[field].model]
+            ) for field in inst._relations_wrapset & attrset
+        })
+        return rv
 
     @classmethod
     def create(cls, *args, skip_callbacks=False, **kwargs):
@@ -1000,7 +1022,8 @@ class Model(metaclass=MetaModel):
         ).first()
         if not last:
             return False
-        row.update(last)
+        row._fields.update(last._fields)
+        row.__dict__.clear()
         row._changes.clear()
         return True
 
@@ -1042,7 +1065,12 @@ class Model(metaclass=MetaModel):
                 if raise_on_error:
                     raise InsertFailureOnSave
                 return False
+        extra_changes = {
+            key: row._changes[key]
+            for key in set(row._changes.keys()) & set(row.__dict__.keys())
+        }
         row._changes.clear()
+        row._changes.update(extra_changes)
         return True
 
     @rowmethod('destroy')
@@ -1065,127 +1093,57 @@ class Model(metaclass=MetaModel):
         return True
 
 
+class RowFieldMapper:
+    __slots__ = ["field"]
+
+    def __init__(self, field: str):
+        self.field = field
+
+    def __set__(self, obj, val):
+        obj._fields[self.field] = val
+
+    def __get__(self, obj, objtype=None):
+        return obj._fields.get(self.field)
+
+
 class RowRelationMapper:
-    __slots__ = ["model", "fields", "_lastv", "_cached"]
+    __slots__ = ["table", "field"]
 
     def __init__(self, db, relation_data):
-        self.model = db[relation_data.model]._model_
+        self.table = db[relation_data.model]
+        self.field = relation_data.name
+
+    def __set__(self, obj, val):
+        if val is not None and not isinstance(val, RowReferenceMixin):
+            if isinstance(val, StructuredRow):
+                val = typed_row_reference_from_record(val, val._model)
+            else:
+                val = typed_row_reference(val, self.table)
+        obj._fields[self.field] = val
+
+    def __get__(self, obj, objtype=None):
+        return obj._fields.get(self.field)
+
+
+class RowCompoundRelationMapper:
+    __slots__ = ["table", "fields", "field"]
+
+    def __init__(self, db, relation_data):
+        self.table = db[relation_data.model]
+        self.field = relation_data.name
         self.fields = relation_data.coupled_fields
-        self._lastv = {}
-        self._cached = None
 
-    def __call__(self, obj):
-        pks = {fk: obj[lk] for lk, fk in self.fields}
-        if all(v is None for v in pks.values()):
-            return None
-        if not self._cached or pks != self._lastv:
-            self._lastv = pks
-            self._cached = RowReferenceMulti(pks, self.model.table)
-        return self._cached
-
-
-class StructuredRow(Row):
-    __slots__ = ["_concrete", "_changes", "_compound_rel_mappers"]
-
-    def __init__(self, *args, **kwargs):
-        object.__setattr__(self, "_concrete", kwargs.pop("__concrete", True))
-        object.__setattr__(self, "_changes", {})
-        object.__setattr__(self, "_compound_rel_mappers", {})
-        super().__init__(*args, **kwargs)
-        if self._model._compound_relations_:
-            for key, data in self._model._compound_relations_.items():
-                self._compound_rel_mappers[key] = RowRelationMapper(
-                    self._model.db, data
-                )
-
-    def __setattr__(self, key, value):
-        if key in self.__slots__:
-            return
-        prev = self._changes[key][0] if key in self._changes else self.__dict__.get(key)
-        object.__setattr__(self, key, value)
-        if (prev is None and value is not None) or prev != value:
-            self._changes[key] = (prev, value)
-        else:
-            self._changes.pop(key, None)
-
-    def __setitem__(self, key, value):
-        self.__setattr__(key, value)
-
-    def __getstate__(self):
-        return {
-            "__data": {
-                key: self.__dict__[key]
-                for key in set(self.__dict__.keys()) & self._model._fieldset_all
-            },
-            "__struct": {
-                "_concrete": self._concrete,
-                "_changes": {},
-                "_compound_rel_mappers": {}
-            }
-        }
-
-    def __setstate__(self, state):
-        self.__dict__.update(state["__data"])
-        for key, val in state["__struct"].items():
-            object.__setattr__(self, key, val)
-        if self._model._compound_relations_:
-            for key, data in self._model._compound_relations_.items():
-                self._compound_rel_mappers[key] = RowRelationMapper(
-                    self._model.db, data
-                )
-
-    def update(self, *args, **kwargs):
-        for arg in args:
-            for key, val in arg.items():
-                self.__setattr__(key, val)
-        for key, val in kwargs.items():
-            self.__setattr__(key, val)
-
-    @property
-    def changes(self):
-        return sdict(self._changes)
-
-    @property
-    def has_changed(self):
-        return bool(self._changes)
-
-    def has_changed_value(self, key):
-        return key in self._changes
-
-    def get_value_change(self, key):
-        return self._changes.get(key, None)
-
-    def clone(self):
-        fields = {}
-        for key in self._model._fieldset_all:
-            fields[key] = self._changes[key][0] if key in self._changes else self[key]
-        return self.__class__(fields, __concrete=self._concrete)
-
-    def clone_changed(self):
-        return self.__class__(
-            {key: self[key] for key in self._model._fieldset_all},
-            __concrete=self._concrete
-        )
-
-    @property
-    def validation_errors(self):
-        return self._model.validate(self)
-
-    @property
-    def is_valid(self):
-        return not bool(self._model.validate(self))
-
-
-def _relation_mapper_getter_(key):
-    def wrap(obj):
-        return obj._compound_rel_mappers[key](obj)
-    return wrap
-
-
-def _relation_mapper_setter_(key):
-    def wrap(obj, val):
+    def __set__(self, obj, val):
         if not isinstance(val, (StructuredRow, RowReferenceMulti)):
             return
-        for local_field, foreign_field in obj._compound_rel_mappers[key].fields:
+        for local_field, foreign_field in self.fields:
             obj[local_field] = val[foreign_field]
-    return wrap
+
+    def __get__(self, obj, objtype=None):
+        pks = {fk: obj[lk] for lk, fk in self.fields}
+        key = (self.field, *pks.values())
+        if key not in obj._compound_rels:
+            obj._compound_rels[key] = RowReferenceMulti(pks, self.table) if all(
+                v is not None for v in pks.values()
+            ) else None
+        return obj._compound_rels[key]

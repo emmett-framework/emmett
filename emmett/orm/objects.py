@@ -18,7 +18,7 @@ import types
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from functools import reduce
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from pydal.objects import (
     Table as _Table,
@@ -40,8 +40,8 @@ from ..validators import ValidateFromDict
 from .helpers import (
     RelationBuilder,
     GeoFieldWrapper,
+    RowReferenceMixin,
     wrap_scope_on_set,
-    typed_row_reference,
     typed_row_reference_from_record
 )
 
@@ -913,6 +913,8 @@ class HasManySet(RelationSet):
         return self.select(*args, **kwargs)
 
     def add(self, obj, skip_callbacks=False):
+        if not isinstance(obj, (StructuredRow, RowReferenceMixin)):
+            raise RuntimeError(f"Unsupported parameter {obj}")
         attrs = self._get_fields_from_scopes(
             self._scopes_, self._model_.tablename
         )
@@ -926,14 +928,16 @@ class HasManySet(RelationSet):
         if rv:
             for key, val in attrs.items():
                 obj[key] = val
-            if self._relation_.ref.reverse not in obj._compound_rel_mappers:
-                obj[self._relation_.ref.reverse] = typed_row_reference(
-                    rev_attrs if len(rev_attrs) > 1 else rev_attrs[self._fields_[0][1]],
-                    self._relation_.model.table
+            if len(rev_attrs) > 1:
+                comprel_key = (self._relation_.ref.reverse, *rev_attrs.values())
+                obj._compound_rels[comprel_key] = typed_row_reference_from_record(
+                    self._row_, self._row_._model
                 )
         return rv
 
     def remove(self, obj, skip_callbacks=False):
+        if not isinstance(obj, (StructuredRow, RowReferenceMixin)):
+            raise RuntimeError(f"Unsupported parameter {obj}")
         attrs, is_delete = {ref: None for ref, _ in self._fields_}, False
         if self._model_._belongs_fks_[self._relation_.ref.reverse].is_refers:
             rv = self.db(self._model_._query_row(obj)).validate_and_update(
@@ -948,8 +952,8 @@ class HasManySet(RelationSet):
         if rv:
             for key, val in attrs.items():
                 obj[key] = val
-            if self._relation_.ref.reverse not in obj._compound_rel_mappers:
-                obj[self._relation_.ref.reverse] = None
+            if len(attrs) > 1:
+                obj._compound_rels[(self._relation_.ref.reverse, None, None)] = None
             if is_delete:
                 obj._concrete = False
         return rv
@@ -1276,6 +1280,12 @@ class Row(_Row):
         [datetime.datetime, datetime.date, datetime.time]
     )
 
+    @classmethod
+    def _from_engine(cls, data):
+        rv = cls()
+        rv.__dict__.__init__(**data)
+        return rv
+
     def as_dict(self, datetime_to_str=False, custom_types=None, geo_coordinates=True):
         rv = {}
         for key, val in self.items():
@@ -1316,6 +1326,148 @@ class Row(_Row):
             return self.__getitem__(name)
         except KeyError:
             raise AttributeError(name)
+
+    def __eq__(self, other):
+        if not isinstance(other, Row):
+            return False
+        try:
+            return self.__dict__ == other.__dict__
+        except AttributeError:
+            return False
+
+    def __copy__(self):
+        return Row(self)
+
+
+class StructuredRow(Row):
+    __slots__ = ["_changes", "_concrete", "_fields", "_compound_rels"]
+
+    @classmethod
+    def _from_engine(cls, data: Dict[str, Any]):
+        rv = cls(__concrete=True)
+        rv._fields.update(data)
+        return rv
+
+    def __init__(
+        self,
+        fields: Optional[Dict[str, Any]] = None,
+        **extras: Any
+    ):
+        object.__setattr__(self, "_changes", {})
+        object.__setattr__(self, "_compound_rels", {})
+        object.__setattr__(self, "_concrete", extras.pop("__concrete", False))
+        object.__setattr__(self, "_fields", fields or {})
+        self.__dict__.__init__(**extras)
+
+    def __contains__(self, name):
+        return name in self._fields or name in self.__dict__
+
+    def __getitem__(self, name):
+        return object.__getattribute__(self, name)
+
+    def __setattr__(self, key, value):
+        if key in self.__slots__:
+            return
+        oldv = (
+            self._changes[key][0] if key in self._changes else
+            getattr(self, key, None)
+        )
+        object.__setattr__(self, key, value)
+        newv = getattr(self, key, None)
+        if (oldv is None and value is not None) or oldv != newv:
+            self._changes[key] = (oldv, newv)
+        else:
+            self._changes.pop(key, None)
+
+    def __setitem__(self, key, value):
+        self.__setattr__(key, value)
+
+    def __getstate__(self):
+        return {
+            "__fields": self._fields,
+            "__extras": self.__dict__,
+            "__struct": {
+                "_concrete": self._concrete,
+                "_changes": {},
+                "_compound_rels": {}
+            }
+        }
+
+    def __setstate__(self, state):
+        self.__dict__.update(state["__extras"])
+        object.__setattr__(self, "_fields", state["__fields"])
+        for key, val in state["__struct"].items():
+            object.__setattr__(self, key, val)
+
+    def __bool__(self):
+        return bool(self._fields) or bool(self.__dict__)
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self._fields == other._fields and self.__dict__ == other.__dict__
+
+    def __copy__(self):
+        return StructuredRow(self._fields, __concrete=self._concrete, **self.__dict__)
+
+    def keys(self):
+        for pool in (self._fields, self.__dict__):
+            for item in pool.keys():
+                yield item
+
+    def values(self):
+        for pool in (self._fields, self.__dict__):
+            for item in pool.values():
+                yield item
+
+    def items(self):
+        for pool in (self._fields, self.__dict__):
+            for item in pool.items():
+                yield item
+
+    def update(self, *args, **kwargs):
+        for arg in args:
+            for key, val in arg.items():
+                self.__setattr__(key, val)
+        for key, val in kwargs.items():
+            self.__setattr__(key, val)
+
+    @property
+    def changes(self):
+        return sdict(self._changes)
+
+    @property
+    def has_changed(self):
+        return bool(self._changes)
+
+    def has_changed_value(self, key):
+        return key in self._changes
+
+    def get_value_change(self, key):
+        return self._changes.get(key, None)
+
+    def clone(self):
+        fields = {}
+        fieldset = set(self._fields.keys())
+        changeset = set(self._changes.keys())
+        for key in fieldset & changeset:
+            fields[key] = self._changes[key][0]
+        for key in fieldset - changeset:
+            fields[key] = self._fields[key]
+        return self.__class__(fields, __concrete=self._concrete, **self.__dict__)
+
+    def clone_changed(self):
+        return self.__class__(
+            {**self._fields}, __concrete=self._concrete, **self.__dict__
+        )
+
+    @property
+    def validation_errors(self):
+        return self._model.validate(self)
+
+    @property
+    def is_valid(self):
+        return not bool(self._model.validate(self))
 
 
 class Rows(_Rows):

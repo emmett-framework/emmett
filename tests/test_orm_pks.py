@@ -14,6 +14,7 @@ from uuid import uuid4
 from emmett import App, sdict
 from emmett.orm import Database, Model, Field, belongs_to, has_many
 from emmett.orm.errors import SaveException
+from emmett.orm.helpers import RowReferenceMixin
 from emmett.orm.migrations.utils import generate_runtime_migration
 
 require_postgres = pytest.mark.skipif(
@@ -725,6 +726,22 @@ def test_relations_set(pgs):
 
 @require_postgres
 def test_row(pgs):
+    sc1 = SourceCustom.new(foo="test1")
+    sc1.save()
+    sc2 = SourceCustom.new(foo="test2")
+    sc2.save()
+
+    dcc1 = DestCustomCustom.new(foo="test1", source_custom=sc1.id)
+    assert isinstance(dcc1.source_custom, RowReferenceMixin)
+    dcc1.save()
+    assert isinstance(dcc1.source_custom, RowReferenceMixin)
+
+    dcc1 = DestCustomCustom.get(dcc1.id)
+    dcc1.source_custom = sc2.id
+    assert isinstance(dcc1.source_custom, RowReferenceMixin)
+    dcc1.save()
+    assert isinstance(dcc1.source_custom, RowReferenceMixin)
+
     sm1 = SourceMulti.new(baz="test1")
     sm1.save()
     sm2 = SourceMulti.new(baz="test2")

@@ -295,7 +295,7 @@ def _parse(adapter, row, fdata, tables, concrete_tables, fields, colnames, blob_
                 column_name = new_column_name.groups(0)
                 new_row[column_name[0]] = value
     for key, val in rows_cls.items():
-        new_row[key] = val(rows_accum[key])
+        new_row[key] = val._from_engine(rows_accum[key])
     #: add extras if needed (eg. operations results)
     if extras:
         new_row['_extra'] = extras
