@@ -852,10 +852,15 @@ class RelationSet(object):
     def _filter_reload(self, kwargs):
         return kwargs.pop('reload', False)
 
+    def new(self, **kwargs):
+        attrs = self._get_fields_from_scopes(self._scopes_, self._model_.tablename)
+        attrs.update(**kwargs)
+        for ref, local in self._fields_:
+            attrs[ref] = self._row_[local]
+        return self._model_.new(**attrs)
+
     def create(self, skip_callbacks=False, **kwargs):
-        attrs = self._get_fields_from_scopes(
-            self._scopes_, self._model_.tablename
-        )
+        attrs = self._get_fields_from_scopes(self._scopes_, self._model_.tablename)
         attrs.update(**kwargs)
         for ref, local in self._fields_:
             attrs[ref] = self._row_[local]

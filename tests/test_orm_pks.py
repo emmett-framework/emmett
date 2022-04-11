@@ -407,6 +407,23 @@ def test_relations(pgs):
     sm2 = SourceMulti.new(baz="test2")
     sm2.save()
 
+    #: new
+    dcc1 = sc1.dest_custom_customs.new(foo="test")
+    assert dcc1.source_custom == sc1.id
+    assert isinstance(dcc1.source_custom, str)
+
+    dcm1 = sc1.dest_custom_multis.new(baz="test")
+    assert dcm1.source_custom == sc1.id
+    assert isinstance(dcc1.source_custom, str)
+
+    dmc1 = sm1.dest_multi_customs.new(foo="test")
+    assert dmc1.source_multi_foo == sm1.foo
+    assert dmc1.source_multi_bar == sm1.bar
+
+    dmm1 = sm1.dest_multi_multis.new(baz="test")
+    assert dmm1.source_multi_foo == sm1.foo
+    assert dmm1.source_multi_bar == sm1.bar
+
     #: create
     dcc1 = sc1.dest_custom_customs.create(foo="test")
     assert isinstance(dcc1.id, str)
