@@ -15,7 +15,6 @@ import h11
 
 from uvicorn.protocols.http.h11_impl import (
     HIGH_WATER_LIMIT,
-    STATUS_PHRASES,
     H11Protocol as _H11Protocol,
     RequestResponseCycle,
     service_unavailable,
@@ -46,8 +45,7 @@ class H11Protocol(_H11Protocol):
             output.append(b"\r\n")
             protocol = self.ws_protocol_class(
                 config=self.config,
-                server_state=self.server_state,
-                on_connection_lost=self.on_connection_lost
+                server_state=self.server_state
             )
             protocol.connection_made(self.transport)
             protocol.data_received(b"".join(output))
@@ -65,7 +63,6 @@ class H11Protocol(_H11Protocol):
             protocol = self.h2_protocol_class(
                 config=self.config,
                 server_state=self.server_state,
-                on_connection_lost=self.on_connection_lost,
                 _loop=self.loop
             )
             protocol.handle_upgrade_from_h11(self.transport, event, self.headers)
@@ -73,21 +70,7 @@ class H11Protocol(_H11Protocol):
         else:
             msg = "Unsupported upgrade request."
             self.logger.warning(msg)
-            reason = STATUS_PHRASES[400]
-            headers = [
-                (b"content-type", b"text/plain; charset=utf-8"),
-                (b"connection", b"close"),
-            ]
-            event = h11.Response(status_code=400, headers=headers, reason=reason)
-            output = self.conn.send(event)
-            self.transport.write(output)
-            event = h11.Data(data=b"Unsupported upgrade request.")
-            output = self.conn.send(event)
-            self.transport.write(output)
-            event = h11.EndOfMessage()
-            output = self.conn.send(event)
-            self.transport.write(output)
-            self.transport.close()
+            self.send_400_response(msg)
 
     def handle_h2_assumed(self):
         self.connections.discard(self)
@@ -109,7 +92,7 @@ class H11Protocol(_H11Protocol):
             except h11.RemoteProtocolError as exc:
                 msg = "Invalid HTTP request received."
                 self.logger.warning(msg, exc_info=exc)
-                self.transport.close()
+                self.send_400_response(msg)
                 return
             event_type = type(event)
 
@@ -148,7 +131,7 @@ class H11Protocol(_H11Protocol):
                     "type": "http",
                     "asgi": {
                         "version": self.config.asgi_version,
-                        "spec_version": "2.1",
+                        "spec_version": "2.3",
                     },
                     "http_version": event.http_version.decode("ascii"),
                     "server": self.server,

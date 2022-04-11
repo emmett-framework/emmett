@@ -12,8 +12,6 @@
 import asyncio
 import logging
 
-from typing import Callable, Optional
-
 from uvicorn.main import ServerState
 from uvicorn.protocols.utils import (
     get_local_addr,
@@ -79,7 +77,6 @@ class HTTPProtocol(asyncio.Protocol):
         "limit_concurrency",
         "logger",
         "loop",
-        "on_connection_lost",
         "root_path",
         "scheme",
         "server_state",
@@ -94,12 +91,10 @@ class HTTPProtocol(asyncio.Protocol):
         self,
         config: Config,
         server_state: ServerState,
-        on_connection_lost: Optional[Callable[[], None]] = None,
         _loop=None
     ):
         self.config = config
         self.app = config.loaded_app
-        self.on_connection_lost = on_connection_lost
         self.loop = _loop or asyncio.get_event_loop()
         self.logger = logging.getLogger("uvicorn.error")
         self.access_logger = logging.getLogger("uvicorn.access")
