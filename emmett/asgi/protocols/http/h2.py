@@ -15,7 +15,7 @@ import asyncio
 
 from collections import defaultdict
 from functools import partial
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, List, Tuple
 from urllib.parse import unquote
 
 import h11
@@ -57,13 +57,11 @@ class H2Protocol(HTTPProtocol):
         self,
         config: Config,
         server_state: ServerState,
-        on_connection_lost: Optional[Callable[[], None]] = None,
         _loop=None
     ):
         super().__init__(
             config=config,
             server_state=server_state,
-            on_connection_lost=on_connection_lost,
             _loop=_loop
         )
         self.conn = h2.connection.H2Connection(
@@ -93,9 +91,6 @@ class H2Protocol(HTTPProtocol):
             self.flow.resume_writing()
         if exc is None:
             self.transport.close()
-
-        if self.on_connection_lost:
-            self.on_connection_lost()
 
     def handle_upgrade_from_h11(
         self,
@@ -280,7 +275,7 @@ def on_request_received(protocol: H2Protocol, event: h2.events.RequestReceived):
         "type": "http",
         "asgi": {
             "version": protocol.config.asgi_version,
-            "spec_version": "2.1"
+            "spec_version": "2.3"
         },
         "http_version": "2",
         "server": protocol.addr_local,

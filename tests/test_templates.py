@@ -16,7 +16,7 @@ from emmett import App
 def app():
     app = App(__name__)
     app.config.templates_escape = 'all'
-    app.config.templates_adjust_indent = True
+    app.config.templates_adjust_indent = False
     app.config.templates_auto_reload = True
     return app
 
@@ -56,7 +56,6 @@ rendered_value = """
 <html>
     <head>
         <title>Test</title>
-
         {helpers}
         <link rel="stylesheet" href="/static/style.css" type="text/css" />
     </head>
@@ -66,7 +65,6 @@ rendered_value = """
             <div class="nav">
                 <a href="/">nuvolosit&#224; variabile</a>
             </div>
-
             <ul class="posts">
                 <li>
                     <h2>foo</h2>
@@ -77,7 +75,6 @@ rendered_value = """
                     <hr />
                 </li>
             </ul>
-
         </div>
     </body>
 </html>""".format(
@@ -96,5 +93,5 @@ def test_render(app):
                 'current': ctx, 'posts': [{'title': 'foo'}, {'title': 'bar'}]
             }
         )
-        assert "\n".join([l.rstrip() for l in r.splitlines()]) == \
-            rendered_value[1:]
+        assert "\n".join([l.strip() for l in r.splitlines() if l.strip()]) == \
+            "\n".join([l.strip() for l in rendered_value[1:].splitlines()])

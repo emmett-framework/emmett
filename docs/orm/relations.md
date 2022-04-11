@@ -472,7 +472,7 @@ This shortcut will return the rows referenced to the record, and accepts the sam
 
 > **Note:** calling the shortcut or the `select` method without parameters will perform caching of the referred rows on the set. If you need to avoid this for consequent calls, use the `reload` parameter set to `True`.
 
-The `has_many` sets also have three more methods that can help you performing operations with relations, in particular the `create`, `add` and `remove` methods. These methods have a slightly different behavior when the `has_many` helper is configured with the `via` options. Let' see them in details.
+The `has_many` sets also have three more methods that can help you performing operations with relations, in particular the `create`, `new`, `add` and `remove` methods. These methods have a slightly different behavior when the `has_many` helper is configured with the `via` options. Let' see them in details.
 
 #### Creating new related records
 

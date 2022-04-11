@@ -13,6 +13,7 @@ from uuid import uuid4
 from emmett import App, sdict, now
 from emmett.orm import Database, Model, Field, belongs_to, has_many, rowmethod
 from emmett.orm.errors import ValidationError
+from emmett.orm.helpers import RowReferenceMixin
 from emmett.orm.migrations.utils import generate_runtime_migration
 from emmett.orm.objects import Row
 
@@ -112,11 +113,6 @@ def test_rowclass(db):
     row = One.all().join("twos").select(One.table.ALL, Two.table.ALL).first()
     assert type(row) == One._instance_()._rowclass_
     assert type(row.twos().first()) == Two._instance_()._rowclass_
-
-    # row = One.all().join("twos").select(One.table.ALL, Two.foo).first()
-    # assert type(row) == Row
-    # assert type(row.ones) == One._instance_()._rowclass_
-    # assert type(row.twos) == Row
 
     row = One.all().join("twos").select(One.foo, Two.foo).first()
     assert type(row) == Row
@@ -269,3 +265,48 @@ def test_methods_override(db):
 
     row.force_destroy()
     assert not row.id
+
+
+def test_attributes(db):
+    row = One.new(foo="test", baz="test")
+    assert row._fields == {"id": None, "foo": "test", "bar": None}
+    assert row.__dict__ == {"baz": "test"}
+
+    assert row.get("foo") == "test"
+    assert row.get("baz") == "test"
+    assert row.get("test", "foobar") == "foobar"
+
+    assert "foo" in row
+    assert "baz" in row
+    assert "test" not in row
+
+    row.save()
+    assert row.__dict__ == {"baz": "test"}
+
+    row.foo = "test1"
+    row.baz = "test1"
+    assert set(row._changes.keys()) == {"foo", "baz"}
+
+    row.save()
+    assert set(row._changes.keys()) == {"baz"}
+
+    row.refresh()
+    assert not row.__dict__
+    assert not row._changes
+
+
+def test_relation_wrappers(db):
+    r1 = db.One.insert(foo="test1")
+    r2 = db.One.insert(foo="test2")
+
+    r = Two.new(one=r1)
+    assert isinstance(r.one, RowReferenceMixin)
+
+    r = Two.new(one=r1.id)
+    assert isinstance(r.one, RowReferenceMixin)
+
+    r = Two.new(one=One.get(r1))
+    assert isinstance(r.one, RowReferenceMixin)
+
+    r.one = r2.id
+    assert isinstance(r.one, RowReferenceMixin)
