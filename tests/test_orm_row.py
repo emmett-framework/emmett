@@ -6,12 +6,13 @@
     Test ORM row objects
 """
 
+import pickle
 import pytest
 
 from uuid import uuid4
 
 from emmett import App, sdict, now
-from emmett.orm import Database, Model, Field, belongs_to, has_many, rowmethod
+from emmett.orm import Database, Model, Field, belongs_to, has_many, rowattr, rowmethod
 from emmett.orm.errors import ValidationError
 from emmett.orm.helpers import RowReferenceMixin
 from emmett.orm.migrations.utils import generate_runtime_migration
@@ -23,6 +24,10 @@ class One(Model):
 
     foo = Field.string(notnull=True)
     bar = Field.string()
+
+    @rowattr("twos_list")
+    def _row_attr_test(self, row):
+        return [el.foo for el in row.twos()]
 
 
 class Two(Model):
@@ -37,6 +42,10 @@ class Override(Model):
     deleted_at = Field.datetime()
 
     validation = {"deleted_at": {"allow": "empty"}}
+
+    @rowattr("test")
+    def _row_attr_test(self, row):
+        return "test"
 
     @rowmethod("destroy")
     def _row_destroy(self, row):
@@ -310,3 +319,38 @@ def test_relation_wrappers(db):
 
     r.one = r2.id
     assert isinstance(r.one, RowReferenceMixin)
+
+
+def test_pickle(db):
+    r1 = One.new(foo="test")
+    r1.save()
+    r2 = Two.new(one=r1, foo="test")
+    r2.save()
+    r3 = Override.new(foo="test")
+    r3.save()
+
+    assert r1.twos_list == ["test"]
+    assert r2.one.foo == "test"
+    assert r3.test == "test"
+
+    r1.inject = "test"
+    r2.inject = "test"
+    r3.inject = "test"
+
+    d1 = pickle.dumps(r1)
+    l1 = pickle.loads(d1)
+
+    assert l1._fields == r1._fields
+    assert l1.__dict__ == r1.__dict__
+
+    d2 = pickle.dumps(r2)
+    l2 = pickle.loads(d2)
+
+    assert l2._fields == r2._fields
+    assert l2.__dict__ == r2.__dict__
+
+    d3 = pickle.dumps(r3)
+    l3 = pickle.loads(d3)
+
+    assert l3._fields == r3._fields
+    assert l3.__dict__ == r3.__dict__

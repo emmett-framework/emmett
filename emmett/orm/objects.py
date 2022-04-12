@@ -1345,7 +1345,7 @@ class Row(_Row):
 
 
 class StructuredRow(Row):
-    __slots__ = ["_changes", "_concrete", "_fields", "_compound_rels"]
+    __slots__ = ["_changes", "_compound_rels", "_concrete", "_fields", "_virtuals"]
 
     @classmethod
     def _from_engine(cls, data: Dict[str, Any]):
@@ -1362,6 +1362,7 @@ class StructuredRow(Row):
         object.__setattr__(self, "_compound_rels", {})
         object.__setattr__(self, "_concrete", extras.pop("__concrete", False))
         object.__setattr__(self, "_fields", fields or {})
+        object.__setattr__(self, "_virtuals", {})
         self.__dict__.__init__(**extras)
 
     def __contains__(self, name):
@@ -1394,7 +1395,8 @@ class StructuredRow(Row):
             "__struct": {
                 "_concrete": self._concrete,
                 "_changes": {},
-                "_compound_rels": {}
+                "_compound_rels": {},
+                "_virtuals": {}
             }
         }
 

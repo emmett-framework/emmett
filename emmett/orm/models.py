@@ -14,6 +14,7 @@ import types
 
 from collections import OrderedDict
 from functools import reduce
+from typing import Any, Callable
 
 from ..datastructures import sdict
 from ..utils import cachedprop
@@ -652,7 +653,10 @@ class Model(metaclass=MetaModel):
         clsname = self.__class__.__name__ + "Row"
         attrs = {'_model': self}
         attrs.update({k: RowFieldMapper(k) for k in self._fieldset_all})
-        attrs.update({k: cachedprop(v, name=k) for k, v in self._all_rowattrs_.items()})
+        attrs.update({
+            k: RowVirtualMapper(k, v)
+            for k, v in self._all_rowattrs_.items()
+        })
         attrs.update(self._all_rowmethods_)
         attrs.update({
             k: RowRelationMapper(self.db, self._belongs_ref_[k])
@@ -1105,6 +1109,26 @@ class RowFieldMapper:
     def __get__(self, obj, objtype=None):
         return obj._fields.get(self.field)
 
+    def __delete__(self, obj):
+        obj._fields.pop(self.field, None)
+
+
+class RowVirtualMapper:
+    __slots__ = ["field", "fget"]
+
+    def __init__(self, field: str, fget: Callable[..., Any]):
+        self.field = field
+        self.fget = fget
+
+    def __get__(self, obj, objtype=None):
+        if self.field not in obj._virtuals:
+            obj._virtuals[self.field] = rv = self.fget(obj)
+            return rv
+        return obj._virtuals[self.field]
+
+    def __delete__(self, obj):
+        obj._virtuals.pop(self.field, None)
+
 
 class RowRelationMapper:
     __slots__ = ["table", "field"]
@@ -1123,6 +1147,9 @@ class RowRelationMapper:
 
     def __get__(self, obj, objtype=None):
         return obj._fields.get(self.field)
+
+    def __delete__(self, obj):
+        obj._fields.pop(self.field, None)
 
 
 class RowCompoundRelationMapper:
@@ -1147,3 +1174,8 @@ class RowCompoundRelationMapper:
                 v is not None for v in pks.values()
             ) else None
         return obj._compound_rels[key]
+
+    def __delete__(self, obj):
+        pks = {fk: obj[lk] for lk, fk in self.fields}
+        key = (self.field, *pks.values())
+        obj._compound_rels.pop(key, None)
