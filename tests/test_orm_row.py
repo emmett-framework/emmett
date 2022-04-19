@@ -12,7 +12,9 @@ import pytest
 from uuid import uuid4
 
 from emmett import App, sdict, now
-from emmett.orm import Database, Model, Field, belongs_to, has_many, rowattr, rowmethod
+from emmett.orm import (
+    Database, Model, Field, belongs_to, has_many, refers_to, rowattr, rowmethod
+)
 from emmett.orm.errors import ValidationError
 from emmett.orm.helpers import RowReferenceMixin
 from emmett.orm.migrations.utils import generate_runtime_migration
@@ -20,7 +22,7 @@ from emmett.orm.objects import Row
 
 
 class One(Model):
-    has_many("twos")
+    has_many("twos", "threes")
 
     foo = Field.string(notnull=True)
     bar = Field.string()
@@ -35,6 +37,12 @@ class Two(Model):
 
     foo = Field.string()
     bar = Field.string()
+
+
+class Three(Model):
+    refers_to("one")
+
+    foo = Field.string()
 
 
 class Override(Model):
@@ -67,7 +75,7 @@ def _db():
             auto_connect=True
         )
     )
-    db.define_models(One, Two, Override)
+    db.define_models(One, Two, Three, Override)
     return db
 
 @pytest.fixture(scope='function')
@@ -308,6 +316,12 @@ def test_relation_wrappers(db):
     r1 = db.One.insert(foo="test1")
     r2 = db.One.insert(foo="test2")
 
+    r = Two.new()
+    assert not r.one
+
+    r = Two.new(one=None)
+    assert not r.one
+
     r = Two.new(one=r1)
     assert isinstance(r.one, RowReferenceMixin)
 
@@ -315,6 +329,24 @@ def test_relation_wrappers(db):
     assert isinstance(r.one, RowReferenceMixin)
 
     r = Two.new(one=One.get(r1))
+    assert isinstance(r.one, RowReferenceMixin)
+
+    r.one = r2.id
+    assert isinstance(r.one, RowReferenceMixin)
+
+    r = Three.new()
+    assert not r.one
+
+    r = Three.new(one=None)
+    assert not r.one
+
+    r = Three.new(one=r1)
+    assert isinstance(r.one, RowReferenceMixin)
+
+    r = Three.new(one=r1.id)
+    assert isinstance(r.one, RowReferenceMixin)
+
+    r = Three.new(one=One.get(r1))
     assert isinstance(r.one, RowReferenceMixin)
 
     r.one = r2.id
