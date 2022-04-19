@@ -919,10 +919,13 @@ class Model(metaclass=MetaModel):
             **{k: attributes[k] for k in attrset - set(rowattrs)}
         )
         rv._fields.update({
-            field: typed_row_reference_from_record(
-                attributes[field], inst.db[inst._belongs_fks_[field].model]._model_
-            ) if isinstance(attributes[field], StructuredRow) else typed_row_reference(
-                attributes[field], inst.db[inst._belongs_fks_[field].model]
+            field: attributes[field] if not attributes[field] else (
+                typed_row_reference_from_record(
+                    attributes[field], inst.db[inst._belongs_fks_[field].model]._model_
+                ) if isinstance(attributes[field], StructuredRow) else
+                typed_row_reference(
+                    attributes[field], inst.db[inst._belongs_fks_[field].model]
+                )
             ) for field in inst._relations_wrapset & attrset
         })
         return rv
