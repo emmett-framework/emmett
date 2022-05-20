@@ -238,6 +238,10 @@ class GeoFieldWrapper(str):
         }
 
 
+class PasswordFieldWrapper(str):
+    _emt_field_hashed_contents_ = True
+
+
 class Reference(object):
     def __init__(self, *args, **params):
         self.reference = [arg for arg in args]
