@@ -135,6 +135,8 @@ class Crypt(Validator):
         self.salt = salt
 
     def __call__(self, value):
+        if getattr(value, '_emt_field_hashed_contents_', False):
+            return value, None
         crypt = LazyCrypt(self, value)
         if isinstance(value, LazyCrypt) and value == crypt:
             return value, None

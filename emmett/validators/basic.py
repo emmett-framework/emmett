@@ -229,6 +229,8 @@ class hasLength(Validator):
             length = 0
             if self._between(length):
                 return value, None
+        elif getattr(value, '_emt_field_hashed_contents_', False):
+            return value, None
         elif isinstance(value, FieldStorage):
             if value.file:
                 value.file.seek(0, SEEK_END)

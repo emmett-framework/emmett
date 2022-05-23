@@ -37,7 +37,7 @@ from pydal.parsers import ParserMethodWrapper, for_type as _parser_for_type
 from pydal.representers import TReprMethodWrapper, for_type as _representer_for_type
 
 from .engines import adapters
-from .helpers import GeoFieldWrapper, typed_row_reference
+from .helpers import GeoFieldWrapper, PasswordFieldWrapper, typed_row_reference
 from .objects import Expression, Field, Row, IterRows
 
 
@@ -100,6 +100,10 @@ def patch_dialect(dialect):
 
 
 def patch_parser(dialect, parser):
+    parser.registered['password'] = ParserMethodWrapper(
+        parser,
+        _parser_for_type('password')(_parser_password).f
+    )
     parser.registered['reference'] = ParserMethodWrapper(
         parser,
         _parser_for_type('reference')(_parser_reference).f,
@@ -375,6 +379,10 @@ def _parser_reference(parser, value, referee):
 
 def _parser_geo(parser, value):
     return GeoFieldWrapper(value)
+
+
+def _parser_password(parser, value):
+    return PasswordFieldWrapper(value)
 
 
 def _representer_reference(representer, value, referenced):

@@ -65,6 +65,11 @@ class Override(Model):
         self.super_rowmethod("destroy")(row)
 
 
+class Crypted(Model):
+    foo = Field.string()
+    bar = Field.password()
+
+
 @pytest.fixture(scope='module')
 def _db():
     app = App(__name__)
@@ -75,7 +80,7 @@ def _db():
             auto_connect=True
         )
     )
-    db.define_models(One, Two, Three, Override)
+    db.define_models(One, Two, Three, Override, Crypted)
     return db
 
 @pytest.fixture(scope='function')
@@ -351,6 +356,24 @@ def test_relation_wrappers(db):
 
     r.one = r2.id
     assert isinstance(r.one, RowReferenceMixin)
+
+
+def test_password_wrapper(db):
+    db.Crypted.validate_and_insert(foo="foobar", bar="foobar")
+
+    row = Crypted.first()
+    crypted_value = str(row.bar)
+
+    row.save()
+    assert str(row.bar) == crypted_value
+
+    row.foo = "test"
+    row.save()
+    assert str(row.bar) == crypted_value
+
+    row.bar = "testtest"
+    row.save()
+    assert str(row.bar) != crypted_value
 
 
 def test_pickle(db):
