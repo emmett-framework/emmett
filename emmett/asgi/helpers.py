@@ -14,10 +14,6 @@ import sys
 
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
-from uvicorn.config import Config as UvicornConfig
-from uvicorn.lifespan.on import LifespanOn
-from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
-
 
 class Registry:
     __slots__ = ["_data"]
@@ -77,52 +73,6 @@ class BuilderRegistry(Registry):
         except KeyError:
             raise RuntimeError(f"'{key}' implementation not available.")
         return builder(**packages)
-
-
-class Config(UvicornConfig):
-    def setup_event_loop(self):
-        pass
-
-    def load(self):
-        assert not self.loaded
-
-        if self.is_ssl:
-            self.ssl = _create_ssl_context(
-                keyfile=self.ssl_keyfile,
-                certfile=self.ssl_certfile,
-                cert_reqs=self.ssl_cert_reqs,
-                ca_certs=self.ssl_ca_certs,
-                alpn_protocols=self.http.alpn_protocols
-            )
-        else:
-            self.ssl = None
-
-        encoded_headers = [
-            (key.lower().encode("latin1"), value.encode("latin1"))
-            for key, value in self.headers
-        ]
-        self.encoded_headers = (
-            encoded_headers if b"server" in dict(encoded_headers) else
-            [(b"server", b"Emmett")] + encoded_headers
-        )
-
-        self.http_protocol_class = self.http
-        self.ws_protocol_class = self.ws
-        self.lifespan_class = LifespanOn
-
-        self.loaded_app = self.app
-        self.interface = "asgi3"
-
-        if self.proxy_headers:
-            self.loaded_app = ProxyHeadersMiddleware(
-                self.loaded_app, trusted_hosts=self.forwarded_allow_ips
-            )
-
-        self.loaded = True
-
-    @property
-    def is_ssl(self) -> bool:
-        return self.ssl_certfile is not None and self.ssl_keyfile is not None
 
 
 class RequestCancelled(Exception):
