@@ -1636,6 +1636,8 @@ class JoinIterRows(IterRows):
 
 
 class TransactionOps(str, Enum):
+    __str__ = lambda v: v.value
+
     insert = "insert"
     update = "update"
     delete = "delete"
