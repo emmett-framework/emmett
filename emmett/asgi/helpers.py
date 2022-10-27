@@ -16,7 +16,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from uvicorn.config import Config as UvicornConfig
 from uvicorn.lifespan.on import LifespanOn
-from uvicorn.middleware.debug import DebugMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 
