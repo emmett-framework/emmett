@@ -10,7 +10,8 @@
 """
 
 from uvicorn.protocols.http.httptools_impl import (
-    HttpToolsProtocol as _HttpToolsProtocol
+    HttpToolsProtocol as _HttpToolsProtocol,
+    httptools
 )
 
 from . import protocols
@@ -19,6 +20,19 @@ from . import protocols
 @protocols.register("httptools")
 class HTTPToolsProtocol(_HttpToolsProtocol):
     alpn_protocols = ["http/1.1"]
+
+    def data_received(self, data: bytes) -> None:
+        self._unset_keepalive_if_required()
+
+        try:
+            self.parser.feed_data(data)
+        except httptools.HttpParserError:
+            msg = "Invalid HTTP request received."
+            self.logger.warning(msg)
+            self.send_400_response(msg)
+            return
+        except httptools.HttpParserUpgrade:
+            self.handle_upgrade()
 
     def handle_upgrade(self):
         upgrade_value = None

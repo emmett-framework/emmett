@@ -89,9 +89,9 @@ class H11Protocol(_H11Protocol):
         while True:
             try:
                 event = self.conn.next_event()
-            except h11.RemoteProtocolError as exc:
+            except h11.RemoteProtocolError:
                 msg = "Invalid HTTP request received."
-                self.logger.warning(msg, exc_info=exc)
+                self.logger.warning(msg)
                 self.send_400_response(msg)
                 return
             event_type = type(event)

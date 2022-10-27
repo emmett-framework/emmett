@@ -114,8 +114,6 @@ class Config(UvicornConfig):
         self.loaded_app = self.app
         self.interface = "asgi3"
 
-        if self.debug:
-            self.loaded_app = DebugMiddleware(self.loaded_app)
         if self.proxy_headers:
             self.loaded_app = ProxyHeadersMiddleware(
                 self.loaded_app, trusted_hosts=self.forwarded_allow_ips
