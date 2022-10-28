@@ -16,7 +16,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from uvicorn.config import Config as UvicornConfig
 from uvicorn.lifespan.on import LifespanOn
-from uvicorn.middleware.debug import DebugMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 
@@ -114,8 +113,6 @@ class Config(UvicornConfig):
         self.loaded_app = self.app
         self.interface = "asgi3"
 
-        if self.debug:
-            self.loaded_app = DebugMiddleware(self.loaded_app)
         if self.proxy_headers:
             self.loaded_app = ProxyHeadersMiddleware(
                 self.loaded_app, trusted_hosts=self.forwarded_allow_ips

@@ -21,6 +21,8 @@ from .datastructures import sdict
 
 
 class Signals(str, Enum):
+    __str__ = lambda v: v.value
+
     after_database = "after_database"
     after_loop = "after_loop"
     after_route = "after_route"
