@@ -10,6 +10,7 @@
 """
 
 from collections import OrderedDict
+from enum import Enum
 from typing import List
 
 from .errors import MissingFieldsForCompute
