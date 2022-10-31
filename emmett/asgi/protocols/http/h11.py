@@ -164,7 +164,7 @@ class H11Protocol(_H11Protocol):
                     logger=self.logger,
                     access_logger=self.access_logger,
                     access_log=self.access_log,
-                    default_headers=self.default_headers,
+                    default_headers=self.server_state.default_headers,
                     message_event=asyncio.Event(),
                     on_response=self.on_response_complete,
                 )
