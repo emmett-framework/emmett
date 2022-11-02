@@ -29,7 +29,7 @@ def run(
     ssl_certfile: Optional[str] = None,
     ssl_keyfile: Optional[str] = None
 ):
-    app_path = ":".join[app[0], app[1] or "app"]
+    app_path = ":".join([app[0], app[1] or "app"])
     runner = Granian(
         app_path,
         address=host,
