@@ -23,7 +23,6 @@ import click
 
 from .__version__ import __version__ as fw_version
 from ._internal import locate_app, get_app_module
-from .asgi.loops import loops
 from .logger import LOG_LEVELS
 from .server import run as sgi_run
 
@@ -246,7 +245,7 @@ class EmmettGroup(click.Group):
     '--interface', type=click.Choice(['rsgi', 'asgi']), default='rsgi',
     help='Application interface.')
 @click.option(
-    '--loop', type=click.Choice(loops.keys()), default='auto',
+    '--loop', type=click.Choice(['auto', 'asyncio', 'uvloop']), default='auto',
     help='Event loop implementation.')
 @click.option(
     '--ssl-certfile', type=str, default=None, help='SSL certificate file')
@@ -308,7 +307,7 @@ def develop_command(
     '--interface', type=click.Choice(['rsgi', 'asgi']), default='rsgi',
     help='Application interface.')
 @click.option(
-    '--loop', type=click.Choice(loops.keys()), default='auto',
+    '--loop', type=click.Choice(['auto', 'asyncio', 'uvloop']), default='auto',
     help='Event loop implementation.')
 @click.option(
     '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='info',
