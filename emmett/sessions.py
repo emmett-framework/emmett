@@ -159,7 +159,7 @@ class CookieSessionPipe(SessionPipe):
             rv = None
         return SessionData(rv, expires=self.expire)
 
-    def _load_session(self, wrapper: ScopeWrapper) -> SessionData:
+    def _load_session(self, wrapper: IngressWrapper) -> SessionData:
         cookie_data = wrapper.cookies[self.cookie_name].value
         return self._decrypt_data(cookie_data)
 
@@ -183,7 +183,7 @@ class BackendStoredSessionPipe(SessionPipe):
     def _session_cookie_data(self) -> str:
         return current.session._sid
 
-    def _load_session(self, wrapper: ScopeWrapper) -> Optional[SessionData]:
+    def _load_session(self, wrapper: IngressWrapper) -> Optional[SessionData]:
         sid = wrapper.cookies[self.cookie_name].value
         data = self._load(sid)
         if data is not None:
