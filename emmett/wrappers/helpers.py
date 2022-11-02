@@ -9,14 +9,13 @@
     :license: BSD-3-Clause
 """
 
+import re
+
 from typing import (
-    Any,
     BinaryIO,
-    Callable,
     Dict,
     Iterable,
     Iterator,
-    Mapping,
     MutableMapping,
     Optional,
     Tuple,
@@ -25,56 +24,7 @@ from typing import (
 
 from .._internal import loop_copyfileobj
 
-
-class Headers(Mapping[str, str]):
-    __slots__ = ["_data"]
-
-    def __init__(self, scope: Dict[str, Any]):
-        self._data: Dict[bytes, bytes] = {
-            key: val for key, val in scope["headers"]
-        }
-
-    __hash__ = None  # type: ignore
-
-    def __getitem__(self, key: str) -> str:
-        return self._data[key.lower().encode("latin-1")].decode("latin-1")
-
-    def __contains__(self, key: str) -> bool:  # type: ignore
-        return key.lower().encode("latin-1") in self._data
-
-    def __iter__(self) -> Iterator[str]:
-        for key in self._data.keys():
-            yield key.decode("latin-1")
-
-    def __len__(self) -> int:
-        return len(self._data)
-
-    def get(
-        self,
-        key: str,
-        default: Optional[Any] = None,
-        cast: Optional[Callable[[Any], Any]] = None
-    ) -> Any:
-        rv = self._data.get(key.lower().encode("latin-1"))
-        rv = rv.decode() if rv is not None else default  # type: ignore
-        if cast is None:
-            return rv
-        try:
-            return cast(rv)
-        except ValueError:
-            return default
-
-    def items(self) -> Iterator[Tuple[str, str]]:  # type: ignore
-        for key, value in self._data.items():
-            yield key.decode("latin-1"), value.decode("latin-1")
-
-    def keys(self) -> Iterator[str]:  # type: ignore
-        for key in self._data.keys():
-            yield key.decode("latin-1")
-
-    def values(self) -> Iterator[str]:  # type: ignore
-        for value in self._data.values():
-            yield value.decode("latin-1")
+regex_client = re.compile(r'[\w\-:]+(\.[\w\-]+)*\.?')
 
 
 class ResponseHeaders(MutableMapping[str, str]):
@@ -163,7 +113,3 @@ class FileStorage:
         return (
             f'<{self.__class__.__name__}: '
             f'{self.filename} ({self.content_type})')
-
-
-class RequestCancelled(Exception):
-    pass

@@ -12,13 +12,12 @@
 import asyncio
 import logging
 import signal
+import sys
 
+from gunicorn.arbiter import Arbiter
 from gunicorn.workers.base import Worker as _Worker
-
-from ..extensions import Signals
-from .loops import loops
-from .protocols import protocols_http, protocols_ws
-from .server import Config, Server
+from uvicorn.config import Config
+from uvicorn.server import Server
 
 
 class Worker(_Worker):
@@ -51,6 +50,7 @@ class Worker(_Worker):
             config.update(
                 ssl_keyfile=self.cfg.ssl_options.get("keyfile"),
                 ssl_certfile=self.cfg.ssl_options.get("certfile"),
+                ssl_keyfile_password=self.cfg.ssl_options.get("password"),
                 ssl_version=self.cfg.ssl_options.get("ssl_version"),
                 ssl_cert_reqs=self.cfg.ssl_options.get("cert_reqs"),
                 ssl_ca_certs=self.cfg.ssl_options.get("ca_certs"),
@@ -61,33 +61,30 @@ class Worker(_Worker):
             config["backlog"] = self.cfg.settings["backlog"].value
 
         config.update(self.EMMETT_CONFIG)
-        config.update(
-            http=protocols_http.get(config.get('http', 'auto')),
-            ws=protocols_ws.get(config.get('ws', 'auto'))
-        )
 
         self.config = Config(**config)
 
     def init_process(self):
-        self.config.loop = loops.get(self.config.loop)
+        self.config.setup_event_loop()
         super().init_process()
 
-    def init_signals(self):
+    def init_signals(self) -> None:
         for s in self.SIGNALS:
             signal.signal(s, signal.SIG_DFL)
-
         signal.signal(signal.SIGUSR1, self.handle_usr1)
-        # Don't let SIGUSR1 disturb active requests by interrupting system calls
         signal.siginterrupt(signal.SIGUSR1, False)
 
-    def run(self):
+    async def _serve(self) -> None:
         self.config.app = self.wsgi
-        self.config.app.send_signal(Signals.after_loop, loop=self.config.loop)
         server = Server(config=self.config)
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(server.serve(sockets=self.sockets))
+        await server.serve(sockets=self.sockets)
+        if not server.started:
+            sys.exit(Arbiter.WORKER_BOOT_ERROR)
 
-    async def callback_notify(self):
+    def run(self) -> None:
+        return asyncio.run(self._serve())
+
+    async def callback_notify(self) -> None:
         self.notify()
 
 
@@ -102,7 +99,7 @@ class EmmettWorker(Worker):
 
 class EmmettH11Worker(EmmettWorker):
     EMMETT_CONFIG = {
-        "loop": "asyncio",
+        "loop": "auto",
         "http": "h11",
         "proxy_headers": False,
         "interface": "asgi3"
