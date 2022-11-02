@@ -32,7 +32,7 @@ from .html import asis
 from .language.helpers import Tstr
 from .language.translator import Translator
 from .pipeline import Pipe, Injector
-from .routing.router import HTTPRouter, WebsocketRouter, RoutingCtx
+from .routing.router import HTTPRouter, WebsocketRouter, RoutingCtx, RoutingCtxGroup
 from .routing.urls import url
 from .rsgi import handlers as rsgi_handlers
 from .templating.templater import Templater
@@ -474,6 +474,9 @@ class App:
             opts=kwargs
         )
 
+    def module_group(self, *modules: AppModule) -> AppModuleGroup:
+        return AppModuleGroup(self, *modules)
+
 
 class AppModule:
     @classmethod
@@ -702,3 +705,32 @@ class AppModule:
             hostname=self.hostname,
             **kwargs
         )
+
+
+class AppModuleGroup:
+    def __init__(self, app: App, *modules: AppModule) -> None:
+        self.app = app
+        self.modules = modules
+
+    def route(
+        self,
+        paths: Optional[Union[str, List[str]]] = None,
+        name: Optional[str] = None,
+        template: Optional[str] = None,
+        **kwargs
+    ) -> RoutingCtxGroup:
+        return RoutingCtxGroup([
+            mod.route(paths=paths, name=name, template=template, **kwargs)
+            for mod in self.modules
+        ])
+
+    def websocket(
+        self,
+        paths: Optional[Union[str, List[str]]] = None,
+        name: Optional[str] = None,
+        **kwargs
+    ):
+        return RoutingCtxGroup([
+            mod.websocket(paths=paths, name=name, **kwargs)
+            for mod in self.modules
+        ])
