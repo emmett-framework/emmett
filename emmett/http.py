@@ -19,7 +19,7 @@ from email.utils import formatdate
 from hashlib import md5
 from typing import Any, BinaryIO, Dict, Generator, Tuple
 
-from granian.rsgi import Response as RSGIResponse
+from granian.rsgi import HTTPProtocol
 
 from ._internal import loop_open_file
 from .ctx import current
@@ -111,8 +111,8 @@ class HTTPResponse(Exception):
         await self._send_headers(send)
         await self._send_body(send)
 
-    def rsgi(self):
-        return RSGIResponse.empty(
+    def rsgi(self, protocol: HTTPProtocol):
+        protocol.response_empty(
             self.status_code,
             list(self.rsgi_headers)
         )
@@ -136,11 +136,11 @@ class HTTPBytes(HTTPResponse):
             'more_body': False
         })
 
-    def rsgi(self):
-        return RSGIResponse.bytes(
-            self.body,
+    def rsgi(self, protocol: HTTPProtocol):
+        protocol.response_bytes(
             self.status_code,
-            list(self.rsgi_headers)
+            list(self.rsgi_headers),
+            self.body
         )
 
 
@@ -166,11 +166,11 @@ class HTTP(HTTPResponse):
             'more_body': False
         })
 
-    def rsgi(self):
-        return RSGIResponse.str(
-            self.body,
+    def rsgi(self, protocol: HTTPProtocol):
+        protocol.response_str(
             self.status_code,
-            list(self.rsgi_headers)
+            list(self.rsgi_headers),
+            self.body
         )
 
 
@@ -240,7 +240,7 @@ class HTTPFile(HTTPResponse):
                     'more_body': more_body,
                 })
 
-    def rsgi(self):
+    def rsgi(self, protocol: HTTPProtocol):
         try:
             stat_data = os.stat(self.file_path)
             if not stat.S_ISREG(stat_data.st_mode):
@@ -251,10 +251,10 @@ class HTTPFile(HTTPResponse):
                 return HTTP(403).rsgi()
             return HTTP(404).rsgi()
 
-        return RSGIResponse.file(
-            self.file_path,
+        protocol.response_file(
             self.status_code,
-            list(self.rsgi_headers)
+            list(self.rsgi_headers),
+            self.file_path
         )
 
 

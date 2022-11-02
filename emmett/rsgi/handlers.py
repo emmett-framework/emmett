@@ -89,7 +89,7 @@ class HTTPHandler(RequestHandler):
             self.app.log.warn(
                 f"Timeout sending response: ({scope.path})"
             )
-        return http.rsgi()
+        http.rsgi(protocol)
 
     @cachedprop
     def error_handler(self) -> Callable[[], Awaitable[str]]:
@@ -247,7 +247,7 @@ class WSHandler(RequestHandler):
         )
         for task in pending:
             task.cancel()
-        return self._close_connection(transport)
+        self._close_connection(transport)
 
     async def handle_transport(self, transport: WSTransport):
         await transport.accepted.wait()
