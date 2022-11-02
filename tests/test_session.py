@@ -30,15 +30,13 @@ def ctx():
     current._close_(token)
 
 
-@pytest.mark.parametrize("encryption_mode", ["legacy", "modern"])
 @pytest.mark.asyncio
-async def test_session_cookie(ctx, encryption_mode):
+async def test_session_cookie(ctx):
     session_cookie = SessionManager.cookies(
         key='sid',
         secure=True,
         domain='localhost',
-        cookie_name='foo_session',
-        encryption_mode=encryption_mode
+        cookie_name='foo_session'
     )
     assert session_cookie.key == 'sid'
     assert session_cookie.secure is True

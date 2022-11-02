@@ -36,7 +36,7 @@ jobs:
         virtualenvs-in-project: true
     - name: Install dependencies
       run: |
-        poetry install -v --extras crypto
+        poetry install -v
     - name: Test
       env:
         POSTGRES_URI: postgres:postgres@localhost:5432/test
@@ -61,7 +61,7 @@ jobs:
         virtualenvs-in-project: true
     - name: Install dependencies
       run: |
-        poetry install -v --extras crypto
+        poetry install -v
     - name: Test
       run: |
         poetry run pytest -v tests
@@ -85,7 +85,7 @@ jobs:
     - name: Install dependencies
       shell: bash
       run: |
-        poetry install -v --extras crypto
+        poetry install -v
     - name: Test
       shell: bash
       run: |

@@ -13,29 +13,21 @@
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
-import base64
 import hashlib
 import hmac
 import os
-import pickle
-import pyaes
 import random
 import struct
 import threading
 import time
 import uuid as uuidm
-import zlib
 
 from collections import OrderedDict
 
-# TODO: check bytes conversions
-from ._shortcuts import hashlib_sha1, to_bytes
-from .libs.pbkdf2 import pbkdf2_hex
+from emmett_crypto import kdf
 
-try:
-    from emmett_crypto import kdf
-except:
-    kdf = None
+# TODO: check bytes conversions
+from ._shortcuts import to_bytes
 
 
 class CSRFStorage(OrderedDict):
@@ -69,20 +61,12 @@ def simple_hash(text, key='', salt='', digest_alg='md5'):
         h = digest_alg(text + key + salt)
     elif digest_alg.startswith('pbkdf2'):  # latest and coolest!
         iterations, keylen, alg = digest_alg[7:-1].split(',')
-        if kdf:
-            return kdf.pbkdf2_hex(
-                text,
-                salt,
-                iterations=int(iterations),
-                keylen=int(keylen),
-                hash_algorithm=kdf.PBKDF2_HMAC[alg]
-            )
-        return pbkdf2_hex(
-            to_bytes(text),
-            to_bytes(salt),
-            int(iterations),
-            int(keylen),
-            get_digest(alg)
+        return kdf.pbkdf2_hex(
+            text,
+            salt,
+            iterations=int(iterations),
+            keylen=int(keylen),
+            hash_algorithm=kdf.PBKDF2_HMAC[alg]
         )
     elif key:  # use hmac
         digest_alg = get_digest(digest_alg)
@@ -124,48 +108,6 @@ DIGEST_ALG_BY_SIZE = {
     384 / 4: 'sha384',
     512 / 4: 'sha512',
 }
-
-
-def _pad(s, n=32, padchar='.'):
-    expected_len = ((len(s) + n) - len(s) % n)
-    return s.ljust(expected_len, to_bytes(padchar))
-
-
-# DEPRECATED: remove this method in future versions
-def secure_dumps(data, encryption_key, hash_key=None, compression_level=None):
-    if not hash_key:
-        hash_key = hashlib_sha1(encryption_key).hexdigest()
-    dump = pickle.dumps(data)
-    if compression_level:
-        dump = zlib.compress(dump, compression_level)
-    key = _pad(to_bytes(encryption_key[:32]))
-    aes = pyaes.AESModeOfOperationCFB(key, iv=key[:16], segment_size=8)
-    encrypted_data = base64.urlsafe_b64encode(aes.encrypt(_pad(dump)))
-    signature = hmac.new(to_bytes(hash_key), msg=encrypted_data, digestmod='md5').hexdigest()
-    return signature + ':' + encrypted_data.decode('utf8')
-
-
-# DEPRECATED: remove this method in future versions
-def secure_loads(data, encryption_key, hash_key=None, compression_level=None):
-    if ':' not in data:
-        return None
-    if not hash_key:
-        hash_key = hashlib_sha1(encryption_key).hexdigest()
-    signature, encrypted_data = data.split(':', 1)
-    actual_signature = hmac.new(
-        to_bytes(hash_key), msg=to_bytes(encrypted_data), digestmod='md5').hexdigest()
-    if signature != actual_signature:
-        return None
-    key = _pad(to_bytes(encryption_key[:32]))
-    aes = pyaes.AESModeOfOperationCFB(key, iv=key[:16], segment_size=8)
-    try:
-        data = aes.decrypt(base64.urlsafe_b64decode(to_bytes(encrypted_data)))
-        data = data.rstrip(to_bytes(' '))
-        if compression_level:
-            data = zlib.decompress(data)
-        return pickle.loads(data)
-    except (TypeError, pickle.UnpicklingError):
-        return None
 
 
 def _init_urandom():

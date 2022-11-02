@@ -44,8 +44,8 @@ emmett = "emmett.cli:main"
 python = "^3.7"
 click = ">=6.0"
 granian = "~0.1"
+emmett-crypto = "~0.3"
 pendulum = "~2.1.2"
-pyaes = "~1.6.1"
 pyDAL = "17.3"
 python-rapidjson = "^1.0"
 pyyaml = "^5.4"
@@ -53,7 +53,6 @@ renoir = "^1.5"
 severus = "^1.1"
 
 orjson = { version = "~3.8", optional = true }
-emmett-crypto = { version = "^0.2.0", optional = true }
 
 uvicorn = { version = "^0.19.0", optional = true }
 h11 = { version = ">= 0.12.0", optional = true }
@@ -68,7 +67,6 @@ pytest-asyncio = "^0.15"
 psycopg2-binary = "^2.9.3"
 
 [tool.poetry.extras]
-crypto = ["emmett-crypto"]
 orjson = ["orjson"]
 uvicorn = ["uvicorn", "h11", "httptools", "websockets"]
 

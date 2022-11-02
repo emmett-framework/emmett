@@ -19,17 +19,13 @@ import zlib
 
 from typing import Any, Dict, Optional, Type, TypeVar
 
-from ._internal import warn_of_deprecation
+from emmett_crypto import symmetric as crypto_symmetric
+
 from .ctx import current
 from .datastructures import sdict, SessionData
 from .pipeline import Pipe
-from .security import secure_loads, secure_dumps, uuid
+from .security import uuid
 from .wrappers import IngressWrapper
-
-try:
-    from emmett_crypto import symmetric as crypto_symmetric
-except Exception:
-    crypto_symmetric = None
 
 
 class SessionPipe(Pipe):
@@ -103,7 +99,7 @@ class CookieSessionPipe(SessionPipe):
         domain=None,
         cookie_name=None,
         cookie_data=None,
-        encryption_mode="legacy",
+        encryption_mode="modern",
         compression_level=0
     ):
         super().__init__(
@@ -115,41 +111,17 @@ class CookieSessionPipe(SessionPipe):
             cookie_data=cookie_data
         )
         self.key = key
-        if encryption_mode == "legacy":
-            warn_of_deprecation("legacy encryption_mode", "modern", stack=5)
-            self._encrypt_data = self._encrypt_data_legacy
-            self._decrypt_data = self._decrypt_data_legacy
-        elif encryption_mode == "modern":
-            if not crypto_symmetric:
-                raise RuntimeError(
-                    "You need emmett-crypto to use modern encryption mode"
-                )
-            self._encrypt_data = self._encrypt_data_modern
-            self._decrypt_data = self._decrypt_data_modern
-        else:
-            raise ValueError("Invalid encryption_mode")
+        if encryption_mode != "modern":
+            raise ValueError("Unsupported encryption_mode")
         self.compression_level = compression_level
 
-    def _encrypt_data_legacy(self) -> str:
-        return secure_dumps(
-            sdict(current.session),
-            self.key,
-            compression_level=self.compression_level
-        )
-
-    def _encrypt_data_modern(self) -> str:
+    def _encrypt_data(self) -> str:
         data = pickle.dumps(sdict(current.session))
         if self.compression_level:
             data = zlib.compress(data, self.compression_level)
         return crypto_symmetric.encrypt_b64(data, self.key)
 
-    def _decrypt_data_legacy(self, data: str) -> SessionData:
-        return SessionData(
-            secure_loads(data, self.key, compression_level=self.compression_level),
-            expires=self.expire
-        )
-
-    def _decrypt_data_modern(self, data: str) -> SessionData:
+    def _decrypt_data(self, data: str) -> SessionData:
         try:
             ddata = crypto_symmetric.decrypt_b64(data, self.key)
             if self.compression_level:
@@ -364,7 +336,7 @@ class SessionManager:
         domain: Optional[str] = None,
         cookie_name: Optional[str] = None,
         cookie_data: Optional[Dict[str, Any]] = None,
-        encryption_mode: str = "legacy",
+        encryption_mode: str = "modern",
         compression_level: int = 0
     ) -> CookieSessionPipe:
         return cls._build_pipe(
