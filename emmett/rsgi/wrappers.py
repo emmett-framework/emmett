@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Union, Optional
 from urllib.parse import parse_qs
 
-from granian.rsgi import Scope, HTTPProtocol, WebsocketMessageType
+from granian.rsgi import Scope, HTTPProtocol, WebsocketMessageType, ProtocolClosed
 
 from .helpers import WSTransport
 from ..datastructures import sdict
@@ -122,14 +122,20 @@ class Websocket(RSGIIngressMixin, _Websocket):
 
     async def _wrapped_receive(self) -> Any:
         data = (await self._proto.receive()).data
-        for method in self._flow_receive:  # type: ignore
+        for method in self._flow_receive:
             data = method(data)
         return data
 
     async def _wrapped_send(self, data: Any):
-        for method in self._flow_send:  # type: ignore
+        for method in self._flow_send:
             data = method(data)
-        if isinstance(data, str):
-            await self._proto.transport.send_str(data)
-        else:
-            await self._proto.transport.send_bytes(data)
+        trx = (
+            self._proto.transport.send_str if isinstance(data, str) else
+            self._proto.transport.send_bytes
+        )
+        try:
+            await trx(data)
+        except ProtocolClosed:
+            if not self._proto.interrupted:
+                raise
+            await self._proto.noop.wait()

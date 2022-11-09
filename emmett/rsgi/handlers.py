@@ -301,5 +301,5 @@ class WSHandler(RequestHandler):
         finally:
             current._close_(ctx_token)
 
-    async def _close_connection(self, transport: WSTransport):
-        return transport.protocol.close(transport.status)
+    def _close_connection(self, transport: WSTransport):
+        transport.protocol.close(transport.status)
