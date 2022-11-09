@@ -24,7 +24,7 @@ def run(
     workers=1,
     threads=None,
     threading_mode='runtime',
-    backlog=2048,
+    backlog=1024,
     enable_websockets=True,
     ssl_certfile: Optional[str] = None,
     ssl_keyfile: Optional[str] = None

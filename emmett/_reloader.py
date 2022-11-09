@@ -155,6 +155,8 @@ def run_with_reloader(
     port,
     loop='auto',
     log_level=None,
+    threads=1,
+    threading_mode="workers",
     ssl_certfile: Optional[str] = None,
     ssl_keyfile: Optional[str] = None,
     extra_files=None,
@@ -175,6 +177,8 @@ def run_with_reloader(
                 kwargs={
                     "loop": loop,
                     "log_level": log_level,
+                    "threads": threads,
+                    "threading_mode": threading_mode,
                     "ssl_certfile": ssl_certfile,
                     "ssl_keyfile": ssl_keyfile,
                 }

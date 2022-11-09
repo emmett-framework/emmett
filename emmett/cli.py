@@ -291,6 +291,8 @@ def develop_command(
         port,
         loop=loop,
         log_level='debug',
+        threads=1,
+        threading_mode="workers",
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,
     )
@@ -302,7 +304,13 @@ def develop_command(
 @click.option(
     '--port', '-p', type=int, default=8000, help='The port to bind to.')
 @click.option(
-    "--workers", type=int, default=1, help="Number of worker processes. Defaults to 1.")
+    "--workers", '-w', type=int, default=1,
+    help="Number of worker processes. Defaults to 1.")
+@click.option(
+    "--threads", type=int, default=None, help="Number of worker threads.")
+@click.option(
+    "--threading-mode", type=click.Choice(['runtime', 'workers']), default='runtime',
+    help="Server threading mode.")
 @click.option(
     '--interface', type=click.Choice(['rsgi', 'asgi']), default='rsgi',
     help='Application interface.')
@@ -321,8 +329,8 @@ def develop_command(
     '--ssl-keyfile', type=str, default=None, help='SSL key file')
 @pass_script_info
 def serve_command(
-    info, host, port, workers, interface, loop, log_level, backlog,
-    ssl_certfile, ssl_keyfile
+    info, host, port, workers, threads, threading_mode, interface, loop, log_level,
+    backlog, ssl_certfile, ssl_keyfile
 ):
     app_target = info._get_import_name()
     sgi_run(
@@ -333,6 +341,8 @@ def serve_command(
         loop=loop,
         log_level=log_level,
         workers=workers,
+        threads=threads,
+        threading_mode=threading_mode,
         backlog=backlog,
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,
