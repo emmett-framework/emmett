@@ -77,6 +77,7 @@ class _transaction(callable_context_manager):
             self._begin()
 
     def rollback(self, begin=True):
+        self._ops.clear()
         self.adapter.rollback()
         if begin:
             self._begin()
@@ -124,6 +125,7 @@ class _savepoint(callable_context_manager):
             self._begin()
 
     def rollback(self):
+        self._ops.clear()
         self.adapter.execute('ROLLBACK TO SAVEPOINT %s;' % self.quoted_sid)
 
     def __enter__(self):
