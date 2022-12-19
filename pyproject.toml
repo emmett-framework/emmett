@@ -49,7 +49,7 @@ pendulum = "~2.1.2"
 pyDAL = "17.3"
 python-rapidjson = "^1.0"
 pyyaml = "^5.4"
-renoir = "^1.5"
+renoir = "^1.6"
 severus = "^1.1"
 
 orjson = { version = "~3.8", optional = true }
