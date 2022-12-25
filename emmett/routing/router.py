@@ -356,3 +356,16 @@ class RoutingCtx:
         self.router.app.send_signal(Signals.after_route, route=self.rule)
         self.router._routing_stack.pop()
         return rv
+
+
+class RoutingCtxGroup:
+    __slots__ = ['ctxs']
+
+    def __init__(self, ctxs: List[RoutingCtx]):
+        self.ctxs = ctxs
+
+    def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
+        rv = f
+        for ctx in self.ctxs:
+            rv = ctx(f)
+        return rv

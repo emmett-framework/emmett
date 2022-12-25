@@ -32,7 +32,7 @@ from .html import asis
 from .language.helpers import Tstr
 from .language.translator import Translator
 from .pipeline import Pipe, Injector
-from .routing.router import HTTPRouter, WebsocketRouter, RoutingCtx
+from .routing.router import HTTPRouter, WebsocketRouter, RoutingCtx, RoutingCtxGroup
 from .routing.urls import url
 from .rsgi import handlers as rsgi_handlers
 from .templating.templater import Templater
@@ -474,6 +474,9 @@ class App:
             opts=kwargs
         )
 
+    def module_group(self, *modules: AppModule) -> AppModuleGroup:
+        return AppModuleGroup(*modules)
+
 
 class AppModule:
     @classmethod
@@ -554,6 +557,41 @@ class AppModule:
             injectors=appmod.injectors,
             **opts
         )
+
+    @classmethod
+    def from_module_group(
+        cls,
+        appmodgroup: AppModuleGroup,
+        import_name: str,
+        name: str,
+        template_folder: Optional[str],
+        template_path: Optional[str],
+        static_folder: Optional[str],
+        static_path: Optional[str],
+        url_prefix: Optional[str],
+        hostname: Optional[str],
+        cache: Optional[RouteCacheRule],
+        root_path: Optional[str],
+        opts: Dict[str, Any] = {}
+    ) -> AppModulesGrouped:
+        mods = []
+        for module in appmodgroup.modules:
+            mod = cls.from_module(
+                module,
+                import_name,
+                name,
+                template_folder=template_folder,
+                template_path=template_path,
+                static_folder=static_folder,
+                static_path=static_path,
+                url_prefix=url_prefix,
+                hostname=hostname,
+                cache=cache,
+                root_path=root_path,
+                opts=opts
+            )
+            mods.append(mod)
+        return AppModulesGrouped(*mods)
 
     def module(
         self,
@@ -702,3 +740,82 @@ class AppModule:
             hostname=self.hostname,
             **kwargs
         )
+
+
+class AppModuleGroup:
+    def __init__(self, *modules: AppModule):
+        self.modules = modules
+
+    def module(
+        self,
+        import_name: str,
+        name: str,
+        template_folder: Optional[str] = None,
+        template_path: Optional[str] = None,
+        static_folder: Optional[str] = None,
+        static_path: Optional[str] = None,
+        url_prefix: Optional[str] = None,
+        hostname: Optional[str] = None,
+        cache: Optional[RouteCacheRule] = None,
+        root_path: Optional[str] = None,
+        module_class: Optional[Type[AppModule]] = None,
+        **kwargs: Any
+    ) -> AppModulesGrouped:
+        module_class = module_class or AppModule
+        return module_class.from_module_group(
+            self,
+            import_name,
+            name,
+            template_folder=template_folder,
+            template_path=template_path,
+            static_folder=static_folder,
+            static_path=static_path,
+            url_prefix=url_prefix,
+            hostname=hostname,
+            cache=cache,
+            root_path=root_path,
+            opts=kwargs
+        )
+
+    def route(
+        self,
+        paths: Optional[Union[str, List[str]]] = None,
+        name: Optional[str] = None,
+        template: Optional[str] = None,
+        **kwargs
+    ) -> RoutingCtxGroup:
+        return RoutingCtxGroup([
+            mod.route(paths=paths, name=name, template=template, **kwargs)
+            for mod in self.modules
+        ])
+
+    def websocket(
+        self,
+        paths: Optional[Union[str, List[str]]] = None,
+        name: Optional[str] = None,
+        **kwargs
+    ):
+        return RoutingCtxGroup([
+            mod.websocket(paths=paths, name=name, **kwargs)
+            for mod in self.modules
+        ])
+
+
+class AppModulesGrouped(AppModuleGroup):
+    @property
+    def pipeline(self) -> List[List[Pipe]]:
+        return [module.pipeline for module in self.modules]
+
+    @pipeline.setter
+    def pipeline(self, pipeline: List[Pipe]):
+        for module in self.modules:
+            module.pipeline = pipeline
+
+    @property
+    def injectors(self) -> List[List[Injector]]:
+        return [module.injectors for module in self.modules]
+
+    @injectors.setter
+    def injectors(self, injectors: List[Injector]):
+        for module in self.modules:
+            module.injectors = injectors
