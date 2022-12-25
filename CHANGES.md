@@ -1,6 +1,17 @@
 Emmett changelog
 ================
 
+Next
+----
+
+(Release date to be defined, codename to be selected)
+
+- Added official Python 3.11 support
+- Removed support for legacy encryption stack
+- Added RSGI protocol support
+- Use Granian as default web server in place of uvicorn
+- Added application modules groups
+
 Version 2.4
 -----------
 
