@@ -307,9 +307,9 @@ def develop_command(
     "--workers", '-w', type=int, default=1,
     help="Number of worker processes. Defaults to 1.")
 @click.option(
-    "--threads", type=int, default=None, help="Number of worker threads.")
+    "--threads", type=int, default=1, help="Number of worker threads.")
 @click.option(
-    "--threading-mode", type=click.Choice(['runtime', 'workers']), default='runtime',
+    "--threading-mode", type=click.Choice(['runtime', 'workers']), default='workers',
     help="Server threading mode.")
 @click.option(
     '--interface', type=click.Choice(['rsgi', 'asgi']), default='rsgi',
