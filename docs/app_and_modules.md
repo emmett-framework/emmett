@@ -212,3 +212,49 @@ v2_apis.pipeline = [AnotherAuthPipe()]
 ```
 
 Then all the routes defined in these modules or in sub-modules of these modules will have a final pipeline composed by the one of the `apis` module, and the one of the sub-module.
+
+Modules groups
+--------------
+
+*New in version 2.5*
+
+Once your application structure gets more complex, you might encounter the need of exposing the same routes with different pipelines: for example, you might want to expose the same APIs with different authentication policies over different endpoint. 
+
+In order to avoid code duplication, Emmett provides you modules groups. Groups can be created from several modules and provide you the `route` and `websocket` method, so you can write routes a single time from the upper previous example:
+
+```python
+from emmett.tools import ServicePipe
+
+apis = app.module(__name__, 'apis', url_prefix='apis')
+apis.pipeline = [ServicePipe('json')]
+
+v1_apis = apis.module(__name__, 'v1', url_prefix='v1')
+v1_apis.pipeline = [SomeAuthPipe()]
+
+v2_apis = apis.module(__name__, 'v2', url_prefix='v2')
+v2_apis.pipeline = [AnotherAuthPipe()]
+
+apis_group = app.module_group(v1_apis, v2_apis)
+
+@apis_group.route("/users")
+async def users():
+    ...
+```
+
+> **Note:** even if the resulting route code is the same, Emmett `route` and `websocket` decorators will produce a number of routes equal to the number of modules defined in the group
+
+### Nest modules into groups
+
+Modules groups also let you define additional sub-modules. The resulting object will be a wrapper over the nested modules, so you can still customise their pipelines, and use the `route` and `websocket` decorators:
+
+```python
+apis_group = app.module_group(v1_apis, v2_apis)
+users = apis_group.module(__name__, 'users', url_prefix='users')
+users.pipeline = [SomePipe()]
+
+@users.route("/")
+async def index():
+    ...
+```
+
+> **Note:** *under the hood* Emmett will produce a nested module for every module defined in the parent group
