@@ -192,7 +192,6 @@ class Database(_pyDAL):
                 obj._define_props_()
                 obj._define_relations_()
                 obj._define_virtuals_()
-                obj._build_rowclass_()
                 # define table and store in model
                 args = dict(
                     migrate=obj.migrate,
@@ -204,10 +203,12 @@ class Database(_pyDAL):
                     obj.tablename, *obj.fields, **args
                 )
                 model.table._model_ = obj
-                # load user's definitions
-                obj._define_()
                 # set reference in db for model name
                 self.__setattr__(model.__name__, obj.table)
+                # configure structured rows
+                obj._build_rowclass_()
+                # load user's definitions
+                obj._define_()
         if self._auto_migrate and not self._do_connect:
             self.connection_close()
 
