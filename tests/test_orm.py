@@ -24,7 +24,7 @@ from emmett.orm import (
     before_destroy, after_destroy,
     before_commit, after_commit,
     rowattr, rowmethod,
-    has_one, has_many, belongs_to,
+    has_one, has_many, belongs_to, refers_to,
     scope
 )
 from emmett.orm.migrations.utils import generate_runtime_migration
@@ -361,6 +361,12 @@ class CartElement(Model):
         return row.quantity * row.product.price
 
 
+class SelfRef(Model):
+    refers_to({'parent': 'self'})
+
+    name = Field.string()
+
+
 class CustomPKType(Model):
     id = Field.string()
 
@@ -421,6 +427,7 @@ def _db():
         User, Organization, Membership,
         House, Mouse, NeedSplit, Zoo, Animal, Elephant,
         Product, Cart, CartElement,
+        SelfRef,
         CustomPKType, CustomPKName, CustomPKMulti,
         CommitWatcher
     )

@@ -17,7 +17,6 @@ from functools import reduce
 from typing import Any, Callable
 
 from ..datastructures import sdict
-from ..utils import cachedprop
 from .apis import (
     compute,
     rowattr,
@@ -244,6 +243,7 @@ class Model(metaclass=MetaModel):
             self.format = None
         if not hasattr(self, 'primary_keys'):
             self.primary_keys = []
+        self._fieldset_pk = set(self.primary_keys or ['id'])
 
     @property
     def config(self):
@@ -401,7 +401,11 @@ class Model(metaclass=MetaModel):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_belongs_relation(item, ondelete)
                 reference.is_refers = not is_belongs
-                refmodel = self.db[reference.model]._model_
+                refmodel = (
+                    self.db[reference.model]._model_
+                    if reference.model != self.__class__.__name__
+                    else self
+                )
                 ref_multi_pk = len(refmodel._fieldset_pk) > 1
                 fk_def_key, fks_data, multi_fk = None, {}, []
                 if ref_multi_pk and reference.fk:
@@ -418,7 +422,7 @@ class Model(metaclass=MetaModel):
                 elif ref_multi_pk and not reference.fk:
                     multi_fk = list(refmodel.primary_keys)
                 elif not reference.fk:
-                    reference.fk = refmodel.table._id.name
+                    reference.fk = list(refmodel._fieldset_pk)[0]
                 if multi_fk:
                     references = []
                     fks_data["fields"] = []
@@ -426,7 +430,7 @@ class Model(metaclass=MetaModel):
                     for fk in multi_fk:
                         refclone = sdict(reference)
                         refclone.fk = fk
-                        refclone.ftype = refmodel.table[refclone.fk].type
+                        refclone.ftype = getattr(refmodel, refclone.fk).type
                         refclone.name = f"{refclone.name}_{refclone.fk}"
                         refclone.compound = reference.name
                         references.append(refclone)
@@ -450,7 +454,7 @@ class Model(metaclass=MetaModel):
                         coupled_fields=belongs_fks[reference.name].coupled_fields,
                     )
                 else:
-                    reference.ftype = refmodel.table[reference.fk].type
+                    reference.ftype = getattr(refmodel, reference.fk).type
                     references = [reference]
                     belongs_fks[reference.name] = sdict(
                         model=reference.model,
@@ -531,8 +535,15 @@ class Model(metaclass=MetaModel):
         implicit_defs = {}
         grouped_rels = {}
         for rname, rel in self._belongs_ref_.items():
-            rmodel = self.db[rel.model]._model_
-            if not rmodel.primary_keys and rmodel.table._id.type == 'id':
+            rmodel = (
+                self.db[rel.model]._model_
+                if rel.model != self.__class__.__name__
+                else self
+            )
+            if (
+                not rmodel.primary_keys and
+                getattr(rmodel, list(rmodel._fieldset_pk)[0]).type == 'id'
+            ):
                 continue
             if len(rmodel._fieldset_pk) > 1:
                 match = self.__find_matching_fk_definition([rel.fk], rmodel)
@@ -619,7 +630,6 @@ class Model(metaclass=MetaModel):
 
     def _build_rowclass_(self):
         #: build helpers for rows
-        self._fieldset_pk = set(self.primary_keys or ['id'])
         save_excluded_fields = (
             set(
                 field.name for field in self.fields if
