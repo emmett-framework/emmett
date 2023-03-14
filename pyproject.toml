@@ -48,7 +48,7 @@ emmett-crypto = "~0.3"
 pendulum = "~2.1.2"
 pyDAL = "17.3"
 python-rapidjson = "^1.0"
-pyyaml = "^5.4"
+pyyaml = "^6.0"
 renoir = "^1.6"
 severus = "^1.1"
 
