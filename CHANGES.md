@@ -11,6 +11,7 @@ Next
 - Added RSGI protocol support
 - Use Granian as default web server in place of uvicorn
 - Added application modules groups
+- Dropped Python 3.7 support
 
 Version 2.4
 -----------
