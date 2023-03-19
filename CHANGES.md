@@ -1,10 +1,10 @@
 Emmett changelog
 ================
 
-Next
-----
+Version 2.5
+-----------
 
-(Release date to be defined, codename to be selected)
+Released on March 19th 2023, codename Fermi
 
 - Added official Python 3.11 support
 - Removed support for legacy encryption stack
