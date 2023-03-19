@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+    emmett.asgi.wrappers
+    --------------------
+
+    Provides ASGI request and websocket wrappers
+
+    :copyright: 2014 Giovanni Barillari
+    :license: BSD-3-Clause
+"""
+
 import asyncio
 
 from datetime import datetime

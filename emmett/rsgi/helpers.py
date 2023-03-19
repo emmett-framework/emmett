@@ -11,7 +11,7 @@
 
 import asyncio
 
-from granian.rsgi import WebsocketMessageType, WebsocketProtocol
+from granian.rsgi import WebsocketProtocol
 
 
 class WSTransport:

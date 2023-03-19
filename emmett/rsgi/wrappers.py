@@ -1,10 +1,21 @@
+# -*- coding: utf-8 -*-
+"""
+    emmett.rsgi.wrappers
+    --------------------
+
+    Provides RSGI request and websocket wrappers
+
+    :copyright: 2014 Giovanni Barillari
+    :license: BSD-3-Clause
+"""
+
 import asyncio
 
 from datetime import datetime
 from typing import Any, Dict, List, Union, Optional
 from urllib.parse import parse_qs
 
-from granian.rsgi import Scope, HTTPProtocol, WebsocketMessageType, ProtocolClosed
+from granian.rsgi import Scope, HTTPProtocol, ProtocolClosed
 
 from .helpers import WSTransport
 from ..datastructures import sdict
