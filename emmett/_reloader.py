@@ -27,7 +27,7 @@ from typing import Optional
 import click
 
 from ._internal import locate_app
-from .asgi.server import run as _asgi_run
+from .server import run as _server_run
 
 
 def _iter_module_files():
@@ -149,18 +149,16 @@ reloader_loops['auto'] = reloader_loops['stat']
 
 
 def run_with_reloader(
+    interface,
     app_target,
     host,
     port,
     loop='auto',
-    proto_http='auto',
-    proto_ws='auto',
     log_level=None,
-    access_log=None,
+    threads=1,
+    threading_mode="workers",
     ssl_certfile: Optional[str] = None,
     ssl_keyfile: Optional[str] = None,
-    ssl_cert_reqs: int = ssl.CERT_NONE,
-    ssl_ca_certs: Optional[str] = None,
     extra_files=None,
     interval=1,
     reloader_type='auto'
@@ -174,18 +172,15 @@ def run_with_reloader(
             locate_app(*app_target)
 
             process = multiprocessing.Process(
-                target=_asgi_run,
-                args=(app_target, host, port),
+                target=_server_run,
+                args=(interface, app_target, host, port),
                 kwargs={
                     "loop": loop,
-                    "proto_http": proto_http,
-                    "proto_ws": proto_ws,
                     "log_level": log_level,
-                    "access_log": access_log,
+                    "threads": threads,
+                    "threading_mode": threading_mode,
                     "ssl_certfile": ssl_certfile,
                     "ssl_keyfile": ssl_keyfile,
-                    "ssl_cert_reqs": ssl_cert_reqs,
-                    "ssl_ca_certs": ssl_ca_certs
                 }
             )
             process.start()

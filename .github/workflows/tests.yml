@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10', '3.11']
+        python-version: [3.8, 3.9, '3.10', '3.11']
 
     services:
       postgres:
@@ -31,12 +31,12 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install and configure Poetry
-      uses: gi0baro/setup-poetry-bin@v1
+      uses: gi0baro/setup-poetry-bin@v1.3
       with:
         virtualenvs-in-project: true
     - name: Install dependencies
       run: |
-        poetry install -v --extras crypto
+        poetry install -v
     - name: Test
       env:
         POSTGRES_URI: postgres:postgres@localhost:5432/test
@@ -47,7 +47,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10']
+        python-version: [3.8, 3.9, '3.10', '3.11']
 
     steps:
     - uses: actions/checkout@v2
@@ -56,12 +56,12 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install and configure Poetry
-      uses: gi0baro/setup-poetry-bin@v1
+      uses: gi0baro/setup-poetry-bin@v1.3
       with:
         virtualenvs-in-project: true
     - name: Install dependencies
       run: |
-        poetry install -v --extras crypto
+        poetry install -v
     - name: Test
       run: |
         poetry run pytest -v tests
@@ -70,7 +70,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10']
+        python-version: [3.8, 3.9, '3.10', '3.11']
 
     steps:
     - uses: actions/checkout@v2
@@ -79,13 +79,13 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install and configure Poetry
-      uses: gi0baro/setup-poetry-bin@v1
+      uses: gi0baro/setup-poetry-bin@v1.3
       with:
         virtualenvs-in-project: true
     - name: Install dependencies
       shell: bash
       run: |
-        poetry install -v --extras crypto
+        poetry install -v
     - name: Test
       shell: bash
       run: |

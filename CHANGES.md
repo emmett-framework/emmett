@@ -1,6 +1,18 @@
 Emmett changelog
 ================
 
+Version 2.5
+-----------
+
+Released on March 19th 2023, codename Fermi
+
+- Added official Python 3.11 support
+- Removed support for legacy encryption stack
+- Added RSGI protocol support
+- Use Granian as default web server in place of uvicorn
+- Added application modules groups
+- Dropped Python 3.7 support
+
 Version 2.4
 -----------
 

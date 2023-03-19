@@ -4,7 +4,7 @@ Installation
 
 So, how do you get Emmett on your computer quickly? There are many ways you could do that, but the most kick-ass method is virtualenv, so let’s have a look at that first.
 
-You will need Python version 3.7 or higher in order to get Emmett working.
+You will need Python version 3.8 or higher in order to get Emmett working.
 
 virtualenv
 ----------
@@ -39,7 +39,7 @@ You should now be using your virtualenv (notice how the prompt of your shell has
 Now you can just enter the following command to get Emmett activated in your virtualenv:
 
 ```bash
-$ pip install emmett[crypto]
+$ pip install emmett
 ```
 
 And now you are good to go.

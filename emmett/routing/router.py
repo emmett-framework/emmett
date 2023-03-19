@@ -262,8 +262,16 @@ class WebsocketRouter(Router):
     @staticmethod
     def _build_routing_dict():
         rv = {}
-        for scheme in ['ws', 'wss']:
+        for scheme in ['http', 'https', 'ws', 'wss']:
             rv[scheme] = {'static': {}, 'match': {}}
+        return rv
+
+    @staticmethod
+    def _all_schemes_from_route(schemes):
+        auto = {'ws': ['ws', 'http'], 'wss': ['wss', 'https']}
+        rv = []
+        for scheme in schemes:
+            rv.extend(auto[scheme])
         return rv
 
     def add_route_str(self, route):
@@ -281,7 +289,7 @@ class WebsocketRouter(Router):
         if host not in self.routes_in:
             self.routes_in[host] = self._build_routing_dict()
             self._get_routes_in_for_host = self._get_routes_in_for_host_match
-        for scheme in route.schemes:
+        for scheme in self._all_schemes_from_route(route.schemes):
             routing_dict = self.routes_in[host][scheme]
             slot, key = (
                 ('static', route.path) if route.is_static else
@@ -347,4 +355,17 @@ class RoutingCtx:
         rv = self.rule(f)
         self.router.app.send_signal(Signals.after_route, route=self.rule)
         self.router._routing_stack.pop()
+        return rv
+
+
+class RoutingCtxGroup:
+    __slots__ = ['ctxs']
+
+    def __init__(self, ctxs: List[RoutingCtx]):
+        self.ctxs = ctxs
+
+    def __call__(self, f: Callable[..., Any]) -> Callable[..., Any]:
+        rv = f
+        for ctx in self.ctxs:
+            rv = ctx(f)
         return rv

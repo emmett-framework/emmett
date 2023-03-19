@@ -15,9 +15,7 @@ import threading
 
 from functools import reduce
 
-from ._internal import deprecated, warnings
-
-__all__ = ['tag', 'cat', 'safe', 'asis']
+__all__ = ['tag', 'cat', 'asis']
 
 
 class TagStack(threading.local):
@@ -214,18 +212,6 @@ class asis(HtmlTag):
 
     def __html__(self):
         return _to_str(self.text)
-
-
-class safe(asis):
-    @deprecated("html.safe", "html.asis")
-    def __init__(self, text, sanitize=False, allowed_tags=None):
-        super().__init__(text)
-        if sanitize:
-            warnings.warn(
-                "HTML sanitizer is no longer available. "
-                "Please switch to html.asis or implement your own policy."
-            )
-        self.sanitize = False
 
 
 def _to_str(obj):
