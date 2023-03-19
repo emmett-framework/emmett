@@ -237,7 +237,7 @@ Moreover, to use the authorization module, we need to add a **session manager** 
 ```python
 from emmett.sessions import SessionManager
 app.pipeline = [
-    SessionManager.cookies('GreatScott', encryption_mode='modern'),
+    SessionManager.cookies('GreatScott'),
     db.pipe,
     auth.pipe
 ]

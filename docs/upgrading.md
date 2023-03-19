@@ -13,6 +13,27 @@ Just as a remind, you can update Emmett using *pip*:
 $ pip install -U emmett
 ```
 
+Version 2.5
+-----------
+
+Emmett 2.5 release is highly focused on the included HTTP server.
+
+This release drops previous 2.x deprecations and support for Python 3.7.
+
+### New features
+
+#### Granian HTTP server and RSGI protocol
+
+Emmett 2.5 drops its dependency on uvicorn as HTTP server and replaces it with [Granian](https://github.com/emmett-framework/granian), a modern, Rust based HTTP server.
+
+Granian provides [RSGI](https://github.com/emmett-framework/granian/blob/master/docs/spec/RSGI.md), an alternative protocol to ASGI implementation, which is now the default protocol used in Emmett 2.5. This should give you roughly 50% more performance out of the box on your application, with no need to change its code.
+
+Emmett 2.5 applications still preserve an ASGI interface, so in case you want to stick with this protocol you can use the `--interface` option [in the included server](./deployment#included-server) or still use Uvicorn with the `emmett[uvicorn]` extra notation in your dependencies.
+
+#### Other new features
+
+Emmett 2.5 also introduces support for [application modules groups](./app_and_modules#modules-groups) and Python 3.11
+
 Version 2.4
 -----------
 

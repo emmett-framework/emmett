@@ -8,9 +8,9 @@ If you want to use an ASGI server not listed in this section, please refer to it
 Included server
 ---------------
 
-*Changed in version 2.2*
+*Changed in version 2.5*
 
-Emmett comes with an included server based on [uvicorn](https://www.uvicorn.org/). In order to run your application in production you can just use the included `serve` command:
+Emmett comes with [Granian](https://github.com/emmett-framework/granian) as its HTTP server. In order to run your application in production you can just use the included `serve` command:
 
     emmett serve --host 0.0.0.0 --port 80
 
@@ -20,26 +20,31 @@ You can inspect all the available options of the `serve` command using the `--he
 | --- | --- | --- |
 | host | 0.0.0.0 | Bind address |
 | port | 8000 | Bind port |
-| workers | 1 | Number of worker processes | 
+| workers | 1 | Number of worker processes |
+| threads | 1 | Number of threads |
+| threading-mode | workers | Threading implementation (possible values: runtime,workers) |
+| interface | rsgi | Server interface (possible values: rsgi,asgi) |
+| http | auto | HTTP protocol version (possible values: auto,1,2) |
+| ws/no-ws | ws | Enable/disable websockets support |
 | loop | auto | Loop implementation (possible values: auto,asyncio,uvloop) |
-| http-protocol | auto | HTTP protocol implementation (possible values: auto,h11,httptools) |
-| ws-protocol | auto | Websocket protocol implementation (possible values: auto,websockets,wsproto) |
 | log-level | info | Logging level (possible values: debug,info,warning,error,critical) |
-| access-log | (flag) enabled | Enable/disable access log |
-| proxy-headers | (flag) disabled | Enable/disable proxy headers |
-| proxy-trust-ips | | Comma separated list of IPs to trust for proxy headers |
-| max-concurrency | | Limit number of concurrent connections |
 | backlog | 2048 | Maximum connection queue |
-| keep-alive-timeout | 0 | Connection keep-alive timeout |
 | ssl-certfile | | Path to SSL certificate file |
 | ssl-keyfile | | Path to SSL key file |
-| ssl-cert-reqs | | SSL client certificate requirements (see `ssl` module) |
-| ssl-ca-certs | | SSL CA allowed certificates |
+
+Uvicorn
+-------
+
+*Changed in version 2.5*
+
+In case you want to stick with a more popular option, Emmett also comes with included support for [Uvicorn](https://github.com/encode/uvicorn).
+
+You can just use the `emmett[uvicorn]` extra during installation and rely on the `uvicorn` command to serve your application.
 
 Gunicorn
 --------
 
-The included server might suit most of the common demands, but whenever you need a fully featured server, you can use [Gunicorn](https://gunicorn.org).
+The included server might suit most of the common demands, but whenever you need additional features, you can use [Gunicorn](https://gunicorn.org).
 
 Emmett includes a Gunicorn worker class allowing you to run ASGI applications with the Emmett's environment, while also giving you Gunicorn's fully-featured process management:
 

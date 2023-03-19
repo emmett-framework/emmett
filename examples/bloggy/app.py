@@ -91,8 +91,8 @@ def setup():
 
 #: pipeline
 app.pipeline = [
-    SessionManager.cookies('GreatScott', encryption_mode='modern'), 
-    db.pipe, 
+    SessionManager.cookies('GreatScott'),
+    db.pipe,
     auth.pipe
 ]
 
