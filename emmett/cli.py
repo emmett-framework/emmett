@@ -315,6 +315,9 @@ def develop_command(
     '--interface', type=click.Choice(['rsgi', 'asgi']), default='rsgi',
     help='Application interface.')
 @click.option(
+    '--ws/--no-ws', is_flag=True, default=True,
+    help='Enable websockets support.')
+@click.option(
     '--loop', type=click.Choice(['auto', 'asyncio', 'uvloop']), default='auto',
     help='Event loop implementation.')
 @click.option(
@@ -329,7 +332,7 @@ def develop_command(
     '--ssl-keyfile', type=str, default=None, help='SSL key file')
 @pass_script_info
 def serve_command(
-    info, host, port, workers, threads, threading_mode, interface, loop, log_level,
+    info, host, port, workers, threads, threading_mode, interface, ws, loop, log_level,
     backlog, ssl_certfile, ssl_keyfile
 ):
     app_target = info._get_import_name()
@@ -344,6 +347,7 @@ def serve_command(
         threads=threads,
         threading_mode=threading_mode,
         backlog=backlog,
+        enable_websockets=ws,
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,
     )
