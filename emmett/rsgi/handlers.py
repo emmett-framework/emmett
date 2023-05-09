@@ -17,7 +17,13 @@ import re
 
 from typing import Awaitable, Callable, Optional, Tuple
 
-from granian.rsgi import Scope, HTTPProtocol, WebsocketProtocol, WebsocketMessageType
+from granian.rsgi import (
+    HTTPProtocol,
+    ProtocolClosed,
+    Scope,
+    WebsocketMessageType,
+    WebsocketProtocol
+)
 
 from ..ctx import RequestContext, WSContext, current
 from ..debug import smart_traceback, debug_handler
@@ -251,12 +257,15 @@ class WSHandler(RequestHandler):
 
     async def handle_transport(self, transport: WSTransport):
         await transport.accepted.wait()
-        while True:
-            msg = await transport.transport.receive()
-            if msg.kind == WebsocketMessageType.close:
-                transport.interrupted
-                break
-            await transport.input.put(msg)
+        try:
+            while True:
+                msg = await transport.transport.receive()
+                if msg.kind == WebsocketMessageType.close:
+                    transport.interrupted = True
+                    break
+                await transport.input.put(msg)
+        except ProtocolClosed:
+            transport.interrupted = True
 
     def handle_request(
         self,
