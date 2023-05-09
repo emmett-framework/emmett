@@ -89,6 +89,9 @@ class WSCloseDispatcher(Dispatcher):
     async def dispatch(self, reqargs):
         try:
             await self.f(**reqargs)
+        except asyncio.CancelledError:
+            await asyncio.shield(self._parallel_flow(self.flow_close))
+            return
         except Exception:
             await self._parallel_flow(self.flow_close)
             raise
@@ -102,6 +105,9 @@ class WSFlowDispatcher(Dispatcher):
         await self._parallel_flow(self.flow_open)
         try:
             await self.f(**reqargs)
+        except asyncio.CancelledError:
+            await asyncio.shield(self._parallel_flow(self.flow_close))
+            return
         except Exception:
             await self._parallel_flow(self.flow_close)
             raise
