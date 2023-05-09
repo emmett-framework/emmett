@@ -148,11 +148,9 @@ So you've just learned three handy aspects of Emmett:
 HTTP/2
 ------
 
-*New in version 2.1*
+*Changed in version 2.5*
 
-Emmett supports serving requests following the HTTP/2 standard. In order to enable serving such requests the `h11` protocol implementation should be enabled in `develop` and `serve` commands using the `--http-protocol` option.
-
-Moreover, in order for the browser to use HTTP/2 protocol, SSL should be enabled. SSL certificate and key should be passed to `develop` and `serve` commands using the relevant `--ssl-certfile` and `--ssl-keyfile` options.
+Emmett supports serving requests following the HTTP/2 standard. In order for the browser to use HTTP/2 protocol, SSL should be enabled. SSL certificate and key should be passed to `develop` and `serve` commands using the relevant `--ssl-certfile` and `--ssl-keyfile` options.
 
 > **Hint:** a self-signed SSL certificate can be generated for development purposes using the `openssl` command, like: `openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes`.
 
@@ -170,3 +168,5 @@ async def index():
     await request.push_promise(url("static", "some_asset.js"))
     return {}
 ```
+
+> **Note:** Emmett's integrated HTTP server doesn't support push promises. In order to use this feature you will need to serve your application with a 3rd party server like Hypercorn.

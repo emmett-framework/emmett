@@ -199,7 +199,7 @@ class Taggable(Model):
      
     has_many({'tags': {'via': 'taggings'}})
      
-    @fieldmethod('taglist')
+    @rowmethod('taglist')
     def get_taglist(self, row):
         return row.tags().column('name')
 
