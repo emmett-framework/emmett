@@ -244,12 +244,12 @@ class HTTPFile(HTTPResponse):
         try:
             stat_data = os.stat(self.file_path)
             if not stat.S_ISREG(stat_data.st_mode):
-                return HTTP(403).rsgi()
+                return HTTP(403).rsgi(protocol)
             self._headers.update(self._get_stat_headers(stat_data))
         except IOError as e:
             if e.errno == errno.EACCES:
-                return HTTP(403).rsgi()
-            return HTTP(404).rsgi()
+                return HTTP(403).rsgi(protocol)
+            return HTTP(404).rsgi(protocol)
 
         protocol.response_file(
             self.status_code,
