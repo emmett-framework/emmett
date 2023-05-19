@@ -250,13 +250,15 @@ class HTTPHandler(RequestHandler):
     def _static_nolang_matcher(
         self, path: str
     ) -> Tuple[Optional[str], Optional[str]]:
-        if path.startswith('/static'):
+        if path.startswith('/static/'):
             mname, version, file_name = REGEX_STATIC.match(path).group('m', 'v', 'f')
             if mname:
                 mod = self.app._modules.get(mname[2:-3])
                 static_file = os.path.join(mod._static_path, file_name) if mod else None
-            else:
+            elif file_name:
                 static_file = os.path.join(self.app.static_path, file_name)
+            else:
+                static_file = None
             return static_file, version
         return None, None
 
@@ -288,7 +290,7 @@ class HTTPHandler(RequestHandler):
         #: handle internal assets
         if path.startswith('/__emmett__'):
             file_name = path[12:]
-            if file_name.endswith(".html"):
+            if not file_name or file_name.endswith(".html"):
                 return self._http_response(404)
             pkg = None
             if '/' in file_name:
