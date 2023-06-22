@@ -321,6 +321,9 @@ def develop_command(
     '--loop', type=click.Choice(['auto', 'asyncio', 'uvloop']), default='auto',
     help='Event loop implementation.')
 @click.option(
+    '--opt/--no-opt', is_flag=True, default=False,
+    help='Enable loop optimizations.')
+@click.option(
     '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='info',
     help='Logging level.')
 @click.option(
@@ -332,8 +335,8 @@ def develop_command(
     '--ssl-keyfile', type=str, default=None, help='SSL key file')
 @pass_script_info
 def serve_command(
-    info, host, port, workers, threads, threading_mode, interface, ws, loop, log_level,
-    backlog, ssl_certfile, ssl_keyfile
+    info, host, port, workers, threads, threading_mode, interface, ws, loop, opt,
+    log_level, backlog, ssl_certfile, ssl_keyfile
 ):
     app_target = info._get_import_name()
     sgi_run(
@@ -342,6 +345,7 @@ def serve_command(
         host=host,
         port=port,
         loop=loop,
+        loop_opt=opt,
         log_level=log_level,
         workers=workers,
         threads=threads,
