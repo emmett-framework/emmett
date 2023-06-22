@@ -17,7 +17,7 @@ import stat
 
 from email.utils import formatdate
 from hashlib import md5
-from typing import Any, BinaryIO, Dict, Generator, Tuple
+from typing import Any, AsyncIterable, BinaryIO, Dict, Generator, Iterable, Tuple
 
 from granian.rsgi import HTTPProtocol
 
@@ -298,6 +298,62 @@ class HTTPIO(HTTPResponse):
             list(self.rsgi_headers),
             self.io_stream.read()
         )
+
+
+class HTTPIter(HTTPResponse):
+    def __init__(
+        self,
+        iter: Iterable[bytes],
+        headers: Dict[str, str] = {},
+        cookies: Dict[str, Any] = {}
+    ):
+        super().__init__(200, headers=headers, cookies=cookies)
+        self.iter = iter
+
+    async def _send_body(self, send):
+        for chunk in self.iter:
+            await send({
+                'type': 'http.response.body',
+                'body': chunk,
+                'more_body': True
+            })
+        await send({'type': 'http.response.body', 'body': b'', 'more_body': False})
+
+    async def rsgi(self, protocol: HTTPProtocol):
+        trx = protocol.response_stream(
+            self.status_code,
+            list(self.rsgi_headers)
+        )
+        for chunk in self.iter:
+            await trx.send_bytes(chunk)
+
+
+class HTTPAiter(HTTPResponse):
+    def __init__(
+        self,
+        iter: AsyncIterable[bytes],
+        headers: Dict[str, str] = {},
+        cookies: Dict[str, Any] = {}
+    ):
+        super().__init__(200, headers=headers, cookies=cookies)
+        self.iter = iter
+
+    async def _send_body(self, send):
+        async for chunk in self.iter:
+            await send({
+                'type': 'http.response.body',
+                'body': chunk,
+                'more_body': True
+            })
+        await send({'type': 'http.response.body', 'body': b'', 'more_body': False})
+
+    async def rsgi(self, protocol: HTTPProtocol):
+        trx = protocol.response_stream(
+            self.status_code,
+            list(self.rsgi_headers)
+        )
+        async for chunk in self.iter:
+            await trx.send_bytes(chunk)
 
 
 def redirect(location: str, status_code: int = 303):

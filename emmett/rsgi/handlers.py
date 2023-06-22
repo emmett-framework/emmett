@@ -95,7 +95,8 @@ class HTTPHandler(RequestHandler):
             self.app.log.warn(
                 f"Timeout sending response: ({scope.path})"
             )
-        http.rsgi(protocol)
+        if coro := http.rsgi(protocol):
+            await coro
 
     @cachedprop
     def error_handler(self) -> Callable[[], Awaitable[str]]:
