@@ -13,7 +13,6 @@ import sys
 
 from functools import wraps
 
-from pydal.adapters import adapters
 from pydal.adapters.base import SQLAdapter
 from pydal.adapters.mssql import (
     MSSQL1,
