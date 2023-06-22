@@ -21,15 +21,15 @@ db.define_models(Task)
 app.pipeline = [db.pipe]
 
 def is_authenticated():
-    return request.headers["Api-Key"] == "foobar"
+    return request.headers.get("api-key") == "foobar"
     
 def not_authorized():
     response.status = 401
     return {'error': 'not authorized'}
 
 @app.route(methods='get')
-@service.json
 @requires(is_authenticated, otherwise=not_authorized)
+@service.json
 async def todo():
     page = request.query_params.page or 1
     tasks = Task.where(

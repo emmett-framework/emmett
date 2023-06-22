@@ -547,10 +547,10 @@ class FormStyle:
             _id=_id or field.name
         )
 
-    #: TO-DO
-    #@staticmethod
-    #def widget_list(attr, field, value, _class="", _id=None):
-    #    return ""
+    @staticmethod
+    def widget_list(field, value):
+        options, _ = FormStyle._field_options(field)
+        return FormStyle.widget_multiple(None, field, value, options)
 
     @staticmethod
     def widget_upload(attr, field, value, _class="upload", _id=None):

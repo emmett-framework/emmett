@@ -92,6 +92,16 @@ class Request(IngressWrapper):
     def _multipart_headers(self):
         return self.headers
 
+    @staticmethod
+    def _file_param_from_field(field):
+        return FileStorage(
+            BytesIO(field.file.read()),
+            field.filename,
+            field.name,
+            field.type,
+            field.headers
+        )
+
     def _load_params_form_multipart(self, data):
         params, files = sdict(), sdict()
         field_storage = FieldStorage(
@@ -104,23 +114,21 @@ class Request(IngressWrapper):
             field = field_storage[key]
             if isinstance(field, list):
                 if len(field) > 1:
-                    params[key] = []
-                    for element in field:
-                        params[key].append(element.value)
+                    pvalues, fvalues = [], []
+                    for item in field:
+                        if item.filename is not None:
+                            fvalues.append(self._file_param_from_field(item))
+                        else:
+                            pvalues.append(item.value)
+                    if pvalues:
+                        params[key] = pvalues
+                    if fvalues:
+                        files[key] = fvalues
+                    continue
                 else:
-                    params[key] = field[0].value
-            elif (
-                isinstance(field, FieldStorage) and
-                field.filename is not None
-            ):
-                files[key] = FileStorage(
-                    BytesIO(field.file.read()),
-                    field.filename,
-                    field.name,
-                    field.type,
-                    field.headers
-                )
-                continue
+                   field = field[0]
+            if field.filename is not None:
+                files[key] = self._file_param_from_field(field)
             else:
                 params[key] = field.value
         return params, files
