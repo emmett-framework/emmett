@@ -284,13 +284,20 @@ class HTTPIO(HTTPResponse):
     async def _send_body(self, send):
         more_body = True
         while more_body:
-            chunk = await self.io_stream.read(self.chunk_size)
+            chunk = self.io_stream.read(self.chunk_size)
             more_body = len(chunk) == self.chunk_size
             await send({
                 'type': 'http.response.body',
                 'body': chunk,
                 'more_body': more_body,
             })
+
+    def rsgi(self, protocol: HTTPProtocol):
+        protocol.response_bytes(
+            self.status_code,
+            list(self.rsgi_headers),
+            self.io_stream.read()
+        )
 
 
 def redirect(location: str, status_code: int = 303):
