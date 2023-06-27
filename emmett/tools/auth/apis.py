@@ -27,10 +27,10 @@ from .exposer import AuthModule
 
 
 class Auth:
-    def __init__(self, app, db, user_model=None):
+    def __init__(self, app, db, user_model=None, membership_model=None, group_model=None, permission_model=None):
         self.ext = app.use_extension(AuthExtension)
         self.ext.bind_auth(self)
-        self.ext.use_database(db, user_model)
+        self.ext.use_database(db, user_model, membership_model, group_model, permission_model)
         self.ext.init_forms()
         self.pipe = AuthPipe(self)
 
