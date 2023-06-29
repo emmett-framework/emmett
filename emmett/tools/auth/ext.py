@@ -190,11 +190,17 @@ class AuthExtension(Extension):
             self.app.pipeline.append(self.auth.pipe)
 
     def _set_model_config(self, config_name, model):
-        if model:
-            if issubclass(model, AuthModel) or issubclass(model, TimestampedModel):
-                self.config.models[config_name] = model
-            else:
-                raise RuntimeError(f'{user_model.__name__} is an invalid user model')
+        if not model:
+            return
+        _model_bases = {
+            'user': AuthModel,
+            'group': AuthGroup,
+            'membership': AuthMembership,
+            'permission': AuthPermission
+        }
+        if not issubclass(model, _model_bases[config_name]):
+            raise RuntimeError(f'{model.__name__} is an invalid {config_name} auth model')
+        self.config.models[config_name] = model
 
     def use_database(self, db, user_model=None, membership_model=None, group_model=None, permission_model=None):
         self.db = db
