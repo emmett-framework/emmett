@@ -482,15 +482,33 @@ class FormStyle:
 
     @staticmethod
     def widget_date(attr, field, value, _class="date", _id=None):
-        return FormStyle.widget_string(attr, field, value, _class, _id)
+        return tag.input(
+            _type="date",
+            _name=field.name,
+            _value=value if value is not None else "",
+            _class=_class,
+            _id=_id or field.name
+        )
 
     @staticmethod
     def widget_time(attr, field, value, _class="time", _id=None):
-        return FormStyle.widget_string(attr, field, value, _class, _id)
+        return tag.input(
+            _type="time",
+            _name=field.name,
+            _value=value if value is not None else "",
+            _class=_class,
+            _id=_id or field.name
+        )
 
     @staticmethod
     def widget_datetime(attr, field, value, _class="datetime", _id=None):
-        return FormStyle.widget_string(attr, field, value, _class, _id)
+        return tag.input(
+            _type="datetime-local",
+            _name=field.name,
+            _value=value if value is not None else "",
+            _class=_class,
+            _id=_id or field.name
+        )
 
     @staticmethod
     def widget_password(attr, field, value, _class="password", _id=None):
