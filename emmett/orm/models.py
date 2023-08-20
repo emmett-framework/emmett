@@ -860,18 +860,21 @@ class Model(metaclass=MetaModel):
 
     def __define_query_helpers(self):
         if not self.primary_keys:
-            self._query_id = self.table.id != None
+            self._query_id = self.table.id != None # noqa
             self._query_row = self._row_record_query_id
             self._order_by_id_asc = self.table.id
             self._order_by_id_desc = ~self.table.id
         elif len(self.primary_keys) == 1:
-            self._query_id = self.table[self.primary_keys[0]] != None
+            self._query_id = self.table[self.primary_keys[0]] != None # noqa
             self._query_row = self._row_record_query_pk
             self._order_by_id_asc = self.table[self.primary_keys[0]]
             self._order_by_id_desc = ~self.table[self.primary_keys[0]]
         else:
             self._query_id = reduce(
-                operator.and_, [self.table[key] != None for key in self.primary_keys]
+                operator.and_, [
+                    self.table[key] != None # noqa
+                    for key in self.primary_keys
+                ]
             )
             self._query_row = self._row_record_query_pks
             self._order_by_id_asc = reduce(
@@ -1151,7 +1154,9 @@ class RowRelationMapper:
         self.field = relation_data.name
 
     def __set__(self, obj, val):
-        if val is not None and not isinstance(val, RowReferenceMixin):
+        if not val:
+            val = None
+        elif val and not isinstance(val, RowReferenceMixin):
             if isinstance(val, StructuredRow):
                 val = typed_row_reference_from_record(val, val._model)
             else:
