@@ -371,7 +371,38 @@ event.user
 
 ### Customizing auth models
 
-*section in development*
+*Changed in version 2.5*
+
+By extending the models provided by the `Auth` module, you can easily customise the fields depending on your needs.
+
+Once you defined your own models, you can provide them to the `Auth` class in the same way we saw for the user:
+
+```python
+from emmett.orm import Field
+from emmett.tools.auth import Auth
+from emmett.tools.auth.models import AuthUser, AuthGroup, AuthMembership, AuthPermission
+
+class User(AuthUser):
+    pass
+
+class Group(AuthGroup):
+    extra_field = Field.string()
+
+class Membership(AuthMembership):
+    pass
+
+class Permission(AuthPermission):
+    pass
+
+auth = Auth(
+    app,
+    db,
+    user_model=User,
+    group_model=Group,
+    membership_model=Membership,
+    permission_model=Permission
+)
+```
 
 Users management
 ---------------

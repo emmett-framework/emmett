@@ -74,7 +74,7 @@ We would be very glad if you contributed to the project in one or all of these w
 
 ## License
 
-Emmmett is released under the BSD License.
+Emmett is released under the BSD License.
 
 However, due to original license limitations, some components are included 
 in Emmett under their original licenses. Please check the LICENSE file for 
