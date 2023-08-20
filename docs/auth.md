@@ -58,6 +58,41 @@ You can obviously change the routing URL prefix (default set to *auth*) as any o
 auth_routes = auth.module(__name__, url_prefix='account')
 ```
 
+Adding Custom Fields to Auth Models
+------------------
+
+*changed in version 2.5.3*
+
+By extending the default auth models provided by your authentication framework, you can easily add custom fields all of the auth models. 
+
+To add custom fields to the auth models, you can add this piece of code:
+```
+from emmett import App
+from emmett.orm import Database, Field
+from emmett.tools.auth import Auth, AuthUser, AuthMembership, AuthGroup, AuthPermission
+from emmett.sessions import SessionManager
+
+app = App(__name__)
+app.config.db.uri = "sqlite://storage.sqlite"
+app.config.auth.hmac_key = "mysupersecretkey"
+app.config.auth.single_template = True
+
+class User(AuthUser):
+    pass
+
+class Membership(AuthMembership):
+    pass
+
+class Group(AuthGroup):
+    extra_field = field.string()
+
+class Permission(AuthPermission):
+    pass
+
+db = Database(app)
+auth = Auth(app, db, user_model=User, membership_model=Membership, group_model=Group, permission_model=Permission)
+```
+
 Auth module configuration
 -------------------------
 
