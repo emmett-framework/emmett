@@ -84,8 +84,8 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Update pip # due to https://github.com/pypa/pip/issues/11501
-      run: pip install pip -U
+    - name: Clean cache # due to https://github.com/pypa/pip/issues/11501
+      run: pip cache purge
       if: ${{ matrix.python-version == '3.12' }}
     - name: Install and configure Poetry
       uses: gi0baro/setup-poetry-bin@v1.3
