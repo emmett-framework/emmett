@@ -50,7 +50,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, '3.10', '3.11']
+        python-version: [3.8, 3.9, '3.10', '3.11', '3.12']
 
     steps:
     - uses: actions/checkout@v2
@@ -58,6 +58,9 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Update pip # due to https://github.com/pypa/pip/issues/11501
+      run: pip install pip -U
+      if: ${{ matrix.python-version == '3.12' }}
     - name: Install and configure Poetry
       uses: gi0baro/setup-poetry-bin@v1.3
       with:
@@ -73,7 +76,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, '3.10', '3.11']
+        python-version: [3.8, 3.9, '3.10', '3.11', '3.12']
 
     steps:
     - uses: actions/checkout@v2
@@ -81,6 +84,9 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Update pip # due to https://github.com/pypa/pip/issues/11501
+      run: pip install pip -U
+      if: ${{ matrix.python-version == '3.12' }}
     - name: Install and configure Poetry
       uses: gi0baro/setup-poetry-bin@v1.3
       with:
