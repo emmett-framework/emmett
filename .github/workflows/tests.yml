@@ -27,16 +27,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install and configure Poetry
       uses: gi0baro/setup-poetry-bin@v1.3
       with:
         virtualenvs-in-project: true
-    - name: Upgrade virtuqlenv # due to https://github.com/pypa/pip/issues/11501
-      run: pip instqll virtuqlenv -U
-      if: ${{ matrix.python-version == '3.12' }}
     - name: Install dependencies
       run: |
         poetry install -v
@@ -55,16 +52,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install and configure Poetry
       uses: gi0baro/setup-poetry-bin@v1.3
       with:
         virtualenvs-in-project: true
-    - name: Upgrade virtuqlenv # due to https://github.com/pypa/pip/issues/11501
-      run: pip instqll virtuqlenv -U
-      if: ${{ matrix.python-version == '3.12' }}
     - name: Install dependencies
       run: |
         poetry install -v
@@ -81,16 +75,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install and configure Poetry
       uses: gi0baro/setup-poetry-bin@v1.3
       with:
         virtualenvs-in-project: true
-    - name: Upgrade virtuqlenv # due to https://github.com/pypa/pip/issues/11501
-      run: pip instqll virtuqlenv -U
-      if: ${{ matrix.python-version == '3.12' }}
     - name: Install dependencies
       shell: bash
       run: |
