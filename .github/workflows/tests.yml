@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, '3.10', '3.11']
+        python-version: [3.8, 3.9, '3.10', '3.11', '3.12']
 
     services:
       postgres:
@@ -27,11 +27,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install and configure Poetry
-      uses: gi0baro/setup-poetry-bin@v1.3
+      uses: gi0baro/setup-poetry-bin@v1
       with:
         virtualenvs-in-project: true
     - name: Install dependencies
@@ -47,16 +47,16 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, '3.10', '3.11']
+        python-version: [3.8, 3.9, '3.10', '3.11', '3.12']
 
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install and configure Poetry
-      uses: gi0baro/setup-poetry-bin@v1.3
+      uses: gi0baro/setup-poetry-bin@v1
       with:
         virtualenvs-in-project: true
     - name: Install dependencies
@@ -70,16 +70,16 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, '3.10', '3.11']
+        python-version: [3.8, 3.9, '3.10', '3.11', '3.12']
 
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install and configure Poetry
-      uses: gi0baro/setup-poetry-bin@v1.3
+      uses: gi0baro/setup-poetry-bin@v1
       with:
         virtualenvs-in-project: true
     - name: Install dependencies
