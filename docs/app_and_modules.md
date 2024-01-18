@@ -118,7 +118,7 @@ async def index():
 The resulting route will respond to the */blog* path, since the module have a defined prefix. For instance, if we define an archive route:
 
 ```python
-@blog.route()
+@blog.route("archive")
 async def archive():
     # code
 ```
