@@ -221,7 +221,13 @@ class HTTPFile(HTTPResponse):
                 return
             self._headers.update(self._get_stat_headers(stat_data))
             await self._send_headers(send)
-            await self._send_body(send)
+            if 'http.response.pathsend' in scope['extensions']:
+                await send({
+                    'type': 'http.response.pathsend',
+                    'path': str(self.file_path)
+                })
+            else:
+                await self._send_body(send)
         except IOError as e:
             if e.errno == errno.EACCES:
                 await HTTP(403).send(scope, send)
