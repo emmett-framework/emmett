@@ -47,7 +47,7 @@ emmett = "emmett.cli:main"
 [tool.poetry.dependencies]
 python = "^3.8"
 click = ">=6.0"
-granian = "~1.0.0"
+granian = "~1.0.2"
 emmett-crypto = "^0.5"
 pendulum = "~3.0.0"
 pyDAL = "17.3"
