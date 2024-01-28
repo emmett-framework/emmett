@@ -221,7 +221,7 @@ class HTTPFile(HTTPResponse):
                 return
             self._headers.update(self._get_stat_headers(stat_data))
             await self._send_headers(send)
-            if 'http.response.pathsend' in scope['extensions']:
+            if 'http.response.pathsend' in scope.get('extensions', {}):
                 await send({
                     'type': 'http.response.pathsend',
                     'path': str(self.file_path)
