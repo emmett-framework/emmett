@@ -43,6 +43,12 @@ class RSGIIngressMixin:
         return self._scope.headers
 
     @cachedprop
+    def host(self) -> str:
+        if self._scope.http_version[0] == '1':
+            return self.headers.get('host')
+        return self._scope.authority
+
+    @cachedprop
     def query_params(self) -> sdict[str, Union[str, List[str]]]:
         rv: sdict[str, Any] = sdict()
         for key, values in parse_qs(
