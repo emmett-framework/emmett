@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: 3.9
       - name: Install and configure Poetry
-        uses: gi0baro/setup-poetry-bin@v1.3
+        uses: gi0baro/setup-poetry-bin@v1
         with:
           virtualenvs-in-project: true
       - name: Publish
