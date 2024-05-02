@@ -122,13 +122,13 @@ class Command:
         }
         source = to_tuple(source)
         dest = to_tuple(dest)
-        if source is None:
+        if not source and dest:
             _store_logs['new'](dest[0])
             ctx.db.Schema.insert(version=dest[0])
             ctx.db.commit()
             ctx._current_revision_ = [dest[0]]
             return
-        if dest is None:
+        if not dest and source:
             _store_logs['del'](source[0])
             ctx.db(ctx.db.Schema.version == source[0]).delete()
             ctx.db.commit()
