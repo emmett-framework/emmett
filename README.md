@@ -1,4 +1,4 @@
-![Emmett](https://deneb.spaces.amira.io/emmett/artwork/logo-bwb-xb-xl.png)
+![Emmett](https://emmett.sh/static/img/logo-bwb-xb-xl.png)
 
 Emmett is a full-stack Python web framework designed with simplicity in mind.
 
