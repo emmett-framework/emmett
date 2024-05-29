@@ -22,10 +22,12 @@ def run(
     loop='auto',
     loop_opt=False,
     log_level=None,
+    log_access=False,
     workers=1,
     threads=1,
     threading_mode='workers',
     backlog=1024,
+    backpressure=None,
     enable_websockets=True,
     ssl_certfile: Optional[str] = None,
     ssl_keyfile: Optional[str] = None
@@ -38,13 +40,14 @@ def run(
         interface=interface,
         workers=workers,
         threads=threads,
-        pthreads=threads,
         threading_mode=threading_mode,
         loop=loop,
         loop_opt=loop_opt,
         websockets=enable_websockets,
         backlog=backlog,
+        backpressure=backpressure,
         log_level=log_level,
+        log_access=log_access,
         ssl_cert=ssl_certfile,
         ssl_key=ssl_keyfile
     )

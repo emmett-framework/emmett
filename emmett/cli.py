@@ -291,6 +291,7 @@ def develop_command(
         port,
         loop=loop,
         log_level='debug',
+        log_access=True,
         threads=1,
         threading_mode="workers",
         ssl_certfile=ssl_certfile,
@@ -327,8 +328,14 @@ def develop_command(
     '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='info',
     help='Logging level.')
 @click.option(
+    '--access-log/--no-access-log', is_flag=True, default=False,
+    help='Enable access log.')
+@click.option(
     '--backlog', type=int, default=2048,
     help='Maximum number of connections to hold in backlog')
+@click.option(
+    '--backpressure', type=int,
+    help='Maximum number of requests to process concurrently (per worker)')
 @click.option(
     '--ssl-certfile', type=str, default=None, help='SSL certificate file')
 @click.option(
@@ -336,7 +343,7 @@ def develop_command(
 @pass_script_info
 def serve_command(
     info, host, port, workers, threads, threading_mode, interface, ws, loop, opt,
-    log_level, backlog, ssl_certfile, ssl_keyfile
+    log_level, access_log, backlog, backpressure, ssl_certfile, ssl_keyfile
 ):
     app_target = info._get_import_name()
     sgi_run(
@@ -347,10 +354,12 @@ def serve_command(
         loop=loop,
         loop_opt=opt,
         log_level=log_level,
+        log_access=access_log,
         workers=workers,
         threads=threads,
         threading_mode=threading_mode,
         backlog=backlog,
+        backpressure=backpressure,
         enable_websockets=ws,
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,
