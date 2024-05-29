@@ -12,7 +12,7 @@ Debugger
 
 When you run your application with the built-in development server or set your `App.debug` attribute to `True`, Emmett will use its internal debugger when an exception occurs to show you some useful information. What does that look like?
 
-![debugger](https://deneb.spaces.amira.io/emmett/docs/debug.png)
+![debugger](https://emmett.sh/static/screens/debug.png)
 
 The debug page contains three sections:
 
@@ -24,14 +24,14 @@ The difference between the two tracebacks is straightforward: the first is filte
 
 The third section of the debugger page is called *frames* and inspecting it can tell you a lot about what happened during an exception.
 
-![debugger](https://deneb.spaces.amira.io/emmett/docs/debug_frames.png)
+![debugger](https://emmett.sh/static/screens/debug_frames.png)
 
 As you can see, for every step of the full traceback, Emmett collects – when is possible – all the variables' contents and reports them as shown in the above screen.
 
 > – OK, dude. What happens when I have an error in a template?   
 > – *the debugger catches them too.*
 
-![debugger](https://deneb.spaces.amira.io/emmett/docs/debug_template.png)
+![debugger](https://emmett.sh/static/screens/debug_template.png)
 
 The debugger will also try to display the line that generated the exception in templates, complete with the error type. Still, when you forget a `pass` in a template file, it can be impossible to show you the statement that was not *passed*.
 
