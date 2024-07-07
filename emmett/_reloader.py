@@ -17,7 +17,6 @@ import multiprocessing
 import os
 import signal
 import subprocess
-import ssl
 import sys
 import time
 
@@ -151,8 +150,8 @@ reloader_loops['auto'] = reloader_loops['stat']
 def run_with_reloader(
     interface,
     app_target,
-    host,
-    port,
+    host='127.0.0.1',
+    port=8000,
     loop='auto',
     log_level=None,
     log_access=False,
@@ -174,8 +173,10 @@ def run_with_reloader(
 
             process = multiprocessing.Process(
                 target=_server_run,
-                args=(interface, app_target, host, port),
+                args=(interface, app_target),
                 kwargs={
+                    "host": host,
+                    "port": port,
                     "loop": loop,
                     "log_level": log_level,
                     "log_access": log_access,
