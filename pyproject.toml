@@ -3,9 +3,9 @@ name = "emmett"
 
 [tool.poetry]
 name = "emmett"
-version = "2.5.11"
+version = "2.5.12"
 description = "The web framework for inventors"
-authors = ["Giovanni Barillari <gi0baro@d4net.org>"]
+authors = ["Giovanni Barillari <g@baro.dev>"]
 license = "BSD-3-Clause"
 
 readme = "README.md"
@@ -47,7 +47,7 @@ emmett = "emmett.cli:main"
 [tool.poetry.dependencies]
 python = "^3.8"
 click = ">=6.0"
-granian = "~1.4.1"
+granian = "~1.5.0"
 emmett-crypto = "^0.6"
 pendulum = "~3.0.0"
 pyDAL = "17.3"
