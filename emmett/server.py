@@ -28,6 +28,7 @@ def run(
     threading_mode='workers',
     backlog=1024,
     backpressure=None,
+    http='auto',
     enable_websockets=True,
     ssl_certfile: Optional[str] = None,
     ssl_keyfile: Optional[str] = None
@@ -43,6 +44,7 @@ def run(
         threading_mode=threading_mode,
         loop=loop,
         loop_opt=loop_opt,
+        http=http,
         websockets=enable_websockets,
         backlog=backlog,
         backpressure=backpressure,

@@ -287,12 +287,11 @@ def develop_command(
     runner(
         interface,
         app_target,
-        host,
-        port,
+        host=host,
+        port=port,
         loop=loop,
         log_level='debug',
         log_access=True,
-        threads=1,
         threading_mode="workers",
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,
@@ -315,6 +314,9 @@ def develop_command(
 @click.option(
     '--interface', type=click.Choice(['rsgi', 'asgi']), default='rsgi',
     help='Application interface.')
+@click.option(
+    '--http', type=click.Choice(['auto', '1', '2']), default='auto',
+    help='HTTP version.')
 @click.option(
     '--ws/--no-ws', is_flag=True, default=True,
     help='Enable websockets support.')
@@ -342,7 +344,7 @@ def develop_command(
     '--ssl-keyfile', type=str, default=None, help='SSL key file')
 @pass_script_info
 def serve_command(
-    info, host, port, workers, threads, threading_mode, interface, ws, loop, opt,
+    info, host, port, workers, threads, threading_mode, interface, http, ws, loop, opt,
     log_level, access_log, backlog, backpressure, ssl_certfile, ssl_keyfile
 ):
     app_target = info._get_import_name()
@@ -360,6 +362,7 @@ def serve_command(
         threading_mode=threading_mode,
         backlog=backlog,
         backpressure=backpressure,
+        http=http,
         enable_websockets=ws,
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,

@@ -355,14 +355,14 @@ class AuthExtension(Extension):
         data['email'] = user.email
         return self.app.ext.MailExtension.send_mail(
             recipients=user.email,
-            subject=self.config.messages['registration_email_subject'],
+            subject=str(self.config.messages['registration_email_subject']),
             body=str(self.config.messages['registration_email_text'] % data))
 
     def _reset_password_email(self, user, data):
         data['email'] = user.email
         return self.app.ext.MailExtension.send_mail(
             recipients=user.email,
-            subject=self.config.messages['reset_password_email_subject'],
+            subject=str(self.config.messages['reset_password_email_subject']),
             body=str(self.config.messages['reset_password_email_text'] % data))
 
 
