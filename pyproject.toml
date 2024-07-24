@@ -3,7 +3,7 @@ name = "emmett"
 
 [tool.poetry]
 name = "emmett"
-version = "2.5.12"
+version = "2.5.13"
 description = "The web framework for inventors"
 authors = ["Giovanni Barillari <g@baro.dev>"]
 license = "BSD-3-Clause"
