@@ -367,12 +367,15 @@ class Model(metaclass=MetaModel):
                 setattr(self.__class__, name, obj)
             self.fields.append(obj._make_field(name, self))
 
-    def __find_matching_fk_definition(self, fields, rmodel):
+    def __find_matching_fk_definition(self, rfields, lfields, rmodel):
         match = None
-        if not set(fields).issubset(set(rmodel.primary_keys)):
+        if not set(rfields).issubset(set(rmodel.primary_keys)):
             return match
         for key, val in self.foreign_keys.items():
-            if set(val["foreign_fields"]) == set(rmodel.primary_keys):
+            if (
+                set(val["foreign_fields"]) == set(rmodel.primary_keys) and
+                set(lfields).issubset(set(val["fields"]))
+            ):
                 match = key
                 break
         return match
@@ -410,7 +413,7 @@ class Model(metaclass=MetaModel):
                 fk_def_key, fks_data, multi_fk = None, {}, []
                 if ref_multi_pk and reference.fk:
                     fk_def_key = self.__find_matching_fk_definition(
-                        [reference.fk], refmodel
+                        [reference.fk], [reference.name], refmodel
                     )
                     if not fk_def_key:
                         raise SyntaxError(
@@ -546,22 +549,23 @@ class Model(metaclass=MetaModel):
             ):
                 continue
             if len(rmodel._fieldset_pk) > 1:
-                match = self.__find_matching_fk_definition([rel.fk], rmodel)
+                match = self.__find_matching_fk_definition([rel.fk], [rel.name], rmodel)
                 if not match:
                     raise SyntaxError(
                         f"{self.__class__.__name__}.{rname} relation targets a "
                         "compound primary key table. A matching foreign key "
                         "needs to be defined into `foreign_keys`."
                     )
-                trels = grouped_rels[rmodel.tablename] = grouped_rels.get(
-                    rmodel.tablename, {
+                crels = grouped_rels[match] = grouped_rels.get(
+                    match, {
                         'rels': {},
+                        'table': rmodel.tablename,
                         'on_delete': self.foreign_keys[match].get(
                             "on_delete", "cascade"
                         )
                     }
                 )
-                trels['rels'][rname] = rel
+                crels['rels'][rname] = rel
             else:
                 # NOTE: we need this since pyDAL doesn't support id/refs types != int
                 implicit_defs[rname] = {
@@ -575,15 +579,15 @@ class Model(metaclass=MetaModel):
                 rel['table'], *rel['fields_local']
             )
             self._foreign_keys_[constraint_name] = {**rel}
-        for tname, rels in grouped_rels.items():
+        for crels in grouped_rels.values():
             constraint_name = self.__create_fk_contraint_name(
-                tname, *[rel.name for rel in rels['rels'].values()]
+                crels['table'], *[rel.name for rel in crels['rels'].values()]
             )
             self._foreign_keys_[constraint_name] = {
-                'table': tname,
-                'fields_local': [rel.name for rel in rels['rels'].values()],
-                'fields_foreign': [rel.fk for rel in rels['rels'].values()],
-                'on_delete': Field._internal_delete[rels['on_delete']]
+                'table': crels['table'],
+                'fields_local': [rel.name for rel in crels['rels'].values()],
+                'fields_foreign': [rel.fk for rel in crels['rels'].values()],
+                'on_delete': Field._internal_delete[crels['on_delete']]
             }
 
     def _define_virtuals_(self):
