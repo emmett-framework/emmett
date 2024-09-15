@@ -22,8 +22,9 @@ import time
 from collections import OrderedDict
 from functools import partial
 
+from emmett_core.utils import cachedprop
+
 from ..ctx import current
-from ..utils import cachedprop
 from .errors import MaxConnectionsExceeded
 from .transactions import _transaction
 

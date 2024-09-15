@@ -13,80 +13,23 @@ from __future__ import annotations
 
 from typing import Any, Dict, Union
 
+from emmett_core.http.response import HTTPStringResponse
+from emmett_core.routing.response import ResponseProcessor
 from renoir.errors import TemplateMissingError
 
 from ..ctx import current
 from ..helpers import load_component
 from ..html import asis
-from ..http import HTTPResponse, HTTP, HTTPBytes
-from ..wrappers.response import Response
-from .rules import HTTPRoutingRule
 from .urls import url
 
 _html_content_type = 'text/html; charset=utf-8'
-
-
-class MetaResponseBuilder:
-    def __init__(self, route: HTTPRoutingRule):
-        self.route = route
-
-    def __call__(self, output: Any, response: Response) -> HTTPResponse:
-        raise NotImplementedError
-
-
-class ResponseBuilder(MetaResponseBuilder):
-    http_cls = HTTP
-
-    def __call__(self, output: Any, response: Response) -> HTTP:
-        return self.http_cls(
-            response.status,
-            output,
-            headers=response.headers,
-            cookies=response.cookies
-        )
-
-
-class EmptyResponseBuilder(ResponseBuilder):
-    http_cls = HTTPResponse
-
-    def __call__(self, output: Any, response: Response) -> HTTPResponse:
-        return self.http_cls(
-            response.status,
-            headers=response.headers,
-            cookies=response.cookies
-        )
-
-
-class ResponseProcessor(ResponseBuilder):
-    def process(self, output: Any, response: Response):
-        raise NotImplementedError
-
-    def __call__(self, output: Any, response: Response) -> HTTP:
-        return self.http_cls(
-            response.status,
-            self.process(output, response),
-            headers=response.headers,
-            cookies=response.cookies
-        )
-
-
-class BytesResponseBuilder(MetaResponseBuilder):
-    http_cls = HTTPBytes
-
-    def __call__(self, output: Any, response: Response) -> HTTPBytes:
-        return self.http_cls(
-            response.status,
-            output,
-            headers=response.headers,
-            cookies=response.cookies
-        )
 
 
 class TemplateResponseBuilder(ResponseProcessor):
     def process(
         self,
         output: Union[Dict[str, Any], None],
-        response: Response
+        response
     ) -> str:
         response.headers._data['content-type'] = _html_content_type
         base_ctx = {
@@ -101,7 +44,7 @@ class TemplateResponseBuilder(ResponseProcessor):
                 self.route.template, output
             )
         except TemplateMissingError as exc:
-            raise HTTP(
+            raise HTTPStringResponse(
                 404,
                 body="{}\n".format(exc.message),
                 cookies=response.cookies
@@ -109,7 +52,7 @@ class TemplateResponseBuilder(ResponseProcessor):
 
 
 class AutoResponseBuilder(ResponseProcessor):
-    def process(self, output: Any, response: Response) -> str:
+    def process(self, output: Any, response) -> str:
         is_template = False
         if isinstance(output, dict):
             is_template = True
@@ -136,7 +79,7 @@ class AutoResponseBuilder(ResponseProcessor):
                     self.route.template, output
                 )
             except TemplateMissingError as exc:
-                raise HTTP(
+                raise HTTPStringResponse(
                     404,
                     body="{}\n".format(exc.message),
                     cookies=response.cookies

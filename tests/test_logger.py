@@ -8,7 +8,8 @@
 
 import logging
 
-from emmett import App, logger, sdict
+from emmett_core import log as logger
+from emmett import App, sdict
 
 
 def _call_create_logger(app):

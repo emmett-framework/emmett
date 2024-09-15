@@ -26,9 +26,10 @@ from email.header import Header
 from email.utils import formatdate, formataddr, make_msgid, parseaddr
 from functools import wraps
 
+from emmett_core.utils import cachedprop
+
 from ..extensions import Extension
 from ..libs.contenttype import contenttype
-from ..utils import cachedprop
 
 _charsetreg.add_charset('utf-8', _charsetreg.SHORTEST, None, 'utf-8')
 message_policy = policy.SMTP

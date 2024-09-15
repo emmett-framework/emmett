@@ -8,9 +8,11 @@
 
 import pytest
 
+from emmett_core.utils import cachedprop, _cached_prop_sync, _cached_prop_loop
+
 from emmett.datastructures import sdict
 from emmett.utils import (
-    cachedprop, _cached_prop_sync, _cached_prop_loop,
+    # cachedprop, _cached_prop_sync, _cached_prop_loop,
     dict_to_sdict, is_valid_ip_address)
 
 

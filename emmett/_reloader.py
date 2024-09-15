@@ -25,8 +25,8 @@ from typing import Optional
 
 import click
 
-from ._internal import locate_app
-from .server import run as _server_run
+from emmett_core._internal import locate_app
+from emmett_core.server import run as _server_run
 
 
 def _iter_module_files():

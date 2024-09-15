@@ -46,12 +46,11 @@ emmett = "emmett.cli:main"
 
 [tool.poetry.dependencies]
 python = "^3.8"
+
 click = ">=6.0"
-granian = "~1.5.0"
-emmett-crypto = "^0.6"
+emmett-core = { git = "https://github.com/emmett-framework/core", rev = "5225d17", extras = ["granian", "rapidjson"] }
 pendulum = "~3.0.0"
 pyDAL = "17.3"
-python-rapidjson = "^1.14"
 pyyaml = "^6.0"
 renoir = "^1.6"
 severus = "^1.1"

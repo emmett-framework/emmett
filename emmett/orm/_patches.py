@@ -9,8 +9,9 @@
     :license: BSD-3-Clause
 """
 
+from emmett_core.utils import cachedprop
+
 from ..serializers import Serializers
-from ..utils import cachedprop
 
 from pydal.adapters.base import BaseAdapter
 from pydal.connection import ConnectionPool

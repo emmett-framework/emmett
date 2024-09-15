@@ -15,13 +15,13 @@ from functools import wraps
 
 import click
 
+from ..._shortcuts import uuid
 from ...cli import pass_script_info
 from ...datastructures import sdict
 from ...extensions import Extension, Signals, listen_signal
 from ...language.helpers import Tstr
 from ...locals import T, now, session
 from ...orm.helpers import decamelize
-from ...security import uuid
 from .forms import AuthForms
 from .models import (
     AuthModel, AuthUser, AuthGroup, AuthMembership, AuthPermission, AuthEvent

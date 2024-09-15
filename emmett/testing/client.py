@@ -19,12 +19,14 @@ import types
 
 from io import BytesIO
 
+from emmett_core.http.response import HTTPResponse
+from emmett_core.utils import cachedprop
+
 from ..asgi.handlers import HTTPHandler
 from ..asgi.wrappers import Request
 from ..ctx import RequestContext, current
-from ..http import HTTP, HTTPResponse
+from ..http import HTTP
 from ..wrappers.response import Response
-from ..utils import cachedprop
 from .env import ScopeBuilder
 from .helpers import TestCookieJar, Headers
 from .urls import get_host, url_parse, url_unparse
@@ -359,7 +361,7 @@ def run_asgi_app(app, scope, body=b''):
                 raw["body"].seek(0)
                 response_complete = True
 
-    handler = ClientHTTPHandler(app)
+    handler = ClientHTTPHandler(app, current)
     loop.run_until_complete(handler(scope, receive, send))
 
     return raw

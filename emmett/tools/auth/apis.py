@@ -15,8 +15,8 @@ from datetime import timedelta
 from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 from pydal.helpers.classes import Reference as _RecordReference
+from emmett_core.routing.cache import RouteCacheRule
 
-from ...cache import RouteCacheRule
 from ...datastructures import sdict
 from ...locals import now, session
 from ...orm.objects import Row

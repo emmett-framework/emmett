@@ -9,27 +9,18 @@
     :license: BSD-3-Clause
 """
 
-from http.cookies import Morsel, SimpleCookie
 from typing import Any
+
+from emmett_core.http.wrappers.response import Response as _Response
+from emmett_core.utils import cachedprop
 
 from ..datastructures import sdict
 from ..helpers import get_flashed_messages
 from ..html import htmlescape
-from ..utils import cachedprop
-from . import Wrapper
-from .helpers import ResponseHeaders
-
-# Workaround for adding samesite support to pre 3.8 python
-Morsel._reserved["samesite"] = "SameSite"  # type: ignore  # noqa
 
 
-class Response(Wrapper):
-    __slots__ = ('status', 'headers', 'cookies')
-
-    def __init__(self):
-        self.status = 200
-        self.headers = ResponseHeaders({'content-type': 'text/plain'})
-        self.cookies = SimpleCookie()
+class Response(_Response):
+    __slots__ = ()
 
     @cachedprop
     def meta(self) -> sdict[str, Any]:
@@ -38,14 +29,6 @@ class Response(Wrapper):
     @cachedprop
     def meta_prop(self) -> sdict[str, Any]:
         return sdict()
-
-    @property
-    def content_type(self) -> str:
-        return self.headers['content-type']
-
-    @content_type.setter
-    def content_type(self, value: str):
-        self.headers['content-type'] = value
 
     def alerts(self, **kwargs):
         return get_flashed_messages(**kwargs)

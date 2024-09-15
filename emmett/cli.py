@@ -21,10 +21,12 @@ import types
 
 import click
 
+from emmett_core._internal import locate_app, get_app_module
+from emmett_core.log import LOG_LEVELS
+from emmett_core.server import run as sgi_run
+
 from .__version__ import __version__ as fw_version
-from ._internal import locate_app, get_app_module
-from .logger import LOG_LEVELS
-from .server import run as sgi_run
+# from ._internal import locate_app, get_app_module
 
 
 def find_app_module():

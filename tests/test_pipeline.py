@@ -12,12 +12,13 @@ import pytest
 from contextlib import contextmanager
 
 from helpers import current_ctx as _current_ctx, ws_ctx as _ws_ctx
+from emmett_core.serializers import _json_type
 from emmett import App, request, websocket, abort
 from emmett.ctx import current
 from emmett.http import HTTP
 from emmett.pipeline import Pipe, Injector
 from emmett.parsers import Parsers
-from emmett.serializers import Serializers, _json_type
+from emmett.serializers import Serializers
 
 json_load = Parsers.get_for('json')
 json_dump = Serializers.get_for('json')

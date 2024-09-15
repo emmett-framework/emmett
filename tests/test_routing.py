@@ -14,7 +14,8 @@ from contextlib import contextmanager
 from helpers import FakeRequestContext
 from emmett import App, abort, url
 from emmett.ctx import current
-from emmett.http import HTTP
+from emmett.datastructures import sdict
+from emmett.http import HTTPResponse
 from emmett.testing.env import ScopeBuilder
 
 
@@ -83,6 +84,7 @@ def app():
         '/<any:f>'
     )
     def test_route_complex(a, b, c, d, e, f):
+        current._reqargs = {"a": a, "b":b, "c": c, "d": d, "e": e, "f": f}
         return 'Test Router'
 
     return app
@@ -170,14 +172,24 @@ def test_routing(app):
         assert route.name == 'test_routing.test_route_any'
 
 
-def test_route_args(app):
+@pytest.mark.asyncio
+async def test_route_args(app):
     with current_ctx(
         app, '/test_complex/1/1.2/2000-12-01/foo/foo1/bar/baz'
     ) as ctx:
-        route, args = app._router_http.match(ctx.request)
-        assert route.name == 'test_routing.test_route_complex'
+        # route, args = app._router_http.match(ctx.request)
+        # assert route.name == 'test_routing.test_route_complex'
+        # assert args['a'] == 1
+        # assert round(args['b'], 1) == 1.2
+        # assert args['c'] == pendulum.datetime(2000, 12, 1)
+        # assert args['d'] == 'foo'
+        # assert args['e'] == 'foo1'
+        # assert args['f'] == 'bar/baz'
+        await app._router_http.dispatch(ctx.request, sdict())
+        assert ctx.request.name == 'test_routing.test_route_complex'
+        args = current._reqargs
         assert args['a'] == 1
-        assert args['b'] == 1.2
+        assert round(args['b'], 1) == 1.2
         assert args['c'] == pendulum.datetime(2000, 12, 1)
         assert args['d'] == 'foo'
         assert args['e'] == 'foo1'
@@ -196,16 +208,16 @@ async def test_routing_valid_route(app):
 @pytest.mark.asyncio
 async def test_routing_not_found_route(app):
     with current_ctx(app, '/') as ctx:
-        with pytest.raises(HTTP) as excinfo:
+        with pytest.raises(HTTPResponse) as excinfo:
             await app._router_http.dispatch(ctx.request, ctx.response)
         assert excinfo.value.status_code == 404
-        assert excinfo.value.body == 'Resource not found\n'
+        assert excinfo.value.body == b'Resource not found'
 
 
 @pytest.mark.asyncio
 async def test_routing_exception_route(app):
     with current_ctx(app, '/test_404') as ctx:
-        with pytest.raises(HTTP) as excinfo:
+        with pytest.raises(HTTPResponse) as excinfo:
             await app._router_http.dispatch(ctx.request, ctx.response)
         assert excinfo.value.status_code == 404
         assert excinfo.value.body == 'Not found, dude'

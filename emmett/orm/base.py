@@ -16,14 +16,16 @@ import os
 import threading
 
 from functools import wraps
+
 from pydal import DAL as _pyDAL
 from pydal._globals import THREAD_LOCAL
+from emmett_core.serializers import _json_default
 
+from .._shortcuts import uuid as _uuid
 from ..datastructures import sdict
 from ..extensions import Signals
 from ..pipeline import Pipe
-from ..security import uuid as _uuid
-from ..serializers import _json_default, xml
+from ..serializers import xml
 from .adapters import patch_adapter
 from .objects import Table, Field, Set, Row, Rows
 from .helpers import ConnectionContext, TimingHandler

@@ -11,9 +11,9 @@
 
 from typing import Optional, cast
 
+from emmett_core._internal import ContextVarProxy as _VProxy, ObjectProxy as _OProxy
 from pendulum import DateTime
 
-from ._internal import ContextVarProxy as _VProxy, ObjectProxy as _OProxy
 from .ctx import _ctxv, current
 from .datastructures import sdict
 from .language.translator import Translator

@@ -17,9 +17,9 @@ from datetime import tzinfo, timedelta
 from io import StringIO
 
 # TODO: check unicode conversions
-from .._shortcuts import to_unicode
+from .._shortcuts import to_unicode, uuid
 from ..ctx import current
-from ..security import simple_hash, uuid, DIGEST_ALG_BY_SIZE
+from ..security import simple_hash, DIGEST_ALG_BY_SIZE
 
 
 _DEFAULT = lambda: None

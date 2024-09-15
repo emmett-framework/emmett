@@ -1,3 +1,4 @@
+from . import _internal
 from .app import App, AppModule
 from .cache import Cache
 from .ctx import current
