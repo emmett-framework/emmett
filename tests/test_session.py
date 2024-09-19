@@ -8,16 +8,16 @@
 
 import pytest
 
-from emmett.asgi.wrappers import Request
+from emmett_core.protocols.rsgi.test_client.scope import ScopeBuilder
+from emmett.rsgi.wrappers import Request
 from emmett.ctx import RequestContext, current
 from emmett.sessions import SessionManager
-from emmett.testing.env import ScopeBuilder
 from emmett.wrappers.response import Response
 
 
 class FakeRequestContext(RequestContext):
     def __init__(self, app, scope):
-        self.request = Request(scope, None, None)
+        self.request = Request(scope, scope.path, None, None)
         self.response = Response()
         self.session = None
 

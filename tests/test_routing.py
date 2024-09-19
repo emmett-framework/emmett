@@ -12,11 +12,11 @@ import pytest
 from contextlib import contextmanager
 
 from helpers import FakeRequestContext
+from emmett_core.protocols.rsgi.test_client.scope import ScopeBuilder
 from emmett import App, abort, url
 from emmett.ctx import current
 from emmett.datastructures import sdict
 from emmett.http import HTTPResponse
-from emmett.testing.env import ScopeBuilder
 
 
 @contextmanager

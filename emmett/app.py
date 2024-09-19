@@ -324,9 +324,8 @@ class App(_App):
 
     config_class = Config
     modules_class = AppModule
-    # routers_class = (HTTPRouter, WebsocketRouter)
     signals_class = Signals
-    test_client_class = None
+    test_client_class = EmmettTestClient
 
     def __init__(
         self,
@@ -456,11 +455,6 @@ class App(_App):
     #: Add a template extension to application
     def use_template_extension(self, ext_cls, **config):
         return self.templater.use_extension(ext_cls, **config)
-
-    # TODO: move to emmett_core
-    def test_client(self, use_cookies: bool = True, **kwargs) -> EmmettTestClient:
-        tclass = self.test_client_class or EmmettTestClient
-        return tclass(self, use_cookies=use_cookies, **kwargs)
 
     def module(
         self,

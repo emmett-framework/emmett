@@ -72,5 +72,4 @@ class HTTPHandler(_HTTPHandler):
 
 
 class WSHandler(_WSHandler):
-    __slots__ = ['pre_handler', '__dict__']
     wrapper_cls = Websocket
