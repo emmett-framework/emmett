@@ -26,7 +26,6 @@ from emmett_core.log import LOG_LEVELS
 from emmett_core.server import run as sgi_run
 
 from .__version__ import __version__ as fw_version
-# from ._internal import locate_app, get_app_module
 
 
 def find_app_module():
@@ -131,8 +130,9 @@ class ScriptInfo(object):
         if self._loaded_app is not None:
             return self._loaded_app
 
+        from .app import App
         import_name, app_name = self._get_import_name()
-        app = locate_app(import_name, app_name) if import_name else None
+        app = locate_app(App, import_name, app_name) if import_name else None
 
         if app is None:
             raise RuntimeError("Could not locate an Emmett application.")
