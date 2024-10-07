@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from emmett_core.routing.router import HTTPRouter as _HTTPRouter, WebsocketRouter as WebsocketRouter, RoutingCtx as RoutingCtx, RoutingCtxGroup as RoutingCtxGroup
 
-from .response import AutoResponseBuilder, TemplateResponseBuilder
+from .response import AutoResponseBuilder, TemplateResponseBuilder, SnippetResponseBuilder
 from .rules import HTTPRoutingRule
 
 
@@ -25,7 +25,8 @@ class HTTPRouter(_HTTPRouter):
         **_HTTPRouter._outputs,
         **{
             'auto': AutoResponseBuilder,
-            'template': TemplateResponseBuilder
+            'template': TemplateResponseBuilder,
+            'snippet': SnippetResponseBuilder,
         }
     }
 

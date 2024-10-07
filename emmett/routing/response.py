@@ -11,9 +11,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, Tuple
 
-from emmett_core.http.response import HTTPStringResponse
+from emmett_core.http.response import HTTPResponse, HTTPStringResponse
 from emmett_core.routing.response import ResponseProcessor
 from renoir.errors import TemplateMissingError
 
@@ -51,9 +51,31 @@ class TemplateResponseBuilder(ResponseProcessor):
             )
 
 
+class SnippetResponseBuilder(ResponseProcessor):
+    def process(
+        self,
+        output: Tuple[str, Union[Dict[str, Any], None]],
+        response
+    ) -> str:
+        response.headers._data['content-type'] = _html_content_type
+        template, output = output
+        base_ctx = {
+            'current': current,
+            'url': url,
+            'asis': asis,
+            'load_component': load_component
+        }
+        output = base_ctx if output is None else {**base_ctx, **output}
+        return self.route.app.templater._render(
+            template, current.request.name, output
+        )
+
+
 class AutoResponseBuilder(ResponseProcessor):
     def process(self, output: Any, response) -> str:
-        is_template = False
+        is_template, snippet = False, None
+        if isinstance(output, tuple):
+            snippet, output = output
         if isinstance(output, dict):
             is_template = True
             output = {
@@ -66,6 +88,7 @@ class AutoResponseBuilder(ResponseProcessor):
                 **output
             }
         elif output is None:
+            is_template = True
             output = {
                 'current': current,
                 'url': url,
@@ -74,6 +97,10 @@ class AutoResponseBuilder(ResponseProcessor):
             }
         if is_template:
             response.headers._data['content-type'] = _html_content_type
+            if snippet:
+                return self.route.app.templater._render(
+                    snippet, current.request.name, output
+                )
             try:
                 return self.route.app.templater.render(
                     self.route.template, output
@@ -85,5 +112,7 @@ class AutoResponseBuilder(ResponseProcessor):
                     cookies=response.cookies
                 )
         elif isinstance(output, str):
+            return output
+        elif isinstance(output, HTTPResponse):
             return output
         return str(output)
