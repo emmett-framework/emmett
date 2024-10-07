@@ -48,9 +48,9 @@ emmett = "emmett.cli:main"
 python = "^3.8"
 
 click = ">=6.0"
-emmett-core = { git = "https://github.com/emmett-framework/core", rev = "b711bcf", extras = ["granian", "rapidjson"] }
+emmett-core = { git = "https://github.com/emmett-framework/core", rev = "ab79ed4", extras = ["granian", "rapidjson"] }
 pendulum = "~3.0.0"
-pyDAL = "17.3"
+pyDAL = { git = "https://github.com/gi0baro/pydal.git", rev = "emmett" }
 pyyaml = "^6.0"
 renoir = "^1.6"
 severus = "^1.1"
