@@ -51,7 +51,10 @@ def sanitize_subject(subject, encoding='utf-8'):
 
 def sanitize_address(address, encoding='utf-8'):
     if isinstance(address, str):
-        address = parseaddr(address)
+        try:
+            address = parseaddr(address, strict=False)
+        except Exception:
+            address = parseaddr(address)
     name, address = address
     name = Header(name, encoding).encode()
     try:
