@@ -26,9 +26,10 @@ from email.header import Header
 from email.utils import formatdate, formataddr, make_msgid, parseaddr
 from functools import wraps
 
+from emmett_core.utils import cachedprop
+
 from ..extensions import Extension
 from ..libs.contenttype import contenttype
-from ..utils import cachedprop
 
 _charsetreg.add_charset('utf-8', _charsetreg.SHORTEST, None, 'utf-8')
 message_policy = policy.SMTP
@@ -50,7 +51,10 @@ def sanitize_subject(subject, encoding='utf-8'):
 
 def sanitize_address(address, encoding='utf-8'):
     if isinstance(address, str):
-        address = parseaddr(address)
+        try:
+            address = parseaddr(address, strict=False)
+        except Exception:
+            address = parseaddr(address)
     name, address = address
     name = Header(name, encoding).encode()
     try:

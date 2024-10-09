@@ -13,10 +13,11 @@
     :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
+from emmett_core.utils import cachedprop
+
 # TODO: check unicode conversions
 from .._shortcuts import to_unicode
 from ..ctx import current
-from ..utils import cachedprop
 from .basic import Validator
 from .helpers import options_sorter, translate
 

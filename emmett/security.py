@@ -6,25 +6,17 @@
     Miscellaneous security helpers.
 
     :copyright: 2014 Giovanni Barillari
-
-    Based on the code of web2py (http://www.web2py.com)
-    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
-
-    :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
+    :license: BSD-3-Clause
 """
 
 import hashlib
 import hmac
-import os
-import random
-import struct
-import threading
 import time
-import uuid as uuidm
 
 from collections import OrderedDict
+from uuid import uuid4
 
-from emmett_crypto import kdf
+from emmett_core.cryptography import kdf
 
 # TODO: check bytes conversions
 from ._shortcuts import to_bytes
@@ -40,7 +32,7 @@ class CSRFStorage(OrderedDict):
 
     def gen_token(self):
         self._clean()
-        token = str(uuid())
+        token = str(uuid4())
         self[token] = int(time.time())
         return token
 
@@ -108,82 +100,3 @@ DIGEST_ALG_BY_SIZE = {
     384 / 4: 'sha384',
     512 / 4: 'sha512',
 }
-
-
-def _init_urandom():
-    """
-    This function and the web2py_uuid follow from the following discussion:
-    http://groups.google.com/group/web2py-developers/browse_thread/thread/7fd5789a7da3f09
-
-    At startup web2py compute a unique ID that identifies the machine by adding
-    uuid.getnode() + int(time.time() * 1e3)
-
-    This is a 48-bit number. It converts the number into 16 8-bit tokens.
-    It uses this value to initialize the entropy source ('/dev/urandom')
-    and to seed random.
-
-    If os.random() is not supported, it falls back to using random and issues
-    a warning.
-    """
-    node_id = uuidm.getnode()
-    microseconds = int(time.time() * 1e6)
-    ctokens = [((node_id + microseconds) >> ((i % 6) * 8)) %
-               256 for i in range(16)]
-    random.seed(node_id + microseconds)
-    try:
-        os.urandom(1)
-        have_urandom = True
-        try:
-            # try to add process-specific entropy
-            frandom = open('/dev/urandom', 'wb')
-            try:
-                frandom.write(bytes([]).join(bytes([t]) for t in ctokens))
-            finally:
-                frandom.close()
-        except IOError:
-            # works anyway
-            pass
-    except NotImplementedError:
-        have_urandom = False
-    packed = bytes([]).join(bytes([x]) for x in ctokens)
-    unpacked_ctokens = struct.unpack('=QQ', packed)
-    return unpacked_ctokens, have_urandom
-
-
-_UNPACKED_CTOKENS, _HAVE_URANDOM = _init_urandom()
-
-
-def fast_urandom16(urandom=[], locker=threading.RLock()):
-    """
-    this is 4x faster than calling os.urandom(16) and prevents
-    the "too many files open" issue with concurrent access to os.urandom()
-    """
-    try:
-        return urandom.pop()
-    except IndexError:
-        try:
-            locker.acquire()
-            ur = os.urandom(16 * 1024)
-            urandom += [ur[i:i + 16] for i in range(16, 1024 * 16, 16)]
-            return ur[0:16]
-        finally:
-            locker.release()
-
-
-def uuid(ctokens=_UNPACKED_CTOKENS):
-    """
-    It works like uuid.uuid4 except that tries to use os.urandom() if possible
-    and it XORs the output with the tokens uniquely associated with
-    this machine.
-    """
-    rand_longs = (random.getrandbits(64), random.getrandbits(64))
-    if _HAVE_URANDOM:
-        urand_longs = struct.unpack('=QQ', fast_urandom16())
-        byte_s = struct.pack('=QQ',
-                             rand_longs[0] ^ urand_longs[0] ^ ctokens[0],
-                             rand_longs[1] ^ urand_longs[1] ^ ctokens[1])
-    else:
-        byte_s = struct.pack('=QQ',
-                             rand_longs[0] ^ ctokens[0],
-                             rand_longs[1] ^ ctokens[1])
-    return str(uuidm.UUID(bytes=byte_s, version=4))

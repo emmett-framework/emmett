@@ -12,12 +12,13 @@ import pytest
 from contextlib import contextmanager
 
 from helpers import current_ctx as _current_ctx, ws_ctx as _ws_ctx
+from emmett_core.serializers import _json_type
 from emmett import App, request, websocket, abort
 from emmett.ctx import current
 from emmett.http import HTTP
 from emmett.pipeline import Pipe, Injector
 from emmett.parsers import Parsers
-from emmett.serializers import Serializers, _json_type
+from emmett.serializers import Serializers
 
 json_load = Parsers.get_for('json')
 json_dump = Serializers.get_for('json')
@@ -654,10 +655,6 @@ async def test_module_group_pipeline_composition(app):
 
 @pytest.mark.asyncio
 async def test_receive_send_flow(app):
-    send_storage_key = {
-        "str": "text",
-        "bytes": "bytes"
-    }[_json_type]
     with ws_ctx(app, '/ws_inject') as ctx:
         parallel_flow = [
             'Pipe1.open', 'Pipe2.open_ws', 'Pipe3.open',
@@ -677,7 +674,7 @@ async def test_receive_send_flow(app):
             'foo': 'bar',
             'pipe1r': 'receive_inject', 'pipe2r': 'receive_inject'
         }
-        assert json_load(ctx.ctx._send_storage[-1][send_storage_key]) == {
+        assert json_load(ctx.ctx._send_storage[-1]) == {
             'foo': 'bar',
             'pipe1r': 'receive_inject', 'pipe2r': 'receive_inject',
             'pipe1s': 'send_inject', 'pipe2s': 'send_inject'

@@ -15,7 +15,6 @@
 
 import re
 
-from cgi import FieldStorage
 from functools import reduce
 from os import SEEK_END, SEEK_SET
 
@@ -231,17 +230,19 @@ class hasLength(Validator):
                 return value, None
         elif getattr(value, '_emt_field_hashed_contents_', False):
             return value, None
-        elif isinstance(value, FieldStorage):
+        elif hasattr(value, 'file'):
             if value.file:
                 value.file.seek(0, SEEK_END)
                 length = value.file.tell()
                 value.file.seek(0, SEEK_SET)
-            elif hasattr(value, 'value'):
-                val = value.value
-                if val:
-                    length = len(val)
-                else:
-                    length = 0
+            if self._between(length):
+                return value, None
+        elif hasattr(value, 'value'):
+            val = value.value
+            if val:
+                length = len(val)
+            else:
+                length = 0
             if self._between(length):
                 return value, None
         elif isinstance(value, bytes):

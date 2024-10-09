@@ -15,27 +15,22 @@ import re
 from typing import Any, List, Optional, Tuple, Union
 
 from pydal.exceptions import NotAuthorizedException, NotFoundException
+from emmett_core.http.helpers import abort as _abort
+from emmett_core.http.response import HTTPFileResponse, HTTPIOResponse
 
 from .ctx import current
 from .html import HtmlTag, tag
-from .http import HTTP, HTTPFile, HTTPIO
 
 _re_dbstream = re.compile(r'(?P<table>.*?)\.(?P<field>.*?)\..*')
 
 
 def abort(code: int, body: str = ''):
-    response = current.response
-    response.status = code
-    raise HTTP(
-        code,
-        body=body,
-        cookies=response.cookies
-    )
+    _abort(current, code, body)
 
 
 def stream_file(path: str):
     full_path = os.path.join(current.app.root_path, path)
-    raise HTTPFile(
+    raise HTTPFileResponse(
         full_path,
         headers=current.response.headers,
         cookies=current.response.cookies
@@ -60,12 +55,12 @@ def stream_dbfile(db: Any, name: str):
     except IOError:
         abort(404)
     if isinstance(path_or_stream, str):
-        raise HTTPFile(
+        raise HTTPFileResponse(
             path_or_stream,
             headers=current.response.headers,
             cookies=current.response.cookies
         )
-    raise HTTPIO(
+    raise HTTPIOResponse(
         path_or_stream,
         headers=current.response.headers,
         cookies=current.response.cookies

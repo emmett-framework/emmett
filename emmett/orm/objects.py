@@ -30,12 +30,12 @@ from pydal.objects import (
     Query,
     Expression
 )
+from emmett_core.utils import cachedprop
 
 from ..ctx import current
 from ..datastructures import sdict
 from ..html import tag
 from ..serializers import xml_encode
-from ..utils import cachedprop
 from ..validators import ValidateFromDict
 from .helpers import (
     RelationBuilder,

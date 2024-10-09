@@ -7,8 +7,8 @@
 """
 
 from helpers import current_ctx
-from emmett.asgi.wrappers import Request
-from emmett.testing.env import ScopeBuilder
+from emmett_core.protocols.rsgi.test_client.scope import ScopeBuilder
+from emmett.rsgi.wrappers import Request
 from emmett.wrappers.response import Response
 
 

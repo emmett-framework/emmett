@@ -14,9 +14,8 @@ import os
 import sys
 import traceback
 
+from emmett_core.utils import cachedprop
 from renoir import Renoir
-
-from .utils import cachedprop
 
 
 class Traceback:

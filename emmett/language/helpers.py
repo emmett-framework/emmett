@@ -11,9 +11,8 @@
 
 import re
 
+from emmett_core.http.headers import Accept
 from severus.datastructures import Tstr as _Tstr
-
-from ..datastructures import Accept
 
 
 class Tstr(_Tstr):

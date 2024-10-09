@@ -9,10 +9,10 @@
     :license: BSD-3-Clause
 """
 
+from ..._shortcuts import uuid
 from ...ctx import current
 from ...locals import now, request
 from ...orm import Model, Field, before_insert, rowmethod
-from ...security import uuid
 
 
 class TimestampedModel(Model):

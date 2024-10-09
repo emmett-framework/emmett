@@ -7,20 +7,24 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/emmett
+    permissions:
+      id-token: write
 
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
-      - name: Install and configure Poetry
-        uses: gi0baro/setup-poetry-bin@v1
-        with:
-          virtualenvs-in-project: true
-      - name: Publish
+          python-version: 3.12
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Build distributions
         run: |
-          poetry build
-          poetry publish
-        env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+          uv build
+      - name: Publish package to pypi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true

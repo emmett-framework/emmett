@@ -14,8 +14,10 @@
 """
 
 from collections import deque
+
+from emmett_core.utils import cachedprop
+
 from ...datastructures import OrderedSet
-from ...utils import cachedprop
 from .helpers import to_tuple, tuple_or_value, dedupe_tuple
 from .exceptions import (
     RevisionError, RangeNotAncestorError, ResolutionError, MultipleHeads

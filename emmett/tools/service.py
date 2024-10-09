@@ -9,29 +9,16 @@
     :license: BSD-3-Clause
 """
 
+from emmett_core.pipeline.extras import JSONPipe
+
 from ..ctx import current
-from ..parsers import Parsers
 from ..pipeline import Pipe
-from ..serializers import Serializers, _json_type
+from ..serializers import Serializers
 
 
-class JSONServicePipe(Pipe):
-    __slots__ = ['decoder', 'encoder']
-    output = _json_type
-
-    def __init__(self):
-        self.decoder = Parsers.get_for('json')
-        self.encoder = Serializers.get_for('json')
-
-    async def pipe_request(self, next_pipe, **kwargs):
-        current.response.headers._data['content-type'] = 'application/json'
-        return self.encoder(await next_pipe(**kwargs))
-
-    def on_receive(self, data):
-        return self.decoder(data)
-
-    def on_send(self, data):
-        return self.encoder(data)
+class JSONServicePipe(JSONPipe):
+    __slots__ = []
+    _current = current
 
 
 class XMLServicePipe(Pipe):

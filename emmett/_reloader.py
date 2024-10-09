@@ -25,8 +25,8 @@ from typing import Optional
 
 import click
 
-from ._internal import locate_app
-from .server import run as _server_run
+from emmett_core._internal import locate_app
+from emmett_core.server import run as _server_run
 
 
 def _iter_module_files():
@@ -168,8 +168,9 @@ def run_with_reloader(
 
     try:
         if os.environ.get('EMMETT_RUN_MAIN') == 'true':
+            from .app import App
             # FIXME: find a better way to have app files in stat checker
-            locate_app(*app_target)
+            locate_app(App, *app_target)
 
             process = multiprocessing.Process(
                 target=_server_run,

@@ -13,8 +13,9 @@ from __future__ import annotations
 
 from typing import Any, List, Optional
 
+from emmett_core.routing.cache import RouteCacheRule
+
 from ...app import App, AppModule
-from ...cache import RouteCacheRule
 from ...helpers import flash, stream_dbfile
 from ...http import redirect
 from ...locals import request, session

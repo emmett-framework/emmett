@@ -22,9 +22,9 @@ from typing import TYPE_CHECKING, Any, Callable
 from pydal._globals import THREAD_LOCAL
 from pydal.helpers.classes import ExecutionHandler
 from pydal.objects import Field as _Field
+from emmett_core.utils import cachedprop
 
 from ..datastructures import sdict
-from ..utils import cachedprop
 
 if TYPE_CHECKING:
     from .objects import Table

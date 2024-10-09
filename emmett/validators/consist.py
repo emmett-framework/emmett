@@ -21,9 +21,11 @@ from datetime import date, time, datetime, timedelta
 from time import strptime
 from urllib.parse import unquote as url_unquote
 
+from emmett_core.utils import cachedprop
+
 from ..parsers import Parsers
 from ..serializers import Serializers
-from ..utils import cachedprop, parse_datetime
+from ..utils import parse_datetime
 from .basic import Validator, ParentValidator, _is, Matches
 from .helpers import (
     _DEFAULT,
