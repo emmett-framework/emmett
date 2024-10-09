@@ -9,50 +9,27 @@ Provides helping methods for applications.
 :license: BSD-3-Clause
 """
 
-import os
-import re
 from typing import Any, List, Optional, Tuple, Union
 
+from emmett_core._internal import deprecated
 from emmett_core.http.helpers import abort as _abort
-from emmett_core.http.response import HTTPFileResponse, HTTPIOResponse
-from pydal.exceptions import NotAuthorizedException, NotFoundException
 
 from .ctx import current
 from .html import HtmlTag, tag
-
-
-_re_dbstream = re.compile(r"(?P<table>.*?)\.(?P<field>.*?)\..*")
 
 
 def abort(code: int, body: str = ""):
     _abort(current, code, body)
 
 
+@deprecated("stream_file", "Response.wrap_file")
 def stream_file(path: str):
-    full_path = os.path.join(current.app.root_path, path)
-    raise HTTPFileResponse(full_path, headers=current.response.headers, cookies=current.response.cookies)
+    raise current.response.wrap_file(path)
 
 
+@deprecated("stream_dbfile", "Response.wrap_dbfile")
 def stream_dbfile(db: Any, name: str):
-    items = _re_dbstream.match(name)
-    if not items:
-        abort(404)
-    table_name, field_name = items.group("table"), items.group("field")
-    try:
-        field = db[table_name][field_name]
-    except AttributeError:
-        abort(404)
-    try:
-        filename, path_or_stream = field.retrieve(name, nameonly=True)
-    except NotAuthorizedException:
-        abort(403)
-    except NotFoundException:
-        abort(404)
-    except IOError:
-        abort(404)
-    if isinstance(path_or_stream, str):
-        raise HTTPFileResponse(path_or_stream, headers=current.response.headers, cookies=current.response.cookies)
-    raise HTTPIOResponse(path_or_stream, headers=current.response.headers, cookies=current.response.cookies)
+    raise current.response.wrap_dbfile(db, name)
 
 
 def flash(message: str, category: str = "message"):
