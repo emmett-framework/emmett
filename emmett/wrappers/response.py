@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.wrappers.response
-    ------------------------
+emmett.wrappers.response
+------------------------
 
-    Provides response wrappers.
+Provides response wrappers.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from typing import Any
@@ -34,11 +34,7 @@ class Response(_Response):
         return get_flashed_messages(**kwargs)
 
     def _meta_tmpl(self):
-        return [
-            (key, htmlescape(val)) for key, val in self.meta.items()
-        ]
+        return [(key, htmlescape(val)) for key, val in self.meta.items()]
 
     def _meta_tmpl_prop(self):
-        return [
-            (key, htmlescape(val)) for key, val in self.meta_prop.items()
-        ]
+        return [(key, htmlescape(val)) for key, val in self.meta_prop.items()]

@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.migrations.generation
-    --------------------------------
+emmett.orm.migrations.generation
+--------------------------------
 
-    Provides generation utils for migrations.
+Provides generation utils for migrations.
 
-    :copyright: 2014 Giovanni Barillari
+:copyright: 2014 Giovanni Barillari
 
-    Based on the code of Alembic (https://bitbucket.org/zzzeek/alembic)
-    :copyright: (c) 2009-2015 by Michael Bayer
+Based on the code of Alembic (https://bitbucket.org/zzzeek/alembic)
+:copyright: (c) 2009-2015 by Michael Bayer
 
-    :license: BSD-3-Clause
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from ..._shortcuts import hashlib_sha1
 from ...datastructures import OrderedSet
 from ..objects import Rows, Table
 from .base import Column, Database
-from .helpers import Dispatcher, DEFAULT_VALUE
+from .helpers import DEFAULT_VALUE, Dispatcher
 from .operations import (
     AddColumnOp,
     AlterColumnOp,
@@ -36,19 +36,13 @@ from .operations import (
     MigrationOp,
     OpContainer,
     Operation,
-    UpgradeOps
+    UpgradeOps,
 )
 from .scripts import ScriptDir
 
 
 class MetaTable:
-    def __init__(
-        self,
-        name: str,
-        columns: List[Column] = [],
-        primary_keys: List[str] = [],
-        **kw: Any
-    ):
+    def __init__(self, name: str, columns: List[Column] = [], primary_keys: List[str] = [], **kw: Any):
         self.name = name
         self.columns = OrderedDict()
         for column in columns:
@@ -72,25 +66,14 @@ class MetaTable:
         del self.columns[name]
 
     def __repr__(self) -> str:
-        return "Table(%r, %s)" % (
-            self.name,
-            ", ".join(["%s" % column for column in self.columns.values()])
-        )
+        return "Table(%r, %s)" % (self.name, ", ".join(["%s" % column for column in self.columns.values()]))
 
     def insert(self, *args, **kwargs) -> Any:
         return None
 
 
 class MetaIndex:
-    def __init__(
-        self,
-        table_name: str,
-        name: str,
-        fields: List[str],
-        expressions: List[str],
-        unique: bool,
-        **kw: Any
-    ):
+    def __init__(self, table_name: str, name: str, fields: List[str], expressions: List[str], unique: bool, **kw: Any):
         self.table_name = table_name
         self.name = name
         self.fields = fields
@@ -100,16 +83,13 @@ class MetaIndex:
 
     @property
     def where(self) -> Optional[str]:
-        return self.kw.get('where')
+        return self.kw.get("where")
 
     def __repr__(self) -> str:
-        opts = [('expressions', self.expressions), ('unique', self.unique)]
+        opts = [("expressions", self.expressions), ("unique", self.unique)]
         for key, val in self.kw.items():
             opts.append((key, val))
-        return "Index(%r, %r, %s)" % (
-            self.name, self.fields,
-            ", ".join(["%s=%r" % (opt[0], opt[1]) for opt in opts])
-        )
+        return "Index(%r, %r, %s)" % (self.name, self.fields, ", ".join(["%s=%r" % (opt[0], opt[1]) for opt in opts]))
 
 
 class MetaForeignKey:
@@ -121,7 +101,7 @@ class MetaForeignKey:
         foreign_table_name: str,
         foreign_keys: List[str],
         on_delete: str,
-        **kw
+        **kw,
     ):
         self.table_name = table_name
         self.name = name
@@ -150,7 +130,7 @@ class MetaForeignKey:
             self.foreign_table_name,
             self.column_names,
             self.foreign_keys,
-            self.on_delete
+            self.on_delete,
         )
 
 
@@ -189,13 +169,7 @@ class MetaData:
     def __call__(self, *args, **kwargs):
         return self.where(*args, **kwargs)
 
-    def create_table(
-        self,
-        name: str,
-        columns: List[Column],
-        primary_keys: List[str],
-        **kw: Any
-    ):
+    def create_table(self, name: str, columns: List[Column], primary_keys: List[str], **kw: Any):
         self.tables[name] = MetaTable(name, columns, primary_keys, **kw)
 
     def drop_table(self, name: str):
@@ -211,13 +185,7 @@ class MetaData:
         self.tables[table_name][column_name].update(**changes)
 
     def create_index(
-        self,
-        table_name: str,
-        index_name: str,
-        fields: List[str],
-        expressions: List[str],
-        unique: bool,
-        **kw: Any
+        self, table_name: str, index_name: str, fields: List[str], expressions: List[str], unique: bool, **kw: Any
     ):
         self.tables[table_name].indexes[index_name] = MetaIndex(
             table_name, index_name, fields, expressions, unique, **kw
@@ -233,15 +201,10 @@ class MetaData:
         column_names: List[str],
         foreign_table_name: str,
         foreign_keys: List[str],
-        on_delete: str
+        on_delete: str,
     ):
         self.tables[table_name].foreign_keys[constraint_name] = MetaForeignKey(
-            table_name,
-            constraint_name,
-            column_names,
-            foreign_table_name,
-            foreign_keys,
-            on_delete
+            table_name, constraint_name, column_names, foreign_table_name, foreign_keys, on_delete
         )
 
     def drop_foreign_key_constraint(self, table_name: str, constraint_name: str):
@@ -261,10 +224,8 @@ class Comparator:
     def _build_metatable(self, dbtable: Table):
         return MetaTable(
             dbtable._tablename,
-            [
-                Column.from_field(field) for field in list(dbtable)
-            ],
-            primary_keys=list(dbtable._primary_keys)
+            [Column.from_field(field) for field in list(dbtable)],
+            primary_keys=list(dbtable._primary_keys),
         )
 
     def _build_metaindex(self, dbtable: Table, index_name: str) -> MetaIndex:
@@ -272,15 +233,15 @@ class Comparator:
         dbindex = model._indexes_[index_name]
         kw = {}
         with self.db._adapter.index_expander():
-            if 'where' in dbindex:
-                kw['where'] = str(dbindex['where'])
+            if "where" in dbindex:
+                kw["where"] = str(dbindex["where"])
             rv = MetaIndex(
                 model.tablename,
                 index_name,
-                [field for field in dbindex['fields']],
-                [str(expr) for expr in dbindex['expressions']],
-                dbindex['unique'],
-                **kw
+                list(dbindex["fields"]),
+                [str(expr) for expr in dbindex["expressions"]],
+                dbindex["unique"],
+                **kw,
             )
         return rv
 
@@ -288,12 +249,7 @@ class Comparator:
         model = dbtable._model_
         dbfk = model._foreign_keys_[fk_name]
         return MetaForeignKey(
-            model.tablename,
-            fk_name,
-            dbfk['fields_local'],
-            dbfk['table'],
-            dbfk['fields_foreign'],
-            dbfk['on_delete']
+            model.tablename, fk_name, dbfk["fields_local"], dbfk["table"], dbfk["fields_foreign"], dbfk["on_delete"]
         )
 
     def tables(self):
@@ -322,64 +278,37 @@ class Comparator:
         self.indexes_and_uniques(dbtable, metatable)
         self.foreign_keys(dbtable, metatable)
 
-    def indexes_and_uniques(
-        self,
-        dbtable: Table,
-        metatable: MetaTable,
-        ops_stack: Optional[List[Operation]] = None
-    ):
+    def indexes_and_uniques(self, dbtable: Table, metatable: MetaTable, ops_stack: Optional[List[Operation]] = None):
         ops = ops_stack if ops_stack is not None else self.ops
-        db_index_names = OrderedSet(
-            [idxname for idxname in dbtable._model_._indexes_.keys()]
-        )
+        db_index_names = OrderedSet(list(dbtable._model_._indexes_.keys()))
         meta_index_names = OrderedSet(list(metatable.indexes))
         #: removed indexes
         for index_name in meta_index_names.difference(db_index_names):
             ops.append(DropIndexOp.from_index(metatable.indexes[index_name]))
         #: new indexs
         for index_name in db_index_names.difference(meta_index_names):
-            ops.append(
-                CreateIndexOp.from_index(
-                    self._build_metaindex(dbtable, index_name)
-                )
-            )
+            ops.append(CreateIndexOp.from_index(self._build_metaindex(dbtable, index_name)))
         #: existing indexes
         for index_name in meta_index_names.intersection(db_index_names):
             metaindex = metatable.indexes[index_name]
             dbindex = self._build_metaindex(dbtable, index_name)
             if any(
-                getattr(metaindex, key) != getattr(dbindex, key)
-                for key in ['fields', 'expressions', 'unique', 'kw']
+                getattr(metaindex, key) != getattr(dbindex, key) for key in ["fields", "expressions", "unique", "kw"]
             ):
                 ops.append(DropIndexOp.from_index(metaindex))
                 ops.append(CreateIndexOp.from_index(dbindex))
         # TODO: uniques
 
-    def foreign_keys(
-        self,
-        dbtable: Table,
-        metatable: MetaTable,
-        ops_stack: Optional[List[Operation]] = None
-    ):
+    def foreign_keys(self, dbtable: Table, metatable: MetaTable, ops_stack: Optional[List[Operation]] = None):
         ops = ops_stack if ops_stack is not None else self.ops
-        db_fk_names = OrderedSet(
-            [fkname for fkname in dbtable._model_._foreign_keys_.keys()]
-        )
+        db_fk_names = OrderedSet(list(dbtable._model_._foreign_keys_.keys()))
         meta_fk_names = OrderedSet(list(metatable.foreign_keys))
         #: removed fks
         for fk_name in meta_fk_names.difference(db_fk_names):
-            ops.append(
-                DropForeignKeyConstraintOp.from_foreign_key(
-                    metatable.foreign_keys[fk_name]
-                )
-            )
+            ops.append(DropForeignKeyConstraintOp.from_foreign_key(metatable.foreign_keys[fk_name]))
         #: new fks
         for fk_name in db_fk_names.difference(meta_fk_names):
-            ops.append(
-                CreateForeignKeyConstraintOp.from_foreign_key(
-                    self._build_metafk(dbtable, fk_name)
-                )
-            )
+            ops.append(CreateForeignKeyConstraintOp.from_foreign_key(self._build_metafk(dbtable, fk_name)))
         #: existing fks
         for fk_name in meta_fk_names.intersection(db_fk_names):
             metafk = metatable.foreign_keys[fk_name]
@@ -389,29 +318,22 @@ class Comparator:
                 ops.append(CreateForeignKeyConstraintOp.from_foreign_key(dbfk))
 
     def columns(self, dbtable: Table, metatable: MetaTable):
-        db_column_names = OrderedSet([fname for fname in dbtable.fields])
+        db_column_names = OrderedSet(list(dbtable.fields))
         meta_column_names = OrderedSet(metatable.fields)
         #: new columns
         for column_name in db_column_names.difference(meta_column_names):
-            self.ops.append(AddColumnOp.from_column_and_tablename(
-                dbtable._tablename, Column.from_field(dbtable[column_name])
-            ))
+            self.ops.append(
+                AddColumnOp.from_column_and_tablename(dbtable._tablename, Column.from_field(dbtable[column_name]))
+            )
         #: existing columns
         for column_name in meta_column_names.intersection(db_column_names):
             self.ops.append(AlterColumnOp(dbtable._tablename, column_name))
-            self.column(
-                Column.from_field(dbtable[column_name]),
-                metatable.columns[column_name]
-            )
+            self.column(Column.from_field(dbtable[column_name]), metatable.columns[column_name])
             if not self.ops[-1].has_changes():
                 self.ops.pop()
         #: removed columns
         for column_name in meta_column_names.difference(db_column_names):
-            self.ops.append(
-                DropColumnOp.from_column_and_tablename(
-                    dbtable._tablename, metatable.columns[column_name]
-                )
-            )
+            self.ops.append(DropColumnOp.from_column_and_tablename(dbtable._tablename, metatable.columns[column_name]))
 
     def column(self, dbcolumn: Column, metacolumn: Column):
         self.notnulls(dbcolumn, metacolumn)
@@ -431,9 +353,7 @@ class Comparator:
 
     def lengths(self, dbcolumn: Column, metacolumn: Column):
         self.ops[-1].existing_length = metacolumn.length
-        if any(
-            field.type == "string" for field in [dbcolumn, metacolumn]
-        ) and dbcolumn.length != metacolumn.length:
+        if any(field.type == "string" for field in [dbcolumn, metacolumn]) and dbcolumn.length != metacolumn.length:
             self.ops[-1].modify_length = dbcolumn.length
 
     def notnulls(self, dbcolumn: Column, metacolumn: Column):
@@ -461,12 +381,8 @@ class Generator:
         self._load_head_to_meta()
 
     def _load_head_to_meta(self):
-        for revision in reversed(
-            list(self.scriptdir.walk_revisions("base", self.head))
-        ):
-            migration = revision.migration_class(
-                None, self.meta, is_meta=True
-            )
+        for revision in reversed(list(self.scriptdir.walk_revisions("base", self.head))):
+            migration = revision.migration_class(None, self.meta, is_meta=True)
             if migration.skip_on_compare:
                 continue
             migration.up()
@@ -475,12 +391,7 @@ class Generator:
         return Comparator.compare(self.db, self.meta)
 
     @classmethod
-    def generate_from(
-        cls,
-        dal: Database,
-        scriptdir: ScriptDir,
-        head: str
-    ) -> UpgradeOps:
+    def generate_from(cls, dal: Database, scriptdir: ScriptDir, head: str) -> UpgradeOps:
         return cls(dal, scriptdir, head).generate()
 
 
@@ -501,10 +412,7 @@ class Renderer:
     @classmethod
     def render_migration(cls, migration_op: MigrationOp):
         r = cls()
-        return (
-            r.render_opcontainer(migration_op.upgrade_ops),
-            r.render_opcontainer(migration_op.downgrade_ops)
-        )
+        return (r.render_opcontainer(migration_op.upgrade_ops), r.render_opcontainer(migration_op.downgrade_ops))
 
 
 renderers = Dispatcher()
@@ -514,10 +422,7 @@ renderers = Dispatcher()
 def _add_table(op: CreateTableOp) -> str:
     table = op.to_table()
 
-    args = [
-        col for col in [_render_column(col) for col in table.columns.values()]
-        if col
-    ]
+    args = [col for col in [_render_column(col) for col in table.columns.values()] if col]
     # + sorted([
     #     rcons for rcons in [
     #         _render_constraint(cons) for cons in table.constraints]
@@ -527,18 +432,19 @@ def _add_table(op: CreateTableOp) -> str:
     indent = " " * 12
 
     if len(args) > 255:
-        args = '*[' + (',\n' + indent).join(args) + ']'
+        args = "*[" + (",\n" + indent).join(args) + "]"
     else:
-        args = (',\n' + indent).join(args)
+        args = (",\n" + indent).join(args)
 
     text = (
-        "self.create_table(\n" + indent + "%(tablename)r,\n" + indent + "%(args)s,\n" +
-        indent + "primary_keys=%(primary_keys)r"
-    ) % {
-        'tablename': op.table_name,
-        'args': args,
-        'primary_keys': table.primary_keys
-    }
+        "self.create_table(\n"
+        + indent
+        + "%(tablename)r,\n"
+        + indent
+        + "%(args)s,\n"
+        + indent
+        + "primary_keys=%(primary_keys)r"
+    ) % {"tablename": op.table_name, "args": args, "primary_keys": table.primary_keys}
     for k in sorted(op.kw):
         text += ",\n" + indent + "%s=%r" % (k.replace(" ", "_"), op.kw[k])
     text += ")"
@@ -547,9 +453,7 @@ def _add_table(op: CreateTableOp) -> str:
 
 @renderers.dispatch_for(DropTableOp)
 def _drop_table(op: DropTableOp) -> str:
-    text = "self.drop_table(%(tname)r" % {
-        "tname": op.table_name
-    }
+    text = "self.drop_table(%(tname)r" % {"tname": op.table_name}
     text += ")"
     return text
 
@@ -568,7 +472,7 @@ def _render_column(column: Column) -> str:
 
     if column.type in ("string", "password", "upload"):
         opts.append(("length", column.length))
-    elif column.type.startswith('reference'):
+    elif column.type.startswith("reference"):
         opts.append(("ondelete", column.ondelete))
     elif column.type.startswith("geo"):
         for key in ("geometry_type", "srid", "dimension"):
@@ -577,37 +481,24 @@ def _render_column(column: Column) -> str:
 
     kw_str = ""
     if opts:
-        kw_str = ", %s" % \
-            ", ".join(["%s=%r" % (key, val) for key, val in opts])
-    return "migrations.Column(%(name)r, %(type)r%(kw)s)" % {
-        'name': column.name,
-        'type': column.type,
-        'kw': kw_str
-    }
+        kw_str = ", %s" % ", ".join(["%s=%r" % (key, val) for key, val in opts])
+    return "migrations.Column(%(name)r, %(type)r%(kw)s)" % {"name": column.name, "type": column.type, "kw": kw_str}
 
 
 @renderers.dispatch_for(AddColumnOp)
 def _add_column(op: AddColumnOp) -> str:
-    return "self.add_column(%(tname)r, %(column)s)" % {
-        "tname": op.table_name,
-        "column": _render_column(op.column)
-    }
+    return "self.add_column(%(tname)r, %(column)s)" % {"tname": op.table_name, "column": _render_column(op.column)}
 
 
 @renderers.dispatch_for(DropColumnOp)
 def _drop_column(op: DropTableOp) -> str:
-    return "self.drop_column(%(tname)r, %(cname)r)" % {
-        "tname": op.table_name,
-        "cname": op.column_name
-    }
+    return "self.drop_column(%(tname)r, %(cname)r)" % {"tname": op.table_name, "cname": op.column_name}
 
 
 @renderers.dispatch_for(AlterColumnOp)
 def _alter_column(op: AlterColumnOp) -> str:
     indent = " " * 12
-    text = "self.alter_column(%(tname)r, %(cname)r" % {
-        'tname': op.table_name,
-        'cname': op.column_name}
+    text = "self.alter_column(%(tname)r, %(cname)r" % {"tname": op.table_name, "cname": op.column_name}
 
     if op.existing_type is not None:
         text += ",\n%sexisting_type=%r" % (indent, op.existing_type)
@@ -637,47 +528,31 @@ def _alter_column(op: AlterColumnOp) -> str:
 def _add_index(op: CreateIndexOp) -> str:
     kw_str = ""
     if op.kw:
-        kw_str = ", %s" % ", ".join(
-            ["%s=%r" % (key, val) for key, val in op.kw.items()])
+        kw_str = ", %s" % ", ".join(["%s=%r" % (key, val) for key, val in op.kw.items()])
     return "self.create_index(%(iname)r, %(tname)r, %(idata)s)" % {
         "tname": op.table_name,
         "iname": op.index_name,
-        "idata": "%r, expressions=%r, unique=%s%s" % (
-            op.fields, op.expressions, op.unique, kw_str)
+        "idata": "%r, expressions=%r, unique=%s%s" % (op.fields, op.expressions, op.unique, kw_str),
     }
 
 
 @renderers.dispatch_for(DropIndexOp)
 def _drop_index(op: DropIndexOp) -> str:
-    return "self.drop_index(%(iname)r, %(tname)r)" % {
-        "tname": op.table_name,
-        "iname": op.index_name
-    }
+    return "self.drop_index(%(iname)r, %(tname)r)" % {"tname": op.table_name, "iname": op.index_name}
 
 
 @renderers.dispatch_for(CreateForeignKeyConstraintOp)
 def _add_fk_constraint(op: CreateForeignKeyConstraintOp) -> str:
     kw_str = ""
     if op.kw:
-        kw_str = ", %s" % ", ".join(
-            ["%s=%r" % (key, val) for key, val in op.kw.items()]
-        )
+        kw_str = ", %s" % ", ".join(["%s=%r" % (key, val) for key, val in op.kw.items()])
     return "self.create_foreign_key(%s%s)" % (
-        "%r, %r, %r, %r, %r, on_delete=%r" % (
-            op.constraint_name,
-            op.table_name,
-            op.foreign_table_name,
-            op.column_names,
-            op.foreign_keys,
-            op.on_delete
-        ),
-        kw_str
+        "%r, %r, %r, %r, %r, on_delete=%r"
+        % (op.constraint_name, op.table_name, op.foreign_table_name, op.column_names, op.foreign_keys, op.on_delete),
+        kw_str,
     )
 
 
 @renderers.dispatch_for(DropForeignKeyConstraintOp)
 def _drop_fk_constraint(op: DropForeignKeyConstraintOp) -> str:
-    return "self.drop_foreign_key(%(cname)r, %(tname)r)" % {
-        "tname": op.table_name,
-        "cname": op.constraint_name
-    }
+    return "self.drop_foreign_key(%(cname)r, %(tname)r)" % {"tname": op.table_name, "cname": op.constraint_name}

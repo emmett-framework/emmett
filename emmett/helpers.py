@@ -1,47 +1,43 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.helpers
-    --------------
+emmett.helpers
+--------------
 
-    Provides helping methods for applications.
+Provides helping methods for applications.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 import os
 import re
-
 from typing import Any, List, Optional, Tuple, Union
 
-from pydal.exceptions import NotAuthorizedException, NotFoundException
 from emmett_core.http.helpers import abort as _abort
 from emmett_core.http.response import HTTPFileResponse, HTTPIOResponse
+from pydal.exceptions import NotAuthorizedException, NotFoundException
 
 from .ctx import current
 from .html import HtmlTag, tag
 
-_re_dbstream = re.compile(r'(?P<table>.*?)\.(?P<field>.*?)\..*')
+
+_re_dbstream = re.compile(r"(?P<table>.*?)\.(?P<field>.*?)\..*")
 
 
-def abort(code: int, body: str = ''):
+def abort(code: int, body: str = ""):
     _abort(current, code, body)
 
 
 def stream_file(path: str):
     full_path = os.path.join(current.app.root_path, path)
-    raise HTTPFileResponse(
-        full_path,
-        headers=current.response.headers,
-        cookies=current.response.cookies
-    )
+    raise HTTPFileResponse(full_path, headers=current.response.headers, cookies=current.response.cookies)
 
 
 def stream_dbfile(db: Any, name: str):
     items = _re_dbstream.match(name)
     if not items:
         abort(404)
-    table_name, field_name = items.group('table'), items.group('field')
+    table_name, field_name = items.group("table"), items.group("field")
     try:
         field = db[table_name][field_name]
     except AttributeError:
@@ -55,19 +51,11 @@ def stream_dbfile(db: Any, name: str):
     except IOError:
         abort(404)
     if isinstance(path_or_stream, str):
-        raise HTTPFileResponse(
-            path_or_stream,
-            headers=current.response.headers,
-            cookies=current.response.cookies
-        )
-    raise HTTPIOResponse(
-        path_or_stream,
-        headers=current.response.headers,
-        cookies=current.response.cookies
-    )
+        raise HTTPFileResponse(path_or_stream, headers=current.response.headers, cookies=current.response.cookies)
+    raise HTTPIOResponse(path_or_stream, headers=current.response.headers, cookies=current.response.cookies)
 
 
-def flash(message: str, category: str = 'message'):
+def flash(message: str, category: str = "message"):
     #: Flashes a message to the next request.
     if current.session._flashes is None:
         current.session._flashes = []
@@ -75,8 +63,7 @@ def flash(message: str, category: str = 'message'):
 
 
 def get_flashed_messages(
-    with_categories: bool = False,
-    category_filter: Union[str, List[str]] = []
+    with_categories: bool = False, category_filter: Union[str, List[str]] = []
 ) -> Union[List[str], Tuple[str, str]]:
     #: Pulls flashed messages from the session and returns them.
     #  By default just the messages are returned, but when `with_categories`
@@ -97,13 +84,9 @@ def get_flashed_messages(
     return flashes
 
 
-def load_component(
-    url: str,
-    target: Optional[str] = None,
-    content: str = 'loading...'
-) -> HtmlTag:
+def load_component(url: str, target: Optional[str] = None, content: str = "loading...") -> HtmlTag:
     attr = {}
     if target:
-        attr['_id'] = target
-    attr['_data-emt_remote'] = url
+        attr["_id"] = target
+    attr["_data-emt_remote"] = url
     return tag.div(content, **attr)

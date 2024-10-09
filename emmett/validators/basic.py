@@ -1,26 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.validators.basic
-    -----------------------
+emmett.validators.basic
+-----------------------
 
-    Provide basic validators.
+Provide basic validators.
 
-    :copyright: 2014 Giovanni Barillari
+:copyright: 2014 Giovanni Barillari
 
-    Based on the web2py's validators (http://www.web2py.com)
-    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+Based on the web2py's validators (http://www.web2py.com)
+:copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
 
-    :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
+:license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
 import re
-
 from functools import reduce
 from os import SEEK_END, SEEK_SET
 
 # TODO: check unicode conversions
 from .._shortcuts import to_unicode
-from .helpers import translate, is_empty
+from .helpers import is_empty, translate
 
 
 class Validator:
@@ -44,11 +43,7 @@ class ParentValidator(Validator):
         self.children = children
 
     def formatter(self, value):
-        return reduce(
-            lambda formatted_val, child: child.formatter(formatted_val),
-            self.children,
-            value
-        )
+        return reduce(lambda formatted_val, child: child.formatter(formatted_val), self.children, value)
 
     def __call__(self, value):
         raise NotImplementedError
@@ -59,12 +54,7 @@ class _is(Validator):
     rule = None
 
     def __call__(self, value):
-        if (
-            self.rule is None or (
-                self.rule is not None and
-                self.rule.match(to_unicode(value) or '')
-            )
-        ):
+        if self.rule is None or (self.rule is not None and self.rule.match(to_unicode(value) or "")):
             return self.check(value)
         return value, translate(self.message)
 
@@ -138,19 +128,19 @@ class isEmptyOr(ParentValidator):
         super().__init__(children, message=message)
         self.empty_regex = re.compile(empty_regex) if empty_regex is not None else None
         for child in self.children:
-            if hasattr(child, 'multiple'):
+            if hasattr(child, "multiple"):
                 self.multiple = child.multiple
                 break
         for child in self.children:
-            if hasattr(child, 'options'):
+            if hasattr(child, "options"):
                 self._options_ = child.options
                 self.options = self._get_options_
                 break
 
     def _get_options_(self):
         options = self._options_()
-        if (not options or options[0][0] != '') and not self.multiple:
-            options.insert(0, ('', ''))
+        if (not options or options[0][0] != "") and not self.multiple:
+            options.insert(0, ("", ""))
         return options
 
     def __call__(self, value):
@@ -181,21 +171,19 @@ class Equals(Validator):
 class Matches(Validator):
     message = "Invalid expression"
 
-    def __init__(
-        self, expression, strict=False, search=False, extract=False, message=None
-    ):
+    def __init__(self, expression, strict=False, search=False, extract=False, message=None):
         super().__init__(message=message)
         if strict or not search:
-            if not expression.startswith('^'):
-                expression = '^(%s)' % expression
+            if not expression.startswith("^"):
+                expression = "^(%s)" % expression
         if strict:
-            if not expression.endswith('$'):
-                expression = '(%s)$' % expression
+            if not expression.endswith("$"):
+                expression = "(%s)$" % expression
         self.regex = re.compile(expression)
         self.extract = extract
 
     def __call__(self, value):
-        match = self.regex.search(to_unicode(value) or '')
+        match = self.regex.search(to_unicode(value) or "")
         if match is not None:
             return self.extract and match.group() or value, None
         return value, translate(self.message)
@@ -204,9 +192,7 @@ class Matches(Validator):
 class hasLength(Validator):
     message = "Enter from {min} to {max} characters"
 
-    def __init__(
-        self, maxsize=256, minsize=0, include=(True, False), message=None
-    ):
+    def __init__(self, maxsize=256, minsize=0, include=(True, False), message=None):
         super().__init__(message=message)
         self.maxsize = maxsize
         self.minsize = minsize
@@ -228,16 +214,16 @@ class hasLength(Validator):
             length = 0
             if self._between(length):
                 return value, None
-        elif getattr(value, '_emt_field_hashed_contents_', False):
+        elif getattr(value, "_emt_field_hashed_contents_", False):
             return value, None
-        elif hasattr(value, 'file'):
+        elif hasattr(value, "file"):
             if value.file:
                 value.file.seek(0, SEEK_END)
                 length = value.file.tell()
                 value.file.seek(0, SEEK_SET)
             if self._between(length):
                 return value, None
-        elif hasattr(value, 'value'):
+        elif hasattr(value, "value"):
             val = value.value
             if val:
                 length = len(val)
@@ -247,7 +233,7 @@ class hasLength(Validator):
                 return value, None
         elif isinstance(value, bytes):
             try:
-                lvalue = len(value.decode('utf8'))
+                lvalue = len(value.decode("utf8"))
             except Exception:
                 lvalue = len(value)
             if self._between(lvalue):

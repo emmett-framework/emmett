@@ -1,30 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.migrations.operations
-    --------------------------------
+emmett.orm.migrations.operations
+--------------------------------
 
-    Provides operations handlers for migrations.
+Provides operations handlers for migrations.
 
-    :copyright: 2014 Giovanni Barillari
+:copyright: 2014 Giovanni Barillari
 
-    Based on the code of Alembic (https://bitbucket.org/zzzeek/alembic)
-    :copyright: (c) 2009-2015 by Michael Bayer
+Based on the code of Alembic (https://bitbucket.org/zzzeek/alembic)
+:copyright: (c) 2009-2015 by Michael Bayer
 
-    :license: BSD-3-Clause
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations
 
 import re
-
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from .base import Migration, Column
+from .base import Column, Migration
 from .helpers import DEFAULT_VALUE
+
 
 if TYPE_CHECKING:
     from .engine import MetaEngine
-    from .generation import MetaTable, MetaIndex, MetaForeignKey
+    from .generation import MetaForeignKey, MetaIndex, MetaTable
 
 
 class Operation:
@@ -52,7 +52,7 @@ class OpContainer(Operation):
     @classmethod
     def _ops_as_diffs(cls, migrations):
         for op in migrations.ops:
-            if hasattr(op, 'ops'):
+            if hasattr(op, "ops"):
                 for sub_op in cls._ops_as_diffs(op):
                     yield sub_op
             else:
@@ -66,10 +66,7 @@ class ModifyTableOps(OpContainer):
         self.table_name = table_name
 
     def reverse(self) -> ModifyTableOps:
-        return ModifyTableOps(
-            self.table_name,
-            ops=list(reversed([op.reverse() for op in self.ops]))
-        )
+        return ModifyTableOps(self.table_name, ops=list(reversed([op.reverse() for op in self.ops])))
 
 
 class UpgradeOps(OpContainer):
@@ -79,9 +76,7 @@ class UpgradeOps(OpContainer):
         self.upgrade_token = upgrade_token
 
     def reverse(self) -> DowngradeOps:
-        return DowngradeOps(
-            ops=list(reversed([op.reverse() for op in self.ops]))
-        )
+        return DowngradeOps(ops=list(reversed([op.reverse() for op in self.ops])))
 
 
 class DowngradeOps(OpContainer):
@@ -91,9 +86,7 @@ class DowngradeOps(OpContainer):
         self.downgrade_token = downgrade_token
 
     def reverse(self):
-        return UpgradeOps(
-            ops=list(reversed([op.reverse() for op in self.ops]))
-        )
+        return UpgradeOps(ops=list(reversed([op.reverse() for op in self.ops])))
 
 
 class MigrationOp(Operation):
@@ -104,7 +97,7 @@ class MigrationOp(Operation):
         downgrade_ops: DowngradeOps,
         message: Optional[str] = None,
         head: Optional[str] = None,
-        splice: Any = None
+        splice: Any = None,
     ):
         self.rev_id = rev_id
         self.message = message
@@ -122,7 +115,7 @@ class CreateTableOp(Operation):
         columns: List[Column],
         primary_keys: List[str] = [],
         _orig_table: Optional[MetaTable] = None,
-        **kw: Any
+        **kw: Any,
     ):
         self.table_name = table_name
         self.columns = columns
@@ -139,45 +132,28 @@ class CreateTableOp(Operation):
     @classmethod
     def from_table(cls, table: MetaTable) -> CreateTableOp:
         return cls(
-            table.name,
-            [table[colname] for colname in table.fields],
-            list(table.primary_keys),
-            _orig_table=table
+            table.name, [table[colname] for colname in table.fields], list(table.primary_keys), _orig_table=table
         )
 
     def to_table(self, migration_context: Any = None) -> MetaTable:
         if self._orig_table is not None:
             return self._orig_table
         from .generation import MetaTable
-        return MetaTable(
-            self.table_name,
-            self.columns,
-            self.primary_keys,
-            **self.kw
-        )
+
+        return MetaTable(self.table_name, self.columns, self.primary_keys, **self.kw)
 
     @classmethod
-    def create_table(
-        cls,
-        table_name: str,
-        *columns: Column,
-        **kw: Any
-    ) -> CreateTableOp:
+    def create_table(cls, table_name: str, *columns: Column, **kw: Any) -> CreateTableOp:
         return cls(table_name, columns, **kw)
 
     def run(self):
-        self.engine.create_table(
-            self.table_name, self.columns, self.primary_keys, **self.kw
-        )
+        self.engine.create_table(self.table_name, self.columns, self.primary_keys, **self.kw)
 
 
 @Migration.register_operation("drop_table")
 class DropTableOp(Operation):
     def __init__(
-        self,
-        table_name: str,
-        table_kw: Optional[Dict[str, Any]] = None,
-        _orig_table: Optional[MetaTable] = None
+        self, table_name: str, table_kw: Optional[Dict[str, Any]] = None, _orig_table: Optional[MetaTable] = None
     ):
         self.table_name = table_name
         self.table_kw = table_kw or {}
@@ -188,9 +164,7 @@ class DropTableOp(Operation):
 
     def reverse(self) -> CreateTableOp:
         if self._orig_table is None:
-            raise ValueError(
-                "operation is not reversible; original table is not present"
-            )
+            raise ValueError("operation is not reversible; original table is not present")
         return CreateTableOp.from_table(self._orig_table)
 
     @classmethod
@@ -201,10 +175,8 @@ class DropTableOp(Operation):
         if self._orig_table is not None:
             return self._orig_table
         from .generation import MetaTable
-        return MetaTable(
-            self.table_name,
-            **self.table_kw
-        )
+
+        return MetaTable(self.table_name, **self.table_kw)
 
     @classmethod
     def drop_table(cls, table_name: str, **kw: Any) -> DropTableOp:
@@ -230,7 +202,7 @@ class RenameTableOp(AlterTableOp):
         return cls(old_table_name, new_table_name)
 
     def run(self):
-        raise NotImplementedError('Table renaming is currently not supported.')
+        raise NotImplementedError("Table renaming is currently not supported.")
 
 
 @Migration.register_operation("add_column")
@@ -262,13 +234,7 @@ class AddColumnOp(AlterTableOp):
 
 @Migration.register_operation("drop_column")
 class DropColumnOp(AlterTableOp):
-    def __init__(
-        self,
-        table_name: str,
-        column_name: str,
-        _orig_column: Optional[Column] = None,
-        **kw: Any
-    ):
+    def __init__(self, table_name: str, column_name: str, _orig_column: Optional[Column] = None, **kw: Any):
         super().__init__(table_name)
         self.column_name = column_name
         self.kw = kw
@@ -279,13 +245,9 @@ class DropColumnOp(AlterTableOp):
 
     def reverse(self) -> AddColumnOp:
         if self._orig_column is None:
-            raise ValueError(
-                "operation is not reversible; original column is not present"
-            )
+            raise ValueError("operation is not reversible; original column is not present")
 
-        return AddColumnOp.from_column_and_tablename(
-            self.table_name, self._orig_column
-        )
+        return AddColumnOp.from_column_and_tablename(self.table_name, self._orig_column)
 
     @classmethod
     def from_column_and_tablename(cls, tname: str, col: Column) -> DropColumnOp:
@@ -319,7 +281,7 @@ class AlterColumnOp(AlterTableOp):
         modify_name: Optional[str] = None,
         modify_type: Optional[str] = None,
         modify_length: Optional[int] = None,
-        **kw: Any
+        **kw: Any,
     ):
         super().__init__(table_name)
         self.column_name = column_name
@@ -348,13 +310,10 @@ class AlterColumnOp(AlterTableOp):
                         "existing_length": self.existing_length,
                         "existing_notnull": self.existing_notnull,
                         "existing_default": self.existing_default,
-                        **{
-                            nkey: nval for nkey, nval in self.kw.items()
-                            if nkey.startswith('existing_')
-                        }
+                        **{nkey: nval for nkey, nval in self.kw.items() if nkey.startswith("existing_")},
                     },
                     self.existing_type,
-                    self.modify_type
+                    self.modify_type,
                 )
             )
 
@@ -367,10 +326,10 @@ class AlterColumnOp(AlterTableOp):
                     {
                         "existing_type": self.existing_type,
                         "existing_notnull": self.existing_notnull,
-                        "existing_default": self.existing_default
+                        "existing_default": self.existing_default,
                     },
                     self.existing_length,
-                    self.modify_length
+                    self.modify_length,
                 )
             )
 
@@ -380,12 +339,9 @@ class AlterColumnOp(AlterTableOp):
                     "modify_notnull",
                     tname,
                     cname,
-                    {
-                        "existing_type": self.existing_type,
-                        "existing_default": self.existing_default
-                    },
+                    {"existing_type": self.existing_type, "existing_default": self.existing_default},
                     self.existing_notnull,
-                    self.modify_notnull
+                    self.modify_notnull,
                 )
             )
 
@@ -395,12 +351,9 @@ class AlterColumnOp(AlterTableOp):
                     "modify_default",
                     tname,
                     cname,
-                    {
-                        "existing_notnull": self.existing_notnull,
-                        "existing_type": self.existing_type
-                    },
+                    {"existing_notnull": self.existing_notnull, "existing_type": self.existing_type},
                     self.existing_default,
-                    self.modify_default
+                    self.modify_default,
                 )
             )
 
@@ -414,13 +367,10 @@ class AlterColumnOp(AlterTableOp):
                         cname,
                         {
                             "existing_type": self.existing_type,
-                            **{
-                                nkey: nval for nkey, nval in self.kw.items()
-                                if nkey.startswith('existing_')
-                            }
+                            **{nkey: nval for nkey, nval in self.kw.items() if nkey.startswith("existing_")},
                         },
                         self.kw.get(f"existing_{attr}"),
-                        val
+                        val,
                     )
                 )
 
@@ -428,47 +378,42 @@ class AlterColumnOp(AlterTableOp):
 
     def has_changes(self) -> bool:
         hc = (
-            self.modify_notnull is not None or
-            self.modify_default is not DEFAULT_VALUE or
-            self.modify_type is not None or
-            self.modify_length is not None
+            self.modify_notnull is not None
+            or self.modify_default is not DEFAULT_VALUE
+            or self.modify_type is not None
+            or self.modify_length is not None
         )
         if hc:
             return True
         for kw in self.kw:
-            if kw.startswith('modify_'):
+            if kw.startswith("modify_"):
                 return True
         return False
 
     def reverse(self) -> AlterColumnOp:
         kw = self.kw.copy()
-        kw['existing_type'] = self.existing_type
-        kw['existing_length'] = self.existing_length
-        kw['existing_notnull'] = self.existing_notnull
-        kw['existing_default'] = self.existing_default
+        kw["existing_type"] = self.existing_type
+        kw["existing_length"] = self.existing_length
+        kw["existing_notnull"] = self.existing_notnull
+        kw["existing_default"] = self.existing_default
         if self.modify_type is not None:
-            kw['modify_type'] = self.modify_type
+            kw["modify_type"] = self.modify_type
         if self.modify_length is not None:
-            kw['modify_length'] = self.modify_length
+            kw["modify_length"] = self.modify_length
         if self.modify_notnull is not None:
-            kw['modify_notnull'] = self.modify_notnull
+            kw["modify_notnull"] = self.modify_notnull
         if self.modify_default is not DEFAULT_VALUE:
-            kw['modify_default'] = self.modify_default
+            kw["modify_default"] = self.modify_default
 
-        all_keys = set(m.group(1) for m in [
-            re.match(r'^(?:existing_|modify_)(.+)$', k)
-            for k in kw
-        ] if m)
+        all_keys = {m.group(1) for m in [re.match(r"^(?:existing_|modify_)(.+)$", k) for k in kw] if m}
 
         for k in all_keys:
-            if 'modify_%s' % k in kw:
-                swap = kw['existing_%s' % k]
-                kw['existing_%s' % k] = kw['modify_%s' % k]
-                kw['modify_%s' % k] = swap
+            if "modify_%s" % k in kw:
+                swap = kw["existing_%s" % k]
+                kw["existing_%s" % k] = kw["modify_%s" % k]
+                kw["modify_%s" % k] = swap
 
-        return self.__class__(
-            self.table_name, self.column_name, **kw
-        )
+        return self.__class__(self.table_name, self.column_name, **kw)
 
     @classmethod
     def alter_column(
@@ -484,7 +429,7 @@ class AlterColumnOp(AlterTableOp):
         existing_length: Optional[int] = None,
         existing_default: Any = None,
         existing_notnull: Optional[bool] = None,
-        **kw: Any
+        **kw: Any,
     ) -> AlterColumnOp:
         return cls(
             table_name,
@@ -498,13 +443,11 @@ class AlterColumnOp(AlterTableOp):
             modify_length=length,
             modify_default=default,
             modify_notnull=notnull,
-            **kw
+            **kw,
         )
 
     def run(self):
-        self.engine.alter_column(
-            self.table_name, self.column_name, self.to_diff_tuple()
-        )
+        self.engine.alter_column(self.table_name, self.column_name, self.to_diff_tuple())
 
 
 @Migration.register_operation("create_index")
@@ -517,7 +460,7 @@ class CreateIndexOp(Operation):
         expressions: List[str] = [],
         unique: bool = False,
         _orig_index: Optional[MetaIndex] = None,
-        **kw: Any
+        **kw: Any,
     ):
         self.index_name = index_name
         self.table_name = table_name
@@ -536,22 +479,15 @@ class CreateIndexOp(Operation):
     @classmethod
     def from_index(cls, index: MetaIndex) -> CreateIndexOp:
         return cls(
-            index.name, index.table_name, index.fields, index.expressions,
-            index.unique, _orig_index=index, **index.kw
+            index.name, index.table_name, index.fields, index.expressions, index.unique, _orig_index=index, **index.kw
         )
 
     def to_index(self) -> MetaIndex:
         if self._orig_index is not None:
             return self._orig_index
         from .generation import MetaIndex
-        return MetaIndex(
-            self.table_name,
-            self.index_name,
-            self.fields,
-            self.expressions,
-            self.unique,
-            **self.kw
-        )
+
+        return MetaIndex(self.table_name, self.index_name, self.fields, self.expressions, self.unique, **self.kw)
 
     @classmethod
     def create_index(
@@ -561,29 +497,19 @@ class CreateIndexOp(Operation):
         fields: List[str] = [],
         expressions: List[str] = [],
         unique: bool = False,
-        **kw: Any
+        **kw: Any,
     ) -> CreateIndexOp:
         return cls(index_name, table_name, fields, expressions, unique, **kw)
 
     def run(self):
         self.engine.create_index(
-            self.index_name,
-            self.table_name,
-            self.fields,
-            self.expressions,
-            self.unique,
-            **self.kw
+            self.index_name, self.table_name, self.fields, self.expressions, self.unique, **self.kw
         )
 
 
 @Migration.register_operation("drop_index")
 class DropIndexOp(Operation):
-    def __init__(
-        self,
-        index_name: str,
-        table_name: Optional[str] = None,
-        _orig_index: Optional[MetaIndex] = None
-    ):
+    def __init__(self, index_name: str, table_name: Optional[str] = None, _orig_index: Optional[MetaIndex] = None):
         self.index_name = index_name
         self.table_name = table_name
         self._orig_index = _orig_index
@@ -593,9 +519,7 @@ class DropIndexOp(Operation):
 
     def reverse(self) -> CreateIndexOp:
         if self._orig_index is None:
-            raise ValueError(
-                "operation is not reversible; original index is not present"
-            )
+            raise ValueError("operation is not reversible; original index is not present")
         return CreateIndexOp.from_index(self._orig_index)
 
     @classmethod
@@ -606,6 +530,7 @@ class DropIndexOp(Operation):
         if self._orig_index is not None:
             return self._orig_index
         from .generation import MetaIndex
+
         return MetaIndex(self.table_name, self.index_name, [], [], False)
 
     @classmethod
@@ -627,7 +552,7 @@ class CreateForeignKeyConstraintOp(AlterTableOp):
         foreign_keys: List[str],
         on_delete: str,
         _orig_fk: Optional[MetaForeignKey] = None,
-        **kw: Any
+        **kw: Any,
     ):
         super().__init__(table_name)
         self.constraint_name = name
@@ -647,10 +572,7 @@ class CreateForeignKeyConstraintOp(AlterTableOp):
         return ("create_fk_constraint", self.to_foreign_key())
 
     @classmethod
-    def from_foreign_key(
-        cls,
-        foreign_key: MetaForeignKey
-    ) -> CreateForeignKeyConstraintOp:
+    def from_foreign_key(cls, foreign_key: MetaForeignKey) -> CreateForeignKeyConstraintOp:
         return cls(
             foreign_key.name,
             foreign_key.table_name,
@@ -658,7 +580,7 @@ class CreateForeignKeyConstraintOp(AlterTableOp):
             foreign_key.column_names,
             foreign_key.foreign_keys,
             foreign_key.on_delete,
-            _orig_fk=foreign_key
+            _orig_fk=foreign_key,
         )
 
     def to_foreign_key(self) -> MetaForeignKey:
@@ -666,13 +588,14 @@ class CreateForeignKeyConstraintOp(AlterTableOp):
             return self._orig_fk
 
         from .generation import MetaForeignKey
+
         return MetaForeignKey(
             self.table_name,
             self.constraint_name,
             self.column_names,
             self.foreign_table_name,
             self.foreign_keys,
-            self.on_delete
+            self.on_delete,
         )
 
     @classmethod
@@ -683,7 +606,7 @@ class CreateForeignKeyConstraintOp(AlterTableOp):
         foreign_table_name: str,
         column_names: List[str],
         foreign_keys: List[str],
-        on_delete: str
+        on_delete: str,
     ) -> CreateForeignKeyConstraintOp:
         return cls(
             name=name,
@@ -691,7 +614,7 @@ class CreateForeignKeyConstraintOp(AlterTableOp):
             foreign_table_name=foreign_table_name,
             column_names=column_names,
             foreign_keys=foreign_keys,
-            on_delete=on_delete
+            on_delete=on_delete,
         )
 
     def run(self):
@@ -701,19 +624,13 @@ class CreateForeignKeyConstraintOp(AlterTableOp):
             self.column_names,
             self.foreign_table_name,
             self.foreign_keys,
-            self.on_delete
+            self.on_delete,
         )
 
 
 @Migration.register_operation("drop_foreign_key")
 class DropForeignKeyConstraintOp(AlterTableOp):
-    def __init__(
-        self,
-        name: str,
-        table_name: str,
-        _orig_fk: Optional[MetaForeignKey] = None,
-        **kw: Any
-    ):
+    def __init__(self, name: str, table_name: str, _orig_fk: Optional[MetaForeignKey] = None, **kw: Any):
         super().__init__(table_name)
         self.constraint_name = name
         self.kw = kw
@@ -721,38 +638,26 @@ class DropForeignKeyConstraintOp(AlterTableOp):
 
     def reverse(self) -> CreateForeignKeyConstraintOp:
         if self._orig_fk is None:
-            raise ValueError(
-                "operation is not reversible; original constraint is not present"
-            )
+            raise ValueError("operation is not reversible; original constraint is not present")
         return CreateForeignKeyConstraintOp.from_foreign_key(self._orig_fk)
 
     def to_diff_tuple(self) -> Tuple[str, MetaForeignKey]:
         return ("drop_fk_constraint", self.to_foreign_key())
 
     @classmethod
-    def from_foreign_key(
-        cls,
-        foreign_key: MetaForeignKey
-    ) -> DropForeignKeyConstraintOp:
-        return cls(
-            foreign_key.name,
-            foreign_key.table_name,
-            _orig_fk=foreign_key
-        )
+    def from_foreign_key(cls, foreign_key: MetaForeignKey) -> DropForeignKeyConstraintOp:
+        return cls(foreign_key.name, foreign_key.table_name, _orig_fk=foreign_key)
 
     def to_foreign_key(self):
         if self._orig_fk is not None:
             return self._orig_fk
 
         from .generation import MetaForeignKey
-        return MetaForeignKey(self.table_name, self.constraint_name, [], '', [], '')
+
+        return MetaForeignKey(self.table_name, self.constraint_name, [], "", [], "")
 
     @classmethod
-    def drop_foreign_key(
-        cls,
-        name: str,
-        table_name: str
-    ) -> DropForeignKeyConstraintOp:
+    def drop_foreign_key(cls, name: str, table_name: str) -> DropForeignKeyConstraintOp:
         return DropForeignKeyConstraintOp(name, table_name)
 
     def run(self):

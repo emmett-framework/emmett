@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.rsgi.handlers
-    --------------------
+emmett.rsgi.handlers
+--------------------
 
-    Provides RSGI handlers.
+Provides RSGI handlers.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations
 
 import os
-
 from typing import Awaitable, Callable
 
 from emmett_core.http.response import HTTPResponse
@@ -24,9 +23,8 @@ from granian.rsgi import (
 )
 
 from ..ctx import current
-from ..debug import smart_traceback, debug_handler
+from ..debug import debug_handler, smart_traceback
 from ..wrappers.response import Response
-
 from .wrappers import Request, Websocket
 
 
@@ -37,25 +35,16 @@ class HTTPHandler(_HTTPHandler):
 
     @cachedprop
     def error_handler(self) -> Callable[[], Awaitable[str]]:
-        return (
-            self._debug_handler if self.app.debug else self.exception_handler
-        )
+        return self._debug_handler if self.app.debug else self.exception_handler
 
-    def _static_handler(
-        self,
-        scope: Scope,
-        protocol: HTTPProtocol,
-        path: str
-    ) -> Awaitable[HTTPResponse]:
+    def _static_handler(self, scope: Scope, protocol: HTTPProtocol, path: str) -> Awaitable[HTTPResponse]:
         #: handle internal assets
-        if path.startswith('/__emmett__'):
+        if path.startswith("/__emmett__"):
             file_name = path[12:]
             if not file_name:
                 return self._http_response(404)
-            static_file = os.path.join(
-                os.path.dirname(__file__), '..', 'assets', file_name
-            )
-            if os.path.splitext(static_file)[1] == 'html':
+            static_file = os.path.join(os.path.dirname(__file__), "..", "assets", file_name)
+            if os.path.splitext(static_file)[1] == "html":
                 return self._http_response(404)
             return self._static_response(static_file)
         #: handle app assets
@@ -65,9 +54,7 @@ class HTTPHandler(_HTTPHandler):
         return self.dynamic_handler(scope, protocol, path)
 
     async def _debug_handler(self) -> str:
-        current.response.headers._data['content-type'] = (
-            'text/html; charset=utf-8'
-        )
+        current.response.headers._data["content-type"] = "text/html; charset=utf-8"
         return debug_handler(smart_traceback(self.app))
 
 

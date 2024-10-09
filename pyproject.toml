@@ -75,12 +75,77 @@ include = [
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = 'double'
+
+[tool.ruff.lint]
+extend-select = [
+    # E and F are enabled by default
+    'B',      # flake8-bugbear
+    'C4',     # flake8-comprehensions
+    'C90',    # mccabe
+    'I',      # isort
+    'N',      # pep8-naming
+    'Q',      # flake8-quotes
+    'RUF100', # ruff (unused noqa)
+    'S',      # flake8-bandit
+    'W',      # pycodestyle
+]
+extend-ignore = [
+    'B006', # mutable function args are fine
+    'B008', # function calls in args defaults are fine
+    'B009', # getattr with constants is fine
+    'B034', # re.split won't confuse us
+    'B904', # rising without from is fine
+    'E731', # assigning lambdas is fine
+    'F403', # import * is fine
+    'N801', # leave to us class naming
+    'N802', # leave to us method naming
+    'N806', # leave to us var naming
+    'N811', # leave to us var naming
+    'N814', # leave to us var naming
+    'N818', # leave to us exceptions naming
+    'S101', # assert is fine
+    'S104', # leave to us security
+    'S105', # leave to us security
+    'S106', # leave to us security
+    'S107', # leave to us security
+    'S110', # pass on exceptions is fine
+    'S301', # leave to us security
+    'S324', # leave to us security
+]
+mccabe = { max-complexity = 44 }
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+lines-after-imports = 2
+known-first-party = ['emmett', 'tests']
+
+[tool.ruff.lint.per-file-ignores]
+'emmett/__init__.py' = ['F401']
+'emmett/http.py' = ['F401']
+'emmett/orm/__init__.py' = ['F401']
+'emmett/orm/engines/__init__.py' = ['F401']
+'emmett/orm/migrations/__init__.py' = ['F401']
+'emmett/orm/migrations/revisions.py' = ['B018']
+'emmett/tools/__init__.py' = ['F401']
+'emmett/tools/auth/__init__.py' = ['F401']
+'emmett/validators/__init__.py' = ['F401']
+'tests/**' = ['B017', 'B018', 'E711', 'E712', 'E741', 'F841', 'S110', 'S501']
+
+[tool.pytest.ini_options]
+asyncio_mode = 'auto'
+
 [tool.uv]
 dev-dependencies = [
     "ipaddress>=1.0",
     "pytest>=7.1",
     "pytest-asyncio>=0.15",
     "psycopg2-binary~=2.9; python_version != '3.13'",
+    "ruff~=0.5.0",
 ]
 
 [tool.uv.sources]

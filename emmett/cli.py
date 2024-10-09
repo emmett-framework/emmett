@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.cli
-    ---------
+emmett.cli
+---------
 
-    Provide command line tools for Emmett applications.
+Provide command line tools for Emmett applications.
 
-    :copyright: 2014 Giovanni Barillari
+:copyright: 2014 Giovanni Barillari
 
-    Based on the code of Flask (http://flask.pocoo.org)
-    :copyright: (c) 2014 by Armin Ronacher.
+Based on the code of Flask (http://flask.pocoo.org)
+:copyright: (c) 2014 by Armin Ronacher.
 
-    :license: BSD-3-Clause
+:license: BSD-3-Clause
 """
 
 import code
@@ -20,8 +20,7 @@ import sys
 import types
 
 import click
-
-from emmett_core._internal import locate_app, get_app_module
+from emmett_core._internal import get_app_module, locate_app
 from emmett_core.log import LOG_LEVELS
 from emmett_core.server import run as sgi_run
 
@@ -68,9 +67,7 @@ def find_db(module, var_name=None):
 
     from .orm import Database
 
-    matches = [
-        v for k, v in module.__dict__.items() if isinstance(v, Database)
-    ]
+    matches = [v for k, v in module.__dict__.items() if isinstance(v, Database)]
     return matches
 
 
@@ -131,6 +128,7 @@ class ScriptInfo(object):
             return self._loaded_app
 
         from .app import App
+
         import_name, app_name = self._get_import_name()
         app = locate_app(App, import_name, app_name) if import_name else None
 
@@ -170,30 +168,19 @@ def set_app_value(ctx, param, value):
     ctx.ensure_object(ScriptInfo).app_import_path = value
 
 
-app_option = click.Option(
-    ['-a', '--app'],
-    help='The application to run',
-    callback=set_app_value,
-    is_eager=True
-)
+app_option = click.Option(["-a", "--app"], help="The application to run", callback=set_app_value, is_eager=True)
 
 
 class EmmettGroup(click.Group):
-    def __init__(
-        self,
-        add_default_commands=True,
-        add_app_option=True,
-        add_debug_option=True,
-        **extra
-    ):
-        params = list(extra.pop('params', None) or ())
+    def __init__(self, add_default_commands=True, add_app_option=True, add_debug_option=True, **extra):
+        params = list(extra.pop("params", None) or ())
         if add_app_option:
             params.append(app_option)
-        #if add_debug_option:
+        # if add_debug_option:
         #    params.append(debug_option)
 
         click.Group.__init__(self, params=params, **extra)
-        #self.create_app = create_app
+        # self.create_app = create_app
 
         if add_default_commands:
             self.add_command(develop_command)
@@ -231,57 +218,47 @@ class EmmettGroup(click.Group):
             pass
 
     def main(self, *args, **kwargs):
-        obj = kwargs.get('obj')
+        obj = kwargs.get("obj")
         if obj is None:
             obj = ScriptInfo()
-        kwargs['obj'] = obj
+        kwargs["obj"] = obj
         return super().main(*args, **kwargs)
 
 
-@click.command('develop', short_help='Runs a development server.')
+@click.command("develop", short_help="Runs a development server.")
+@click.option("--host", "-h", default="127.0.0.1", help="The interface to bind to.")
+@click.option("--port", "-p", type=int, default=8000, help="The port to bind to.")
+@click.option("--interface", type=click.Choice(["rsgi", "asgi"]), default="rsgi", help="Application interface.")
 @click.option(
-    '--host', '-h', default='127.0.0.1', help='The interface to bind to.')
-@click.option(
-    '--port', '-p', type=int, default=8000, help='The port to bind to.')
-@click.option(
-    '--interface', type=click.Choice(['rsgi', 'asgi']), default='rsgi',
-    help='Application interface.')
-@click.option(
-    '--loop', type=click.Choice(['auto', 'asyncio', 'uvloop']), default='auto',
-    help='Event loop implementation.')
-@click.option(
-    '--ssl-certfile', type=str, default=None, help='SSL certificate file')
-@click.option(
-    '--ssl-keyfile', type=str, default=None, help='SSL key file')
-@click.option(
-    '--reloader/--no-reloader', is_flag=True, default=True,
-    help='Runs with reloader.')
+    "--loop", type=click.Choice(["auto", "asyncio", "uvloop"]), default="auto", help="Event loop implementation."
+)
+@click.option("--ssl-certfile", type=str, default=None, help="SSL certificate file")
+@click.option("--ssl-keyfile", type=str, default=None, help="SSL key file")
+@click.option("--reloader/--no-reloader", is_flag=True, default=True, help="Runs with reloader.")
 @pass_script_info
-def develop_command(
-    info, host, port, interface, loop, ssl_certfile, ssl_keyfile, reloader
-):
-    os.environ["EMMETT_RUN_ENV"] = 'true'
+def develop_command(info, host, port, interface, loop, ssl_certfile, ssl_keyfile, reloader):
+    os.environ["EMMETT_RUN_ENV"] = "true"
     app_target = info._get_import_name()
 
-    if os.environ.get('EMMETT_RUN_MAIN') != 'true':
+    if os.environ.get("EMMETT_RUN_MAIN") != "true":
         click.echo(
-            ' '.join([
-                "> Starting Emmett development server on app",
-                click.style(app_target[0], fg="cyan", bold=True)
-            ])
+            " ".join(["> Starting Emmett development server on app", click.style(app_target[0], fg="cyan", bold=True)])
         )
         click.echo(
-            ' '.join([
-                click.style("> Emmett application", fg="green"),
-                click.style(app_target[0], fg="cyan", bold=True),
-                click.style("running on", fg="green"),
-                click.style(f"http://{host}:{port}", fg="cyan"),
-                click.style("(press CTRL+C to quit)", fg="green")
-            ])
+            " ".join(
+                [
+                    click.style("> Emmett application", fg="green"),
+                    click.style(app_target[0], fg="cyan", bold=True),
+                    click.style("running on", fg="green"),
+                    click.style(f"http://{host}:{port}", fg="cyan"),
+                    click.style("(press CTRL+C to quit)", fg="green"),
+                ]
+            )
         )
 
     if reloader:
         from ._reloader import run_with_reloader
+
         runner = run_with_reloader
     else:
         runner = sgi_run
@@ -292,7 +269,7 @@ def develop_command(
         host=host,
         port=port,
         loop=loop,
-        log_level='debug',
+        log_level="debug",
         log_access=True,
         threading_mode="workers",
         ssl_certfile=ssl_certfile,
@@ -300,54 +277,46 @@ def develop_command(
     )
 
 
-@click.command('serve', short_help='Serve the app.')
+@click.command("serve", short_help="Serve the app.")
+@click.option("--host", "-h", default="0.0.0.0", help="The interface to bind to.")
+@click.option("--port", "-p", type=int, default=8000, help="The port to bind to.")
+@click.option("--workers", "-w", type=int, default=1, help="Number of worker processes. Defaults to 1.")
+@click.option("--threads", type=int, default=1, help="Number of worker threads.")
 @click.option(
-    '--host', '-h', default='0.0.0.0', help='The interface to bind to.')
+    "--threading-mode", type=click.Choice(["runtime", "workers"]), default="workers", help="Server threading mode."
+)
+@click.option("--interface", type=click.Choice(["rsgi", "asgi"]), default="rsgi", help="Application interface.")
+@click.option("--http", type=click.Choice(["auto", "1", "2"]), default="auto", help="HTTP version.")
+@click.option("--ws/--no-ws", is_flag=True, default=True, help="Enable websockets support.")
 @click.option(
-    '--port', '-p', type=int, default=8000, help='The port to bind to.')
-@click.option(
-    "--workers", '-w', type=int, default=1,
-    help="Number of worker processes. Defaults to 1.")
-@click.option(
-    "--threads", type=int, default=1, help="Number of worker threads.")
-@click.option(
-    "--threading-mode", type=click.Choice(['runtime', 'workers']), default='workers',
-    help="Server threading mode.")
-@click.option(
-    '--interface', type=click.Choice(['rsgi', 'asgi']), default='rsgi',
-    help='Application interface.')
-@click.option(
-    '--http', type=click.Choice(['auto', '1', '2']), default='auto',
-    help='HTTP version.')
-@click.option(
-    '--ws/--no-ws', is_flag=True, default=True,
-    help='Enable websockets support.')
-@click.option(
-    '--loop', type=click.Choice(['auto', 'asyncio', 'uvloop']), default='auto',
-    help='Event loop implementation.')
-@click.option(
-    '--opt/--no-opt', is_flag=True, default=False,
-    help='Enable loop optimizations.')
-@click.option(
-    '--log-level', type=click.Choice(LOG_LEVELS.keys()), default='info',
-    help='Logging level.')
-@click.option(
-    '--access-log/--no-access-log', is_flag=True, default=False,
-    help='Enable access log.')
-@click.option(
-    '--backlog', type=int, default=2048,
-    help='Maximum number of connections to hold in backlog')
-@click.option(
-    '--backpressure', type=int,
-    help='Maximum number of requests to process concurrently (per worker)')
-@click.option(
-    '--ssl-certfile', type=str, default=None, help='SSL certificate file')
-@click.option(
-    '--ssl-keyfile', type=str, default=None, help='SSL key file')
+    "--loop", type=click.Choice(["auto", "asyncio", "uvloop"]), default="auto", help="Event loop implementation."
+)
+@click.option("--opt/--no-opt", is_flag=True, default=False, help="Enable loop optimizations.")
+@click.option("--log-level", type=click.Choice(LOG_LEVELS.keys()), default="info", help="Logging level.")
+@click.option("--access-log/--no-access-log", is_flag=True, default=False, help="Enable access log.")
+@click.option("--backlog", type=int, default=2048, help="Maximum number of connections to hold in backlog")
+@click.option("--backpressure", type=int, help="Maximum number of requests to process concurrently (per worker)")
+@click.option("--ssl-certfile", type=str, default=None, help="SSL certificate file")
+@click.option("--ssl-keyfile", type=str, default=None, help="SSL key file")
 @pass_script_info
 def serve_command(
-    info, host, port, workers, threads, threading_mode, interface, http, ws, loop, opt,
-    log_level, access_log, backlog, backpressure, ssl_certfile, ssl_keyfile
+    info,
+    host,
+    port,
+    workers,
+    threads,
+    threading_mode,
+    interface,
+    http,
+    ws,
+    loop,
+    opt,
+    log_level,
+    access_log,
+    backlog,
+    backpressure,
+    ssl_certfile,
+    ssl_keyfile,
 ):
     app_target = info._get_import_name()
     sgi_run(
@@ -371,31 +340,22 @@ def serve_command(
     )
 
 
-@click.command('shell', short_help='Runs a shell in the app context.')
+@click.command("shell", short_help="Runs a shell in the app context.")
 @pass_script_info
 def shell_command(info):
-    os.environ['EMMETT_CLI_ENV'] = 'true'
+    os.environ["EMMETT_CLI_ENV"] = "true"
     ctx = info.load_appctx()
     app = info.load_app()
-    banner = 'Python %s on %s\nEmmett %s shell on app: %s' % (
-        sys.version,
-        sys.platform,
-        fw_version,
-        app.import_name
-    )
+    banner = "Python %s on %s\nEmmett %s shell on app: %s" % (sys.version, sys.platform, fw_version, app.import_name)
     code.interact(banner=banner, local=app.make_shell_context(ctx))
 
 
-@click.command('routes', short_help='Display the app routing table.')
+@click.command("routes", short_help="Display the app routing table.")
 @pass_script_info
 def routes_command(info):
     app = info.load_app()
     click.echo(
-        "".join([
-            "> Routing table for Emmett application ",
-            click.style(app.import_name, fg="cyan", bold=True),
-            ":"
-        ])
+        "".join(["> Routing table for Emmett application ", click.style(app.import_name, fg="cyan", bold=True), ":"])
     )
     for route in app._router_http._routes_str.values():
         click.echo(route)
@@ -410,114 +370,100 @@ def set_db_value(ctx, param, value):
     ctx.ensure_object(ScriptInfo).db_var_name = value
 
 
-@cli.group('migrations', short_help='Runs migration operations.')
-@click.option(
-    '--db', help='The db instance to use', callback=set_db_value, is_eager=True
-)
+@cli.group("migrations", short_help="Runs migration operations.")
+@click.option("--db", help="The db instance to use", callback=set_db_value, is_eager=True)
 def migrations_cli(db):
     pass
 
 
-@migrations_cli.command('status', short_help='Shows current database revision.')
-@click.option('--verbose', '-v', default=False, is_flag=True)
+@migrations_cli.command("status", short_help="Shows current database revision.")
+@click.option("--verbose", "-v", default=False, is_flag=True)
 @pass_script_info
 def migrations_status(info, verbose):
     from .orm.migrations.commands import status
+
     app = info.load_app()
     dbs = info.load_db()
     status(app, dbs, verbose)
 
 
-@migrations_cli.command('history', short_help="Shows migrations history.")
-@click.option('--range', '-r', default=None)
-@click.option('--verbose', '-v', default=False, is_flag=True)
+@migrations_cli.command("history", short_help="Shows migrations history.")
+@click.option("--range", "-r", default=None)
+@click.option("--verbose", "-v", default=False, is_flag=True)
 @pass_script_info
 def migrations_history(info, range, verbose):
     from .orm.migrations.commands import history
+
     app = info.load_app()
     dbs = info.load_db()
     history(app, dbs, range, verbose)
 
 
-@migrations_cli.command(
-    'generate', short_help='Generates a new migration from application models.'
-)
-@click.option(
-    '--message', '-m', default='Generated migration',
-    help='The description for the new migration.'
-)
-@click.option('-head', default='head', help='The migration to generate from')
+@migrations_cli.command("generate", short_help="Generates a new migration from application models.")
+@click.option("--message", "-m", default="Generated migration", help="The description for the new migration.")
+@click.option("-head", default="head", help="The migration to generate from")
 @pass_script_info
 def migrations_generate(info, message, head):
     from .orm.migrations.commands import generate
+
     app = info.load_app()
     dbs = info.load_db()
     generate(app, dbs, message, head)
 
 
-@migrations_cli.command('new', short_help='Generates a new empty migration.')
-@click.option(
-    '--message', '-m', default='New migration',
-    help='The description for the new migration.'
-)
-@click.option('-head', default='head', help='The migration to generate from')
+@migrations_cli.command("new", short_help="Generates a new empty migration.")
+@click.option("--message", "-m", default="New migration", help="The description for the new migration.")
+@click.option("-head", default="head", help="The migration to generate from")
 @pass_script_info
 def migrations_new(info, message, head):
     from .orm.migrations.commands import new
+
     app = info.load_app()
     dbs = info.load_db()
     new(app, dbs, message, head)
 
 
-@migrations_cli.command(
-    'up', short_help='Upgrades the database to the selected migration.'
-)
-@click.option('--revision', '-r', default='head', help='The migration to upgrade to.')
+@migrations_cli.command("up", short_help="Upgrades the database to the selected migration.")
+@click.option("--revision", "-r", default="head", help="The migration to upgrade to.")
 @click.option(
-    '--dry-run',
+    "--dry-run",
     default=False,
     is_flag=True,
-    help='Only print SQL instructions, without actually applying the migration.'
+    help="Only print SQL instructions, without actually applying the migration.",
 )
 @pass_script_info
 def migrations_up(info, revision, dry_run):
     from .orm.migrations.commands import up
+
     app = info.load_app()
     dbs = info.load_db()
     up(app, dbs, revision, dry_run)
 
 
-@migrations_cli.command(
-    'down', short_help='Downgrades the database to the selected migration.'
-)
-@click.option('--revision', '-r', required=True, help='The migration to downgrade to.')
+@migrations_cli.command("down", short_help="Downgrades the database to the selected migration.")
+@click.option("--revision", "-r", required=True, help="The migration to downgrade to.")
 @click.option(
-    '--dry-run',
+    "--dry-run",
     default=False,
     is_flag=True,
-    help='Only print SQL instructions, without actually applying the migration.'
+    help="Only print SQL instructions, without actually applying the migration.",
 )
 @pass_script_info
 def migrations_down(info, revision, dry_run):
     from .orm.migrations.commands import down
+
     app = info.load_app()
     dbs = info.load_db()
     down(app, dbs, revision, dry_run)
 
 
-@migrations_cli.command(
-    'set', short_help='Overrides database revision with selected migration.'
-)
-@click.option('--revision', '-r', default='head', help='The migration to set.')
-@click.option(
-    '--auto-confirm',
-    default=False,
-    is_flag=True,
-    help='Skip asking confirmation.'
-)
+@migrations_cli.command("set", short_help="Overrides database revision with selected migration.")
+@click.option("--revision", "-r", default="head", help="The migration to set.")
+@click.option("--auto-confirm", default=False, is_flag=True, help="Skip asking confirmation.")
 @pass_script_info
 def migrations_set(info, revision, auto_confirm):
     from .orm.migrations.commands import set_revision
+
     app = info.load_app()
     dbs = info.load_db()
     set_revision(app, dbs, revision, auto_confirm)
@@ -527,5 +473,5 @@ def main(as_module=False):
     cli.main(prog_name="python -m emmett" if as_module else None)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(as_module=True)

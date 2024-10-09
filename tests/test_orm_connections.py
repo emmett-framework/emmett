@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    tests.orm_connections
-    ---------------------
+tests.orm_connections
+---------------------
 
-    Test pyDAL connection implementation over Emmett.
+Test pyDAL connection implementation over Emmett.
 """
 
 import pytest
@@ -12,17 +12,10 @@ from emmett import App, sdict
 from emmett.orm import Database
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def db():
     app = App(__name__)
-    db = Database(
-        app,
-        config=sdict(
-            uri='sqlite:memory',
-            auto_migrate=True,
-            auto_connect=False
-        )
-    )
+    db = Database(app, config=sdict(uri="sqlite:memory", auto_migrate=True, auto_connect=False))
     return db
 
 

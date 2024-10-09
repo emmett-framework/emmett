@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.migrations.helpers
-    -----------------------------
+emmett.orm.migrations.helpers
+-----------------------------
 
-    Provides helpers for migrations.
+Provides helpers for migrations.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from pydal.adapters.base import BaseAdapter
 
 from ...datastructures import _unique_list
 from .base import Database
+
 
 if TYPE_CHECKING:
     from .engine import MetaEngine
@@ -50,12 +51,12 @@ class Dispatcher:
         self._registry: Dict[Type[Operation], Callable[[Operation], str]] = {}
 
     def dispatch_for(
-        self,
-        target: Type[Operation]
+        self, target: Type[Operation]
     ) -> Callable[[Callable[[Operation], str]], Callable[[Operation], str]]:
         def wrap(fn: Callable[[Operation], str]) -> Callable[[Operation], str]:
             self._registry[target] = fn
             return fn
+
         return wrap
 
     def dispatch(self, obj: Operation):
@@ -98,11 +99,11 @@ def to_tuple(x, default=None):
     if x is None:
         return default
     elif isinstance(x, str):
-        return (x, )
+        return (x,)
     elif isinstance(x, Iterable):
         return tuple(x)
     else:
-        return (x, )
+        return (x,)
 
 
 def tuple_or_value(val):

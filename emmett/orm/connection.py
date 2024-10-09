@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.connection
-    ---------------------
+emmett.orm.connection
+---------------------
 
-    Provides pyDAL connection implementation for Emmett.
+Provides pyDAL connection implementation for Emmett.
 
-    :copyright: 2014 Giovanni Barillari
+:copyright: 2014 Giovanni Barillari
 
-    Parts of this code are inspired to peewee
-    :copyright: (c) 2010 by Charles Leifer
+Parts of this code are inspired to peewee
+:copyright: (c) 2010 by Charles Leifer
 
-    :license: BSD-3-Clause
+:license: BSD-3-Clause
 """
 
 import asyncio
@@ -18,7 +18,6 @@ import contextvars
 import heapq
 import threading
 import time
-
 from collections import OrderedDict
 from functools import partial
 
@@ -30,13 +29,13 @@ from .transactions import _transaction
 
 
 class ConnectionStateCtxVars:
-    __slots__ = ('_connection', '_transactions', '_cursors', '_closed')
+    __slots__ = ("_connection", "_transactions", "_cursors", "_closed")
 
     def __init__(self):
-        self._connection = contextvars.ContextVar('_emt_orm_cs_connection')
-        self._transactions = contextvars.ContextVar('_emt_orm_cs_transactions')
-        self._cursors = contextvars.ContextVar('_emt_orm_cs_cursors')
-        self._closed = contextvars.ContextVar('_emt_orm_cs_closed')
+        self._connection = contextvars.ContextVar("_emt_orm_cs_connection")
+        self._transactions = contextvars.ContextVar("_emt_orm_cs_transactions")
+        self._cursors = contextvars.ContextVar("_emt_orm_cs_cursors")
+        self._closed = contextvars.ContextVar("_emt_orm_cs_closed")
         self.reset()
 
     @property
@@ -69,7 +68,7 @@ class ConnectionStateCtxVars:
 
 
 class ConnectionState:
-    __slots__ = ('_connection', '_transactions', '_cursors', '_closed')
+    __slots__ = ("_connection", "_transactions", "_cursors", "_closed")
 
     def __init__(self, connection=None):
         self.connection = connection
@@ -87,14 +86,14 @@ class ConnectionState:
 
 
 class ConnectionStateCtl:
-    __slots__ = ['_state_obj_var', '_state_load_var']
+    __slots__ = ["_state_obj_var", "_state_load_var"]
 
     state_cls = ConnectionState
 
     def __init__(self):
         inst_id = id(self)
-        self._state_obj_var = f'__emt_orm_state_{inst_id}__'
-        self._state_load_var = f'__emt_orm_state_loaded_{inst_id}__'
+        self._state_obj_var = f"__emt_orm_state_{inst_id}__"
+        self._state_load_var = f"__emt_orm_state_loaded_{inst_id}__"
 
     @property
     def _has_ctx(self):
@@ -133,7 +132,7 @@ class ConnectionStateCtl:
 
 
 class ConnectionManager:
-    __slots__ = ['adapter', 'state', '__dict__']
+    __slots__ = ["adapter", "state", "__dict__"]
     state_cls = ConnectionStateCtl
 
     def __init__(self, adapter, **kwargs):
@@ -157,12 +156,7 @@ class ConnectionManager:
         return self._connector_sync(), True
 
     async def _connection_open_loop(self):
-        return (
-            await self._loop.run_in_executor(
-                None, self._connector_loop
-            ),
-            True
-        )
+        return (await self._loop.run_in_executor(None, self._connector_loop), True)
 
     def _connection_close_sync(self, connection, *args, **kwargs):
         try:
@@ -171,9 +165,7 @@ class ConnectionManager:
             pass
 
     async def _connection_close_loop(self, connection, *args, **kwargs):
-        return await self._loop.run_in_executor(
-            None, partial(self._connection_close_sync, connection)
-        )
+        return await self._loop.run_in_executor(None, partial(self._connection_close_sync, connection))
 
     connect_sync = _connection_open_sync
     connect_loop = _connection_open_loop
@@ -188,18 +180,16 @@ class ConnectionManager:
 
 class PooledConnectionManager(ConnectionManager):
     __slots__ = [
-        'max_connections', 'connect_timeout', 'stale_timeout',
-        'connections_map', 'connections_sync',
-        'in_use', '_lock_sync'
+        "max_connections",
+        "connect_timeout",
+        "stale_timeout",
+        "connections_map",
+        "connections_sync",
+        "in_use",
+        "_lock_sync",
     ]
 
-    def __init__(
-        self,
-        adapter,
-        max_connections=5,
-        connect_timeout=0,
-        stale_timeout=0
-    ):
+    def __init__(self, adapter, max_connections=5, connect_timeout=0, stale_timeout=0):
         super().__init__(adapter)
         self.max_connections = max(max_connections, 1)
         self.connect_timeout = connect_timeout
@@ -234,9 +224,7 @@ class PooledConnectionManager(ConnectionManager):
         raise MaxConnectionsExceeded()
 
     async def connect_loop(self):
-        return await asyncio.wait_for(
-            self._acquire_loop(), self.connect_timeout or None
-        )
+        return await asyncio.wait_for(self._acquire_loop(), self.connect_timeout or None)
 
     def _acquire_sync(self):
         _opened = False
@@ -274,9 +262,7 @@ class PooledConnectionManager(ConnectionManager):
                         break
             ts, key = await self.connections_loop.get()
             if self.stale_timeout and self.is_stale(ts):
-                await self._connection_close_loop(
-                    self.connections_map.pop(key)
-                )
+                await self._connection_close_loop(self.connections_map.pop(key))
             else:
                 conn = self.connections_map[key]
                 break
@@ -326,7 +312,7 @@ def _connect_sync(self, with_transaction=True, reuse_if_open=False):
     if not self._connection_manager.state.closed:
         if reuse_if_open:
             return False
-        raise RuntimeError('Connection already opened.')
+        raise RuntimeError("Connection already opened.")
     self.connection, _opened = self._connection_manager.connect_sync()
     if _opened:
         self.after_connection_hook()
@@ -340,7 +326,7 @@ async def _connect_loop(self, with_transaction=True, reuse_if_open=False):
     if not self._connection_manager.state.closed:
         if reuse_if_open:
             return False
-        raise RuntimeError('Connection already opened.')
+        raise RuntimeError("Connection already opened.")
     self.connection, _opened = await self._connection_manager.connect_loop()
     if _opened:
         self.after_connection_hook()
@@ -350,7 +336,7 @@ async def _connect_loop(self, with_transaction=True, reuse_if_open=False):
     return True
 
 
-def _close_sync(self, action='commit', really=True):
+def _close_sync(self, action="commit", really=True):
     is_open = not self._connection_manager.state.closed
     if not is_open:
         return is_open
@@ -369,7 +355,7 @@ def _close_sync(self, action='commit', really=True):
     return is_open
 
 
-async def _close_loop(self, action='commit', really=True):
+async def _close_loop(self, action="commit", really=True):
     is_open = not self._connection_manager.state.closed
     if not is_open:
         return is_open

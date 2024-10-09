@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.sessions
-    ---------------
+emmett.sessions
+---------------
 
-    Provides session managers for applications.
+Provides session managers for applications.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations

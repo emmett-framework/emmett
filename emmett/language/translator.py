@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.language.translator
-    --------------------------
+emmett.language.translator
+--------------------------
 
-    Severus translator implementation for Emmett.
+Severus translator implementation for Emmett.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations
 
 from typing import Optional
+
 from severus.ctx import set_context
 from severus.translator import Translator as _Translator
 
@@ -32,6 +33,4 @@ class Translator(_Translator):
         self._build_languages()
 
     def _get_best_language(self, lang: Optional[str] = None) -> str:
-        return self._langmap.get(
-            lang or current.language, self._default_language
-        )
+        return self._langmap.get(lang or current.language, self._default_language)

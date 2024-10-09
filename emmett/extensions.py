@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.extensions
-    -----------------
+emmett.extensions
+-----------------
 
-    Provides base classes to create extensions.
+Provides base classes to create extensions.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations

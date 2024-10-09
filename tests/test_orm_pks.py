@@ -1,25 +1,24 @@
 # -*- coding: utf-8 -*-
 """
-    tests.orm_pks
-    -------------
+tests.orm_pks
+-------------
 
-    Test ORM primary keys hendling
+Test ORM primary keys hendling
 """
 
 import os
-import pytest
-
 from uuid import uuid4
 
+import pytest
+
 from emmett import App, sdict
-from emmett.orm import Database, Model, Field, belongs_to, has_many
+from emmett.orm import Database, Field, Model, belongs_to, has_many
 from emmett.orm.errors import SaveException
 from emmett.orm.helpers import RowReferenceMixin
 from emmett.orm.migrations.utils import generate_runtime_migration
 
-require_postgres = pytest.mark.skipif(
-    not os.environ.get("POSTGRES_URI"), reason="No postgres database"
-)
+
+require_postgres = pytest.mark.skipif(not os.environ.get("POSTGRES_URI"), reason="No postgres database")
 
 
 class Standard(Model):
@@ -101,7 +100,7 @@ class DoctorCustom(Model):
     has_many(
         {"appointments": "AppointmentCustom"},
         {"patients": {"via": "appointments.patient_custom"}},
-        {"symptoms_to_treat": {"via": "patients.symptoms"}}
+        {"symptoms_to_treat": {"via": "patients.symptoms"}},
     )
 
     id = Field.string(default=lambda: uuid4().hex)
@@ -114,7 +113,7 @@ class DoctorMulti(Model):
     has_many(
         {"appointments": "AppointmentMulti"},
         {"patients": {"via": "appointments.patient_multi"}},
-        {"symptoms_to_treat": {"via": "patients.symptoms"}}
+        {"symptoms_to_treat": {"via": "patients.symptoms"}},
     )
 
     foo = Field.string(default=lambda: uuid4().hex)
@@ -128,7 +127,7 @@ class PatientCustom(Model):
     has_many(
         {"appointments": "AppointmentCustom"},
         {"symptoms": "SymptomCustom.patient"},
-        {"doctors": {"via": "appointments.doctor_custom"}}
+        {"doctors": {"via": "appointments.doctor_custom"}},
     )
 
     code = Field.string(default=lambda: uuid4().hex)
@@ -141,7 +140,7 @@ class PatientMulti(Model):
     has_many(
         {"appointments": "AppointmentMulti"},
         {"symptoms": "SymptomMulti.patient"},
-        {"doctors": {"via": "appointments.doctor_multi"}}
+        {"doctors": {"via": "appointments.doctor_multi"}},
     )
 
     foo = Field.string(default=lambda: uuid4().hex)
@@ -185,35 +184,18 @@ class AppointmentMulti(Model):
     name = Field.string()
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def _db():
     app = App(__name__)
-    db = Database(
-        app,
-        config=sdict(
-            uri=f'sqlite://{uuid4().hex}.db',
-            auto_connect=True
-        )
-    )
-    db.define_models(
-        Standard,
-        CustomType,
-        CustomName,
-        CustomMulti
-    )
+    db = Database(app, config=sdict(uri=f"sqlite://{uuid4().hex}.db", auto_connect=True))
+    db.define_models(Standard, CustomType, CustomName, CustomMulti)
     return db
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def _pgs():
     app = App(__name__)
-    db = Database(
-        app,
-        config=sdict(
-            uri=f"postgres://{os.environ.get('POSTGRES_URI')}",
-            auto_connect=True
-        )
-    )
+    db = Database(app, config=sdict(uri=f"postgres://{os.environ.get('POSTGRES_URI')}", auto_connect=True))
     db.define_models(
         SourceCustom,
         SourceMulti,
@@ -228,12 +210,12 @@ def _pgs():
         PatientMulti,
         AppointmentMulti,
         SymptomCustom,
-        SymptomMulti
+        SymptomMulti,
     )
     return db
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def db(_db):
     migration = generate_runtime_migration(_db)
     migration.up()
@@ -241,7 +223,7 @@ def db(_db):
     migration.down()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def pgs(_pgs):
     migration = generate_runtime_migration(_pgs)
     migration.up()
@@ -282,7 +264,7 @@ def test_save_insert(db):
     assert done
     assert row._concrete
     assert row.id
-    assert type(row.id) == int
+    assert type(row.id) is int
 
     row = CustomType.new(id="test1", foo="test2", bar="test3")
     done = row.save()
@@ -770,9 +752,7 @@ def test_row(pgs):
     assert sm2.dest_multi_multis.count() == 0
 
     dmm1.source_multi = sm2
-    assert set(dmm1._changes.keys()).issubset(
-        {"source_multi", "source_multi_foo", "source_multi_bar"}
-    )
+    assert set(dmm1._changes.keys()).issubset({"source_multi", "source_multi_foo", "source_multi_bar"})
     dmm1.save()
     assert sm1.dest_multi_multis.count() == 0
     assert sm2.dest_multi_multis.count() == 1

@@ -1,20 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.routing.routes
-    ---------------------
+emmett.routing.routes
+---------------------
 
-    Provides routes objects.
+Provides routes objects.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 import re
-
 from functools import wraps
 
 import pendulum
-
 from emmett_core.http.response import HTTPResponse
 from emmett_core.routing.routes import HTTPRoute as _HTTPRoute
 
@@ -27,16 +25,14 @@ class HTTPRoute(_HTTPRoute):
         self.build_argparser()
 
     def build_argparser(self):
-        parsers = {'date': self._parse_date_reqarg}
-        opt_parsers = {'date': self._parse_date_reqarg_opt}
+        parsers = {"date": self._parse_date_reqarg}
+        opt_parsers = {"date": self._parse_date_reqarg_opt}
         pipeline = []
         for key in parsers.keys():
             optionals = []
-            for element in re.compile(
-                r'\(([^<]+)?<{}\:(\w+)>\)\?'.format(key)
-            ).findall(self.path):
+            for element in re.compile(r"\(([^<]+)?<{}\:(\w+)>\)\?".format(key)).findall(self.path):
                 optionals.append(element[1])
-            elements = set(re.compile(r'<{}\:(\w+)>'.format(key)).findall(self.path))
+            elements = set(re.compile(r"<{}\:(\w+)>".format(key)).findall(self.path))
             args = elements - set(optionals)
             if args:
                 parser = self._wrap_reqargs_parser(parsers[key], args)
@@ -73,6 +69,7 @@ class HTTPRoute(_HTTPRoute):
         @wraps(parser)
         def wrapped(route_args):
             return parser(args, route_args)
+
         return wrapped
 
 

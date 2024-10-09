@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.templating.templater
-    ---------------------------
+emmett.templating.templater
+---------------------------
 
-    Provides the Emmett implementation for Renoir engine.
+Provides the Emmett implementation for Renoir engine.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 import os
-
 from functools import reduce
 from typing import Optional, Tuple
 
@@ -21,7 +20,7 @@ from .lexers import lexers
 
 class Templater(Renoir):
     def __init__(self, **kwargs):
-        kwargs['lexers'] = lexers
+        kwargs["lexers"] = lexers
         super().__init__(**kwargs)
         self._namespaces = {}
 
@@ -46,9 +45,7 @@ class Templater(Renoir):
         path = path or self.path
         self._namespaces[namespace] = path
 
-    def _get_namespace_path_elements(
-        self, file_name: str, path: Optional[str]
-    ) -> Tuple[str, str]:
+    def _get_namespace_path_elements(self, file_name: str, path: Optional[str]) -> Tuple[str, str]:
         if ":" in file_name:
             namespace, file_name = file_name.split(":")
             path = self._namespaces.get(namespace, self.path)
@@ -60,9 +57,7 @@ class Templater(Renoir):
         path, file_name = self._get_namespace_path_elements(file_name, path)
         file_extension = os.path.splitext(file_name)[1]
         return reduce(
-            lambda args, loader: loader(args[0], args[1]),
-            self.loaders.get(file_extension, []),
-            (path, file_name)
+            lambda args, loader: loader(args[0], args[1]), self.loaders.get(file_extension, []), (path, file_name)
         )
 
     def _no_preload(self, file_name: str, path: Optional[str] = None):

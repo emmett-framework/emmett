@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.html
-    -----------
+emmett.html
+-----------
 
-    Provides html generation classes.
+Provides html generation classes.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 import html
 import re
 import threading
-
 from functools import reduce
 
-__all__ = ['tag', 'cat', 'asis']
+
+__all__ = ["tag", "cat", "asis"]
 
 
 class TagStack(threading.local):
@@ -37,16 +37,16 @@ class TagStack(threading.local):
 
 class HtmlTag:
     rules = {
-        'ul': ['li'],
-        'ol': ['li'],
-        'table': ['tr', 'thead', 'tbody'],
-        'thead': ['tr'],
-        'tbody': ['tr'],
-        'tr': ['td', 'th'],
-        'select': ['option', 'optgroup'],
-        'optgroup': ['optionp']
+        "ul": ["li"],
+        "ol": ["li"],
+        "table": ["tr", "thead", "tbody"],
+        "thead": ["tr"],
+        "tbody": ["tr"],
+        "tr": ["td", "th"],
+        "select": ["option", "optgroup"],
+        "optgroup": ["optionp"],
     }
-    _self_closed = {'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta'}
+    _self_closed = {"br", "col", "embed", "hr", "img", "input", "link", "meta"}
 
     def __init__(self, name):
         self.name = name
@@ -65,9 +65,7 @@ class HtmlTag:
 
     @staticmethod
     def wrap(component, rules):
-        if rules and (
-            not isinstance(component, HtmlTag) or component.name not in rules
-        ):
+        if rules and (not isinstance(component, HtmlTag) or component.name not in rules):
             return HtmlTag(rules[0])(component)
         return component
 
@@ -112,78 +110,69 @@ class HtmlTag:
         return cat(self, other)
 
     def add_class(self, name):
-        """ add a class to _class attribute """
-        c = self['_class']
+        """add a class to _class attribute"""
+        c = self["_class"]
         classes = (set(c.split()) if c else set()) | set(name.split())
-        self['_class'] = ' '.join(classes) if classes else None
+        self["_class"] = " ".join(classes) if classes else None
         return self
 
     def remove_class(self, name):
-        """ remove a class from _class attribute """
-        c = self['_class']
+        """remove a class from _class attribute"""
+        c = self["_class"]
         classes = (set(c.split()) if c else set()) - set(name.split())
-        self['_class'] = ' '.join(classes) if classes else None
+        self["_class"] = " ".join(classes) if classes else None
         return self
 
-    regex_tag = re.compile(r'^([\w\-\:]+)')
-    regex_id = re.compile(r'#([\w\-]+)')
-    regex_class = re.compile(r'\.([\w\-]+)')
-    regex_attr = re.compile(r'\[([\w\-\:]+)=(.*?)\]')
+    regex_tag = re.compile(r"^([\w\-\:]+)")
+    regex_id = re.compile(r"#([\w\-]+)")
+    regex_class = re.compile(r"\.([\w\-]+)")
+    regex_attr = re.compile(r"\[([\w\-\:]+)=(.*?)\]")
 
     def find(self, expr):
         union = lambda a, b: a.union(b)
-        if ',' in expr:
-            tags = reduce(
-                union,
-                [self.find(x.strip()) for x in expr.split(',')],
-                set())
-        elif ' ' in expr:
+        if "," in expr:
+            tags = reduce(union, [self.find(x.strip()) for x in expr.split(",")], set())
+        elif " " in expr:
             tags = [self]
             for k, item in enumerate(expr.split()):
                 if k > 0:
-                    children = [
-                        set([c for c in tag if isinstance(c, HtmlTag)])
-                        for tag in tags]
+                    children = [{c for c in tag if isinstance(c, HtmlTag)} for tag in tags]
                     tags = reduce(union, children)
                 tags = reduce(union, [tag.find(item) for tag in tags], set())
         else:
-            tags = reduce(
-                union,
-                [c.find(expr) for c in self if isinstance(c, HtmlTag)],
-                set())
+            tags = reduce(union, [c.find(expr) for c in self if isinstance(c, HtmlTag)], set())
             tag = HtmlTag.regex_tag.match(expr)
             id = HtmlTag.regex_id.match(expr)
             _class = HtmlTag.regex_class.match(expr)
             attr = HtmlTag.regex_attr.match(expr)
             if (
-                (tag is None or self.name == tag.group(1)) and
-                (id is None or self['_id'] == id.group(1)) and
-                (_class is None or _class.group(1) in
-                    (self['_class'] or '').split()) and
-                (attr is None or self['_' + attr.group(1)] == attr.group(2))
+                (tag is None or self.name == tag.group(1))
+                and (id is None or self["_id"] == id.group(1))
+                and (_class is None or _class.group(1) in (self["_class"] or "").split())
+                and (attr is None or self["_" + attr.group(1)] == attr.group(2))
             ):
                 tags.add(self)
         return tags
 
     def _build_html_attributes(self):
-        return ' '.join(
+        return " ".join(
             '%s="%s"' % (k[1:], k[1:] if v is True else htmlescape(v))
             for (k, v) in sorted(self.attributes.items())
-            if k.startswith('_') and v is not None)
+            if k.startswith("_") and v is not None
+        )
 
     def __html__(self):
         name = self.name
         attrs = self._build_html_attributes()
-        data = self.attributes.get('data', {})
-        data_attrs = ' '.join(
-            'data-%s="%s"' % (k, htmlescape(v)) for k, v in data.items())
+        data = self.attributes.get("data", {})
+        data_attrs = " ".join('data-%s="%s"' % (k, htmlescape(v)) for k, v in data.items())
         if data_attrs:
-            attrs = attrs + ' ' + data_attrs
-        attrs = ' ' + attrs if attrs else ''
+            attrs = attrs + " " + data_attrs
+        attrs = " " + attrs if attrs else ""
         if name in self._self_closed:
-            return '<%s%s />' % (name, attrs)
-        components = ''.join(htmlescape(v) for v in self.components)
-        return '<%s%s>%s</%s>' % (name, attrs, components, name)
+            return "<%s%s />" % (name, attrs)
+        components = "".join(htmlescape(v) for v in self.components)
+        return "<%s%s>%s</%s>" % (name, attrs, components, name)
 
     def __json__(self):
         return str(self)
@@ -199,11 +188,11 @@ class MetaHtmlTag:
 
 class cat(HtmlTag):
     def __init__(self, *components):
-        self.components = [c for c in components]
+        self.components = list(components)
         self.attributes = {}
 
     def __html__(self):
-        return ''.join(htmlescape(v) for v in self.components)
+        return "".join(htmlescape(v) for v in self.components)
 
 
 class asis(HtmlTag):
@@ -221,7 +210,7 @@ def _to_str(obj):
 
 
 def htmlescape(obj):
-    if hasattr(obj, '__html__'):
+    if hasattr(obj, "__html__"):
         return obj.__html__()
     return html.escape(_to_str(obj), True).replace("'", "&#39;")
 

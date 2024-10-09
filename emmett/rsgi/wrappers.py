@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.rsgi.wrappers
-    --------------------
+emmett.rsgi.wrappers
+--------------------
 
-    Provides RSGI request and websocket wrappers
+Provides RSGI request and websocket wrappers
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 import pendulum
-
 from emmett_core.protocols.rsgi.wrappers import Request as _Request, Websocket as Websocket
 from emmett_core.utils import cachedprop
 

@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.wrappers.request
-    -----------------------
+emmett.wrappers.request
+-----------------------
 
-    Provides http request wrappers.
+Provides http request wrappers.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 import pendulum
-
 from emmett_core.http.wrappers.request import Request as _Request
 from emmett_core.utils import cachedprop
 

@@ -1,39 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.models
-    -----------------
+emmett.orm.models
+-----------------
 
-    Provides model layer for Emmet's ORM.
+Provides model layer for Emmet's ORM.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 import operator
 import types
-
 from collections import OrderedDict
 from functools import reduce
 from typing import Any, Callable
 
 from ..datastructures import sdict
-from .apis import (
-    compute,
-    rowattr,
-    rowmethod,
-    scope,
-    belongs_to,
-    refers_to,
-    has_one,
-    has_many
-)
-from .errors import (
-    InsertFailureOnSave,
-    SaveException,
-    UpdateFailureOnSave,
-    ValidationError,
-    DestroyException
-)
+from .apis import belongs_to, compute, has_many, has_one, refers_to, rowattr, rowmethod, scope
+from .errors import DestroyException, InsertFailureOnSave, SaveException, UpdateFailureOnSave, ValidationError
 from .helpers import (
     Callback,
     ReferenceData,
@@ -45,23 +29,30 @@ from .helpers import (
     typed_row_reference,
     typed_row_reference_from_record,
     wrap_scope_on_model,
-    wrap_virtual_on_model
+    wrap_virtual_on_model,
 )
 from .objects import Field, StructuredRow
-from .wrappers import HasOneWrap, HasOneViaWrap, HasManyWrap, HasManyViaWrap
+from .wrappers import HasManyViaWrap, HasManyWrap, HasOneViaWrap, HasOneWrap
 
 
 class MetaModel(type):
     _inheritable_dict_attrs_ = [
-        'indexes', 'validation', ('fields_rw', {'id': False}), 'foreign_keys',
-        'default_values', 'update_values', 'repr_values',
-        'form_labels', 'form_info', 'form_widgets'
+        "indexes",
+        "validation",
+        ("fields_rw", {"id": False}),
+        "foreign_keys",
+        "default_values",
+        "update_values",
+        "repr_values",
+        "form_labels",
+        "form_info",
+        "form_widgets",
     ]
 
     def __new__(cls, name, bases, attrs):
         new_class = type.__new__(cls, name, bases, attrs)
         #: collect declared attributes
-        tablename = attrs.get('tablename')
+        tablename = attrs.get("tablename")
         fields = []
         vfields = []
         computations = []
@@ -83,8 +74,7 @@ class MetaModel(type):
             elif isinstance(value, scope):
                 declared_scopes[key] = value
         declared_relations = sdict(
-            belongs=OrderedDict(), refers=OrderedDict(),
-            hasone=OrderedDict(), hasmany=OrderedDict()
+            belongs=OrderedDict(), refers=OrderedDict(), hasone=OrderedDict(), hasmany=OrderedDict()
         )
         for ref in belongs_to._references_.values():
             for item in ref.reference:
@@ -132,25 +122,22 @@ class MetaModel(type):
         all_computations = OrderedDict()
         all_callbacks = OrderedDict()
         all_scopes = {}
-        all_relations = sdict(
-            belongs=OrderedDict(), refers=OrderedDict(),
-            hasone=OrderedDict(), hasmany=OrderedDict()
-        )
+        all_relations = sdict(belongs=OrderedDict(), refers=OrderedDict(), hasone=OrderedDict(), hasmany=OrderedDict())
         super_vfields = OrderedDict()
         for base in reversed(new_class.__mro__[1:]):
-            if hasattr(base, '_declared_fields_'):
+            if hasattr(base, "_declared_fields_"):
                 all_fields.update(base._declared_fields_)
-            if hasattr(base, '_declared_virtuals_'):
+            if hasattr(base, "_declared_virtuals_"):
                 all_vfields.update(base._declared_virtuals_)
                 super_vfields.update(base._declared_virtuals_)
-            if hasattr(base, '_declared_computations_'):
+            if hasattr(base, "_declared_computations_"):
                 all_computations.update(base._declared_computations_)
-            if hasattr(base, '_declared_callbacks_'):
+            if hasattr(base, "_declared_callbacks_"):
                 all_callbacks.update(base._declared_callbacks_)
-            if hasattr(base, '_declared_scopes_'):
+            if hasattr(base, "_declared_scopes_"):
                 all_scopes.update(base._declared_scopes_)
             for key in list(all_relations):
-                attrkey = '_declared_' + key + '_ref_'
+                attrkey = "_declared_" + key + "_ref_"
                 if hasattr(base, attrkey):
                     all_relations[key].update(getattr(base, attrkey))
         #: compose 'all' attributes
@@ -237,13 +224,13 @@ class Model(metaclass=MetaModel):
         return super(Model, cls).__new__(cls)
 
     def __init__(self):
-        if not hasattr(self, 'migrate'):
-            self.migrate = self.config.get('migrate', self.db._migrate)
-        if not hasattr(self, 'format'):
+        if not hasattr(self, "migrate"):
+            self.migrate = self.config.get("migrate", self.db._migrate)
+        if not hasattr(self, "format"):
             self.format = None
-        if not hasattr(self, 'primary_keys'):
+        if not hasattr(self, "primary_keys"):
             self.primary_keys = []
-        self._fieldset_pk = set(self.primary_keys or ['id'])
+        self._fieldset_pk = set(self.primary_keys or ["id"])
 
     @property
     def config(self):
@@ -253,7 +240,7 @@ class Model(metaclass=MetaModel):
         if via is None:
             return via
         rv = sdict()
-        splitted = via.split('.')
+        splitted = via.split(".")
         rv.via = splitted[0]
         if len(splitted) > 1:
             rv.field = splitted[1]
@@ -290,30 +277,27 @@ class Model(metaclass=MetaModel):
             relation.model = relation.model[:-1]
 
     def __build_relation_fieldnames(self, relation):
-        splitted = relation.model.split('.')
+        splitted = relation.model.split(".")
         relation.model = splitted[0]
         if len(splitted) > 1:
             relation.fields = [splitted[1]]
         else:
             if len(self.primary_keys) > 1:
-                relation.fields = [
-                    f"{decamelize(self.__class__.__name__)}_{pk}"
-                    for pk in self.primary_keys
-                ]
+                relation.fields = [f"{decamelize(self.__class__.__name__)}_{pk}" for pk in self.primary_keys]
             else:
                 relation.fields = [decamelize(self.__class__.__name__)]
 
     def __parse_relation_dict(self, rel, singularize):
-        if 'scope' in rel.model:
-            rel.scope = rel.model['scope']
-        if 'where' in rel.model:
-            rel.where = rel.model['where']
-        if 'via' in rel.model:
-            rel.update(self.__parse_relation_via(rel.model['via']))
+        if "scope" in rel.model:
+            rel.scope = rel.model["scope"]
+        if "where" in rel.model:
+            rel.where = rel.model["where"]
+        if "via" in rel.model:
+            rel.update(self.__parse_relation_via(rel.model["via"]))
             del rel.model
         else:
-            if 'target' in rel.model:
-                rel.model = rel.model['target']
+            if "target" in rel.model:
+                rel.model = rel.model["target"]
             if not isinstance(rel.model, str):
                 self.__build_relation_modelname(rel.name, rel, singularize)
 
@@ -323,19 +307,16 @@ class Model(metaclass=MetaModel):
             rv.name = list(item)[0]
             rv.model = item[rv.name]
             if isinstance(rv.model, dict):
-                if 'method' in rv.model:
-                    if 'field' in rv.model:
-                        rv.fields = [rv.model['field']]
+                if "method" in rv.model:
+                    if "field" in rv.model:
+                        rv.fields = [rv.model["field"]]
                     else:
                         if len(self.primary_keys) > 1:
-                            rv.fields = [
-                                f"{decamelize(self.__class__.__name__)}_{pk}"
-                                for pk in self.primary_keys
-                            ]
+                            rv.fields = [f"{decamelize(self.__class__.__name__)}_{pk}" for pk in self.primary_keys]
                         else:
                             rv.fields = [decamelize(self.__class__.__name__)]
-                    rv.cast = rv.model.get('cast')
-                    rv.method = rv.model['method']
+                    rv.cast = rv.model.get("cast")
+                    rv.method = rv.model["method"]
                     del rv.model
                 else:
                     self.__parse_relation_dict(rv, singularize)
@@ -348,18 +329,15 @@ class Model(metaclass=MetaModel):
             if rv.model == "self":
                 rv.model = self.__class__.__name__
         if not rv.via:
-            rv.reverse = (
-                rv.fields[0] if len(rv.fields) == 1 else
-                decamelize(self.__class__.__name__)
-            )
+            rv.reverse = rv.fields[0] if len(rv.fields) == 1 else decamelize(self.__class__.__name__)
         return rv
 
     def _define_props_(self):
         #: create pydal's Field elements
         self.fields = []
-        if not self.primary_keys and 'id' not in self._all_fields_:
-            idfield = Field('id')._make_field('id', model=self)
-            setattr(self.__class__, 'id', idfield)
+        if not self.primary_keys and "id" not in self._all_fields_:
+            idfield = Field("id")._make_field("id", model=self)
+            self.__class__.id = idfield
             self.fields.append(idfield)
         for name, obj in self._all_fields_.items():
             if obj.modelname is not None:
@@ -372,10 +350,7 @@ class Model(metaclass=MetaModel):
         if not set(rfields).issubset(set(rmodel.primary_keys)):
             return match
         for key, val in self.foreign_keys.items():
-            if (
-                set(val["foreign_fields"]) == set(rmodel.primary_keys) and
-                set(lfields).issubset(set(val["fields"]))
-            ):
+            if set(val["foreign_fields"]) == set(rmodel.primary_keys) and set(lfields).issubset(set(val["fields"])):
                 match = key
                 break
         return match
@@ -383,13 +358,10 @@ class Model(metaclass=MetaModel):
     def _define_relations_(self):
         self._virtual_relations_ = OrderedDict()
         self._compound_relations_ = {}
-        bad_args_error = (
-            "belongs_to, has_one and has_many "
-            "only accept strings or dicts as arguments"
-        )
+        bad_args_error = "belongs_to, has_one and has_many " "only accept strings or dicts as arguments"
         #: belongs_to and refers_to are mapped with 'reference' type Field
         _references = []
-        _reference_keys = ['_all_belongs_ref_', '_all_refers_ref_']
+        _reference_keys = ["_all_belongs_ref_", "_all_refers_ref_"]
         belongs_references = {}
         belongs_fks = {}
         for key in _reference_keys:
@@ -397,24 +369,18 @@ class Model(metaclass=MetaModel):
                 _references.append(list(getattr(self, key).values()))
             else:
                 _references.append([])
-        is_belongs, ondelete = True, 'cascade'
+        is_belongs, ondelete = True, "cascade"
         for _references_obj in _references:
             for item in _references_obj:
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_belongs_relation(item, ondelete)
                 reference.is_refers = not is_belongs
-                refmodel = (
-                    self.db[reference.model]._model_
-                    if reference.model != self.__class__.__name__
-                    else self
-                )
+                refmodel = self.db[reference.model]._model_ if reference.model != self.__class__.__name__ else self
                 ref_multi_pk = len(refmodel._fieldset_pk) > 1
                 fk_def_key, fks_data, multi_fk = None, {}, []
                 if ref_multi_pk and reference.fk:
-                    fk_def_key = self.__find_matching_fk_definition(
-                        [reference.fk], [reference.name], refmodel
-                    )
+                    fk_def_key = self.__find_matching_fk_definition([reference.fk], [reference.name], refmodel)
                     if not fk_def_key:
                         raise SyntaxError(
                             f"{self.__class__.__name__}.{reference.name} relation "
@@ -445,10 +411,9 @@ class Model(metaclass=MetaModel):
                         local_fields=fks_data["fields"],
                         foreign_fields=fks_data["foreign_fields"],
                         coupled_fields=[
-                            (local, fks_data["foreign_fields"][idx])
-                            for idx, local in enumerate(fks_data["fields"])
+                            (local, fks_data["foreign_fields"][idx]) for idx, local in enumerate(fks_data["fields"])
                         ],
-                        is_refers=reference.is_refers
+                        is_refers=reference.is_refers,
                     )
                     self._compound_relations_[reference.name] = sdict(
                         model=reference.model,
@@ -465,40 +430,31 @@ class Model(metaclass=MetaModel):
                         local_fields=[reference.name],
                         foreign_fields=[reference.fk],
                         coupled_fields=[(reference.name, reference.fk)],
-                        is_refers=reference.is_refers
+                        is_refers=reference.is_refers,
                     )
                 if not fk_def_key and fks_data:
-                    self.foreign_keys[reference.name] = self.foreign_keys.get(
-                        reference.name
-                    ) or fks_data
+                    self.foreign_keys[reference.name] = self.foreign_keys.get(reference.name) or fks_data
                 for reference in references:
                     if reference.model != self.__class__.__name__:
                         tablename = self.db[reference.model]._tablename
                     else:
                         tablename = self.tablename
                     fieldobj = Field(
-                        (
-                            f"reference {tablename}" if not ref_multi_pk else
-                            f"reference {tablename}.{reference.fk}"
-                        ),
+                        (f"reference {tablename}" if not ref_multi_pk else f"reference {tablename}.{reference.fk}"),
                         ondelete=reference.on_delete,
-                        _isrefers=not is_belongs
+                        _isrefers=not is_belongs,
                     )
                     setattr(self.__class__, reference.name, fieldobj)
-                    self.fields.append(
-                        getattr(self, reference.name)._make_field(
-                            reference.name, self
-                        )
-                    )
+                    self.fields.append(getattr(self, reference.name)._make_field(reference.name, self))
                     belongs_references[reference.name] = reference
             is_belongs = False
-            ondelete = 'nullify'
-        setattr(self.__class__, '_belongs_ref_', belongs_references)
-        setattr(self.__class__, '_belongs_fks_', belongs_fks)
+            ondelete = "nullify"
+        self.__class__._belongs_ref_ = belongs_references
+        self.__class__._belongs_fks_ = belongs_fks
         #: has_one are mapped with rowattr
         hasone_references = {}
-        if hasattr(self, '_all_hasone_ref_'):
-            for item in getattr(self, '_all_hasone_ref_').values():
+        if hasattr(self, "_all_hasone_ref_"):
+            for item in getattr(self, "_all_hasone_ref_").values():
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item, False)
@@ -508,15 +464,13 @@ class Model(metaclass=MetaModel):
                 else:
                     #: maps has_one('thing'), has_one({'thing': 'othername'})
                     wrapper = HasOneWrap
-                self._virtual_relations_[reference.name] = rowattr(
-                    reference.name
-                )(wrapper(reference))
+                self._virtual_relations_[reference.name] = rowattr(reference.name)(wrapper(reference))
                 hasone_references[reference.name] = reference
-        setattr(self.__class__, '_hasone_ref_', hasone_references)
+        self.__class__._hasone_ref_ = hasone_references
         #: has_many are mapped with rowattr
         hasmany_references = {}
-        if hasattr(self, '_all_hasmany_ref_'):
-            for item in getattr(self, '_all_hasmany_ref_').values():
+        if hasattr(self, "_all_hasmany_ref_"):
+            for item in getattr(self, "_all_hasmany_ref_").values():
                 if not isinstance(item, (str, dict)):
                     raise RuntimeError(bad_args_error)
                 reference = self.__parse_many_relation(item)
@@ -526,11 +480,9 @@ class Model(metaclass=MetaModel):
                 else:
                     #: maps has_many('things'), has_many({'things': 'othername'})
                     wrapper = HasManyWrap
-                self._virtual_relations_[reference.name] = rowattr(
-                    reference.name
-                )(wrapper(reference))
+                self._virtual_relations_[reference.name] = rowattr(reference.name)(wrapper(reference))
                 hasmany_references[reference.name] = reference
-        setattr(self.__class__, '_hasmany_ref_', hasmany_references)
+        self.__class__._hasmany_ref_ = hasmany_references
         self.__define_fks()
 
     def __define_fks(self):
@@ -538,15 +490,8 @@ class Model(metaclass=MetaModel):
         implicit_defs = {}
         grouped_rels = {}
         for rname, rel in self._belongs_ref_.items():
-            rmodel = (
-                self.db[rel.model]._model_
-                if rel.model != self.__class__.__name__
-                else self
-            )
-            if (
-                not rmodel.primary_keys and
-                getattr(rmodel, list(rmodel._fieldset_pk)[0]).type == 'id'
-            ):
+            rmodel = self.db[rel.model]._model_ if rel.model != self.__class__.__name__ else self
+            if not rmodel.primary_keys and getattr(rmodel, list(rmodel._fieldset_pk)[0]).type == "id":
                 continue
             if len(rmodel._fieldset_pk) > 1:
                 match = self.__find_matching_fk_definition([rel.fk], [rel.name], rmodel)
@@ -557,46 +502,43 @@ class Model(metaclass=MetaModel):
                         "needs to be defined into `foreign_keys`."
                     )
                 crels = grouped_rels[match] = grouped_rels.get(
-                    match, {
-                        'rels': {},
-                        'table': rmodel.tablename,
-                        'on_delete': self.foreign_keys[match].get(
-                            "on_delete", "cascade"
-                        )
-                    }
+                    match,
+                    {
+                        "rels": {},
+                        "table": rmodel.tablename,
+                        "on_delete": self.foreign_keys[match].get("on_delete", "cascade"),
+                    },
                 )
-                crels['rels'][rname] = rel
+                crels["rels"][rname] = rel
             else:
                 # NOTE: we need this since pyDAL doesn't support id/refs types != int
                 implicit_defs[rname] = {
-                    'table': rmodel.tablename,
-                    'fields_local': [rname],
-                    'fields_foreign': [rel.fk],
-                    'on_delete': Field._internal_delete[rel.on_delete]
+                    "table": rmodel.tablename,
+                    "fields_local": [rname],
+                    "fields_foreign": [rel.fk],
+                    "on_delete": Field._internal_delete[rel.on_delete],
                 }
-        for rname, rel in implicit_defs.items():
-            constraint_name =  self.__create_fk_contraint_name(
-                rel['table'], *rel['fields_local']
-            )
+        for _, rel in implicit_defs.items():
+            constraint_name = self.__create_fk_contraint_name(rel["table"], *rel["fields_local"])
             self._foreign_keys_[constraint_name] = {**rel}
         for crels in grouped_rels.values():
             constraint_name = self.__create_fk_contraint_name(
-                crels['table'], *[rel.name for rel in crels['rels'].values()]
+                crels["table"], *[rel.name for rel in crels["rels"].values()]
             )
             self._foreign_keys_[constraint_name] = {
-                'table': crels['table'],
-                'fields_local': [rel.name for rel in crels['rels'].values()],
-                'fields_foreign': [rel.fk for rel in crels['rels'].values()],
-                'on_delete': Field._internal_delete[crels['on_delete']]
+                "table": crels["table"],
+                "fields_local": [rel.name for rel in crels["rels"].values()],
+                "fields_foreign": [rel.fk for rel in crels["rels"].values()],
+                "on_delete": Field._internal_delete[crels["on_delete"]],
             }
 
     def _define_virtuals_(self):
         self._all_rowattrs_ = {}
         self._all_rowmethods_ = {}
         self._super_rowmethods_ = {}
-        err = 'rowattr or rowmethod cannot have the name of an existent field!'
+        err = "rowattr or rowmethod cannot have the name of an existent field!"
         field_names = [field.name for field in self.fields]
-        for attr in ['_virtual_relations_', '_all_virtuals_']:
+        for attr in ["_virtual_relations_", "_all_virtuals_"]:
             for obj in getattr(self, attr, {}).values():
                 if obj.field_name in field_names:
                     raise RuntimeError(err)
@@ -616,47 +558,36 @@ class Model(metaclass=MetaModel):
 
     def _set_row_persistence_id(self, row, ret):
         row.id = ret.id
-        object.__setattr__(row, '_concrete', True)
+        object.__setattr__(row, "_concrete", True)
 
     def _set_row_persistence_pk(self, row, ret):
         row[self.primary_keys[0]] = ret[self.primary_keys[0]]
-        object.__setattr__(row, '_concrete', True)
+        object.__setattr__(row, "_concrete", True)
 
     def _set_row_persistence_pks(self, row, ret):
         for field_name in self.primary_keys:
             row[field_name] = ret[field_name]
-        object.__setattr__(row, '_concrete', True)
+        object.__setattr__(row, "_concrete", True)
 
     def _unset_row_persistence(self, row):
         for field_name in self._fieldset_pk:
             row[field_name] = None
-        object.__setattr__(row, '_concrete', False)
+        object.__setattr__(row, "_concrete", False)
 
     def _build_rowclass_(self):
         #: build helpers for rows
         save_excluded_fields = (
-            set(
-                field.name for field in self.fields if
-                getattr(field, "type", None) == "id"
-            ) |
-            set(self._all_rowattrs_.keys()) |
-            set(self._all_rowmethods_.keys())
+            {field.name for field in self.fields if getattr(field, "type", None) == "id"}
+            | set(self._all_rowattrs_.keys())
+            | set(self._all_rowmethods_.keys())
         )
-        self._fieldset_initable = set([
-            field.name for field in self.fields
-        ]) - save_excluded_fields
-        self._fieldset_editable = set([
-            field.name for field in self.fields
-        ]) - save_excluded_fields - self._fieldset_pk
+        self._fieldset_initable = {field.name for field in self.fields} - save_excluded_fields
+        self._fieldset_editable = {field.name for field in self.fields} - save_excluded_fields - self._fieldset_pk
         self._fieldset_all = self._fieldset_initable | self._fieldset_pk
-        self._fieldset_update = set([
-            field.name for field in self.fields
-            if getattr(field, "update", None) is not None
-        ]) & self._fieldset_editable
-        self._relations_wrapset = (
-            set(self._belongs_fks_.keys()) -
-            set(self._compound_relations_.keys())
-        )
+        self._fieldset_update = {
+            field.name for field in self.fields if getattr(field, "update", None) is not None
+        } & self._fieldset_editable
+        self._relations_wrapset = set(self._belongs_fks_.keys()) - set(self._compound_relations_.keys())
         if not self.primary_keys:
             self._set_row_persistence = self._set_row_persistence_id
         elif len(self.primary_keys) == 1:
@@ -665,22 +596,12 @@ class Model(metaclass=MetaModel):
             self._set_row_persistence = self._set_row_persistence_pks
         #: create dynamic row class
         clsname = self.__class__.__name__ + "Row"
-        attrs = {'_model': self}
+        attrs = {"_model": self}
         attrs.update({k: RowFieldMapper(k) for k in self._fieldset_all})
-        attrs.update({
-            k: RowVirtualMapper(k, v)
-            for k, v in self._all_rowattrs_.items()
-        })
+        attrs.update({k: RowVirtualMapper(k, v) for k, v in self._all_rowattrs_.items()})
         attrs.update(self._all_rowmethods_)
-        attrs.update({
-            k: RowRelationMapper(self.db, self._belongs_ref_[k])
-            for k in self._relations_wrapset
-        })
-        attrs.update({
-            k: RowCompoundRelationMapper(
-                self.db, data
-            ) for k, data in self._compound_relations_.items()
-        })
+        attrs.update({k: RowRelationMapper(self.db, self._belongs_ref_[k]) for k in self._relations_wrapset})
+        attrs.update({k: RowCompoundRelationMapper(self.db, data) for k, data in self._compound_relations_.items()})
         self._rowclass_ = type(clsname, (StructuredRow,), attrs)
         globals()[clsname] = self._rowclass_
 
@@ -714,7 +635,7 @@ class Model(metaclass=MetaModel):
 
     def __define_access(self):
         for field, value in self.fields_rw.items():
-            if field == 'id' and field not in self.table:
+            if field == "id" and field not in self.table:
                 continue
             if isinstance(value, (tuple, list)):
                 readable, writable = value
@@ -737,14 +658,12 @@ class Model(metaclass=MetaModel):
             self.table[field].represent = value
 
     def __define_computations(self):
-        err = 'computations should have the name of an existing field to compute!'
+        err = "computations should have the name of an existing field to compute!"
         field_names = [field.name for field in self.fields]
         for obj in self._all_computations_.values():
             if obj.field_name not in field_names:
                 raise RuntimeError(err)
-            self.table[obj.field_name].compute = (
-                lambda row, obj=obj, self=self: obj.compute(self, row)
-            )
+            self.table[obj.field_name].compute = lambda row, obj=obj, self=self: obj.compute(self, row)
 
     def __define_callbacks(self):
         for obj in self._all_callbacks_.values():
@@ -766,72 +685,63 @@ class Model(metaclass=MetaModel):
                     "_after_commit_update",
                     "_after_commit_delete",
                     "_after_commit_save",
-                    "_after_commit_destroy"
+                    "_after_commit_destroy",
                 ]:
-                    getattr(self.table, t).append(
-                        lambda a, obj=obj, self=self: obj.f(self, a)
-                    )
+                    getattr(self.table, t).append(lambda a, obj=obj, self=self: obj.f(self, a))
                 else:
-                    getattr(self.table, t).append(
-                        lambda a, b, obj=obj, self=self: obj.f(self, a, b)
-                    )
+                    getattr(self.table, t).append(lambda a, b, obj=obj, self=self: obj.f(self, a, b))
 
     def __define_scopes(self):
         self._scopes_ = {}
         for obj in self._all_scopes_.values():
             self._scopes_[obj.name] = obj
             if not hasattr(self.__class__, obj.name):
-                setattr(
-                    self.__class__, obj.name,
-                    classmethod(wrap_scope_on_model(obj.f))
-                )
+                setattr(self.__class__, obj.name, classmethod(wrap_scope_on_model(obj.f)))
 
     def __prepend_table_name(self, name, ns):
-        return '%s_%s__%s' % (self.tablename, ns, name)
+        return "%s_%s__%s" % (self.tablename, ns, name)
 
     def __create_index_name(self, *values):
         components = []
         for value in values:
-            components.append(value.replace('_', ''))
-        return self.__prepend_table_name("_".join(components), 'widx')
+            components.append(value.replace("_", ""))
+        return self.__prepend_table_name("_".join(components), "widx")
 
     def __create_fk_contraint_name(self, *values):
         components = []
         for value in values:
-            components.append(value.replace('_', ''))
-        return self.__prepend_table_name("fk__" + "_".join(components), 'ecnt')
+            components.append(value.replace("_", ""))
+        return self.__prepend_table_name("fk__" + "_".join(components), "ecnt")
 
     def __parse_index_dict(self, value):
         rv = {}
-        fields = value.get('fields') or []
+        fields = value.get("fields") or []
         if not isinstance(fields, (list, tuple)):
             fields = [fields]
-        rv['fields'] = fields
+        rv["fields"] = fields
         where_query = None
-        where_cond = value.get('where')
+        where_cond = value.get("where")
         if callable(where_cond):
             where_query = where_cond(self.__class__)
         if where_query:
-            rv['where'] = where_query
+            rv["where"] = where_query
         expressions = []
-        expressions_cond = value.get('expressions')
+        expressions_cond = value.get("expressions")
         if callable(expressions_cond):
             expressions = expressions_cond(self.__class__)
         if not isinstance(expressions, (tuple, list)):
             expressions = [expressions]
-        rv['expressions'] = expressions
-        rv['unique'] = value.get('unique', False)
+        rv["expressions"] = expressions
+        rv["unique"] = value.get("unique", False)
         return rv
 
     def __define_indexes(self):
         self._indexes_ = {}
         #: auto-define indexes based on fields
         for field in self.fields:
-            if getattr(field, 'unique', False):
-                idx_name = self.__prepend_table_name(f'{field.name}_unique', 'widx')
-                idx_dict = self.__parse_index_dict(
-                    {'fields': [field.name], 'unique': True}
-                )
+            if getattr(field, "unique", False):
+                idx_name = self.__prepend_table_name(f"{field.name}_unique", "widx")
+                idx_dict = self.__parse_index_dict({"fields": [field.name], "unique": True})
                 self._indexes_[idx_name] = idx_dict
         #: parse user-defined fields
         for key, value in self.indexes.items():
@@ -841,14 +751,14 @@ class Model(metaclass=MetaModel):
                 if not isinstance(key, tuple):
                     key = [key]
                 if any(field not in self.table for field in key):
-                    raise SyntaxError(f'Invalid field specified in indexes: {key}')
+                    raise SyntaxError(f"Invalid field specified in indexes: {key}")
                 idx_name = self.__create_index_name(*key)
-                idx_dict = {'fields': key, 'expressions': [], 'unique': False}
+                idx_dict = {"fields": key, "expressions": [], "unique": False}
             elif isinstance(value, dict):
-                idx_name = self.__prepend_table_name(key, 'widx')
+                idx_name = self.__prepend_table_name(key, "widx")
                 idx_dict = self.__parse_index_dict(value)
             else:
-                raise SyntaxError('Values in indexes dict should be booleans or dicts')
+                raise SyntaxError("Values in indexes dict should be booleans or dicts")
             self._indexes_[idx_name] = idx_dict
 
     def _row_record_query_id(self, row):
@@ -858,35 +768,30 @@ class Model(metaclass=MetaModel):
         return self.table[self.primary_keys[0]] == row[self.primary_keys[0]]
 
     def _row_record_query_pks(self, row):
-        return reduce(
-            operator.and_, [self.table[pk] == row[pk] for pk in self.primary_keys]
-        )
+        return reduce(operator.and_, [self.table[pk] == row[pk] for pk in self.primary_keys])
 
     def __define_query_helpers(self):
         if not self.primary_keys:
-            self._query_id = self.table.id != None # noqa
+            self._query_id = self.table.id != None  # noqa
             self._query_row = self._row_record_query_id
             self._order_by_id_asc = self.table.id
             self._order_by_id_desc = ~self.table.id
         elif len(self.primary_keys) == 1:
-            self._query_id = self.table[self.primary_keys[0]] != None # noqa
+            self._query_id = self.table[self.primary_keys[0]] != None  # noqa
             self._query_row = self._row_record_query_pk
             self._order_by_id_asc = self.table[self.primary_keys[0]]
             self._order_by_id_desc = ~self.table[self.primary_keys[0]]
         else:
             self._query_id = reduce(
-                operator.and_, [
-                    self.table[key] != None # noqa
+                operator.and_,
+                [
+                    self.table[key] != None  # noqa
                     for key in self.primary_keys
-                ]
+                ],
             )
             self._query_row = self._row_record_query_pks
-            self._order_by_id_asc = reduce(
-                operator.or_, [self.table[key] for key in self.primary_keys]
-            )
-            self._order_by_id_desc = reduce(
-                operator.or_, [~self.table[key] for key in self.primary_keys]
-            )
+            self._order_by_id_asc = reduce(operator.or_, [self.table[key] for key in self.primary_keys])
+            self._order_by_id_desc = reduce(operator.or_, [~self.table[key] for key in self.primary_keys])
 
     def __define_form_utils(self):
         #: labels
@@ -924,27 +829,26 @@ class Model(metaclass=MetaModel):
             if callable(val):
                 val = val()
             rowattrs[field] = val
-        for field in (inst.primary_keys or ["id"]):
+        for field in inst.primary_keys or ["id"]:
             if inst.table[field].type == "id":
                 rowattrs[field] = None
         for field in set(inst._compound_relations_.keys()) & attrset:
             reldata = inst._compound_relations_[field]
             for local_field, foreign_field in reldata.coupled_fields:
                 rowattrs[local_field] = attributes[field][foreign_field]
-        rv = inst._rowclass_(
-            rowattrs, __concrete=False,
-            **{k: attributes[k] for k in attrset - set(rowattrs)}
-        )
-        rv._fields.update({
-            field: attributes[field] if not attributes[field] else (
-                typed_row_reference_from_record(
-                    attributes[field], inst.db[inst._belongs_fks_[field].model]._model_
-                ) if isinstance(attributes[field], StructuredRow) else
-                typed_row_reference(
-                    attributes[field], inst.db[inst._belongs_fks_[field].model]
+        rv = inst._rowclass_(rowattrs, __concrete=False, **{k: attributes[k] for k in attrset - set(rowattrs)})
+        rv._fields.update(
+            {
+                field: attributes[field]
+                if not attributes[field]
+                else (
+                    typed_row_reference_from_record(attributes[field], inst.db[inst._belongs_fks_[field].model]._model_)
+                    if isinstance(attributes[field], StructuredRow)
+                    else typed_row_reference(attributes[field], inst.db[inst._belongs_fks_[field].model])
                 )
-            ) for field in inst._relations_wrapset & attrset
-        })
+                for field in inst._relations_wrapset & attrset
+            }
+        )
         return rv
 
     @classmethod
@@ -965,7 +869,7 @@ class Model(metaclass=MetaModel):
         inst, errors = cls._instance_(), sdict()
         for field_name in inst._fieldset_all:
             field = inst.table[field_name]
-            default = getattr(field, 'default')
+            default = getattr(field, "default")
             if callable(default):
                 default = default()
             value = row.get(field_name, default)
@@ -988,17 +892,11 @@ class Model(metaclass=MetaModel):
 
     @classmethod
     def first(cls):
-        return cls.all().select(
-            orderby=cls._instance_()._order_by_id_asc,
-            limitby=(0, 1)
-        ).first()
+        return cls.all().select(orderby=cls._instance_()._order_by_id_asc, limitby=(0, 1)).first()
 
     @classmethod
     def last(cls):
-        return cls.all().select(
-            orderby=cls._instance_()._order_by_id_desc,
-            limitby=(0, 1)
-        ).first()
+        return cls.all().select(orderby=cls._instance_()._order_by_id_desc, limitby=(0, 1)).first()
 
     @classmethod
     def get(cls, *args, **kwargs):
@@ -1010,40 +908,32 @@ class Model(metaclass=MetaModel):
                 elif isinstance(args[0], dict) and not kwargs:
                     return cls.table(**args[0])
             if len(args) != len(inst._fieldset_pk):
-                raise SyntaxError(
-                    f"{cls.__name__}.get requires the same number of arguments "
-                    "as its primary keys"
-                )
+                raise SyntaxError(f"{cls.__name__}.get requires the same number of arguments " "as its primary keys")
             pks = inst.primary_keys or ["id"]
-            return cls.table(
-                **{pks[idx]: val for idx, val in enumerate(args)}
-            )
+            return cls.table(**{pks[idx]: val for idx, val in enumerate(args)})
         return cls.table(**kwargs)
 
-    @rowmethod('update_record')
+    @rowmethod("update_record")
     def _update_record(self, row, skip_callbacks=False, **fields):
         newfields = fields or dict(row)
         for field_name in set(newfields.keys()) - self._fieldset_editable:
             del newfields[field_name]
-        res = self.db(
-            self._query_row(row), ignore_common_filters=True
-        ).update(skip_callbacks=skip_callbacks, **newfields)
+        res = self.db(self._query_row(row), ignore_common_filters=True).update(
+            skip_callbacks=skip_callbacks, **newfields
+        )
         if res:
             row.update(self.get(**{key: row[key] for key in self._fieldset_pk}))
         return row
 
-    @rowmethod('delete_record')
+    @rowmethod("delete_record")
     def _delete_record(self, row, skip_callbacks=False):
         return self.db(self._query_row(row)).delete(skip_callbacks=skip_callbacks)
 
-    @rowmethod('refresh')
+    @rowmethod("refresh")
     def _row_refresh(self, row) -> bool:
         if not row._concrete:
             return False
-        last = self.db(self._query_row(row)).select(
-            limitby=(0, 1),
-            orderby_on_limitby=False
-        ).first()
+        last = self.db(self._query_row(row)).select(limitby=(0, 1), orderby_on_limitby=False).first()
         if not last:
             return False
         row._fields.update(last._fields)
@@ -1051,19 +941,12 @@ class Model(metaclass=MetaModel):
         row._changes.clear()
         return True
 
-    @rowmethod('save')
-    def _row_save(
-        self,
-        row,
-        raise_on_error: bool = False,
-        skip_callbacks: bool = False
-    ) -> bool:
+    @rowmethod("save")
+    def _row_save(self, row, raise_on_error: bool = False, skip_callbacks: bool = False) -> bool:
         if row._concrete:
             if set(row._changes.keys()) & self._fieldset_pk:
                 if raise_on_error:
-                    raise SaveException(
-                        'Cannot save a record with altered primary key(s)'
-                    )
+                    raise SaveException("Cannot save a record with altered primary key(s)")
                 return False
             for field_name in self._fieldset_update:
                 val = self.table[field_name].update
@@ -1076,9 +959,9 @@ class Model(metaclass=MetaModel):
                 raise ValidationError
             return False
         if row._concrete:
-            res = self.db(
-                self._query_row(row), ignore_common_filters=True
-            )._update_from_save(self, row, skip_callbacks=skip_callbacks)
+            res = self.db(self._query_row(row), ignore_common_filters=True)._update_from_save(
+                self, row, skip_callbacks=skip_callbacks
+            )
             if not res:
                 if raise_on_error:
                     raise UpdateFailureOnSave
@@ -1089,26 +972,18 @@ class Model(metaclass=MetaModel):
                 if raise_on_error:
                     raise InsertFailureOnSave
                 return False
-        extra_changes = {
-            key: row._changes[key]
-            for key in set(row._changes.keys()) & set(row.__dict__.keys())
-        }
+        extra_changes = {key: row._changes[key] for key in set(row._changes.keys()) & set(row.__dict__.keys())}
         row._changes.clear()
         row._changes.update(extra_changes)
         return True
 
-    @rowmethod('destroy')
-    def _row_destroy(
-        self,
-        row,
-        raise_on_error: bool = False,
-        skip_callbacks: bool = False
-    ) -> bool:
+    @rowmethod("destroy")
+    def _row_destroy(self, row, raise_on_error: bool = False, skip_callbacks: bool = False) -> bool:
         if not row._concrete:
             return False
-        res = self.db(
-            self._query_row(row), ignore_common_filters=True
-        )._delete_from_destroy(self, row, skip_callbacks=skip_callbacks)
+        res = self.db(self._query_row(row), ignore_common_filters=True)._delete_from_destroy(
+            self, row, skip_callbacks=skip_callbacks
+        )
         if not res:
             if raise_on_error:
                 raise DestroyException
@@ -1192,9 +1067,9 @@ class RowCompoundRelationMapper:
         pks = {fk: obj[lk] for lk, fk in self.fields}
         key = (self.field, *pks.values())
         if key not in obj._compound_rels:
-            obj._compound_rels[key] = RowReferenceMulti(pks, self.table) if all(
-                v is not None for v in pks.values()
-            ) else None
+            obj._compound_rels[key] = (
+                RowReferenceMulti(pks, self.table) if all(v is not None for v in pks.values()) else None
+            )
         return obj._compound_rels[key]
 
     def __delete__(self, obj):

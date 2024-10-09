@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    tests.orm_transactions
-    ----------------------
+tests.orm_transactions
+----------------------
 
-    Test pyDAL transactions implementation over Emmett.
+Test pyDAL transactions implementation over Emmett.
 """
 
 import pytest
@@ -16,17 +16,15 @@ class Register(Model):
     value = Field.int()
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def db():
     app = App(__name__)
-    db = Database(
-        app, config=sdict(
-            uri='sqlite:memory', auto_migrate=True, auto_connect=True))
+    db = Database(app, config=sdict(uri="sqlite:memory", auto_migrate=True, auto_connect=True))
     db.define_models(Register)
     return db
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def cleanup(request, db):
     def teardown():
         Register.all().delete()
@@ -41,7 +39,7 @@ def _save(*vals):
 
 
 def _values_in_register(*vals):
-    db_vals = Register.all().select(orderby=Register.value).column('value')
+    db_vals = Register.all().select(orderby=Register.value).column("value")
     return db_vals == list(vals)
 
 

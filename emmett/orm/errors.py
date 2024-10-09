@@ -1,39 +1,33 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.errors
-    -----------------
+emmett.orm.errors
+-----------------
 
-    Provides some error wrappers.
+Provides some error wrappers.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 
 class MaxConnectionsExceeded(RuntimeError):
     def __init__(self):
-        super().__init__('Exceeded maximum connections')
+        super().__init__("Exceeded maximum connections")
 
 
-class MissingFieldsForCompute(RuntimeError):
-    ...
+class MissingFieldsForCompute(RuntimeError): ...
 
 
-class SaveException(RuntimeError):
-    ...
+class SaveException(RuntimeError): ...
 
 
-class InsertFailureOnSave(SaveException):
-    ...
+class InsertFailureOnSave(SaveException): ...
 
 
-class UpdateFailureOnSave(SaveException):
-    ...
+class UpdateFailureOnSave(SaveException): ...
 
 
-class DestroyException(RuntimeError):
-    ...
+class DestroyException(RuntimeError): ...
 
 
-class ValidationError(RuntimeError):
-    ...
+class ValidationError(RuntimeError): ...

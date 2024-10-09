@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.validators.process
-    -------------------------
+emmett.validators.process
+-------------------------
 
-    Validators that transform values.
+Validators that transform values.
 
-    Ported from the original validators of web2py (http://www.web2py.com)
+Ported from the original validators of web2py (http://www.web2py.com)
 
-    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
-    :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
+:copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+:license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
 import re
@@ -17,7 +17,7 @@ import unicodedata
 # TODO: check unicode conversions
 from .._shortcuts import to_unicode
 from .basic import Validator
-from .helpers import translate, LazyCrypt
+from .helpers import LazyCrypt, translate
 
 
 class Cleanup(Validator):
@@ -28,7 +28,7 @@ class Cleanup(Validator):
         self.regex = self.rule if regex is None else re.compile(regex)
 
     def __call__(self, value):
-        v = self.regex.sub('', (to_unicode(value) or '').strip())
+        v = self.regex.sub("", (to_unicode(value) or "").strip())
         return v, None
 
 
@@ -91,7 +91,7 @@ class Urlify(Validator):
         # remove leading and trailing hyphens
         s = s.strip(r"-")
         # enforce maximum length
-        return s[:self.maxlen]
+        return s[: self.maxlen]
 
 
 class Crypt(Validator):
@@ -126,16 +126,14 @@ class Crypt(Validator):
     an existing salted password
     """
 
-    def __init__(
-        self, key=None, algorithm='pbkdf2(1000,20,sha512)', salt=True, message=None
-    ):
+    def __init__(self, key=None, algorithm="pbkdf2(1000,20,sha512)", salt=True, message=None):
         super().__init__(message=message)
         self.key = key
         self.digest_alg = algorithm
         self.salt = salt
 
     def __call__(self, value):
-        if getattr(value, '_emt_field_hashed_contents_', False):
+        if getattr(value, "_emt_field_hashed_contents_", False):
             return value, None
         crypt = LazyCrypt(self, value)
         if isinstance(value, LazyCrypt) and value == crypt:

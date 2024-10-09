@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.objects
-    ------------------
+emmett.orm.objects
+------------------
 
-    Provides pyDAL objects implementation for Emmett.
+Provides pyDAL objects implementation for Emmett.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 import copy
@@ -14,23 +14,22 @@ import datetime
 import decimal
 import operator
 import types
-
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from functools import reduce
 from typing import Any, Dict, Optional
 
+from emmett_core.utils import cachedprop
 from pydal.objects import (
-    Table as _Table,
+    Expression,
     Field as _Field,
-    Set as _Set,
-    Row as _Row,
-    Rows as _Rows,
     IterRows as _IterRows,
     Query,
-    Expression
+    Row as _Row,
+    Rows as _Rows,
+    Set as _Set,
+    Table as _Table,
 )
-from emmett_core.utils import cachedprop
 
 from ..ctx import current
 from ..datastructures import sdict
@@ -38,23 +37,21 @@ from ..html import tag
 from ..serializers import xml_encode
 from ..validators import ValidateFromDict
 from .helpers import (
-    RelationBuilder,
     GeoFieldWrapper,
+    RelationBuilder,
     RowReferenceMixin,
+    typed_row_reference_from_record,
     wrap_scope_on_set,
-    typed_row_reference_from_record
 )
+
 
 type_int = int
 
 
 class Table(_Table):
     def __init__(self, db, tablename, *fields, **kwargs):
-        _primary_keys, _notnulls = list(kwargs.get('primarykey', [])), {}
-        _notnulls = {
-            field.name: field.notnull
-            for field in fields if hasattr(field, 'notnull')
-        }
+        _primary_keys, _notnulls = list(kwargs.get("primarykey", [])), {}
+        _notnulls = {field.name: field.notnull for field in fields if hasattr(field, "notnull")}
         super(Table, self).__init__(db, tablename, *fields, **kwargs)
         self._before_save = []
         self._after_save = []
@@ -75,57 +72,32 @@ class Table(_Table):
         self._unique_fields_validation_ = {}
         self._primary_keys = _primary_keys
         #: avoid pyDAL mess in ops and migrations
-        if len(self._primary_keys) == 1 and getattr(self, '_primarykey', None):
+        if len(self._primary_keys) == 1 and getattr(self, "_primarykey", None):
             del self._primarykey
         for key in self._primary_keys:
             self[key].notnull = _notnulls[key]
-        if not hasattr(self, '_id'):
+        if not hasattr(self, "_id"):
             self._id = None
 
     @cachedprop
     def _has_commit_insert_callbacks(self):
-        return any([
-            self._before_commit,
-            self._after_commit,
-            self._before_commit_insert,
-            self._after_commit_insert
-        ])
+        return any([self._before_commit, self._after_commit, self._before_commit_insert, self._after_commit_insert])
 
     @cachedprop
     def _has_commit_update_callbacks(self):
-        return any([
-            self._before_commit,
-            self._after_commit,
-            self._before_commit_update,
-            self._after_commit_update
-        ])
+        return any([self._before_commit, self._after_commit, self._before_commit_update, self._after_commit_update])
 
     @cachedprop
     def _has_commit_delete_callbacks(self):
-        return any([
-            self._before_commit,
-            self._after_commit,
-            self._before_commit_delete,
-            self._after_commit_delete
-        ])
+        return any([self._before_commit, self._after_commit, self._before_commit_delete, self._after_commit_delete])
 
     @cachedprop
     def _has_commit_save_callbacks(self):
-        return any([
-            self._before_commit,
-            self._after_commit,
-            self._before_commit_save,
-            self._after_commit_save
-        ])
+        return any([self._before_commit, self._after_commit, self._before_commit_save, self._after_commit_save])
 
     @cachedprop
     def _has_commit_destroy_callbacks(self):
-        return any([
-            self._before_commit,
-            self._after_commit,
-            self._before_commit_destroy,
-            self._after_commit_destroy
-        ])
+        return any([self._before_commit, self._after_commit, self._before_commit_destroy, self._after_commit_destroy])
 
     def _create_references(self):
         self._referenced_by = []
@@ -145,14 +117,7 @@ class Table(_Table):
             if self._has_commit_insert_callbacks:
                 txn = self._db._adapter.top_transaction()
                 if txn:
-                    txn._add_op(TransactionOp(
-                        TransactionOps.insert,
-                        self,
-                        TransactionOpContext(
-                            values=row,
-                            ret=ret
-                        )
-                    ))
+                    txn._add_op(TransactionOp(TransactionOps.insert, self, TransactionOpContext(values=row, ret=ret)))
             if ret:
                 for f in self._after_insert:
                     f(row, ret)
@@ -177,16 +142,13 @@ class Table(_Table):
             if self._has_commit_save_callbacks:
                 txn = self._db._adapter.top_transaction()
                 if txn:
-                    txn._add_op(TransactionOp(
-                        TransactionOps.save,
-                        self,
-                        TransactionOpContext(
-                            values=fields,
-                            ret=ret,
-                            row=row.clone_changed(),
-                            changes=row.changes
+                    txn._add_op(
+                        TransactionOp(
+                            TransactionOps.save,
+                            self,
+                            TransactionOpContext(values=fields, ret=ret, row=row.clone_changed(), changes=row.changes),
                         )
-                    ))
+                    )
             if row._concrete:
                 for f in self._after_save:
                     f(row)
@@ -194,58 +156,48 @@ class Table(_Table):
 
 
 class Field(_Field):
-    _internal_types = {
-        'integer': 'int',
-        'double': 'float',
-        'boolean': 'bool',
-        'list:integer': 'list:int'
-    }
+    _internal_types = {"integer": "int", "double": "float", "boolean": "bool", "list:integer": "list:int"}
     _pydal_types = {
-        'int': 'integer',
-        'bool': 'boolean',
-        'list:int': 'list:integer',
+        "int": "integer",
+        "bool": "boolean",
+        "list:int": "list:integer",
     }
-    _internal_delete = {
-        'cascade': 'CASCADE', 'nullify': 'SET NULL', 'nothing': 'NO ACTION'
-    }
+    _internal_delete = {"cascade": "CASCADE", "nullify": "SET NULL", "nothing": "NO ACTION"}
     _inst_count_ = 0
     _obj_created_ = False
 
-    def __init__(self, type='string', *args, **kwargs):
+    def __init__(self, type="string", *args, **kwargs):
         self.modelname = None
         #: convert type
         self._type = self._internal_types.get(type, type)
         #: convert 'rw' -> 'readable', 'writeable'
-        if 'rw' in kwargs:
-            _rw = kwargs.pop('rw')
+        if "rw" in kwargs:
+            _rw = kwargs.pop("rw")
             if isinstance(_rw, (tuple, list)):
                 read, write = _rw
             else:
                 read = write = _rw
-            kwargs['readable'] = read
-            kwargs['writable'] = write
+            kwargs["readable"] = read
+            kwargs["writable"] = write
         #: convert 'info' -> 'comment'
-        _info = kwargs.pop('info', None)
+        _info = kwargs.pop("info", None)
         if _info:
-            kwargs['comment'] = _info
+            kwargs["comment"] = _info
         #: convert ondelete parameter
-        _ondelete = kwargs.get('ondelete')
+        _ondelete = kwargs.get("ondelete")
         if _ondelete:
             if _ondelete not in list(self._internal_delete):
-                raise SyntaxError(
-                    'Field ondelete should be set on %s, %s or %s' %
-                    list(self._internal_delete)
-                )
-            kwargs['ondelete'] = self._internal_delete[_ondelete]
+                raise SyntaxError("Field ondelete should be set on %s, %s or %s" % list(self._internal_delete))
+            kwargs["ondelete"] = self._internal_delete[_ondelete]
         #: process 'refers_to' fields
-        self._isrefers = kwargs.pop('_isrefers', None)
+        self._isrefers = kwargs.pop("_isrefers", None)
         #: get auto validation preferences
-        self._auto_validation = kwargs.pop('auto_validation', True)
+        self._auto_validation = kwargs.pop("auto_validation", True)
         #: intercept validation (will be processed by `_make_field`)
         self._requires = {}
         self._custom_requires = []
-        if 'validation' in kwargs:
-            _validation = kwargs.pop('validation')
+        if "validation" in kwargs:
+            _validation = kwargs.pop("validation")
             if isinstance(_validation, dict):
                 self._requires = _validation
             else:
@@ -255,10 +207,10 @@ class Field(_Field):
         self._validation = {}
         self._vparser = ValidateFromDict()
         #: ensure 'length' is an integer
-        if 'length' in kwargs:
-            kwargs['length'] = int(kwargs['length'])
+        if "length" in kwargs:
+            kwargs["length"] = int(kwargs["length"])
         #: store args and kwargs for `_make_field`
-        self._ormkw = kwargs.pop('_kw', {})
+        self._ormkw = kwargs.pop("_kw", {})
         self._args = args
         self._kwargs = kwargs
         #: increase creation counter (used to keep order of fields)
@@ -267,42 +219,36 @@ class Field(_Field):
 
     def _default_validation(self):
         rv = {}
-        auto_types = [
-            'int', 'float', 'date', 'time', 'datetime', 'json'
-        ]
+        auto_types = ["int", "float", "date", "time", "datetime", "json"]
         if self._type in auto_types:
-            rv['is'] = self._type
-        elif self._type.startswith('decimal'):
-            rv['is'] = 'decimal'
-        elif self._type == 'jsonb':
-            rv['is'] = 'json'
-        if self._type == 'bigint':
-            rv['is'] = 'int'
-        if self._type == 'bool':
-            rv['in'] = (False, True)
-        if self._type in ['string', 'text', 'password']:
-            rv['len'] = {'lte': self.length}
-        if self._type == 'password':
-            rv['len']['gte'] = 6
-            rv['crypt'] = True
-        if self._type == 'list:int':
-            rv['is'] = 'list:int'
-        if (
-            self.notnull or self._type.startswith('reference') or
-            self._type.startswith('list:reference')
-        ):
-            rv['presence'] = True
+            rv["is"] = self._type
+        elif self._type.startswith("decimal"):
+            rv["is"] = "decimal"
+        elif self._type == "jsonb":
+            rv["is"] = "json"
+        if self._type == "bigint":
+            rv["is"] = "int"
+        if self._type == "bool":
+            rv["in"] = (False, True)
+        if self._type in ["string", "text", "password"]:
+            rv["len"] = {"lte": self.length}
+        if self._type == "password":
+            rv["len"]["gte"] = 6
+            rv["crypt"] = True
+        if self._type == "list:int":
+            rv["is"] = "list:int"
+        if self.notnull or self._type.startswith("reference") or self._type.startswith("list:reference"):
+            rv["presence"] = True
         if not self.notnull and self._isrefers is True:
-            rv['allow'] = 'empty'
+            rv["allow"] = "empty"
         if self.unique:
-            rv['unique'] = True
+            rv["unique"] = True
         return rv
 
     def _parse_validation(self):
         for key in list(self._requires):
             self._validation[key] = self._requires[key]
-        self.requires = self._vparser(self, self._validation) + \
-            self._custom_requires
+        self.requires = self._vparser(self, self._validation) + self._custom_requires
 
     #: `_make_field` will be called by `Model` class or `Form` class
     #  it will make internal Field class compatible with the pyDAL's one
@@ -339,113 +285,102 @@ class Field(_Field):
         return object.__str__(self)
 
     def __repr__(self):
-        if self.modelname and hasattr(self, 'name'):
-            return "<%s.%s (%s) field>" % (self.modelname, self.name,
-                                           self._type)
+        if self.modelname and hasattr(self, "name"):
+            return "<%s.%s (%s) field>" % (self.modelname, self.name, self._type)
         return super(Field, self).__repr__()
 
     @classmethod
     def string(cls, *args, **kwargs):
-        return cls('string', *args, **kwargs)
+        return cls("string", *args, **kwargs)
 
     @classmethod
     def int(cls, *args, **kwargs):
-        return cls('int', *args, **kwargs)
+        return cls("int", *args, **kwargs)
 
     @classmethod
     def bigint(cls, *args, **kwargs):
-        return cls('bigint', *args, **kwargs)
+        return cls("bigint", *args, **kwargs)
 
     @classmethod
     def float(cls, *args, **kwargs):
-        return cls('float', *args, **kwargs)
+        return cls("float", *args, **kwargs)
 
     @classmethod
     def text(cls, *args, **kwargs):
-        return cls('text', *args, **kwargs)
+        return cls("text", *args, **kwargs)
 
     @classmethod
     def bool(cls, *args, **kwargs):
-        return cls('bool', *args, **kwargs)
+        return cls("bool", *args, **kwargs)
 
     @classmethod
     def blob(cls, *args, **kwargs):
-        return cls('blob', *args, **kwargs)
+        return cls("blob", *args, **kwargs)
 
     @classmethod
     def date(cls, *args, **kwargs):
-        return cls('date', *args, **kwargs)
+        return cls("date", *args, **kwargs)
 
     @classmethod
     def time(cls, *args, **kwargs):
-        return cls('time', *args, **kwargs)
+        return cls("time", *args, **kwargs)
 
     @classmethod
     def datetime(cls, *args, **kwargs):
-        return cls('datetime', *args, **kwargs)
+        return cls("datetime", *args, **kwargs)
 
     @classmethod
     def decimal(cls, precision, scale, *args, **kwargs):
-        return cls('decimal({},{})'.format(precision, scale), *args, **kwargs)
+        return cls("decimal({},{})".format(precision, scale), *args, **kwargs)
 
     @classmethod
     def json(cls, *args, **kwargs):
-        return cls('json', *args, **kwargs)
+        return cls("json", *args, **kwargs)
 
     @classmethod
     def jsonb(cls, *args, **kwargs):
-        return cls('jsonb', *args, **kwargs)
+        return cls("jsonb", *args, **kwargs)
 
     @classmethod
     def password(cls, *args, **kwargs):
-        return cls('password', *args, **kwargs)
+        return cls("password", *args, **kwargs)
 
     @classmethod
     def upload(cls, *args, **kwargs):
-        return cls('upload', *args, **kwargs)
+        return cls("upload", *args, **kwargs)
 
     @classmethod
     def int_list(cls, *args, **kwargs):
-        return cls('list:int', *args, **kwargs)
+        return cls("list:int", *args, **kwargs)
 
     @classmethod
     def string_list(cls, *args, **kwargs):
-        return cls('list:string', *args, **kwargs)
+        return cls("list:string", *args, **kwargs)
 
     @classmethod
     def geography(
         cls,
-        geometry_type: str = 'GEOMETRY',
+        geometry_type: str = "GEOMETRY",
         srid: Optional[type_int] = None,
         dimension: Optional[type_int] = None,
-        **kwargs
+        **kwargs,
     ):
-        kwargs['_kw'] = {
-            "geometry_type": geometry_type,
-            "srid": srid,
-            "dimension": dimension
-        }
+        kwargs["_kw"] = {"geometry_type": geometry_type, "srid": srid, "dimension": dimension}
         return cls("geography", **kwargs)
 
     @classmethod
     def geometry(
         cls,
-        geometry_type: str = 'GEOMETRY',
+        geometry_type: str = "GEOMETRY",
         srid: Optional[type_int] = None,
         dimension: Optional[type_int] = None,
-        **kwargs
+        **kwargs,
     ):
-        kwargs['_kw'] = {
-            "geometry_type": geometry_type,
-            "srid": srid,
-            "dimension": dimension
-        }
+        kwargs["_kw"] = {"geometry_type": geometry_type, "srid": srid, "dimension": dimension}
         return cls("geometry", **kwargs)
 
     def cast(self, value, **kwargs):
-        return Expression(
-            self.db, self._dialect.cast, self,
-            self._dialect.types[value] % kwargs, value)
+        return Expression(self.db, self._dialect.cast, self, self._dialect.types[value] % kwargs, value)
 
 
 class Set(_Set):
@@ -465,9 +400,10 @@ class Set(_Set):
 
     def _clone(self, ignore_common_filters=None, model=None, **changes):
         return self.__class__(
-            self.db, changes.get('query', self.query),
+            self.db,
+            changes.get("query", self.query),
             ignore_common_filters=ignore_common_filters,
-            model=model or self._model_
+            model=model or self._model_,
         )
 
     def where(self, query, ignore_common_filters=None, model=None):
@@ -478,12 +414,11 @@ class Set(_Set):
         elif isinstance(query, str):
             query = Expression(self.db, query)
         elif isinstance(query, Field):
-            query = query != None
+            query = query != None  # noqa: E711
         elif isinstance(query, types.LambdaType):
             model = model or self._model_
             if not model:
-                raise ValueError(
-                    "Too many models involved in the Set to use a lambda")
+                raise ValueError("Too many models involved in the Set to use a lambda")
             query = query(model)
         q = self.query & query if self.query else query
         return self._clone(ignore_common_filters, model, query=q)
@@ -498,27 +433,21 @@ class Set(_Set):
         return ((offset - 1) * limit, offset * limit)
 
     def _join_set_builder(self, obj, jdata, auto_select_tables):
-        return JoinedSet._from_set(
-            obj, jdata=jdata, auto_select_tables=auto_select_tables
-        )
+        return JoinedSet._from_set(obj, jdata=jdata, auto_select_tables=auto_select_tables)
 
     def _left_join_set_builder(self, jdata):
-        return JoinedSet._from_set(
-            self, ljdata=jdata, auto_select_tables=[self._model_.table]
-        )
+        return JoinedSet._from_set(self, ljdata=jdata, auto_select_tables=[self._model_.table])
 
     def _run_select_(self, *fields, **options):
         tablemap = self.db._adapter.tables(
             self.query,
-            options.get('join', None),
-            options.get('left', None),
-            options.get('orderby', None),
-            options.get('groupby', None)
+            options.get("join", None),
+            options.get("left", None),
+            options.get("orderby", None),
+            options.get("groupby", None),
         )
-        fields, concrete_tables = self.db._adapter._expand_all_with_concrete_tables(
-            fields, tablemap
-        )
-        options['_concrete_tables'] = concrete_tables
+        fields, concrete_tables = self.db._adapter._expand_all_with_concrete_tables(fields, tablemap)
+        options["_concrete_tables"] = concrete_tables
         return self.db._adapter.select(self.query, fields, options)
 
     def _get_table_from_query(self) -> Table:
@@ -528,32 +457,27 @@ class Set(_Set):
 
     def select(self, *fields, **options):
         obj = self
-        pagination, including = (
-            options.pop('paginate', None),
-            options.pop('including', None)
-        )
+        pagination, including = (options.pop("paginate", None), options.pop("including", None))
         if pagination:
-            options['limitby'] = self._parse_paginate(pagination)
+            options["limitby"] = self._parse_paginate(pagination)
         if including and self._model_ is not None:
-            options['left'], jdata = self._parse_left_rjoins(including)
+            options["left"], jdata = self._parse_left_rjoins(including)
             obj = self._left_join_set_builder(jdata)
         return obj._run_select_(*fields, **options)
 
     def iterselect(self, *fields, **options):
-        pagination = options.pop('paginate', None)
+        pagination = options.pop("paginate", None)
         if pagination:
-            options['limitby'] = self._parse_paginate(pagination)
+            options["limitby"] = self._parse_paginate(pagination)
         tablemap = self.db._adapter.tables(
             self.query,
-            options.get('join', None),
-            options.get('left', None),
-            options.get('orderby', None),
-            options.get('groupby', None)
+            options.get("join", None),
+            options.get("left", None),
+            options.get("orderby", None),
+            options.get("groupby", None),
         )
-        fields, concrete_tables = self.db._adapter._expand_all_with_concrete_tables(
-            fields, tablemap
-        )
-        options['_concrete_tables'] = concrete_tables
+        fields, concrete_tables = self.db._adapter._expand_all_with_concrete_tables(fields, tablemap)
+        options["_concrete_tables"] = concrete_tables
         return self.db._adapter.iterselect(self.query, fields, options)
 
     def update(self, skip_callbacks=False, **update_fields):
@@ -568,15 +492,11 @@ class Set(_Set):
             if table._has_commit_update_callbacks:
                 txn = self._db._adapter.top_transaction()
                 if txn:
-                    txn._add_op(TransactionOp(
-                        TransactionOps.update,
-                        table,
-                        TransactionOpContext(
-                            values=row,
-                            dbset=self,
-                            ret=ret
+                    txn._add_op(
+                        TransactionOp(
+                            TransactionOps.update, table, TransactionOpContext(values=row, dbset=self, ret=ret)
                         )
-                    ))
+                    )
             ret and [f(self, row) for f in table._after_update]
         return ret
 
@@ -589,14 +509,7 @@ class Set(_Set):
             if table._has_commit_delete_callbacks:
                 txn = self._db._adapter.top_transaction()
                 if txn:
-                    txn._add_op(TransactionOp(
-                        TransactionOps.delete,
-                        table,
-                        TransactionOpContext(
-                            dbset=self,
-                            ret=ret
-                        )
-                    ))
+                    txn._add_op(TransactionOp(TransactionOps.delete, table, TransactionOpContext(dbset=self, ret=ret)))
             ret and [f(self) for f in table._after_delete]
         return ret
 
@@ -604,19 +517,15 @@ class Set(_Set):
         table = self._get_table_from_query()
         current._dbvalidation_record_id_ = None
         if table._unique_fields_validation_ and self.count() == 1:
-            if any(
-                table._unique_fields_validation_.get(fieldname)
-                for fieldname in update_fields.keys()
-            ):
-                current._dbvalidation_record_id_ = \
-                    self.select(table.id).first().id
+            if any(table._unique_fields_validation_.get(fieldname) for fieldname in update_fields.keys()):
+                current._dbvalidation_record_id_ = self.select(table.id).first().id
         response = Row()
         response.errors = Row()
         new_fields = copy.copy(update_fields)
         for key, value in update_fields.items():
             value, error = table[key].validate(value)
             if error:
-                response.errors[key] = '%s' % error
+                response.errors[key] = "%s" % error
             else:
                 new_fields[key] = value
         del current._dbvalidation_record_id_
@@ -629,9 +538,7 @@ class Set(_Set):
             if not skip_callbacks and any(f(self, row) for f in table._before_update):
                 ret = 0
             else:
-                ret = self.db._adapter.update(
-                    table, self.query, row.op_values()
-                )
+                ret = self.db._adapter.update(table, self.query, row.op_values())
                 if not skip_callbacks and ret:
                     for f in table._after_update:
                         f(self, row)
@@ -642,9 +549,7 @@ class Set(_Set):
         table: Table = model.table
         if not skip_callbacks and any(f(row) for f in table._before_save):
             return False
-        fields = table._fields_and_values_for_save(
-            row, model._fieldset_editable, table._fields_and_values_for_update
-        )
+        fields = table._fields_and_values_for_save(row, model._fieldset_editable, table._fields_and_values_for_update)
         if not skip_callbacks and any(f(self, fields) for f in table._before_update):
             return False
         ret = self.db._adapter.update(table, self.query, fields.op_values())
@@ -652,27 +557,21 @@ class Set(_Set):
             if table._has_commit_update_callbacks or table._has_commit_save_callbacks:
                 txn = self._db._adapter.top_transaction()
                 if txn and table._has_commit_update_callbacks:
-                    txn._add_op(TransactionOp(
-                        TransactionOps.update,
-                        table,
-                        TransactionOpContext(
-                            values=fields,
-                            dbset=self,
-                            ret=ret
+                    txn._add_op(
+                        TransactionOp(
+                            TransactionOps.update, table, TransactionOpContext(values=fields, dbset=self, ret=ret)
                         )
-                    ))
+                    )
                 if txn and table._has_commit_save_callbacks:
-                    txn._add_op(TransactionOp(
-                        TransactionOps.save,
-                        table,
-                        TransactionOpContext(
-                            values=fields,
-                            dbset=self,
-                            ret=ret,
-                            row=row.clone_changed(),
-                            changes=row.changes
+                    txn._add_op(
+                        TransactionOp(
+                            TransactionOps.save,
+                            table,
+                            TransactionOpContext(
+                                values=fields, dbset=self, ret=ret, row=row.clone_changed(), changes=row.changes
+                            ),
                         )
-                    ))
+                    )
             ret and [f(self, fields) for f in table._after_update]
             ret and [f(row) for f in table._after_save]
         return bool(ret)
@@ -687,31 +586,18 @@ class Set(_Set):
         if ret:
             model._unset_row_persistence(row)
         if not skip_callbacks:
-            if (
-                table._has_commit_delete_callbacks or
-                table._has_commit_destroy_callbacks
-            ):
+            if table._has_commit_delete_callbacks or table._has_commit_destroy_callbacks:
                 txn = self._db._adapter.top_transaction()
                 if txn and table._has_commit_delete_callbacks:
-                    txn._add_op(TransactionOp(
-                        TransactionOps.delete,
-                        table,
-                        TransactionOpContext(
-                            dbset=self,
-                            ret=ret
-                        )
-                    ))
+                    txn._add_op(TransactionOp(TransactionOps.delete, table, TransactionOpContext(dbset=self, ret=ret)))
                 if txn and table._has_commit_destroy_callbacks:
-                    txn._add_op(TransactionOp(
-                        TransactionOps.destroy,
-                        table,
-                        TransactionOpContext(
-                            dbset=self,
-                            ret=ret,
-                            row=row.clone_changed(),
-                            changes=row.changes
+                    txn._add_op(
+                        TransactionOp(
+                            TransactionOps.destroy,
+                            table,
+                            TransactionOpContext(dbset=self, ret=ret, row=row.clone_changed(), changes=row.changes),
                         )
-                    ))
+                    )
             ret and [f(self) for f in table._after_delete]
             ret and [f(row) for f in table._after_destroy]
         return bool(ret)
@@ -745,25 +631,23 @@ class Set(_Set):
         if rel:
             if rel.via:
                 r = RelationBuilder(rel, self._model_._instance_()).via()
-                return r[0], r[1]._table, 'many'
+                return r[0], r[1]._table, "many"
             r = RelationBuilder(rel, self._model_._instance_())
-            return r.many(), rel.table, 'many'
+            return r.many(), rel.table, "many"
         #: match belongs_to and refers_to
         rel = self._model_._belongs_fks_.get(arg)
         if rel:
             r = RelationBuilder(rel, self._model_._instance_()).belongs_query()
-            return r, self._model_.db[rel.model], 'belongs'
+            return r, self._model_.db[rel.model], "belongs"
         #: match has_one
         rel = self._model_._hasone_ref_.get(arg)
         if rel:
             if rel.via:
                 r = RelationBuilder(rel, self._model_._instance_()).via()
-                return r[0], r[1]._table, 'one'
+                return r[0], r[1]._table, "one"
             r = RelationBuilder(rel, self._model_._instance_())
-            return r.many(), rel.table, 'one'
-        raise RuntimeError(
-            f'Unable to find {arg} relation of {self._model_.__name__} model'
-        )
+            return r.many(), rel.table, "one"
+        raise RuntimeError(f"Unable to find {arg} relation of {self._model_.__name__} model")
 
     def _parse_left_rjoins(self, args):
         if not isinstance(args, (list, tuple)):
@@ -798,7 +682,7 @@ class Set(_Set):
 
 
 class RelationSet(object):
-    _relation_method_ = 'many'
+    _relation_method_ = "many"
 
     def __init__(self, db, relation_builder, row):
         self.db = db
@@ -821,8 +705,7 @@ class RelationSet(object):
     def _fields_(self):
         pks = self._relation_.model.primary_keys or ["id"]
         return [
-            (relation_field.name, pks[idx])
-            for idx, relation_field in enumerate(self._relation_.ref.fields_instances)
+            (relation_field.name, pks[idx]) for idx, relation_field in enumerate(self._relation_.ref.fields_instances)
         ]
 
     @cachedprop
@@ -845,12 +728,12 @@ class RelationSet(object):
         return self._set.where(query, ignore_common_filters)
 
     def _last_resultset(self, refresh=False):
-        if refresh or not hasattr(self, '_cached_resultset'):
+        if refresh or not hasattr(self, "_cached_resultset"):
             self._cached_resultset = self._cache_resultset()
         return self._cached_resultset
 
     def _filter_reload(self, kwargs):
-        return kwargs.pop('reload', False)
+        return kwargs.pop("reload", False)
 
     def new(self, **kwargs):
         attrs = self._get_fields_from_scopes(self._scopes_, self._model_.tablename)
@@ -879,10 +762,7 @@ class RelationSet(object):
                     components.append(component.second)
                     components.append(component.first)
                 else:
-                    if (
-                        isinstance(component, Field) and
-                        component._tablename == table_name
-                    ):
+                    if isinstance(component, Field) and component._tablename == table_name:
                         current_kv.append(component)
                     else:
                         if current_kv:
@@ -903,7 +783,7 @@ class HasOneSet(RelationSet):
         refresh = self._filter_reload(kwargs)
         if not args and not kwargs:
             return self._last_resultset(refresh)
-        kwargs['limitby'] = (0, 1)
+        kwargs["limitby"] = (0, 1)
         return self.select(*args, **kwargs).first()
 
 
@@ -920,24 +800,18 @@ class HasManySet(RelationSet):
     def add(self, obj, skip_callbacks=False):
         if not isinstance(obj, (StructuredRow, RowReferenceMixin)):
             raise RuntimeError(f"Unsupported parameter {obj}")
-        attrs = self._get_fields_from_scopes(
-            self._scopes_, self._model_.tablename
-        )
+        attrs = self._get_fields_from_scopes(self._scopes_, self._model_.tablename)
         rev_attrs = {}
         for ref, local in self._fields_:
             attrs[ref] = self._row_[local]
             rev_attrs[local] = attrs[ref]
-        rv = self.db(self._model_._query_row(obj)).validate_and_update(
-            skip_callbacks=skip_callbacks, **attrs
-        )
+        rv = self.db(self._model_._query_row(obj)).validate_and_update(skip_callbacks=skip_callbacks, **attrs)
         if rv:
             for key, val in attrs.items():
                 obj[key] = val
             if len(rev_attrs) > 1:
                 comprel_key = (self._relation_.ref.reverse, *rev_attrs.values())
-                obj._compound_rels[comprel_key] = typed_row_reference_from_record(
-                    self._row_, self._row_._model
-                )
+                obj._compound_rels[comprel_key] = typed_row_reference_from_record(self._row_, self._row_._model)
         return rv
 
     def remove(self, obj, skip_callbacks=False):
@@ -945,15 +819,10 @@ class HasManySet(RelationSet):
             raise RuntimeError(f"Unsupported parameter {obj}")
         attrs, is_delete = {ref: None for ref, _ in self._fields_}, False
         if self._model_._belongs_fks_[self._relation_.ref.reverse].is_refers:
-            rv = self.db(self._model_._query_row(obj)).validate_and_update(
-                skip_callbacks=skip_callbacks,
-                **attrs
-            )
+            rv = self.db(self._model_._query_row(obj)).validate_and_update(skip_callbacks=skip_callbacks, **attrs)
         else:
             is_delete = True
-            rv = self.db(self._model_._query_row(obj)).delete(
-                skip_callbacks=skip_callbacks
-            )
+            rv = self.db(self._model_._query_row(obj)).delete(skip_callbacks=skip_callbacks)
         if rv:
             for key, val in attrs.items():
                 obj[key] = val
@@ -965,19 +834,12 @@ class HasManySet(RelationSet):
 
 
 class ViaSet(RelationSet):
-    _relation_method_ = 'via'
+    _relation_method_ = "via"
 
     @cachedprop
     def _viadata(self):
         query, rfield, model_name, rid, via, viadata = super()._get_query_()
-        return sdict(
-            query=query,
-            rfield=rfield,
-            model_name=model_name,
-            rid=rid,
-            via=via,
-            data=viadata
-        )
+        return sdict(query=query, rfield=rfield, model_name=model_name, rid=rid, via=via, data=viadata)
 
     def _get_query_(self):
         return self._viadata.query
@@ -997,11 +859,11 @@ class HasOneViaSet(ViaSet):
             if not kwargs:
                 return self._last_resultset(refresh)
             args = [self._viadata.rfield]
-        kwargs['limitby'] = (0, 1)
+        kwargs["limitby"] = (0, 1)
         return self.select(*args, **kwargs).first()
 
     def create(self, **kwargs):
-        raise RuntimeError('Cannot create third objects for one via relations')
+        raise RuntimeError("Cannot create third objects for one via relations")
 
 
 class HasManyViaSet(ViaSet):
@@ -1037,12 +899,12 @@ class HasManyViaSet(ViaSet):
         return self._get_fields_from_scopes(scopes, rel.table_name)
 
     def create(self, **kwargs):
-        raise RuntimeError('Cannot create third objects for many via relations')
+        raise RuntimeError("Cannot create third objects for many via relations")
 
     def add(self, obj, skip_callbacks=False, **kwargs):
         # works on join tables only!
         if self._viadata.via is None:
-            raise RuntimeError(self._via_error % 'add')
+            raise RuntimeError(self._via_error % "add")
         nrow = self._fields_from_scopes()
         nrow.update(**kwargs)
         #: get belongs references
@@ -1052,25 +914,22 @@ class HasManyViaSet(ViaSet):
         for local_field, foreign_field in rel_fields:
             nrow[local_field] = obj[foreign_field]
         #: validate and insert
-        return self.db[self._viadata.via]._model_.create(
-            nrow, skip_callbacks=skip_callbacks
-        )
+        return self.db[self._viadata.via]._model_.create(nrow, skip_callbacks=skip_callbacks)
 
     def remove(self, obj, skip_callbacks=False):
         # works on join tables only!
         if self._viadata.via is None:
-            raise RuntimeError(self._via_error % 'remove')
+            raise RuntimeError(self._via_error % "remove")
         #: get belongs references
         self_fields, rel_fields = self._get_relation_fields()
         #: delete
         query = reduce(
-            operator.and_, [
-                self.db[self._viadata.via][field] == self._viadata.rid[idx]
-                for idx, field in enumerate(self_fields)
-            ] + [
+            operator.and_,
+            [self.db[self._viadata.via][field] == self._viadata.rid[idx] for idx, field in enumerate(self_fields)]
+            + [
                 self.db[self._viadata.via][local_field] == obj[foreign_field]
                 for local_field, foreign_field in rel_fields
-            ]
+            ],
         )
         return self.db(query).delete(skip_callbacks=skip_callbacks)
 
@@ -1097,46 +956,40 @@ class JoinedSet(Set):
 
     def _join_set_builder(self, obj, jdata, auto_select_tables):
         return JoinedSet._from_set(
-            obj, jdata=self._jdata_ + jdata, ljdata=self._ljdata_,
-            auto_select_tables=self._auto_select_tables_ + auto_select_tables
+            obj,
+            jdata=self._jdata_ + jdata,
+            ljdata=self._ljdata_,
+            auto_select_tables=self._auto_select_tables_ + auto_select_tables,
         )
 
     def _left_join_set_builder(self, jdata):
         return JoinedSet._from_set(
-            self, jdata=self._jdata_, ljdata=self._ljdata_ + jdata,
-            auto_select_tables=self._auto_select_tables_
+            self, jdata=self._jdata_, ljdata=self._ljdata_ + jdata, auto_select_tables=self._auto_select_tables_
         )
 
     def _iterselect_rows(self, *fields, **options):
         tablemap = self.db._adapter.tables(
             self.query,
-            options.get('join', None),
-            options.get('left', None),
-            options.get('orderby', None),
-            options.get('groupby', None)
+            options.get("join", None),
+            options.get("left", None),
+            options.get("orderby", None),
+            options.get("groupby", None),
         )
-        fields, concrete_tables = self.db._adapter._expand_all_with_concrete_tables(
-            fields, tablemap
-        )
+        fields, concrete_tables = self.db._adapter._expand_all_with_concrete_tables(fields, tablemap)
         colnames, sql = self.db._adapter._select_wcols(self.query, fields, **options)
         return JoinIterRows(self.db, sql, fields, concrete_tables, colnames)
 
     def _split_joins(self, joins):
-        rv = {'belongs': [], 'one': [], 'many': []}
+        rv = {"belongs": [], "one": [], "many": []}
         for jname, jtable, rel_type in joins:
             rv[rel_type].append((jname, jtable))
-        return rv['belongs'], rv['one'], rv['many']
+        return rv["belongs"], rv["one"], rv["many"]
 
     def _build_records_from_joined(self, rowmap, inclusions, colnames):
         for rid, many_data in inclusions.items():
             for jname, included in many_data.items():
-                rowmap[rid][jname]._cached_resultset = Rows(
-                    self.db, list(included.values()), []
-                )
-        return JoinRows(
-            self.db, list(rowmap.values()), colnames,
-            _jdata=self._jdata_ + self._ljdata_
-        )
+                rowmap[rid][jname]._cached_resultset = Rows(self.db, list(included.values()), [])
+        return JoinRows(self.db, list(rowmap.values()), colnames, _jdata=self._jdata_ + self._ljdata_)
 
     def _select_rowpks_extractor(self, row):
         if not set(row.keys()).issuperset(self._pks_):
@@ -1149,27 +1002,20 @@ class JoinedSet(Set):
         #: build parsers
         belongs_j, one_j, many_j = self._split_joins(self._jdata_)
         belongs_l, one_l, many_l = self._split_joins(self._ljdata_)
-        parsers = (
-            self._build_jparsers(belongs_j, one_j, many_j) +
-            self._build_lparsers(belongs_l, one_l, many_l)
-        )
+        parsers = self._build_jparsers(belongs_j, one_j, many_j) + self._build_lparsers(belongs_l, one_l, many_l)
         #: auto add selection field for left joins
         if self._ljdata_:
             fields = list(fields)
             if not fields:
                 fields = [v.ALL for v in self._auto_select_tables_]
-            for join in options['left']:
+            for join in options["left"]:
                 fields.append(join.first.ALL)
         #: use iterselect for performance
         rows = self._iterselect_rows(*fields, **options)
         #: rebuild rowset using nested objects
         plainrows = []
         rowmap = OrderedDict()
-        inclusions = defaultdict(
-            lambda: {
-                jname: OrderedDict() for jname, _ in (many_j + many_l)
-            }
-        )
+        inclusions = defaultdict(lambda: {jname: OrderedDict() for jname, _ in (many_j + many_l)})
         for row in rows:
             if self._stable_ not in row:
                 plainrows.append(row)
@@ -1183,9 +1029,7 @@ class JoinedSet(Set):
                 parser(rowmap, inclusions, row, rid)
         if not rowmap and plainrows:
             return Rows(self.db, plainrows, rows.colnames)
-        return self._build_records_from_joined(
-            rowmap, inclusions, rows.colnames
-        )
+        return self._build_records_from_joined(rowmap, inclusions, rows.colnames)
 
     def _build_jparsers(self, belongs, one, many):
         rv = []
@@ -1212,15 +1056,15 @@ class JoinedSet(Set):
         rmodel = db[tablename]._model_
 
         def parser(rowmap, inclusions, row, rid):
-            rowmap[rid][fieldname] = typed_row_reference_from_record(
-                row[tablename], rmodel
-            )
+            rowmap[rid][fieldname] = typed_row_reference_from_record(row[tablename], rmodel)
+
         return parser
 
     @staticmethod
     def _jone_parser(db, fieldname, tablename):
         def parser(rowmap, inclusions, row, rid):
             rowmap[rid][fieldname]._cached_resultset = row[tablename]
+
         return parser
 
     @staticmethod
@@ -1230,10 +1074,10 @@ class JoinedSet(Set):
         ext = lambda row: tuple(row[pk] for pk in pks) if len(pks) > 1 else row[pks[0]]
 
         def parser(rowmap, inclusions, row, rid):
-            inclusions[rid][fieldname][ext(row[tablename])] = \
-                inclusions[rid][fieldname].get(
-                    ext(row[tablename]), row[tablename]
-                )
+            inclusions[rid][fieldname][ext(row[tablename])] = inclusions[rid][fieldname].get(
+                ext(row[tablename]), row[tablename]
+            )
+
         return parser
 
     @staticmethod
@@ -1245,9 +1089,8 @@ class JoinedSet(Set):
         def parser(rowmap, inclusions, row, rid):
             if not check(row[tablename]):
                 return
-            rowmap[rid][fieldname] = typed_row_reference_from_record(
-                row[tablename], rmodel
-            )
+            rowmap[rid][fieldname] = typed_row_reference_from_record(row[tablename], rmodel)
+
         return parser
 
     @staticmethod
@@ -1260,6 +1103,7 @@ class JoinedSet(Set):
             if not check(row[tablename]):
                 return
             rowmap[rid][fieldname]._cached_resultset = row[tablename]
+
         return parser
 
     @staticmethod
@@ -1272,17 +1116,16 @@ class JoinedSet(Set):
         def parser(rowmap, inclusions, row, rid):
             if not check(row[tablename]):
                 return
-            inclusions[rid][fieldname][ext(row[tablename])] = \
-                inclusions[rid][fieldname].get(
-                    ext(row[tablename]), row[tablename]
-                )
+            inclusions[rid][fieldname][ext(row[tablename])] = inclusions[rid][fieldname].get(
+                ext(row[tablename]), row[tablename]
+            )
+
         return parser
 
 
 class Row(_Row):
     _as_dict_types_ = tuple(
-        [type(None)] + [int, float, bool, list, dict, str] +
-        [datetime.datetime, datetime.date, datetime.time]
+        [type(None)] + [int, float, bool, list, dict, str] + [datetime.datetime, datetime.date, datetime.time]
     )
 
     @classmethod
@@ -1312,10 +1155,10 @@ class Row(_Row):
         return self.as_dict()
 
     def __xml__(self, key=None, quote=True):
-        return xml_encode(self.as_dict(), key or 'row', quote)
+        return xml_encode(self.as_dict(), key or "row", quote)
 
     def __str__(self):
-        return '<Row {}>'.format(self.as_dict(geo_coordinates=False))
+        return "<Row {}>".format(self.as_dict(geo_coordinates=False))
 
     def __repr__(self):
         return str(self)
@@ -1353,11 +1196,7 @@ class StructuredRow(Row):
         rv._fields.update(data)
         return rv
 
-    def __init__(
-        self,
-        fields: Optional[Dict[str, Any]] = None,
-        **extras: Any
-    ):
+    def __init__(self, fields: Optional[Dict[str, Any]] = None, **extras: Any):
         object.__setattr__(self, "_changes", {})
         object.__setattr__(self, "_compound_rels", {})
         object.__setattr__(self, "_concrete", extras.pop("__concrete", False))
@@ -1374,10 +1213,7 @@ class StructuredRow(Row):
     def __setattr__(self, key, value):
         if key in self.__slots__:
             return
-        oldv = (
-            self._changes[key][0] if key in self._changes else
-            getattr(self, key, None)
-        )
+        oldv = self._changes[key][0] if key in self._changes else getattr(self, key, None)
         object.__setattr__(self, key, value)
         newv = getattr(self, key, None)
         if (oldv is None and value is not None) or oldv != newv:
@@ -1392,12 +1228,7 @@ class StructuredRow(Row):
         return {
             "__fields": self._fields,
             "__extras": self.__dict__,
-            "__struct": {
-                "_concrete": self._concrete,
-                "_changes": {},
-                "_compound_rels": {},
-                "_virtuals": {}
-            }
+            "__struct": {"_concrete": self._concrete, "_changes": {}, "_compound_rels": {}, "_virtuals": {}},
         }
 
     def __setstate__(self, state):
@@ -1464,9 +1295,7 @@ class StructuredRow(Row):
         return self.__class__(fields, __concrete=self._concrete, **self.__dict__)
 
     def clone_changed(self):
-        return self.__class__(
-            {**self._fields}, __concrete=self._concrete, **self.__dict__
-        )
+        return self.__class__({**self._fields}, __concrete=self._concrete, **self.__dict__)
 
     @property
     def validation_errors(self):
@@ -1478,9 +1307,7 @@ class StructuredRow(Row):
 
 
 class Rows(_Rows):
-    def __init__(
-        self, db=None, records=[], colnames=[], compact=True, rawrows=None
-    ):
+    def __init__(self, db=None, records=[], colnames=[], compact=True, rawrows=None):
         self.db = db
         self.records = records
         self.colnames = colnames
@@ -1491,7 +1318,7 @@ class Rows(_Rows):
     def compact(self):
         if not self.records:
             return False
-        return len(self._rowkeys_) == 1 and self._rowkeys_[0] != '_extra'
+        return len(self._rowkeys_) == 1 and self._rowkeys_[0] != "_extra"
 
     @cachedprop
     def compact_tablename(self):
@@ -1519,7 +1346,7 @@ class Rows(_Rows):
             keyf = lambda r: f(r[self.compact_tablename])
         else:
             keyf = f
-        return [r for r in sorted(self.records, key=keyf, reverse=reverse)]
+        return sorted(self.records, key=keyf, reverse=reverse)
 
     def sort(self, f, reverse=False):
         self.records = self.sorted(f, reverse)
@@ -1538,9 +1365,9 @@ class Rows(_Rows):
     def as_list(self, datetime_to_str=False, custom_types=None):
         return [item.as_dict(datetime_to_str, custom_types) for item in self]
 
-    def as_dict(self, key='id', datetime_to_str=False, custom_types=None):
-        if '.' in key:
-            splitted_key = key.split('.')
+    def as_dict(self, key="id", datetime_to_str=False, custom_types=None):
+        if "." in key:
+            splitted_key = key.split(".")
             keyf = lambda row: row[splitted_key[0]][splitted_key[1]]
         else:
             keyf = lambda row: row[key]
@@ -1550,7 +1377,7 @@ class Rows(_Rows):
         return [item.__json__() for item in self]
 
     def __xml__(self, key=None, quote=True):
-        key = key or 'rows'
+        key = key or "rows"
         return tag[key](*[item.__xml__(quote=quote) for item in self])
 
     def __str__(self):
@@ -1580,17 +1407,11 @@ class IterRows(_IterRows):
         if db_row is None:
             raise StopIteration
         row = self.db._adapter._parse(
-            db_row,
-            self.fdata,
-            self.tables,
-            self.concrete_tables,
-            self.fields,
-            self.colnames,
-            self.blob_decode
+            db_row, self.fdata, self.tables, self.concrete_tables, self.fields, self.colnames, self.blob_decode
         )
         if self.compact:
             keys = list(row.keys())
-            if len(keys) == 1 and keys[0] != '_extra':
+            if len(keys) == 1 and keys[0] != "_extra":
                 row = row[keys[0]]
         return row
 
@@ -1609,13 +1430,10 @@ class IterRows(_IterRows):
 
 class JoinRows(Rows):
     def __init__(self, *args, **kwargs):
-        self._joins_ = kwargs.pop('_jdata')
+        self._joins_ = kwargs.pop("_jdata")
         super(JoinRows, self).__init__(*args, **kwargs)
 
-    def as_list(
-        self, compact=True, storage_to_dict=True, datetime_to_str=False,
-        custom_types=None
-    ):
+    def as_list(self, compact=True, storage_to_dict=True, datetime_to_str=False, custom_types=None):
         if storage_to_dict:
             items = []
             for row in self:
@@ -1625,7 +1443,7 @@ class JoinRows(Rows):
                         item[jdata[0]] = row[jdata[0]].as_list()
                 items.append(item)
         else:
-            items = [item for item in self]
+            items = list(self)
         return items
 
 
@@ -1654,7 +1472,7 @@ class TransactionOpContext:
         dbset: Optional[Set] = None,
         ret: Any = None,
         row: Optional[Row] = None,
-        changes: Optional[sdict] = None
+        changes: Optional[sdict] = None,
     ):
         self.values = values
         self.dbset = dbset
@@ -1666,12 +1484,7 @@ class TransactionOpContext:
 class TransactionOp:
     __slots__ = ["op_type", "table", "context"]
 
-    def __init__(
-        self,
-        op_type: TransactionOps,
-        table: Table,
-        context: TransactionOpContext
-    ):
+    def __init__(self, op_type: TransactionOps, table: Table, context: TransactionOpContext):
         self.op_type = op_type
         self.table = table
         self.context = context

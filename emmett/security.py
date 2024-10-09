@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.security
-    ---------------
+emmett.security
+---------------
 
-    Miscellaneous security helpers.
+Miscellaneous security helpers.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 import hashlib
 import hmac
 import time
-
 from collections import OrderedDict
 from uuid import uuid4
 
@@ -38,11 +37,11 @@ class CSRFStorage(OrderedDict):
 
 
 def md5_hash(text):
-    """ Generate a md5 hash with the given text """
+    """Generate a md5 hash with the given text"""
     return hashlib.md5(text).hexdigest()
 
 
-def simple_hash(text, key='', salt='', digest_alg='md5'):
+def simple_hash(text, key="", salt="", digest_alg="md5"):
     """
     Generates hash with the given text using the specified
     digest hashing algorithm
@@ -51,14 +50,10 @@ def simple_hash(text, key='', salt='', digest_alg='md5'):
         raise RuntimeError("simple_hash with digest_alg=None")
     elif not isinstance(digest_alg, str):  # manual approach
         h = digest_alg(text + key + salt)
-    elif digest_alg.startswith('pbkdf2'):  # latest and coolest!
-        iterations, keylen, alg = digest_alg[7:-1].split(',')
+    elif digest_alg.startswith("pbkdf2"):  # latest and coolest!
+        iterations, keylen, alg = digest_alg[7:-1].split(",")
         return kdf.pbkdf2_hex(
-            text,
-            salt,
-            iterations=int(iterations),
-            keylen=int(keylen),
-            hash_algorithm=kdf.PBKDF2_HMAC[alg]
+            text, salt, iterations=int(iterations), keylen=int(keylen), hash_algorithm=kdf.PBKDF2_HMAC[alg]
         )
     elif key:  # use hmac
         digest_alg = get_digest(digest_alg)
@@ -93,10 +88,10 @@ def get_digest(value):
 
 
 DIGEST_ALG_BY_SIZE = {
-    128 / 4: 'md5',
-    160 / 4: 'sha1',
-    224 / 4: 'sha224',
-    256 / 4: 'sha256',
-    384 / 4: 'sha384',
-    512 / 4: 'sha512',
+    128 / 4: "md5",
+    160 / 4: "sha1",
+    224 / 4: "sha224",
+    256 / 4: "sha256",
+    384 / 4: "sha384",
+    512 / 4: "sha512",
 }

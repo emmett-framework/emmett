@@ -1,58 +1,63 @@
 # -*- coding: utf-8 -*-
 """
-    tests.orm
-    ---------
+tests.orm
+---------
 
-    Test pyDAL implementation over Emmett.
+Test pyDAL implementation over Emmett.
 """
-
-import pytest
 
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-from pydal.objects import Table
+import pytest
 from pydal import Field as _Field
-from emmett import App, sdict, now
+from pydal.objects import Table
+
+from emmett import App, now, sdict
 from emmett.orm import (
-    Database, Field, Model,
+    Database,
+    Field,
+    Model,
+    after_commit,
+    after_delete,
+    after_destroy,
+    after_insert,
+    after_save,
+    after_update,
+    before_commit,
+    before_delete,
+    before_destroy,
+    before_insert,
+    before_save,
+    before_update,
+    belongs_to,
     compute,
-    before_insert, after_insert,
-    before_update, after_update,
-    before_delete, after_delete,
-    before_save, after_save,
-    before_destroy, after_destroy,
-    before_commit, after_commit,
-    rowattr, rowmethod,
-    has_one, has_many, belongs_to, refers_to,
-    scope
+    has_many,
+    has_one,
+    refers_to,
+    rowattr,
+    rowmethod,
+    scope,
 )
+from emmett.orm.errors import MissingFieldsForCompute
 from emmett.orm.migrations.utils import generate_runtime_migration
 from emmett.orm.objects import TransactionOps
-from emmett.orm.errors import MissingFieldsForCompute
-from emmett.validators import isntEmpty, hasLength
+from emmett.validators import hasLength, isntEmpty
 
 
 CALLBACK_OPS = {
     "before_insert": [],
     "before_update": [],
     "before_delete": [],
-    "before_save":[],
+    "before_save": [],
     "before_destroy": [],
     "after_insert": [],
     "after_update": [],
     "after_delete": [],
-    "after_save":[],
-    "after_destroy": []
+    "after_save": [],
+    "after_destroy": [],
 }
-COMMIT_CALLBACKS = {
-    "all": [],
-    "insert": [],
-    "update": [],
-    "delete": [],
-    "save": [],
-    "destroy": []
-}
+COMMIT_CALLBACKS = {"all": [], "insert": [], "update": [], "delete": [], "save": [], "destroy": []}
 
 
 def _represent_f(value):
@@ -72,73 +77,57 @@ class Stuff(Model):
     total_watch = Field.float()
     invisible = Field()
 
-    validation = {
-        "a": {'presence': True},
-        "total": {"allow": "empty"},
-        "total_watch": {"allow": "empty"}
-    }
+    validation = {"a": {"presence": True}, "total": {"allow": "empty"}, "total_watch": {"allow": "empty"}}
 
-    fields_rw = {
-        "invisible": False
-    }
+    fields_rw = {"invisible": False}
 
-    form_labels = {
-        "a": "A label"
-    }
+    form_labels = {"a": "A label"}
 
-    form_info = {
-        "a": "A comment"
-    }
+    form_info = {"a": "A comment"}
 
-    update_values = {
-        "a": "a_update"
-    }
+    update_values = {"a": "a_update"}
 
-    repr_values = {
-        "a": _represent_f
-    }
+    repr_values = {"a": _represent_f}
 
-    form_widgets = {
-        "a": _widget_f
-    }
+    form_widgets = {"a": _widget_f}
 
-    @compute('total')
+    @compute("total")
     def eval_total(self, row):
         return row.price * row.quantity
 
-    @compute('total_watch', watch=['price', 'quantity'])
+    @compute("total_watch", watch=["price", "quantity"])
     def eval_total_watch(self, row):
         return row.price * row.quantity
 
     @before_insert
     def bi(self, fields):
-        CALLBACK_OPS['before_insert'].append(fields)
+        CALLBACK_OPS["before_insert"].append(fields)
 
     @after_insert
     def ai(self, fields, id):
-        CALLBACK_OPS['after_insert'].append((fields, id))
+        CALLBACK_OPS["after_insert"].append((fields, id))
 
     @before_update
     def bu(self, set, fields):
-        CALLBACK_OPS['before_update'].append((set, fields))
+        CALLBACK_OPS["before_update"].append((set, fields))
 
     @after_update
     def au(self, set, fields):
-        CALLBACK_OPS['after_update'].append((set, fields))
+        CALLBACK_OPS["after_update"].append((set, fields))
 
     @before_delete
     def bd(self, set):
-        CALLBACK_OPS['before_delete'].append(set)
+        CALLBACK_OPS["before_delete"].append(set)
 
     @after_delete
     def ad(self, set):
-        CALLBACK_OPS['after_delete'].append(set)
+        CALLBACK_OPS["after_delete"].append(set)
 
-    @rowattr('totalv')
+    @rowattr("totalv")
     def eval_total_v(self, row):
         return row.price * row.quantity
 
-    @rowmethod('totalm')
+    @rowmethod("totalm")
     def eval_total_m(self, row):
         return row.price * row.quantity
 
@@ -148,57 +137,55 @@ class Stuff(Model):
 
 
 class Person(Model):
-    has_many(
-        'things', {'features': {'via': 'things'}}, {'pets': 'Dog.owner'},
-        'subscriptions')
+    has_many("things", {"features": {"via": "things"}}, {"pets": "Dog.owner"}, "subscriptions")
 
     name = Field()
     age = Field.int()
 
 
 class Thing(Model):
-    belongs_to('person')
-    has_many('features')
+    belongs_to("person")
+    has_many("features")
 
     name = Field()
     color = Field()
 
 
 class Feature(Model):
-    belongs_to('thing')
-    has_one('price')
+    belongs_to("thing")
+    has_one("price")
 
     name = Field()
 
 
 class Price(Model):
-    belongs_to('feature')
+    belongs_to("feature")
 
     value = Field.int()
 
 
 class Doctor(Model):
-    has_many('appointments', {'patients': {'via': 'appointments'}})
+    has_many("appointments", {"patients": {"via": "appointments"}})
     name = Field()
 
 
 class Patient(Model):
-    has_many('appointments', {'doctors': {'via': 'appointments'}})
+    has_many("appointments", {"doctors": {"via": "appointments"}})
     name = Field()
 
 
 class Appointment(Model):
-    belongs_to('patient', 'doctor')
+    belongs_to("patient", "doctor")
     date = Field.datetime()
 
 
 class User(Model):
     name = Field()
     has_many(
-        'memberships', {'organizations': {'via': 'memberships'}},
-        {'cover_orgs': {
-            'via': 'memberships.organization',
-            'where': lambda m: m.is_cover == True}})
+        "memberships",
+        {"organizations": {"via": "memberships"}},
+        {"cover_orgs": {"via": "memberships.organization", "where": lambda m: m.is_cover == True}},
+    )
 
 
 class Organization(Model):
@@ -210,22 +197,23 @@ class Organization(Model):
         return Membership.admins()
 
     has_many(
-        'memberships', {'users': {'via': 'memberships'}},
-        {'admin_memberships': {'target': 'Membership', 'scope': 'admins'}},
-        {'admins': {'via': 'admin_memberships.user'}},
-        {'admin_memberships2': {
-            'target': 'Membership', 'where': lambda m: m.role == 'admin'}},
-        {'admins2': {'via': 'admin_memberships2.user'}},
-        {'admins3': {'via': 'admin_memberships3.user'}})
+        "memberships",
+        {"users": {"via": "memberships"}},
+        {"admin_memberships": {"target": "Membership", "scope": "admins"}},
+        {"admins": {"via": "admin_memberships.user"}},
+        {"admin_memberships2": {"target": "Membership", "where": lambda m: m.role == "admin"}},
+        {"admins2": {"via": "admin_memberships2.user"}},
+        {"admins3": {"via": "admin_memberships3.user"}},
+    )
 
 
 class Membership(Model):
-    belongs_to('user', 'organization')
+    belongs_to("user", "organization")
     role = Field()
 
-    @scope('admins')
+    @scope("admins")
     def filter_admins(self):
-        return self.role == 'admin'
+        return self.role == "admin"
 
 
 class House(Model):
@@ -234,7 +222,7 @@ class House(Model):
 
 class Mouse(Model):
     tablename = "mice"
-    has_many('elephants')
+    has_many("elephants")
     name = Field()
 
 
@@ -243,19 +231,19 @@ class NeedSplit(Model):
 
 
 class Zoo(Model):
-    has_many('animals', 'elephants', {'mice': {'via': 'elephants.mouse'}})
+    has_many("animals", "elephants", {"mice": {"via": "elephants.mouse"}})
     name = Field()
 
 
 class Animal(Model):
-    belongs_to('zoo')
+    belongs_to("zoo")
     name = Field()
 
-    @rowattr('doublename')
+    @rowattr("doublename")
     def get_double_name(self, row):
         return row.name * 2
 
-    @rowattr('pretty')
+    @rowattr("pretty")
     def get_pretty(self, row):
         return row.name
 
@@ -269,10 +257,10 @@ class Animal(Model):
 
 
 class Elephant(Animal):
-    belongs_to('mouse')
+    belongs_to("mouse")
     color = Field()
 
-    @rowattr('pretty')
+    @rowattr("pretty")
     def get_pretty(self, row):
         return row.name + " " + row.color
 
@@ -282,24 +270,24 @@ class Elephant(Animal):
 
 
 class Dog(Model):
-    belongs_to({'owner': 'Person'})
+    belongs_to({"owner": "Person"})
     name = Field()
 
 
 class Subscription(Model):
-    belongs_to('person')
+    belongs_to("person")
 
     name = Field()
     status = Field.int()
     expires_at = Field.datetime()
 
-    STATUS = {'active': 1, 'suspended': 2, 'other': 3}
+    STATUS = {"active": 1, "suspended": 2, "other": 3}
 
-    @scope('expired')
+    @scope("expired")
     def get_expired(self):
         return self.expires_at < datetime.now()
 
-    @scope('of_status')
+    @scope("of_status")
     def filter_status(self, *statuses):
         if len(statuses) == 1:
             return self.status == self.STATUS[statuses[0]]
@@ -362,7 +350,7 @@ class CartElement(Model):
 
 
 class SelfRef(Model):
-    refers_to({'parent': 'self'})
+    refers_to({"parent": "self"})
 
     name = Field.string()
 
@@ -412,29 +400,43 @@ class CommitWatcher(Model):
         COMMIT_CALLBACKS["destroy"].append(("after", ctx))
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def _db():
     app = App(__name__)
-    db = Database(
-        app, config=sdict(
-            uri=f'sqlite://{uuid4().hex}.db',
-            auto_connect=True
-        )
-    )
+    db = Database(app, config=sdict(uri=f"sqlite://{uuid4().hex}.db", auto_connect=True))
     db.define_models(
-        Stuff, Person, Thing, Feature, Price, Dog, Subscription,
-        Doctor, Patient, Appointment,
-        User, Organization, Membership,
-        House, Mouse, NeedSplit, Zoo, Animal, Elephant,
-        Product, Cart, CartElement,
+        Stuff,
+        Person,
+        Thing,
+        Feature,
+        Price,
+        Dog,
+        Subscription,
+        Doctor,
+        Patient,
+        Appointment,
+        User,
+        Organization,
+        Membership,
+        House,
+        Mouse,
+        NeedSplit,
+        Zoo,
+        Animal,
+        Elephant,
+        Product,
+        Cart,
+        CartElement,
         SelfRef,
-        CustomPKType, CustomPKName, CustomPKMulti,
-        CommitWatcher
+        CustomPKType,
+        CustomPKName,
+        CustomPKMulti,
+        CommitWatcher,
     )
     return db
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def db(_db):
     migration = generate_runtime_migration(_db)
     migration.up()
@@ -948,12 +950,13 @@ def test_relations(db):
     assert t[0].name == "apple" and t[0].color == "red" and t[0].person.id == p1.id
     f = p1.things()[0].features()
     assert len(f) == 1
-    assert f[0].name == "tasty" and f[0].thing.id == t[0].id and \
-        f[0].thing.person.id == p1.id
+    assert f[0].name == "tasty" and f[0].thing.id == t[0].id and f[0].thing.person.id == p1.id
     m = p1.things()[0].features()[0].price()
     assert (
-        m.value == 5 and m.feature.id == f[0].id and
-        m.feature.thing.id == t[0].id and m.feature.thing.person.id == p1.id
+        m.value == 5
+        and m.feature.id == f[0].id
+        and m.feature.thing.id == t[0].id
+        and m.feature.thing.person.id == p1.id
     )
     p2.things.add(t2)
     assert p1.things.count() == 1
@@ -974,30 +977,30 @@ def test_relations(db):
     assert len(doctor.appointments()) == 1
     assert len(patient.doctors()) == 1
     assert len(patient.appointments()) == 1
-    joe = db.User.insert(name='joe')
-    jim = db.User.insert(name='jim')
-    org = db.Organization.insert(name='')
-    org.users.add(joe, role='admin')
-    org.users.add(jim, role='manager')
+    joe = db.User.insert(name="joe")
+    jim = db.User.insert(name="jim")
+    org = db.Organization.insert(name="")
+    org.users.add(joe, role="admin")
+    org.users.add(jim, role="manager")
     assert len(org.users()) == 2
     assert len(joe.organizations()) == 1
     assert len(jim.organizations()) == 1
     assert joe.organizations().first().id == org
     assert jim.organizations().first().id == org
-    assert joe.memberships().first().role == 'admin'
-    assert jim.memberships().first().role == 'manager'
+    assert joe.memberships().first().role == "admin"
+    assert jim.memberships().first().role == "manager"
     org.users.remove(joe)
     org.users.remove(jim)
     assert len(org.users(reload=True)) == 0
     assert len(joe.organizations(reload=True)) == 0
     assert len(jim.organizations(reload=True)) == 0
     #: has_many with specified feld
-    db.Dog.insert(name='pongo', owner=p1)
-    assert len(p1.pets()) == 1 and p1.pets().first().name == 'pongo'
+    db.Dog.insert(name="pongo", owner=p1)
+    assert len(p1.pets()) == 1 and p1.pets().first().name == "pongo"
     #: has_many via with specified field
-    zoo = db.Zoo.insert(name='magic zoo')
-    mouse = db.Mouse.insert(name='jerry')
-    db.Elephant.insert(name='dumbo', color='pink', mouse=mouse, zoo=zoo)
+    zoo = db.Zoo.insert(name="magic zoo")
+    mouse = db.Mouse.insert(name="jerry")
+    db.Elephant.insert(name="dumbo", color="pink", mouse=mouse, zoo=zoo)
     assert len(zoo.mice()) == 1
 
 
@@ -1008,44 +1011,34 @@ def test_tablenames(db):
 
 
 def test_inheritance(db):
-    assert 'name' in db.Animal.fields
-    assert 'name' in db.Elephant.fields
-    assert 'zoo' in db.Animal.fields
-    assert 'zoo' in db.Elephant.fields
-    assert 'color' in db.Elephant.fields
-    assert 'color' not in db.Animal.fields
-    assert Elephant._all_virtuals_['get_double_name'] is \
-        Animal._all_virtuals_['get_double_name']
-    assert Elephant._all_virtuals_['get_pretty'] is not \
-        Animal._all_virtuals_['get_pretty']
-    assert Elephant._all_callbacks_['bi'] is \
-        Animal._all_callbacks_['bi']
-    assert Elephant._all_callbacks_['bi2'] is not \
-        Animal._all_callbacks_['bi2']
+    assert "name" in db.Animal.fields
+    assert "name" in db.Elephant.fields
+    assert "zoo" in db.Animal.fields
+    assert "zoo" in db.Elephant.fields
+    assert "color" in db.Elephant.fields
+    assert "color" not in db.Animal.fields
+    assert Elephant._all_virtuals_["get_double_name"] is Animal._all_virtuals_["get_double_name"]
+    assert Elephant._all_virtuals_["get_pretty"] is not Animal._all_virtuals_["get_pretty"]
+    assert Elephant._all_callbacks_["bi"] is Animal._all_callbacks_["bi"]
+    assert Elephant._all_callbacks_["bi2"] is not Animal._all_callbacks_["bi2"]
 
 
 def test_scopes(db):
     p = db.Person.insert(name="Walter", age=50)
-    s = db.Subscription.insert(
-        name="a", expires_at=datetime.now() - timedelta(hours=20), person=p,
-        status=1)
-    s2 = db.Subscription.insert(
-        name="b", expires_at=datetime.now() + timedelta(hours=20), person=p,
-        status=2)
-    db.Subscription.insert(
-        name="c", expires_at=datetime.now() + timedelta(hours=20), person=p,
-        status=3)
+    s = db.Subscription.insert(name="a", expires_at=datetime.now() - timedelta(hours=20), person=p, status=1)
+    s2 = db.Subscription.insert(name="b", expires_at=datetime.now() + timedelta(hours=20), person=p, status=2)
+    db.Subscription.insert(name="c", expires_at=datetime.now() + timedelta(hours=20), person=p, status=3)
     rows = db(db.Subscription).expired().select()
     assert len(rows) == 1 and rows[0].id == s
     rows = p.subscriptions.expired().select()
     assert len(rows) == 1 and rows[0].id == s
     rows = Subscription.expired().select()
     assert len(rows) == 1 and rows[0].id == s
-    rows = db(db.Subscription).of_status('active', 'suspended').select()
+    rows = db(db.Subscription).of_status("active", "suspended").select()
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
-    rows = p.subscriptions.of_status('active', 'suspended').select()
+    rows = p.subscriptions.of_status("active", "suspended").select()
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
-    rows = Subscription.of_status('active', 'suspended').select()
+    rows = Subscription.of_status("active", "suspended").select()
     assert len(rows) == 2 and rows[0].id == s and rows[1].id == s2
 
 
@@ -1054,7 +1047,7 @@ def test_relations_scopes(db):
     org = db.Organization.insert(name="Los pollos hermanos")
     org.users.add(gus, role="admin")
     frank = db.User.insert(name="Frank")
-    org.users.add(frank, role='manager')
+    org.users.add(frank, role="manager")
     assert org.admins.count() == 1
     assert org.admins2.count() == 1
     assert org.admins3.count() == 1
@@ -1100,24 +1093,13 @@ def test_relations_scopes(db):
 
 
 def test_model_where(db):
-    assert Subscription.where(lambda s: s.status == 1).query == \
-        db(db.Subscription.status == 1).query
+    assert Subscription.where(lambda s: s.status == 1).query == db(db.Subscription.status == 1).query
 
 
 def test_model_first(db):
     p = db.Person.insert(name="Walter", age=50)
-    db.Subscription.insert(
-        name="a",
-        expires_at=datetime.now() + timedelta(hours=20),
-        person=p,
-        status=1
-    )
-    db.Subscription.insert(
-        name="b",
-        expires_at=datetime.now() + timedelta(hours=20),
-        person=p,
-        status=1
-    )
+    db.Subscription.insert(name="a", expires_at=datetime.now() + timedelta(hours=20), person=p, status=1)
+    db.Subscription.insert(name="b", expires_at=datetime.now() + timedelta(hours=20), person=p, status=1)
     db.CustomPKType.insert(id="a")
     db.CustomPKType.insert(id="b")
     db.CustomPKName.insert(name="a")
@@ -1126,38 +1108,23 @@ def test_model_first(db):
     db.CustomPKMulti.insert(first_name="foo", last_name="baz")
     db.CustomPKMulti.insert(first_name="bar", last_name="baz")
 
-    assert Subscription.first().id == Subscription.all().select(
-        orderby=Subscription.id,
-        limitby=(0, 1)
-    ).first().id
-    assert CustomPKType.first().id == CustomPKType.all().select(
-        orderby=CustomPKType.id,
-        limitby=(0, 1)
-    ).first().id
-    assert CustomPKName.first().name == CustomPKName.all().select(
-        orderby=CustomPKName.name,
-        limitby=(0, 1)
-    ).first().name
-    assert CustomPKMulti.first() == CustomPKMulti.all().select(
-        orderby=CustomPKMulti.first_name|CustomPKMulti.last_name,
-        limitby=(0, 1)
-    ).first()
+    assert Subscription.first().id == Subscription.all().select(orderby=Subscription.id, limitby=(0, 1)).first().id
+    assert CustomPKType.first().id == CustomPKType.all().select(orderby=CustomPKType.id, limitby=(0, 1)).first().id
+    assert (
+        CustomPKName.first().name == CustomPKName.all().select(orderby=CustomPKName.name, limitby=(0, 1)).first().name
+    )
+    assert (
+        CustomPKMulti.first()
+        == CustomPKMulti.all()
+        .select(orderby=CustomPKMulti.first_name | CustomPKMulti.last_name, limitby=(0, 1))
+        .first()
+    )
 
 
 def test_model_last(db):
     p = db.Person.insert(name="Walter", age=50)
-    db.Subscription.insert(
-        name="a",
-        expires_at=datetime.now() + timedelta(hours=20),
-        person=p,
-        status=1
-    )
-    db.Subscription.insert(
-        name="b",
-        expires_at=datetime.now() + timedelta(hours=20),
-        person=p,
-        status=1
-    )
+    db.Subscription.insert(name="a", expires_at=datetime.now() + timedelta(hours=20), person=p, status=1)
+    db.Subscription.insert(name="b", expires_at=datetime.now() + timedelta(hours=20), person=p, status=1)
     db.CustomPKType.insert(id="a")
     db.CustomPKType.insert(id="b")
     db.CustomPKName.insert(name="a")
@@ -1166,19 +1133,14 @@ def test_model_last(db):
     db.CustomPKMulti.insert(first_name="foo", last_name="baz")
     db.CustomPKMulti.insert(first_name="bar", last_name="baz")
 
-    assert Subscription.last().id == Subscription.all().select(
-        orderby=~Subscription.id,
-        limitby=(0, 1)
-    ).first().id
-    assert CustomPKType.last().id == CustomPKType.all().select(
-        orderby=~CustomPKType.id,
-        limitby=(0, 1)
-    ).first().id
-    assert CustomPKName.last().name == CustomPKName.all().select(
-        orderby=~CustomPKName.name,
-        limitby=(0, 1)
-    ).first().name
-    assert CustomPKMulti.last() == CustomPKMulti.all().select(
-        orderby=~CustomPKMulti.first_name|~CustomPKMulti.last_name,
-        limitby=(0, 1)
-    ).first()
+    assert Subscription.last().id == Subscription.all().select(orderby=~Subscription.id, limitby=(0, 1)).first().id
+    assert CustomPKType.last().id == CustomPKType.all().select(orderby=~CustomPKType.id, limitby=(0, 1)).first().id
+    assert (
+        CustomPKName.last().name == CustomPKName.all().select(orderby=~CustomPKName.name, limitby=(0, 1)).first().name
+    )
+    assert (
+        CustomPKMulti.last()
+        == CustomPKMulti.all()
+        .select(orderby=~CustomPKMulti.first_name | ~CustomPKMulti.last_name, limitby=(0, 1))
+        .first()
+    )

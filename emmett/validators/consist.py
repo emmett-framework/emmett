@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.validators.consist
-    -------------------------
+emmett.validators.consist
+-------------------------
 
-    Validators that check the value is of a certain type.
+Validators that check the value is of a certain type.
 
-    :copyright: 2014 Giovanni Barillari
+:copyright: 2014 Giovanni Barillari
 
-    Based on the web2py's validators (http://www.web2py.com)
-    :copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
+Based on the web2py's validators (http://www.web2py.com)
+:copyright: (c) by Massimo Di Pierro <mdipierro@cs.depaul.edu>
 
-    :license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
+:license: LGPLv3 (http://www.gnu.org/licenses/lgpl.html)
 """
 
 import decimal
 import re
 import struct
-
-from datetime import date, time, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from time import strptime
 from urllib.parse import unquote as url_unquote
 
@@ -26,7 +25,7 @@ from emmett_core.utils import cachedprop
 from ..parsers import Parsers
 from ..serializers import Serializers
 from ..utils import parse_datetime
-from .basic import Validator, ParentValidator, _is, Matches
+from .basic import Matches, ParentValidator, Validator, _is
 from .helpers import (
     _DEFAULT,
     _UTC,
@@ -34,8 +33,9 @@ from .helpers import (
     official_url_schemes,
     translate,
     unofficial_url_schemes,
-    url_split_regex
+    url_split_regex,
 )
+
 
 try:
     import ipaddress
@@ -59,7 +59,7 @@ class isFloat(_is):
 
     def check(self, value):
         try:
-            v = float(str(value).replace(self.dot, '.'))
+            v = float(str(value).replace(self.dot, "."))
             return v, None
         except (ValueError, TypeError):
             pass
@@ -69,11 +69,11 @@ class isFloat(_is):
         if value is None:
             return None
         val = str(value)
-        if '.' not in val:
-            val += '.00'
+        if "." not in val:
+            val += ".00"
         else:
-            val += '0' * (2 - len(val.split('.')[1]))
-        return val.replace('.', self.dot)
+            val += "0" * (2 - len(val.split(".")[1]))
+        return val.replace(".", self.dot)
 
 
 class isDecimal(isFloat):
@@ -82,17 +82,14 @@ class isDecimal(isFloat):
             if isinstance(value, decimal.Decimal):
                 v = value
             else:
-                v = decimal.Decimal(str(value).replace(self.dot, '.'))
+                v = decimal.Decimal(str(value).replace(self.dot, "."))
             return v, None
         except (ValueError, TypeError, decimal.InvalidOperation):
             return value, translate(self.message)
 
 
 class isTime(_is):
-    rule = re.compile(
-        r"((?P<h>[0-9]+))([^0-9 ]+(?P<m>[0-9 ]+))?"
-        r"([^0-9ap ]+(?P<s>[0-9]*))?((?P<d>[ap]m))?"
-    )
+    rule = re.compile(r"((?P<h>[0-9]+))([^0-9 ]+(?P<m>[0-9 ]+))?" r"([^0-9ap ]+(?P<s>[0-9]*))?((?P<d>[ap]m))?")
 
     def __call__(self, value):
         return super().__call__(value.lower() if value else value)
@@ -102,20 +99,17 @@ class isTime(_is):
             return value, None
         val = self.rule.match(value)
         try:
-            (h, m, s) = (int(val.group('h')), 0, 0)
-            if not val.group('m') is None:
-                m = int(val.group('m'))
-            if not val.group('s') is None:
-                s = int(val.group('s'))
-            if val.group('d') == 'pm' and 0 < h < 12:
+            (h, m, s) = (int(val.group("h")), 0, 0)
+            if val.group("m") is not None:
+                m = int(val.group("m"))
+            if val.group("s") is not None:
+                s = int(val.group("s"))
+            if val.group("d") == "pm" and 0 < h < 12:
                 h = h + 12
-            if val.group('d') == 'am' and h == 12:
+            if val.group("d") == "am" and h == 12:
                 h = 0
-            if not (h in range(24) and m in range(60) and s
-                    in range(60)):
-                raise ValueError(
-                    'Hours or minutes or seconds are outside of allowed range'
-                )
+            if not (h in range(24) and m in range(60) and s in range(60)):
+                raise ValueError("Hours or minutes or seconds are outside of allowed range")
             val = time(h, m, s)
             return val, None
         except AttributeError:
@@ -126,7 +120,7 @@ class isTime(_is):
 
 
 class isDate(_is):
-    def __init__(self, format='%Y-%m-%d', timezone=None, message=None):
+    def __init__(self, format="%Y-%m-%d", timezone=None, message=None):
         super().__init__(message=message)
         self.format = translate(format)
         self.timezone = timezone
@@ -167,13 +161,21 @@ class isDate(_is):
     @staticmethod
     def nice(format):
         codes = (
-            ('%Y', '1963'), ('%y', '63'), ('%d', '28'), ('%m', '08'),
-            ('%b', 'Aug'), ('%B', 'August'), ('%H', '14'), ('%I', '02'),
-            ('%p', 'PM'), ('%M', '30'), ('%S', '59')
+            ("%Y", "1963"),
+            ("%y", "63"),
+            ("%d", "28"),
+            ("%m", "08"),
+            ("%b", "Aug"),
+            ("%B", "August"),
+            ("%H", "14"),
+            ("%I", "02"),
+            ("%p", "PM"),
+            ("%M", "30"),
+            ("%S", "59"),
         )
-        for (a, b) in codes:
+        for a, b in codes:
             format = format.replace(a, b)
-        return dict(format=format)
+        return {"format": format}
 
 
 class isDatetime(isDate):
@@ -183,7 +185,7 @@ class isDatetime(isDate):
 
     def _get_parser(self, format):
         if format is _DEFAULT:
-            return self._parse_pendulum, '%Y-%m-%dT%H:%M:%S'
+            return self._parse_pendulum, "%Y-%m-%dT%H:%M:%S"
         return self._parse_strptime, format
 
     def _parse_strptime(self, value):
@@ -191,27 +193,20 @@ class isDatetime(isDate):
         return datetime(y, m, d, hh, mm, ss)
 
     def _parse_pendulum(self, value):
-        return parse_datetime(value).in_timezone('UTC')
+        return parse_datetime(value).in_timezone("UTC")
 
     def _check_instance(self, value):
         return isinstance(value, datetime)
 
     def _formatter_obj(self, value):
-        return datetime(
-            value.year,
-            value.month,
-            value.day,
-            value.hour,
-            value.minute,
-            value.second
-        )
+        return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second)
 
 
 class isEmail(_is):
     rule = re.compile(
         r"^(?!\.)([-a-z0-9!\#$%&'*+/=?^_`{|}~]|(?<!\.)\.)+(?<!\.)@"
         r"(localhost|([a-z0-9]([-\w]*[a-z0-9])?\.)+[a-z]{2,})$",
-        re.VERBOSE | re.IGNORECASE
+        re.VERBOSE | re.IGNORECASE,
     )
 
     def __init__(self, banned=None, forced=None, message=None):
@@ -220,11 +215,8 @@ class isEmail(_is):
         self.forced = forced
 
     def check(self, value):
-        domain = value.split('@')[1]
-        if (
-            (not self.banned or not self.banned.match(domain)) and
-            (not self.forced or self.forced.match(domain))
-        ):
+        domain = value.split("@")[1]
+        if (not self.banned or not self.banned.match(domain)) and (not self.forced or self.forced.match(domain)):
             return value, None
         return value, translate(self.message)
 
@@ -260,11 +252,11 @@ class isJSON(_is):
 
     @cachedprop
     def _decoder(self):
-        return Parsers.get_for('json')
+        return Parsers.get_for("json")
 
     @cachedprop
     def _encoder(self):
-        return Serializers.get_for('json')
+        return Serializers.get_for("json")
 
     def check(self, value):
         if isinstance(value, str):
@@ -301,70 +293,68 @@ class isImage(Validator):
 
     def __init__(
         self,
-        extensions=('bmp', 'gif', 'jpeg', 'png'),
-        width={'min': 0, 'max': 10000},
-        height={'min': 0, 'max': 100000},
-        message=None
+        extensions=("bmp", "gif", "jpeg", "png"),
+        width={"min": 0, "max": 10000},
+        height={"min": 0, "max": 100000},
+        message=None,
     ):
         super().__init__(message=message)
         self.extensions = extensions
-        self.maxsize = (width.get('max', 10000), height.get('max', 10000))
-        self.minsize = (width.get('min', 0), height.get('min', 0))
+        self.maxsize = (width.get("max", 10000), height.get("max", 10000))
+        self.minsize = (width.get("min", 0), height.get("min", 0))
 
     def __call__(self, value):
         try:
-            extension = value.filename.rfind('.')
+            extension = value.filename.rfind(".")
             assert extension >= 0
-            extension = value.filename[extension + 1:].lower()
-            if extension == 'jpg':
-                extension = 'jpeg'
+            extension = value.filename[extension + 1 :].lower()
+            if extension == "jpg":
+                extension = "jpeg"
             assert extension in self.extensions
-            if extension == 'bmp':
+            if extension == "bmp":
                 width, height = self.__bmp(value.file)
-            elif extension == 'gif':
+            elif extension == "gif":
                 width, height = self.__gif(value.file)
-            elif extension == 'jpeg':
+            elif extension == "jpeg":
                 width, height = self.__jpeg(value.file)
-            elif extension == 'png':
+            elif extension == "png":
                 width, height = self.__png(value.file)
             else:
                 width = -1
                 height = -1
-            assert self.minsize[0] <= width <= self.maxsize[0] \
-                and self.minsize[1] <= height <= self.maxsize[1]
+            assert self.minsize[0] <= width <= self.maxsize[0] and self.minsize[1] <= height <= self.maxsize[1]
             value.file.seek(0)
             return value, None
-        except:
+        except Exception:
             return value, translate(self.message)
 
     def __bmp(self, stream):
-        if stream.read(2) == 'BM':
+        if stream.read(2) == "BM":
             stream.read(16)
             return struct.unpack("<LL", stream.read(8))
         return -1, -1
 
     def __gif(self, stream):
-        if stream.read(6) in ('GIF87a', 'GIF89a'):
+        if stream.read(6) in ("GIF87a", "GIF89a"):
             stream = stream.read(5)
             if len(stream) == 5:
                 return tuple(struct.unpack("<HHB", stream)[:-1])
         return -1, -1
 
     def __jpeg(self, stream):
-        if stream.read(2) == '\xFF\xD8':
+        if stream.read(2) == "\xff\xd8":
             while True:
                 (marker, code, length) = struct.unpack("!BBH", stream.read(4))
                 if marker != 0xFF:
                     break
                 elif code >= 0xC0 and code <= 0xC3:
-                    return tuple(reversed(
-                        struct.unpack("!xHH", stream.read(5))))
+                    return tuple(reversed(struct.unpack("!xHH", stream.read(5))))
                 else:
                     stream.read(length - 2)
         return -1, -1
 
     def __png(self, stream):
-        if stream.read(8) == '\211PNG\r\n\032\n':
+        if stream.read(8) == "\211PNG\r\n\032\n":
             stream.read(4)
             if stream.read(4) == "IHDR":
                 return struct.unpack("!LL", stream.read(8))
@@ -381,6 +371,7 @@ class _isGenericUrl(Validator):
     Based on RFC 2396: http://www.faqs.org/rfcs/rfc2396.html
     @author: Jonathan Benn
     """
+
     message = "Invalid URL"
     all_url_schemes = [None] + official_url_schemes + unofficial_url_schemes
 
@@ -390,14 +381,11 @@ class _isGenericUrl(Validator):
         self.prepend_scheme = prepend_scheme
         if self.prepend_scheme not in self.allowed_schemes:
             raise SyntaxError(
-                "prepend_scheme='{}' is not in allowed_schemes={}".format(
-                    self.prepend_scheme, self.allowed_schemes
-                )
+                "prepend_scheme='{}' is not in allowed_schemes={}".format(self.prepend_scheme, self.allowed_schemes)
             )
 
     GENERIC_URL = re.compile(
-        r"%[^0-9A-Fa-f]{2}|%[^0-9A-Fa-f][0-9A-Fa-f]|%[0-9A-Fa-f][^0-9A-Fa-f]|"
-        r"%$|%[0-9A-Fa-f]$|%[^0-9A-Fa-f]$"
+        r"%[^0-9A-Fa-f]{2}|%[^0-9A-Fa-f][0-9A-Fa-f]|%[0-9A-Fa-f][^0-9A-Fa-f]|" r"%$|%[0-9A-Fa-f]$|%[^0-9A-Fa-f]$"
     )
     GENERIC_URL_VALID = re.compile(r"[A-Za-z0-9;/?:@&=+$,\-_\.!~*'\(\)%#]+$")
 
@@ -422,11 +410,9 @@ class _isGenericUrl(Validator):
                         # ports, check to see if adding a valid scheme fixes
                         # the problem (but only do this if it doesn't have
                         # one already!)
-                        if value.find('://') < 0 and \
-                                None in self.allowed_schemes:
-                            schemeToUse = self.prepend_scheme or 'http'
-                            prependTest = self.__call__(
-                                schemeToUse + '://' + value)
+                        if value.find("://") < 0 and None in self.allowed_schemes:
+                            schemeToUse = self.prepend_scheme or "http"
+                            prependTest = self.__call__(schemeToUse + "://" + value)
                             # if the prepend test succeeded
                             if prependTest[1] is None:
                                 # if prepending in the output is enabled
@@ -457,42 +443,30 @@ class _isHTTPUrl(Validator):
     """
 
     message = "Invalid URL"
-    http_schemes = [None, 'http', 'https']
-    GENERIC_VALID_IP = re.compile(
-        r"([\w.!~*'|;:&=+$,-]+@)?\d+\.\d+\.\d+\.\d+(:\d*)*$"
-    )
+    http_schemes = [None, "http", "https"]
+    GENERIC_VALID_IP = re.compile(r"([\w.!~*'|;:&=+$,-]+@)?\d+\.\d+\.\d+\.\d+(:\d*)*$")
     GENERIC_VALID_DOMAIN = re.compile(
         r"([\w.!~*'|;:&=+$,-]+@)?(([A-Za-z0-9]+[A-Za-z0-9\-]*[A-Za-z0-9]+\.)"
         r"*([A-Za-z0-9]+\.)*)*([A-Za-z]+[A-Za-z0-9\-]*[A-Za-z0-9]+)\.?(:\d*)*$"
     )
 
-    def __init__(self, schemes=None, prepend_scheme='http', tlds=None, message=None):
+    def __init__(self, schemes=None, prepend_scheme="http", tlds=None, message=None):
         super().__init__(message=message)
         self.allowed_schemes = schemes or self.http_schemes
         self.allowed_tlds = tlds or official_top_level_domains
         self.prepend_scheme = prepend_scheme
         for i in self.allowed_schemes:
             if i not in self.http_schemes:
-                raise SyntaxError(
-                    "allowed_scheme value '{}' is not in {}".format(
-                        i, self.http_schemes
-                    )
-                )
+                raise SyntaxError("allowed_scheme value '{}' is not in {}".format(i, self.http_schemes))
         if self.prepend_scheme not in self.allowed_schemes:
             raise SyntaxError(
-                "prepend_scheme='{}' is not in allowed_schemes={}".format(
-                    self.prepend_scheme, self.allowed_schemes
-                )
+                "prepend_scheme='{}' is not in allowed_schemes={}".format(self.prepend_scheme, self.allowed_schemes)
             )
 
     def __call__(self, value):
         try:
             # if the URL passes generic validation
-            x = _isGenericUrl(
-                schemes=self.allowed_schemes,
-                prepend_scheme=self.prepend_scheme,
-                message=self.message
-            )
+            x = _isGenericUrl(schemes=self.allowed_schemes, prepend_scheme=self.prepend_scheme, message=self.message)
             if x(value)[1] is None:
                 componentsMatch = url_split_regex.match(value)
                 authority = componentsMatch.group(4)
@@ -504,12 +478,10 @@ class _isHTTPUrl(Validator):
                         return value, None
                     else:
                         # else if authority is a valid domain name
-                        domainMatch = self.GENERIC_VALID_DOMAIN.match(
-                            authority)
+                        domainMatch = self.GENERIC_VALID_DOMAIN.match(authority)
                         if domainMatch:
                             # if the top-level domain really exists
-                            if domainMatch.group(5).lower()\
-                                    in self.allowed_tlds:
+                            if domainMatch.group(5).lower() in self.allowed_tlds:
                                 # Then this HTTP URL is valid
                                 return value, None
                 else:
@@ -518,15 +490,15 @@ class _isHTTPUrl(Validator):
                     path = componentsMatch.group(5)
                     # relative case: if this is a valid path (if it starts with
                     # a slash)
-                    if path.startswith('/'):
+                    if path.startswith("/"):
                         # Then this HTTP URL is valid
                         return value, None
                     else:
                         # abbreviated case: if we haven't already, prepend a
                         # scheme and see if it fixes the problem
-                        if value.find('://') < 0:
-                            schemeToUse = self.prepend_scheme or 'http'
-                            prependTest = self(schemeToUse + '://' + value)
+                        if value.find("://") < 0:
+                            schemeToUse = self.prepend_scheme or "http"
+                            prependTest = self(schemeToUse + "://" + value)
                             # if the prepend test succeeded
                             if prependTest[1] is None:
                                 # if prepending in the output is enabled
@@ -536,7 +508,7 @@ class _isHTTPUrl(Validator):
                                     # else return the original, non-prepended
                                     # value
                                     return value, None
-        except:
+        except Exception:
             pass
         # else the HTTP URL is not valid
         return value, translate(self.message)
@@ -546,39 +518,33 @@ class isUrl(Validator):
     #: use `_isGenericUrl` and `_isHTTPUrl` depending on `mode` parameter
     message = "Invalid URL"
 
-    def __init__(
-        self, mode='http', schemes=None, prepend_scheme='http', tlds=None, message=None
-    ):
+    def __init__(self, mode="http", schemes=None, prepend_scheme="http", tlds=None, message=None):
         super().__init__(message=message)
         self.mode = mode.lower()
-        if self.mode not in ['generic', 'http']:
+        if self.mode not in ["generic", "http"]:
             raise SyntaxError("invalid mode '{}' in isUrl".format(self.mode))
         self.allowed_tlds = tlds
         self.allowed_schemes = schemes
         if self.allowed_schemes:
             if prepend_scheme not in self.allowed_schemes:
                 raise SyntaxError(
-                    "prepend_scheme='{}' is not in allowed_schemes={}".format(
-                        prepend_scheme, self.allowed_schemes
-                    )
+                    "prepend_scheme='{}' is not in allowed_schemes={}".format(prepend_scheme, self.allowed_schemes)
                 )
         # if allowed_schemes is None, then we will defer testing
         # prepend_scheme's validity to a sub-method
         self.prepend_scheme = prepend_scheme
 
     def __call__(self, value):
-        if self.mode == 'generic':
+        if self.mode == "generic":
             subValidator = _isGenericUrl(
-                schemes=self.allowed_schemes,
-                prepend_scheme=self.prepend_scheme,
-                message=self.message
+                schemes=self.allowed_schemes, prepend_scheme=self.prepend_scheme, message=self.message
             )
-        elif self.mode == 'http':
+        elif self.mode == "http":
             subValidator = _isHTTPUrl(
                 schemes=self.allowed_schemes,
                 prepend_scheme=self.prepend_scheme,
                 tlds=self.allowed_tlds,
-                message=self.message
+                message=self.message,
             )
         else:
             raise SyntaxError("invalid mode '{}' in isUrl".format(self.mode))
@@ -621,38 +587,27 @@ class isIPv4(Validator):
     """
 
     message = "Invalid IPv4 address"
-    regex = re.compile(
-        r"^(([1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}([1-9]?\d|1\d\d|2[0-4]\d|25[0-5])$"
-    )
+    regex = re.compile(r"^(([1-9]?\d|1\d\d|2[0-4]\d|25[0-5])\.){3}([1-9]?\d|1\d\d|2[0-4]\d|25[0-5])$")
     numbers = (16777216, 65536, 256, 1)
     localhost = 2130706433
     private = ((2886729728, 2886795263), (3232235520, 3232301055))
     automatic = (2851995648, 2852061183)
 
     def __init__(
-        self,
-        min='0.0.0.0',
-        max='255.255.255.255',
-        invert=False,
-        localhost=None,
-        private=None,
-        auto=None,
-        message=None
+        self, min="0.0.0.0", max="255.255.255.255", invert=False, localhost=None, private=None, auto=None, message=None
     ):
         super().__init__(message=message)
         for n, value in enumerate((min, max)):
             temp = []
             if isinstance(value, str):
-                temp.append(value.split('.'))
+                temp.append(value.split("."))
             elif isinstance(value, (list, tuple)):
-                if len(value) == len(
-                    list(filter(lambda item: isinstance(item, int), value))
-                ) == 4:
+                if len(value) == len(list(filter(lambda item: isinstance(item, int), value))) == 4:
                     temp.append(value)
                 else:
                     for item in value:
                         if isinstance(item, str):
-                            temp.append(item.split('.'))
+                            temp.append(item.split("."))
                         elif isinstance(item, (list, tuple)):
                             temp.append(item)
             numbers = []
@@ -673,31 +628,21 @@ class isIPv4(Validator):
     def __call__(self, value):
         if self.regex.match(value):
             number = 0
-            for i, j in zip(self.numbers, value.split('.')):
+            for i, j in zip(self.numbers, value.split(".")):
                 number += i * int(j)
             ok = False
             for bottom, top in zip(self.minip, self.maxip):
                 if self.invert != (bottom <= number <= top):
                     ok = True
+            if not (self.is_localhost is None or self.is_localhost == (number == self.localhost)):
+                ok = False
             if not (
-                self.is_localhost is None or self.is_localhost == (
-                    number == self.localhost
-                )
+                self.is_private is None
+                or self.is_private == (sum([el[0] <= number <= el[1] for el in self.private]) > 0)
             ):
                 ok = False
             if not (
-                self.is_private is None or self.is_private == (
-                    sum([
-                        el[0] <= number <= el[1]
-                        for el in self.private
-                    ]) > 0
-                )
-            ):
-                ok = False
-            if not (
-                self.is_automatic is None or self.is_automatic == (
-                    self.automatic[0] <= number <= self.automatic[1]
-                )
+                self.is_automatic is None or self.is_automatic == (self.automatic[0] <= number <= self.automatic[1])
             ):
                 ok = False
             if ok:
@@ -736,7 +681,7 @@ class isIPv6(Validator):
         to4=None,
         teredo=None,
         subnets=None,
-        message=None
+        message=None,
     ):
         super().__init__(message=message)
         self.is_private = private
@@ -749,9 +694,7 @@ class isIPv6(Validator):
         self.subnets = subnets
 
         if ipaddress is None:
-            raise RuntimeError(
-                "You need 'ipaddress' python module to use isIPv6 validator."
-            )
+            raise RuntimeError("You need 'ipaddress' python module to use isIPv6 validator.")
 
     def __call__(self, value):
         try:
@@ -768,9 +711,8 @@ class isIPv6(Validator):
             for network in self.subnets:
                 try:
                     ipnet = ipaddress.IPv6Network(network)
-                except (ipaddress.NetmaskValueError,
-                        ipaddress.AddressValueError):
-                    return value, translate('invalid subnet provided')
+                except (ipaddress.NetmaskValueError, ipaddress.AddressValueError):
+                    return value, translate("invalid subnet provided")
                 if ip in ipnet:
                     ok = True
 
@@ -780,22 +722,13 @@ class isIPv6(Validator):
             self.is_reserved = False
             self.is_multicast = False
 
-        if not (
-            self.is_private is None or self.is_private == ip.is_private
-        ):
+        if not (self.is_private is None or self.is_private == ip.is_private):
             ok = False
-        if not (
-            self.is_link_local is None or
-            self.is_link_local == ip.is_link_local
-        ):
+        if not (self.is_link_local is None or self.is_link_local == ip.is_link_local):
             ok = False
-        if not (
-            self.is_reserved is None or self.is_reserved == ip.is_reserved
-        ):
+        if not (self.is_reserved is None or self.is_reserved == ip.is_reserved):
             ok = False
-        if not (
-            self.is_multicast is None or self.is_multicast == ip.is_multicast
-        ):
+        if not (self.is_multicast is None or self.is_multicast == ip.is_multicast):
             ok = False
         if not (self.is_6to4 is None or self.is_6to4 == ip.is_6to4):
             ok = False
@@ -821,8 +754,8 @@ class isIP(Validator):
 
     def __init__(
         self,
-        min='0.0.0.0',
-        max='255.255.255.255',
+        min="0.0.0.0",
+        max="255.255.255.255",
         invert=False,
         localhost=None,
         private=None,
@@ -836,11 +769,11 @@ class isIP(Validator):
         teredo=None,
         subnets=None,
         ipv6=None,
-        message=None
+        message=None,
     ):
         super().__init__(message=message)
-        self.minip = min,
-        self.maxip = max,
+        self.minip = (min,)
+        self.maxip = (max,)
         self.invert = invert
         self.is_localhost = localhost
         self.is_private = private
@@ -857,9 +790,7 @@ class isIP(Validator):
         self.is_ipv6 = ipv6
 
         if ipaddress is None:
-            raise RuntimeError(
-                "You need 'ipaddress' python module to use isIP validator."
-            )
+            raise RuntimeError("You need 'ipaddress' python module to use isIP validator.")
 
     def __call__(self, value):
         try:
@@ -879,7 +810,7 @@ class isIP(Validator):
                 localhost=self.is_localhost,
                 private=self.is_private,
                 auto=self.is_automatic,
-                message=self.message
+                message=self.message,
             )(value)
         elif self.is_ipv6 or isinstance(ip, ipaddress.IPv6Address):
             rv = isIPv6(
@@ -891,7 +822,7 @@ class isIP(Validator):
                 to4=self.is_6to4,
                 teredo=self.is_teredo,
                 subnets=self.subnets,
-                message=self.message
+                message=self.message,
             )(value)
         else:
             rv = (value, translate(self.message))

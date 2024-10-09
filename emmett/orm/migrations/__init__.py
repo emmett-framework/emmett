@@ -1,2 +1,2 @@
-from .base import Migration, Column
+from .base import Column, Migration
 from .operations import *

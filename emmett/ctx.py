@@ -1,25 +1,24 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.ctx
-    ----------
+emmett.ctx
+----------
 
-    Provides the current object.
-    Used by application to deal with request related objects.
+Provides the current object.
+Used by application to deal with request related objects.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from datetime import datetime
 
 import pendulum
-
 from emmett_core.ctx import (
-    Current as _Current,
     Context as _Context,
+    Current as _Current,
     RequestContext as _RequestContext,
     WSContext as _WsContext,
-    _ctxv
+    _ctxv,
 )
 from emmett_core.utils import cachedprop
 
@@ -37,9 +36,7 @@ class RequestContext(_RequestContext):
 
     @cachedprop
     def language(self):
-        return self.request.accept_language.best_match(
-            list(self.app.translator._langmap)
-        )
+        return self.request.accept_language.best_match(list(self.app.translator._langmap))
 
 
 class WSContext(_WsContext):
@@ -51,9 +48,7 @@ class WSContext(_WsContext):
 
     @cachedprop
     def language(self):
-        return self.websocket.accept_language.best_match(
-            list(self.app.translator._langmap)
-        )
+        return self.websocket.accept_language.best_match(list(self.app.translator._langmap))
 
 
 class Current(_Current):

@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-    emmett._internal
-    ----------------
+emmett._internal
+----------------
 
-    Provides internally used helpers and objects.
+Provides internally used helpers and objects.
 
-    :copyright: 2014 Giovanni Barillari
+:copyright: 2014 Giovanni Barillari
 
-    Several parts of this code comes from Flask and Werkzeug.
-    :copyright: (c) 2014 by Armin Ronacher.
+Several parts of this code comes from Flask and Werkzeug.
+:copyright: (c) 2014 by Armin Ronacher.
 
-    :license: BSD-3-Clause
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations
@@ -23,18 +23,13 @@ import pendulum
 #: monkey patches
 def _pendulum_to_datetime(obj):
     return datetime.datetime(
-        obj.year, obj.month, obj.day,
-        obj.hour, obj.minute, obj.second, obj.microsecond,
-        tzinfo=obj.tzinfo
+        obj.year, obj.month, obj.day, obj.hour, obj.minute, obj.second, obj.microsecond, tzinfo=obj.tzinfo
     )
 
 
 def _pendulum_to_naive_datetime(obj):
-    obj = obj.in_timezone('UTC')
-    return datetime.datetime(
-        obj.year, obj.month, obj.day,
-        obj.hour, obj.minute, obj.second, obj.microsecond
-    )
+    obj = obj.in_timezone("UTC")
+    return datetime.datetime(obj.year, obj.month, obj.day, obj.hour, obj.minute, obj.second, obj.microsecond)
 
 
 def _pendulum_json(obj):

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.datastructures
-    ---------------------
+emmett.datastructures
+---------------------
 
-    Provide some useful data structures.
+Provide some useful data structures.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from emmett_core.datastructures import sdict as sdict
@@ -55,7 +55,7 @@ class OrderedSet(set):
         return self.union(other)
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self._list)
+        return "%s(%r)" % (self.__class__.__name__, self._list)
 
     __str__ = __repr__
 
@@ -124,6 +124,4 @@ def _unique_list(seq, hashfunc=None):
     seen_add = seen.add
     if not hashfunc:
         return [x for x in seq if x not in seen and not seen_add(x)]
-    return [
-        x for x in seq if hashfunc(x) not in seen and not seen_add(hashfunc(x))
-    ]
+    return [x for x in seq if hashfunc(x) not in seen and not seen_add(hashfunc(x))]
