@@ -41,15 +41,18 @@ Now, let's see how to deal with request variables.
 
 ### Request variables
 
-Emmett's `request` object also provides three important attributes about the active request:
+*Changed in version 2.6*
+
+Emmett's `request` object also provides four important attributes about the active request:
 
 | attribute | awaitable | description |
 | --- | --- | --- |
 | query_params | no | contains the URL query parameters |
+| body | yes | contains the raw (bytes) request body |
 | body_params | yes | contains parameters passed into the request body |
 | files | yes | contains files passed into the request body |
 
-All three attributes are `sdict` objects and they work in the same way, within the exception of requiring `await` or not, and an example may help you understand their dynamic:
+All the attributes but `body` are `sdict` objects and they work in the same way, within the exception of requiring `await` or not, and an example may help you understand their dynamic:
 
 ```python
 from emmett import App, request
@@ -89,6 +92,50 @@ Simple: the `request`'s params attributes will look like this:
 ```
 
 You can always access the variables you need.
+
+#### Request files
+
+The `files` attribute works in the same way of `body_params` for multipart requests, but its values are objects wrapping the underlying file.
+
+These objects have some useful attributes, specifically:
+
+| attribute | description |
+| --- | --- |
+| filename | name of the file |
+| content\_type | MIME type of the file |
+| size | file size |
+
+Also, these object provides two methods to interact with the file contents: the `read` method, which allows you to load the file content, and the async `save` method, which allows you to directly store the file contents into a file-like object.
+
+```python
+@app.route()
+async def multipart_load():
+    files = await request.files
+    # at this point you can either:
+    # i) read all the file contents
+    data = files.myfile.read()
+    # ii) read up to 4k of the file contents
+    data = files.myfile.read(4096)
+    # iii) store the file
+    await files.myfile.save(f"some/destination/{files.myfile.filename}")
+```
+
+#### Working with raw requests' bodies
+
+The `body` attribute gives you direct access to the request body. It's an awaitable object, so you can either load the whole body or iterate over it:
+
+```python
+@app.route()
+async def post():
+    raw_body = await request.body
+
+@app.route()
+async def iterpost():
+    async for raw_chunk in request.body:
+        # do something
+```
+
+> **Note:** you cannot mix the two approaches. Also, directly interacting with `body` will prevent you to use `body_params` and `files` within the same request.
 
 Errors and redirects
 --------------------

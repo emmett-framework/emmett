@@ -91,6 +91,7 @@ Here is the complete list of parameters accepted by `Form` class:
 > **Note:** the `fields` and `exclude_fields` parameters should not be used together. If you need to hide just a few fields, you'd better using the `exclude_fields`, and you should use `fields` if you have to show only few table fields. The advantages of these parameters are lost if you use both.
 
 ### Uploads with forms
+
 As we saw above, the `upload` parameter of forms needs an URL for download. Let's focus a bit on uploads and see an example to completely understand this requirement.
 
 Let's say you want to handle the upload of avatar images from your user. So, in your model you would have an upload field:
@@ -99,14 +100,14 @@ Let's say you want to handle the upload of avatar images from your user. So, in 
 avatar = Field.upload()
 ```
 
-and the forms produced by Emmett will handle uploads for you. How would you display this image in your template? You need a streaming function like this:
+and the forms produced by Emmett will handle uploads for you. How would you display this image in your template? You need a route which will send back the uploaded files' contents:
 
 ```python
-from emmett.helpers import stream_dbfile 
+from emmett import response
 
 @app.route("/download/<str:filename>")
 async def download(filename):
-    stream_dbfile(db, filename)
+    return response.wrap_dbfile(db, filename)
 ```
 
 and then, in your template, you can create an `img` tag pointing to the `download` function you've just exposed:

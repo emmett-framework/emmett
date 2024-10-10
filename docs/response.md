@@ -78,6 +78,61 @@ Then, in your template, you can just write:
 
 and you will have all the meta tags included in your HTML.
 
+Wrapping methods
+----------------
+
+*New in version 2.6*
+
+Emmett `Response` object also provides some *wrapping* methods in order to respond with files or streams of data, specifically:
+
+- `wrap_iter`
+- `wrap_aiter`
+- `wrap_file`
+- `wrap_io`
+
+These methods can be used to produce responses from iterators and files.
+
+### Iterable responses
+
+The `wrap_iter` and `wrap_aiter` methods are very similar, both accepts iterables: you can use the latter for asynchronous iterators:
+
+```python
+def iterator():
+    for _ in range(3):
+        yield b"hello"
+
+async def aiterator():
+    for _ in range(3):
+        yield b"hello"
+
+@app.route()
+async def response_iter():
+    return response.wrap_iter(iterator())
+
+@app.route()
+async def response_aiter():
+    return response.wrap_aiter(aiterator())
+```
+
+### File responses
+
+You can produce responses from file using two different methods in Emmett:
+
+- `wrap_file` when you want to create a response from a path
+- `wrap_io` when you want to create a response from a *file-like* object
+
+```python
+@app.route("/file/<name:str>")
+async def file(name):
+    return response.wrap_file(f"assets/{name}")
+
+
+@app.route("/io/<name:str>")
+async def io(name):
+    with open(f"assets/{name}", "r") as f:
+        return response.wrap_io(f)
+```
+
 Message flashing
 ----------------
 

@@ -244,6 +244,8 @@ The output will be a JSON object with the converted content of your Python dicti
 
 The `service` module has other helpers, like *XML* format: go further in the [Services chapter](./services) of the documentation.
 
+Also, Emmett allows you to respond with streams and files: check the [Responses chapter](./response#wrapping-methods) of the documentation for further details.
+
 Dealing with requests
 ---------------------
 

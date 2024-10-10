@@ -110,7 +110,7 @@ folder. When you need to use a different template name, just tell Emmett to load
 
 ### Output
 
-*New in version 2.0*
+*Changed in version 2.6*
 
 The `output` parameter can be used to increase Emmett's performance in building the proper response from the exposed function. Here is the list of accepted outputs:
 
@@ -120,6 +120,9 @@ The `output` parameter can be used to increase Emmett's performance in building 
 | bytes | `bytes` string return value |
 | str | `str` return value |
 | template | `dict` return value to be used in templates |
+| iter | iterable (of `bytes`) return value |
+| aiter | async iterable (of `bytes`) return value |
+| http | `HTTPResponse` return value |
 
 Under normal circumstances, the default behaviour is the best for most of usage cases.
 
