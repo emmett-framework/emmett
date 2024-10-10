@@ -36,6 +36,8 @@ class TagStack(threading.local):
 
 
 class HtmlTag:
+    __slots__ = ["name", "parent", "components", "attributes"]
+
     rules = {
         "ul": ["li"],
         "ol": ["li"],
@@ -72,6 +74,9 @@ class HtmlTag:
     def __call__(self, *components, **attributes):
         rules = self.rules.get(self.name, [])
         self.components = [self.wrap(comp, rules) for comp in components]
+        # legacy "data" attribute
+        if _data := attributes.pop("data", None):
+            attributes["_data"] = _data
         self.attributes = attributes
         for component in self.components:
             if isinstance(component, HtmlTag):
@@ -154,20 +159,32 @@ class HtmlTag:
                 tags.add(self)
         return tags
 
+    @staticmethod
+    def _build_html_attributes_items(attrs, namespace=None):
+        if namespace:
+            for k, v in sorted(attrs.items()):
+                nk = f"{namespace}-{k}"
+                if v is True:
+                    yield (nk, k)
+                else:
+                    yield (nk, htmlescape(v))
+        else:
+            for k, v in filter(lambda item: item[0].startswith("_") and item[1] is not None, sorted(attrs.items())):
+                nk = k[1:]
+                if isinstance(v, dict):
+                    for item in HtmlTag._build_html_attributes_items(v, nk):
+                        yield item
+                elif v is True:
+                    yield (nk, nk)
+                else:
+                    yield (nk, htmlescape(v))
+
     def _build_html_attributes(self):
-        return " ".join(
-            '%s="%s"' % (k[1:], k[1:] if v is True else htmlescape(v))
-            for (k, v) in sorted(self.attributes.items())
-            if k.startswith("_") and v is not None
-        )
+        return " ".join(f'{k}="{v}"' for k, v in self._build_html_attributes_items(self.attributes))
 
     def __html__(self):
         name = self.name
         attrs = self._build_html_attributes()
-        data = self.attributes.get("data", {})
-        data_attrs = " ".join('data-%s="%s"' % (k, htmlescape(v)) for k, v in data.items())
-        if data_attrs:
-            attrs = attrs + " " + data_attrs
         attrs = " " + attrs if attrs else ""
         if name in self._self_closed:
             return "<%s%s />" % (name, attrs)
@@ -187,6 +204,8 @@ class MetaHtmlTag:
 
 
 class cat(HtmlTag):
+    __slots__ = []
+
     def __init__(self, *components):
         self.components = list(components)
         self.attributes = {}
@@ -196,11 +215,13 @@ class cat(HtmlTag):
 
 
 class asis(HtmlTag):
-    def __init__(self, text):
-        self.text = text
+    __slots__ = []
+
+    def __init__(self, val):
+        self.name = val
 
     def __html__(self):
-        return _to_str(self.text)
+        return _to_str(self.name)
 
 
 def _to_str(obj):
