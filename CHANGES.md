@@ -1,6 +1,20 @@
 Emmett changelog
 ================
 
+Next
+----
+
+(Release date to be defined, codename to be selected)
+
+- Added Python 3.13 support
+- Re-implemented router matching algorithm in Rust
+- Re-implemented multipart parsing in Rust
+- Added `Response` wrap methods
+- Refactored `Request.files` implementation
+- Support iteration on `Request.body`
+- Added `iter`, `aiter` and `http` to routes' outputs
+- Testing client is now using RSGI protocol in place of ASGI
+
 Version 2.5
 -----------
 
