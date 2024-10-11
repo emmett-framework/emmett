@@ -149,4 +149,4 @@ dev-dependencies = [
 ]
 
 [tool.uv.sources]
-emmett-core = { git = "https://github.com/emmett-framework/core", rev = "a0f8ec8" }
+emmett-core = { git = "https://github.com/emmett-framework/core", rev = "aa7b303" }
