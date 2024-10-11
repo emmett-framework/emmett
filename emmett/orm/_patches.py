@@ -26,7 +26,6 @@ from .adapters import (
     _transaction_depth,
 )
 from .connection import (
-    ConnectionManager,
     PooledConnectionManager,
     _close_loop,
     _close_sync,
@@ -38,7 +37,6 @@ from .connection import (
     _connection_setter,
     _cursors_getter,
 )
-from .engines.sqlite import SQLite
 
 
 def _patch_adapter_cls():
@@ -50,7 +48,6 @@ def _patch_adapter_cls():
     BaseAdapter.top_transaction = _top_transaction
     BaseAdapter._connection_manager_cls = PooledConnectionManager
     BaseAdapter.begin = _begin
-    SQLite._connection_manager_cls = ConnectionManager
 
 
 def _patch_adapter_connection():
