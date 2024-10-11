@@ -43,7 +43,7 @@ class SnippetResponseBuilder(ResponseProcessor):
         template, output = output
         base_ctx = {"current": current, "url": url, "asis": asis, "load_component": load_component}
         output = base_ctx if output is None else {**base_ctx, **output}
-        return self.route.app.templater._render(template, current.request.name, output)
+        return self.route.app.templater._render(template, f"_snippet.{current.request.name}", output)
 
 
 class AutoResponseBuilder(ResponseProcessor):
@@ -59,8 +59,8 @@ class AutoResponseBuilder(ResponseProcessor):
             output = {"current": current, "url": url, "asis": asis, "load_component": load_component}
         if is_template:
             response.headers._data["content-type"] = _html_content_type
-            if snippet:
-                return self.route.app.templater._render(snippet, current.request.name, output)
+            if snippet is not None:
+                return self.route.app.templater._render(snippet, f"_snippet.{current.request.name}", output)
             try:
                 return self.route.app.templater.render(self.route.template, output)
             except TemplateMissingError as exc:
