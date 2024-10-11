@@ -13,6 +13,75 @@ Just as a remind, you can update Emmett using *pip*:
 $ pip install -U emmett
 ```
 
+Version 2.6
+-----------
+
+Emmett 2.6 release is focused on modernising part of the codebase. In this release we also rewrote part of the router and the request parsers in Rust, providing additional performance gains to all kind of applications.
+
+This release introduces some minor breaking changes and few deprecations, while introducing some new features.
+
+### Breaking changes
+
+#### Request files' content is now spooled
+
+Prior to Emmett 2.6 the contents of `Request.files` were loaded in memory on parsing. This might have led to issues with memory allocations, thus in 2.6 the file contents are spooled to temprorary files on disk.    
+The main consequence for this change is that code relying on the old behavior is now subject to errors. This only involves code relying on the previous – and undocumented – `stream` attribute of the `files` object values; all the other interfaces (iteration, `save` method, etc.) are still the same.    
+In case your application code falls into this scope, you should change the involved lines accordingly:
+
+```python
+files = await request.files
+# prior to 2.6
+data = files.myfile.stream.read()
+# from 2.6
+data = files.myfile.read()
+```
+
+#### Default logger configuration
+
+With Emmett 2.6 the default logger configuration will now use the standard output rather than a rotating file handler.
+
+This is considered a *minor breaking change*, as it involves the default configuration, and thus can be set to the previous one:
+
+```python
+app.config.logging.production.file.no = 4
+app.config.logging.production.file.max_size = 5 * 1024 * 1024
+```
+
+### Deprecations
+
+#### Stream helpers
+
+Stream helpers like `stream_file` and `stream_dbfile` are now deprecated in favour of the newly introduced [response wrap methods](./response#wrapping-methods).
+
+Code involving this methods like:
+
+```python
+from emmett.helpers import stream_dbfile 
+
+@app.route("/download/<str:filename>")
+async def download(filename):
+    stream_dbfile(db, filename)
+```
+
+should be converted to the new format:
+
+```python
+from emmett import response
+
+@app.route("/download/<str:filename>")
+async def download(filename):
+    return response.wrap_dbfile(db, filename)
+```
+
+### New features
+
+- [Response *wrap* methods](./response#wrapping-methods)
+- Ability to return [template snippets](./templates#template-snippets) in routes
+- Support for `iter`, `aiter` and `http` [route outputs](./routing#output)
+- The request body now [supports iteration](./request#request-variables)
+
+Emmett 2.6 also introduces support for Python 3.13.
+
 Version 2.5
 -----------
 
