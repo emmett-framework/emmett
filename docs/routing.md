@@ -120,6 +120,7 @@ The `output` parameter can be used to increase Emmett's performance in building 
 | bytes | `bytes` string return value |
 | str | `str` return value |
 | template | `dict` return value to be used in templates |
+| snippet | `tuple` return value composed by a template string and a `dict` |
 | iter | iterable (of `bytes`) return value |
 | aiter | async iterable (of `bytes`) return value |
 | http | `HTTPResponse` return value |

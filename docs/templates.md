@@ -54,6 +54,18 @@ code is that you have to write `pass` after the statements to tell Emmett where
 the Python block ends. Normally, Python uses indentation for this, but HTML is
 not structured the same way and just undoing the indentation would be ambiguous.
 
+### Template snippets
+
+*New in version 2.6*
+
+For cases in which you want to render just a simple template block, Emmett also support *snippets*, which avoid the need of creating a template file:
+
+```python
+@app.route("/div/<str:msg>")
+async def echo_div(msg):
+    return '<div class="message">{{ =message }}</div>', {"message": msg}
+```
+
 Template structure
 -------------------
 
