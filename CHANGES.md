@@ -12,8 +12,9 @@ Next
 - Added `Response` wrap methods
 - Refactored `Request.files` implementation
 - Support iteration on `Request.body`
-- Added `iter`, `aiter` and `http` to routes' outputs
+- Added `iter`, `aiter`, `http` and `snippet` to routes' outputs
 - Testing client is now using RSGI protocol in place of ASGI
+- Logger now uses stdout in place of files under default configuration
 
 Version 2.5
 -----------
