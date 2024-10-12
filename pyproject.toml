@@ -35,7 +35,7 @@ classifiers = [
 
 dependencies = [
     "click>=6.0",
-    "emmett-core[granian,rapidjson]",
+    "emmett-core[granian,rapidjson]~=1.0.0",
     "pendulum~=3.0.0",
     "pydal@git+https://github.com/gi0baro/pydal@emmett",
     "pyyaml~=6.0",
@@ -144,9 +144,6 @@ dev-dependencies = [
     "ipaddress>=1.0",
     "pytest>=7.1",
     "pytest-asyncio>=0.15",
-    "psycopg2-binary~=2.9; python_version != '3.13'",
+    "psycopg2-binary~=2.9",
     "ruff~=0.5.0",
 ]
-
-[tool.uv.sources]
-emmett-core = { git = "https://github.com/emmett-framework/core", rev = "aa7b303" }

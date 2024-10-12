@@ -19,11 +19,13 @@ from emmett_core.http.response import (
     HTTPIOResponse as HTTPIO,
     HTTPIterResponse as HTTPIter,
     HTTPResponse as HTTPResponse,
-    HTTPStringResponse as HTTP,
+    HTTPStringResponse as HTTPStringResponse,
 )
 
 from .ctx import current
 
+
+HTTP = HTTPStringResponse
 
 status_codes = {
     100: "100 CONTINUE",

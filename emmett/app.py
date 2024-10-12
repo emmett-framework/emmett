@@ -305,9 +305,7 @@ class AppModule(_AppModule):
 
 
 class App(_App):
-    __slots__ = ["template_default_extension", "template_path", "templater", "translator"]
-
-    debug = None
+    __slots__ = ["cli", "template_default_extension", "template_path", "templater", "translator"]
 
     config_class = Config
     modules_class = AppModule
@@ -363,10 +361,6 @@ class App(_App):
         self._asgi_handlers["ws"] = ASGIWSHandler(self, current)
         self._rsgi_handlers["http"] = RSGIHTTPHandler(self, current)
         self._rsgi_handlers["ws"] = RSGIWSHandler(self, current)
-
-    def _configure_asgi_handlers(self):
-        self._asgi_handlers["http"]._configure_methods()
-        self._rsgi_handlers["http"]._configure_methods()
 
     def _register_with_ctx(self):
         current.app = self

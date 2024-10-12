@@ -9,7 +9,6 @@ Provides requires and service decorators.
 :license: BSD-3-Clause
 """
 
-# from ..routing.router import Router
 from emmett_core.pipeline.dyn import (
     ServicePipeBuilder as _ServicePipeBuilder,
     requires as _requires,
@@ -17,11 +16,11 @@ from emmett_core.pipeline.dyn import (
 )
 
 from ..pipeline import RequirePipe
-from .service import XMLServicePipe
+from .service import JSONServicePipe, XMLServicePipe
 
 
 class ServicePipeBuilder(_ServicePipeBuilder):
-    _pipe_cls = {**_ServicePipeBuilder._pipe_cls, **{"xml": XMLServicePipe}}
+    _pipe_cls = {"json": JSONServicePipe, "xml": XMLServicePipe}
 
 
 class requires(_requires):
