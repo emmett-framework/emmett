@@ -3,9 +3,8 @@ name: Tests
 on:
   push:
     branches:
-      - "**"
-    tags-ignore:
-      - "**"
+      - master
+      - release
   pull_request:
     types: [opened, synchronize]
     branches:
