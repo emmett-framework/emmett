@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.apis
-    ---------------
+emmett.orm.apis
+---------------
 
-    Provides ORM apis.
+Provides ORM apis.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from collections import OrderedDict
-from enum import Enum
 from typing import List
 
 from .errors import MissingFieldsForCompute
-from .helpers import Reference, Callback
+from .helpers import Callback, Reference
 
 
 class belongs_to(Reference):
@@ -94,61 +93,62 @@ class rowmethod(rowattr):
 
 
 def before_insert(f):
-    return Callback(f, '_before_insert')
+    return Callback(f, "_before_insert")
 
 
 def after_insert(f):
-    return Callback(f, '_after_insert')
+    return Callback(f, "_after_insert")
 
 
 def before_update(f):
-    return Callback(f, '_before_update')
+    return Callback(f, "_before_update")
 
 
 def after_update(f):
-    return Callback(f, '_after_update')
+    return Callback(f, "_after_update")
 
 
 def before_delete(f):
-    return Callback(f, '_before_delete')
+    return Callback(f, "_before_delete")
 
 
 def after_delete(f):
-    return Callback(f, '_after_delete')
+    return Callback(f, "_after_delete")
 
 
 def before_save(f):
-    return Callback(f, '_before_save')
+    return Callback(f, "_before_save")
 
 
 def after_save(f):
-    return Callback(f, '_after_save')
+    return Callback(f, "_after_save")
 
 
 def before_destroy(f):
-    return Callback(f, '_before_destroy')
+    return Callback(f, "_before_destroy")
 
 
 def after_destroy(f):
-    return Callback(f, '_after_destroy')
+    return Callback(f, "_after_destroy")
 
 
 def before_commit(f):
-    return Callback(f, '_before_commit')
+    return Callback(f, "_before_commit")
 
 
 def after_commit(f):
-    return Callback(f, '_after_commit')
+    return Callback(f, "_after_commit")
 
 
 def _commit_callback_op(kind, op):
     def _deco(f):
-        return Callback(f, f'_{kind}_commit_{op}')
+        return Callback(f, f"_{kind}_commit_{op}")
+
     return _deco
 
 
-before_commit.operation = lambda op: _commit_callback_op('before', op)
-after_commit.operation = lambda op: _commit_callback_op('after', op)
+before_commit.operation = lambda op: _commit_callback_op("before", op)
+after_commit.operation = lambda op: _commit_callback_op("after", op)
 
 
 class scope(object):

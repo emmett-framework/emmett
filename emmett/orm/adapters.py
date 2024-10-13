@@ -1,35 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.adapters
-    -------------------
+emmett.orm.adapters
+-------------------
 
-    Provides ORM adapters facilities.
+Provides ORM adapters facilities.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 import sys
-
 from functools import wraps
 
 from pydal.adapters.base import SQLAdapter
-from pydal.adapters.mssql import (
-    MSSQL1,
-    MSSQL3,
-    MSSQL4,
-    MSSQL1N,
-    MSSQL3N,
-    MSSQL4N
-)
-from pydal.adapters.postgres import (
-    Postgre,
-    PostgrePsyco,
-    PostgrePG8000,
-    PostgreNew,
-    PostgrePsycoNew,
-    PostgrePG8000New
-)
+from pydal.adapters.mssql import MSSQL1, MSSQL1N, MSSQL3, MSSQL3N, MSSQL4, MSSQL4N
+from pydal.adapters.postgres import Postgre, PostgreNew, PostgrePG8000, PostgrePG8000New, PostgrePsyco, PostgrePsycoNew
 from pydal.helpers.classes import SQLALL
 from pydal.helpers.regex import REGEX_TABLE_DOT_FIELD
 from pydal.parsers import ParserMethodWrapper, for_type as _parser_for_type
@@ -37,37 +22,38 @@ from pydal.representers import TReprMethodWrapper, for_type as _representer_for_
 
 from .engines import adapters
 from .helpers import GeoFieldWrapper, PasswordFieldWrapper, typed_row_reference
-from .objects import Expression, Field, Row, IterRows
+from .objects import Expression, Field, IterRows, Row
 
 
-adapters._registry_.update({
-    'mssql': MSSQL4,
-    'mssql2': MSSQL1,
-    'mssql3': MSSQL3,
-    'mssqln': MSSQL4N,
-    'mssqln2': MSSQL1N,
-    'mssqln3': MSSQL3N,
-    'postgres2': PostgreNew,
-    'postgres2:psycopg2': PostgrePsycoNew,
-    'postgres2:pg8000': PostgrePG8000New,
-    'postgres3': Postgre,
-    'postgres3:psycopg2': PostgrePsyco,
-    'postgres3:pg8000': PostgrePG8000
-})
+adapters._registry_.update(
+    {
+        "mssql": MSSQL4,
+        "mssql2": MSSQL1,
+        "mssql3": MSSQL3,
+        "mssqln": MSSQL4N,
+        "mssqln2": MSSQL1N,
+        "mssqln3": MSSQL3N,
+        "postgres2": PostgreNew,
+        "postgres2:psycopg2": PostgrePsycoNew,
+        "postgres2:pg8000": PostgrePG8000New,
+        "postgres3": Postgre,
+        "postgres3:psycopg2": PostgrePsyco,
+        "postgres3:pg8000": PostgrePG8000,
+    }
+)
 
 
 def _wrap_on_obj(f, adapter):
     @wraps(f)
     def wrapped(*args, **kwargs):
         return f(adapter, *args, **kwargs)
+
     return wrapped
 
 
 def patch_adapter(adapter):
     #: BaseAdapter interfaces
-    adapter._expand_all_with_concrete_tables = _wrap_on_obj(
-        _expand_all_with_concrete_tables, adapter
-    )
+    adapter._expand_all_with_concrete_tables = _wrap_on_obj(_expand_all_with_concrete_tables, adapter)
     adapter._parse = _wrap_on_obj(_parse, adapter)
     adapter._parse_expand_colnames = _wrap_on_obj(_parse_expand_colnames, adapter)
     adapter.iterparse = _wrap_on_obj(iterparse, adapter)
@@ -87,44 +73,28 @@ def patch_adapter(adapter):
 
 
 def patch_dialect(dialect):
-    _create_table_map = {
-        'mysql': _create_table_mysql,
-        'firebird': _create_table_firebird
-    }
-    dialect.create_table = _wrap_on_obj(
-        _create_table_map.get(dialect.adapter.dbengine, _create_table), dialect
-    )
+    _create_table_map = {"mysql": _create_table_mysql, "firebird": _create_table_firebird}
+    dialect.create_table = _wrap_on_obj(_create_table_map.get(dialect.adapter.dbengine, _create_table), dialect)
     dialect.add_foreign_key_constraint = _wrap_on_obj(_add_fk_constraint, dialect)
     dialect.drop_constraint = _wrap_on_obj(_drop_constraint, dialect)
 
 
 def patch_parser(dialect, parser):
-    parser.registered['password'] = ParserMethodWrapper(
-        parser,
-        _parser_for_type('password')(_parser_password).f
+    parser.registered["password"] = ParserMethodWrapper(parser, _parser_for_type("password")(_parser_password).f)
+    parser.registered["reference"] = ParserMethodWrapper(
+        parser, _parser_for_type("reference")(_parser_reference).f, parser._before_registry_["reference"]
     )
-    parser.registered['reference'] = ParserMethodWrapper(
-        parser,
-        _parser_for_type('reference')(_parser_reference).f,
-        parser._before_registry_['reference']
-    )
-    if 'geography' in dialect.types:
-        parser.registered['geography'] = ParserMethodWrapper(
-            parser,
-            _parser_for_type('geography')(_parser_geo).f
-        )
-    if 'geometry' in dialect.types:
-        parser.registered['geometry'] = ParserMethodWrapper(
-            parser,
-            _parser_for_type('geometry')(_parser_geo).f
-        )
+    if "geography" in dialect.types:
+        parser.registered["geography"] = ParserMethodWrapper(parser, _parser_for_type("geography")(_parser_geo).f)
+    if "geometry" in dialect.types:
+        parser.registered["geometry"] = ParserMethodWrapper(parser, _parser_for_type("geometry")(_parser_geo).f)
 
 
 def patch_representer(representer):
-    representer.registered_t['reference'] = TReprMethodWrapper(
+    representer.registered_t["reference"] = TReprMethodWrapper(
         representer,
-        _representer_for_type('reference')(_representer_reference),
-        representer._tbefore_registry_['reference']
+        _representer_for_type("reference")(_representer_reference),
+        representer._tbefore_registry_["reference"],
     )
 
 
@@ -132,17 +102,14 @@ def insert(adapter, table, fields):
     query = adapter._insert(table, fields)
     try:
         adapter.execute(query)
-    except:
+    except Exception:
         e = sys.exc_info()[1]
-        if hasattr(table, '_on_insert_error'):
+        if hasattr(table, "_on_insert_error"):
             return table._on_insert_error(table, fields, e)
         raise e
     if not table._id:
-        id = {
-            field.name: val for field, val in fields
-            if field.name in table._primarykey
-        } or None
-    elif table._id.type == 'id':
+        id = {field.name: val for field, val in fields if field.name in table._primarykey} or None
+    elif table._id.type == "id":
         id = adapter.lastrowid(table)
     else:
         id = {field.name: val for field, val in fields}.get(table._id.name)
@@ -193,7 +160,7 @@ def _select_wcols(
     orderby_on_limitby=True,
     for_update=False,
     outer_scoped=[],
-    **kwargs
+    **kwargs,
 ):
     return adapter._select_wcols_inner(
         query,
@@ -207,7 +174,7 @@ def _select_wcols(
         limitby=limitby,
         orderby_on_limitby=orderby_on_limitby,
         for_update=for_update,
-        outer_scoped=outer_scoped
+        outer_scoped=outer_scoped,
     )
 
 
@@ -215,42 +182,25 @@ def _select_aux(adapter, sql, fields, attributes, colnames):
     rows = adapter._select_aux_execute(sql)
     if isinstance(rows, tuple):
         rows = list(rows)
-    limitby = attributes.get('limitby', None) or (0,)
+    limitby = attributes.get("limitby", None) or (0,)
     rows = adapter.rowslice(rows, limitby[0], None)
-    return adapter.parse(
-        rows,
-        fields,
-        colnames,
-        concrete_tables=attributes.get('_concrete_tables', [])
-    )
+    return adapter.parse(rows, fields, colnames, concrete_tables=attributes.get("_concrete_tables", []))
 
 
 def parse(adapter, rows, fields, colnames, **options):
     fdata, tables = _parse_expand_colnames(adapter, fields)
     new_rows = [
         _parse(
-            adapter,
-            row,
-            fdata,
-            tables,
-            options['concrete_tables'],
-            fields,
-            colnames,
-            options.get('blob_decode', True)
-        ) for row in rows
+            adapter, row, fdata, tables, options["concrete_tables"], fields, colnames, options.get("blob_decode", True)
+        )
+        for row in rows
     ]
     rowsobj = adapter.db.Rows(adapter.db, new_rows, colnames, rawrows=rows)
     return rowsobj
 
 
 def iterparse(adapter, sql, fields, colnames, **options):
-    return IterRows(
-        adapter.db,
-        sql,
-        fields,
-        options.get('_concrete_tables', []),
-        colnames
-    )
+    return IterRows(adapter.db, sql, fields, options.get("_concrete_tables", []), colnames)
 
 
 def _parse_expand_colnames(adapter, fieldlist):
@@ -269,12 +219,10 @@ def _parse_expand_colnames(adapter, fieldlist):
 
 
 def _parse(adapter, row, fdata, tables, concrete_tables, fields, colnames, blob_decode):
-    new_row, rows_cls, rows_accum = _build_newrow_wtables(
-        adapter, tables, concrete_tables
-    )
+    new_row, rows_cls, rows_accum = _build_newrow_wtables(adapter, tables, concrete_tables)
     extras = adapter.db.Row()
     #: let's loop over columns
-    for (idx, colname) in enumerate(colnames):
+    for idx, colname in enumerate(colnames):
         value = row[idx]
         fd = fdata[idx]
         tablename = None
@@ -289,9 +237,7 @@ def _parse(adapter, row, fdata, tables, concrete_tables, fields, colnames, blob_
             colset[fieldname] = value
         #: otherwise we set the value in extras
         else:
-            value = adapter.parse_value(
-                value, fields[idx]._itype, fields[idx].type, blob_decode
-            )
+            value = adapter.parse_value(value, fields[idx]._itype, fields[idx].type, blob_decode)
             extras[colname] = value
             new_column_name = adapter._regex_select_as_parser(colname)
             if new_column_name is not None:
@@ -301,13 +247,13 @@ def _parse(adapter, row, fdata, tables, concrete_tables, fields, colnames, blob_
         new_row[key] = val._from_engine(rows_accum[key])
     #: add extras if needed (eg. operations results)
     if extras:
-        new_row['_extra'] = extras
+        new_row["_extra"] = extras
     return new_row
 
 
 def _build_newrow_wtables(adapter, tables, concrete_tables):
     row, cls_map, accum = adapter.db.Row(), {}, {}
-    for name, table in tables.items():
+    for name, _ in tables.items():
         cls_map[name] = adapter.db.Row
         accum[name] = {}
     for table in concrete_tables:
@@ -317,14 +263,14 @@ def _build_newrow_wtables(adapter, tables, concrete_tables):
 
 
 def _create_table(dialect, tablename, fields):
-    return [
-        "CREATE TABLE %s(\n    %s\n);" % (dialect.quote(tablename), fields)]
+    return ["CREATE TABLE %s(\n    %s\n);" % (dialect.quote(tablename), fields)]
 
 
 def _create_table_mysql(dialect, tablename, fields):
-    return ["CREATE TABLE %s(\n    %s\n) ENGINE=%s CHARACTER SET utf8;" % (
-        dialect.quote(tablename), fields,
-        dialect.adapter.adapter_args.get('engine', 'InnoDB'))]
+    return [
+        "CREATE TABLE %s(\n    %s\n) ENGINE=%s CHARACTER SET utf8;"
+        % (dialect.quote(tablename), fields, dialect.adapter.adapter_args.get("engine", "InnoDB"))
+    ]
 
 
 def _create_table_firebird(dialect, tablename, fields):
@@ -332,30 +278,25 @@ def _create_table_firebird(dialect, tablename, fields):
     sequence_name = dialect.sequence_name(tablename)
     trigger_name = dialect.trigger_name(tablename)
     trigger_sql = (
-        'create trigger %s for %s active before insert position 0 as\n'
-        'begin\n'
+        "create trigger %s for %s active before insert position 0 as\n"
+        "begin\n"
         'if(new."id" is null) then\n'
-        'begin\n'
+        "begin\n"
         'new."id" = gen_id(%s, 1);\n'
-        'end\n'
-        'end;')
-    rv.extend([
-        'create generator %s;' % sequence_name,
-        'set generator %s to 0;' % sequence_name,
-        trigger_sql % (trigger_name, dialect.quote(tablename), sequence_name)
-    ])
+        "end\n"
+        "end;"
+    )
+    rv.extend(
+        [
+            "create generator %s;" % sequence_name,
+            "set generator %s to 0;" % sequence_name,
+            trigger_sql % (trigger_name, dialect.quote(tablename), sequence_name),
+        ]
+    )
     return rv
 
 
-def _add_fk_constraint(
-    dialect,
-    name,
-    table_local,
-    table_foreign,
-    columns_local,
-    columns_foreign,
-    on_delete
-):
+def _add_fk_constraint(dialect, name, table_local, table_foreign, columns_local, columns_foreign, on_delete):
     return (
         f"ALTER TABLE {dialect.quote(table_local)} "
         f"ADD CONSTRAINT {dialect.quote(name)} "
@@ -371,7 +312,7 @@ def _drop_constraint(dialect, name, table):
 
 
 def _parser_reference(parser, value, referee):
-    if '.' not in referee:
+    if "." not in referee:
         value = typed_row_reference(value, parser.adapter.db[referee])
     return value
 
@@ -385,7 +326,7 @@ def _parser_password(parser, value):
 
 
 def _representer_reference(representer, value, referenced):
-    rtname, _, rfname = referenced.partition('.')
+    rtname, _, rfname = referenced.partition(".")
     rtable = representer.adapter.db[rtname]
     if not rfname and rtable._id:
         rfname = rtable._id.name
@@ -394,9 +335,9 @@ def _representer_reference(representer, value, referenced):
     rtype = rtable[rfname].type
     if isinstance(value, Row) and getattr(value, "_concrete", False):
         value = value[(value._model.primary_keys or ["id"])[0]]
-    if rtype in ('id', 'integer'):
+    if rtype in ("id", "integer"):
         return str(int(value))
-    if rtype == 'string':
+    if rtype == "string":
         return str(value)
     return representer.adapter.represent(value, rtype)
 
@@ -406,7 +347,8 @@ def _initialize(adapter, *args, **kwargs):
     adapter._connection_manager.configure(
         max_connections=adapter.db._pool_size,
         connect_timeout=adapter.db._connect_timeout,
-        stale_timeout=adapter.db._keep_alive_timeout)
+        stale_timeout=adapter.db._keep_alive_timeout,
+    )
 
 
 def _begin(adapter):

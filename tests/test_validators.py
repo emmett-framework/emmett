@@ -1,21 +1,47 @@
 # -*- coding: utf-8 -*-
 """
-    tests.validators
-    ----------------
+tests.validators
+----------------
 
-    Test Emmett validators over pyDAL.
+Test Emmett validators over pyDAL.
 """
+
+from datetime import datetime, timedelta
 
 import pytest
 
-from datetime import datetime, timedelta
 from emmett import App, sdict
-from emmett.orm import Database, Model, Field, has_many, belongs_to
+from emmett.orm import Database, Field, Model, belongs_to, has_many
 from emmett.validators import (
-    isEmptyOr, hasLength, isInt, isFloat, isDate, isTime, isDatetime, isJSON,
-    isntEmpty, inSet, inDB, isEmail, isUrl, isIP, isImage, inRange, Equals,
-    Lower, Upper, Cleanup, Urlify, Crypt, notInDB, Allow, Not, Matches, Any,
-    isList)
+    Allow,
+    Any,
+    Cleanup,
+    Crypt,
+    Equals,
+    Lower,
+    Matches,
+    Not,
+    Upper,
+    Urlify,
+    hasLength,
+    inDB,
+    inRange,
+    inSet,
+    isDate,
+    isDatetime,
+    isEmail,
+    isEmptyOr,
+    isFloat,
+    isImage,
+    isInt,
+    isIP,
+    isJSON,
+    isList,
+    isntEmpty,
+    isTime,
+    isUrl,
+    notInDB,
+)
 
 
 class A(Model):
@@ -49,11 +75,9 @@ class B(Model):
     tablename = "b"
 
     a = Field()
-    b = Field(validation={'len': {'gte': 5}})
+    b = Field(validation={"len": {"gte": 5}})
 
-    validation = {
-        'a': {'len': {'gte': 5}}
-    }
+    validation = {"a": {"len": {"gte": 5}}}
 
 
 class Consist(Model):
@@ -65,12 +89,12 @@ class Consist(Model):
     emailsplit = Field.string_list()
 
     validation = {
-        'email': {'is': 'email'},
-        'url': {'is': 'url'},
-        'ip': {'is': 'ip'},
-        'image': {'is': 'image'},
-        'emails': {'is': 'list:email'},
-        'emailsplit': {'is': {'list:email': {'splitter': ',;'}}}
+        "email": {"is": "email"},
+        "url": {"is": "url"},
+        "ip": {"is": "ip"},
+        "image": {"is": "image"},
+        "emails": {"is": "list:email"},
+        "emailsplit": {"is": {"list:email": {"splitter": ",;"}}},
     }
 
 
@@ -81,10 +105,10 @@ class Len(Model):
     d = Field()
 
     validation = {
-        'a': {'len': 5},
-        'b': {'len': {'gt': 4, 'lt': 13}},
-        'c': {'len': {'gte': 5, 'lte': 12}},
-        'd': {'len': {'range': (5, 13)}}
+        "a": {"len": 5},
+        "b": {"len": {"gt": 4, "lt": 13}},
+        "c": {"len": {"gte": 5, "lte": 12}},
+        "d": {"len": {"range": (5, 13)}},
     }
 
 
@@ -92,10 +116,7 @@ class Inside(Model):
     a = Field()
     b = Field.int()
 
-    validation = {
-        'a': {'in': ['a', 'b']},
-        'b': {'in': {'range': (1, 5)}}
-    }
+    validation = {"a": {"in": ["a", "b"]}, "b": {"in": {"range": (1, 5)}}}
 
 
 class Num(Model):
@@ -103,11 +124,7 @@ class Num(Model):
     b = Field.int()
     c = Field.int()
 
-    validation = {
-        'a': {'gt': 0},
-        'b': {'lt': 5},
-        'c': {'gt': 0, 'lte': 4}
-    }
+    validation = {"a": {"gt": 0}, "b": {"lt": 5}, "c": {"gt": 0, "lte": 4}}
 
 
 class Proc(Model):
@@ -119,12 +136,12 @@ class Proc(Model):
     f = Field.password()
 
     validation = {
-        'a': {'lower': True},
-        'b': {'upper': True},
-        'c': {'clean': True},
-        'd': {'urlify': True},
-        'e': {'len': {'range': (6, 25)}, 'crypt': True},
-        'f': {'len': {'gt': 5, 'lt': 25}, 'crypt': 'md5'}
+        "a": {"lower": True},
+        "b": {"upper": True},
+        "c": {"clean": True},
+        "d": {"urlify": True},
+        "e": {"len": {"range": (6, 25)}, "crypt": True},
+        "f": {"len": {"gt": 5, "lt": 25}, "crypt": "md5"},
     }
 
 
@@ -133,60 +150,47 @@ class Eq(Model):
     b = Field.int()
     c = Field.float()
 
-    validation = {
-        'a': {'equals': 'asd'},
-        'b': {'equals': 2},
-        'c': {'not': {'equals': 2.4}}
-    }
+    validation = {"a": {"equals": "asd"}, "b": {"equals": 2}, "c": {"not": {"equals": 2.4}}}
 
 
 class Match(Model):
     a = Field()
     b = Field()
 
-    validation = {
-        'a': {'match': 'ab'},
-        'b': {'match': {'expression': 'ab', 'strict': True}}
-    }
+    validation = {"a": {"match": "ab"}, "b": {"match": {"expression": "ab", "strict": True}}}
 
 
 class Anyone(Model):
     a = Field()
 
-    validation = {
-        'a': {'any': {'is': 'email', 'in': ['foo', 'bar']}}
-    }
+    validation = {"a": {"any": {"is": "email", "in": ["foo", "bar"]}}}
 
 
 class Person(Model):
-    has_many('things')
+    has_many("things")
 
-    name = Field(validation={'empty': False})
-    surname = Field(validation={'presence': True})
+    name = Field(validation={"empty": False})
+    surname = Field(validation={"presence": True})
 
 
 class Thing(Model):
-    belongs_to('person')
+    belongs_to("person")
 
     name = Field()
     color = Field()
     uid = Field(unique=True)
 
-    validation = {
-        'name': {'presence': True},
-        'color': {'in': ['blue', 'red']},
-        'uid': {'empty': False}
-    }
+    validation = {"name": {"presence": True}, "color": {"in": ["blue", "red"]}, "uid": {"empty": False}}
 
 
 class Allowed(Model):
-    a = Field(validation={'in': ['a', 'b'], 'allow': None})
-    b = Field(validation={'in': ['a', 'b'], 'allow': 'empty'})
-    c = Field(validation={'in': ['a', 'b'], 'allow': 'blank'})
+    a = Field(validation={"in": ["a", "b"], "allow": None})
+    b = Field(validation={"in": ["a", "b"], "allow": "empty"})
+    c = Field(validation={"in": ["a", "b"], "allow": "blank"})
 
 
 class Mixed(Model):
-    belongs_to('person')
+    belongs_to("person")
 
     date = Field.date()
     type = Field()
@@ -197,27 +201,21 @@ class Mixed(Model):
     psw = Field.password()
 
     validation = {
-        'date': {'format': '%d/%m/%Y', 'gt': lambda: datetime.utcnow().date()},
-        'type': {'in': ['a', 'b'], 'allow': None},
-        'inside': {'in': ['asd', 'lol']},
-        'number': {'allow': 'blank'},
-        'dont': {'empty': True},
-        'yep': {'presence': True},
-        'psw': {'len': {'range': (6, 25)}, 'crypt': True}
+        "date": {"format": "%d/%m/%Y", "gt": lambda: datetime.utcnow().date()},
+        "type": {"in": ["a", "b"], "allow": None},
+        "inside": {"in": ["asd", "lol"]},
+        "number": {"allow": "blank"},
+        "dont": {"empty": True},
+        "yep": {"presence": True},
+        "psw": {"len": {"range": (6, 25)}, "crypt": True},
     }
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def db():
     app = App(__name__)
-    db = Database(
-        app, config=sdict(
-            uri='sqlite://validators.db', auto_connect=True,
-            auto_migrate=True))
-    db.define_models([
-        A, AA, AAA, B, Consist, Len, Inside, Num, Eq, Match, Anyone, Proc,
-        Person, Thing, Allowed, Mixed
-    ])
+    db = Database(app, config=sdict(uri="sqlite://validators.db", auto_connect=True, auto_migrate=True))
+    db.define_models([A, AA, AAA, B, Consist, Len, Inside, Num, Eq, Match, Anyone, Proc, Person, Thing, Allowed, Mixed])
     return db
 
 
@@ -349,243 +347,243 @@ def test_allow(db):
 def test_validation(db):
     #: 'is'
     is_data = {
-        'name': 'foo',
-        'val': 1,
-        'fval': 1.5,
-        'text': 'Lorem ipsum',
-        'password': 'notverysecret',
-        'd': '{:%Y-%m-%d}'.format(datetime.utcnow()),
-        't': '15:23',
-        'dt': '2015-12-23T15:23:00',
-        'json': '{}'
+        "name": "foo",
+        "val": 1,
+        "fval": 1.5,
+        "text": "Lorem ipsum",
+        "password": "notverysecret",
+        "d": "{:%Y-%m-%d}".format(datetime.utcnow()),
+        "t": "15:23",
+        "dt": "2015-12-23T15:23:00",
+        "json": "{}",
     }
     errors = A.validate(is_data)
     assert not errors
     d = dict(is_data)
-    d['val'] = 'foo'
+    d["val"] = "foo"
     errors = A.validate(d)
-    assert 'val' in errors and len(errors) == 1
+    assert "val" in errors and len(errors) == 1
     d = dict(is_data)
-    d['fval'] = 'bar'
+    d["fval"] = "bar"
     errors = A.validate(d)
-    assert 'fval' in errors and len(errors) == 1
+    assert "fval" in errors and len(errors) == 1
     d = dict(is_data)
-    d['d'] = 'foo'
+    d["d"] = "foo"
     errors = A.validate(d)
-    assert 'd' in errors and len(errors) == 1
+    assert "d" in errors and len(errors) == 1
     d = dict(is_data)
-    d['t'] = 'bar'
+    d["t"] = "bar"
     errors = A.validate(d)
-    assert 't' in errors and len(errors) == 1
+    assert "t" in errors and len(errors) == 1
     d = dict(is_data)
-    d['dt'] = 'foo'
+    d["dt"] = "foo"
     errors = A.validate(d)
-    assert 'dt' in errors and len(errors) == 1
+    assert "dt" in errors and len(errors) == 1
     d = dict(is_data)
-    d['json'] = 'bar'
+    d["json"] = "bar"
     errors = A.validate(d)
-    assert 'json' in errors and len(errors) == 1
-    errors = Consist.validate({'email': 'foo'})
-    assert 'email' in errors
-    errors = Consist.validate({'url': 'notanurl'})
-    assert 'url' in errors
-    errors = Consist.validate({'url': 'http://domain.com/'})
-    assert 'url' not in errors
-    errors = Consist.validate({'url': 'http://domain.com'})
-    assert 'url' not in errors
-    errors = Consist.validate({'url': 'domain.com'})
-    assert 'url' not in errors
-    errors = Consist.validate({'ip': 'foo'})
-    assert 'ip' in errors
-    errors = Consist.validate({'emails': 'foo'})
-    assert 'emails' in errors
-    errors = Consist.validate({'emailsplit': 'foo'})
-    assert 'emailsplit' in errors
-    errors = Consist.validate({'emailsplit': '1@asd.com, 2@asd.com'})
-    assert 'emailsplit' not in errors
-    errors = Consist.validate({'emails': ['1@asd.com', '2@asd.com']})
-    assert 'emails' not in errors
+    assert "json" in errors and len(errors) == 1
+    errors = Consist.validate({"email": "foo"})
+    assert "email" in errors
+    errors = Consist.validate({"url": "notanurl"})
+    assert "url" in errors
+    errors = Consist.validate({"url": "http://domain.com/"})
+    assert "url" not in errors
+    errors = Consist.validate({"url": "http://domain.com"})
+    assert "url" not in errors
+    errors = Consist.validate({"url": "domain.com"})
+    assert "url" not in errors
+    errors = Consist.validate({"ip": "foo"})
+    assert "ip" in errors
+    errors = Consist.validate({"emails": "foo"})
+    assert "emails" in errors
+    errors = Consist.validate({"emailsplit": "foo"})
+    assert "emailsplit" in errors
+    errors = Consist.validate({"emailsplit": "1@asd.com, 2@asd.com"})
+    assert "emailsplit" not in errors
+    errors = Consist.validate({"emails": ["1@asd.com", "2@asd.com"]})
+    assert "emails" not in errors
     #: 'len'
-    len_data = {'a': '12345', 'b': '12345', 'c': '12345', 'd': '12345'}
+    len_data = {"a": "12345", "b": "12345", "c": "12345", "d": "12345"}
     errors = Len.validate(len_data)
     assert not errors
     d = dict(len_data)
-    d['a'] = 'ciao'
+    d["a"] = "ciao"
     errors = Len.validate(d)
-    assert 'a' in errors and len(errors) == 1
+    assert "a" in errors and len(errors) == 1
     d = dict(len_data)
-    d['b'] = 'ciao'
+    d["b"] = "ciao"
     errors = Len.validate(d)
-    assert 'b' in errors and len(errors) == 1
+    assert "b" in errors and len(errors) == 1
     d = dict(len_data)
-    d['b'] = '1234567890123'
+    d["b"] = "1234567890123"
     errors = Len.validate(d)
-    assert 'b' in errors and len(errors) == 1
+    assert "b" in errors and len(errors) == 1
     d = dict(len_data)
-    d['c'] = 'ciao'
+    d["c"] = "ciao"
     errors = Len.validate(d)
-    assert 'c' in errors and len(errors) == 1
+    assert "c" in errors and len(errors) == 1
     d = dict(len_data)
-    d['c'] = '1234567890123'
+    d["c"] = "1234567890123"
     errors = Len.validate(d)
-    assert 'c' in errors and len(errors) == 1
+    assert "c" in errors and len(errors) == 1
     d = dict(len_data)
-    d['d'] = 'ciao'
+    d["d"] = "ciao"
     errors = Len.validate(d)
-    assert 'd' in errors and len(errors) == 1
+    assert "d" in errors and len(errors) == 1
     d = dict(len_data)
-    d['d'] = '1234567890123'
+    d["d"] = "1234567890123"
     errors = Len.validate(d)
-    assert 'd' in errors and len(errors) == 1
+    assert "d" in errors and len(errors) == 1
     #: 'in'
-    in_data = {'a': 'a', 'b': 2}
+    in_data = {"a": "a", "b": 2}
     errors = Inside.validate(in_data)
     assert not errors
     d = dict(in_data)
-    d['a'] = 'c'
+    d["a"] = "c"
     errors = Inside.validate(d)
-    assert 'a' in errors and len(errors) == 1
+    assert "a" in errors and len(errors) == 1
     d = dict(in_data)
-    d['b'] = 0
+    d["b"] = 0
     errors = Inside.validate(d)
-    assert 'b' in errors and len(errors) == 1
+    assert "b" in errors and len(errors) == 1
     d = dict(in_data)
-    d['b'] = 7
+    d["b"] = 7
     errors = Inside.validate(d)
-    assert 'b' in errors and len(errors) == 1
+    assert "b" in errors and len(errors) == 1
     #: 'gt', 'lt', 'gte', 'lte'
-    num_data = {'a': 1, 'b': 4, 'c': 2}
+    num_data = {"a": 1, "b": 4, "c": 2}
     errors = Num.validate(num_data)
     assert not errors
     d = dict(num_data)
-    d['a'] = 0
+    d["a"] = 0
     errors = Num.validate(d)
-    assert 'a' in errors and len(errors) == 1
+    assert "a" in errors and len(errors) == 1
     d = dict(num_data)
-    d['b'] = 5
+    d["b"] = 5
     errors = Num.validate(d)
-    assert 'b' in errors and len(errors) == 1
+    assert "b" in errors and len(errors) == 1
     d = dict(num_data)
-    d['c'] = 0
+    d["c"] = 0
     errors = Num.validate(d)
-    assert 'c' in errors and len(errors) == 1
+    assert "c" in errors and len(errors) == 1
     d = dict(num_data)
-    d['c'] = 5
+    d["c"] = 5
     errors = Num.validate(d)
-    assert 'c' in errors and len(errors) == 1
+    assert "c" in errors and len(errors) == 1
     #: 'equals'
-    eq_data = {'a': 'asd', 'b': 2, 'c': 2.3}
+    eq_data = {"a": "asd", "b": 2, "c": 2.3}
     errors = Eq.validate(eq_data)
     assert not errors
     d = dict(eq_data)
-    d['a'] = 'lol'
+    d["a"] = "lol"
     errors = Eq.validate(d)
-    assert 'a' in errors and len(errors) == 1
+    assert "a" in errors and len(errors) == 1
     d = dict(eq_data)
-    d['b'] = 3
+    d["b"] = 3
     errors = Eq.validate(d)
-    assert 'b' in errors and len(errors) == 1
+    assert "b" in errors and len(errors) == 1
     #: 'not'
     d = dict(eq_data)
-    d['c'] = 2.4
+    d["c"] = 2.4
     errors = Eq.validate(d)
-    assert 'c' in errors and len(errors) == 1
+    assert "c" in errors and len(errors) == 1
     #: 'match'
-    match_data = {'a': 'abc', 'b': 'ab'}
+    match_data = {"a": "abc", "b": "ab"}
     errors = Match.validate(match_data)
     assert not errors
     d = dict(match_data)
-    d['a'] = 'lol'
+    d["a"] = "lol"
     errors = Match.validate(d)
-    assert 'a' in errors and len(errors) == 1
+    assert "a" in errors and len(errors) == 1
     d = dict(match_data)
-    d['b'] = 'abc'
+    d["b"] = "abc"
     errors = Match.validate(d)
-    assert 'b' in errors and len(errors) == 1
-    d['b'] = 'lol'
+    assert "b" in errors and len(errors) == 1
+    d["b"] = "lol"
     errors = Match.validate(d)
-    assert 'b' in errors and len(errors) == 1
+    assert "b" in errors and len(errors) == 1
     #: 'any'
-    errors = Anyone.validate({'a': 'foo'})
+    errors = Anyone.validate({"a": "foo"})
     assert not errors
-    errors = Anyone.validate({'a': 'walter@massivedynamics.com'})
+    errors = Anyone.validate({"a": "walter@massivedynamics.com"})
     assert not errors
-    errors = Anyone.validate({'a': 'lol'})
-    assert 'a' in errors
+    errors = Anyone.validate({"a": "lol"})
+    assert "a" in errors
     #: 'allow'
-    allow_data = {'a': 'a', 'b': 'a', 'c': 'a'}
+    allow_data = {"a": "a", "b": "a", "c": "a"}
     errors = Allowed.validate(allow_data)
     assert not errors
     d = dict(allow_data)
-    d['a'] = None
+    d["a"] = None
     errors = Allowed.validate(d)
     assert not errors
-    d['a'] = 'foo'
+    d["a"] = "foo"
     errors = Allowed.validate(d)
-    assert 'a' in errors and len(errors) == 1
+    assert "a" in errors and len(errors) == 1
     d = dict(allow_data)
-    d['b'] = ''
+    d["b"] = ""
     errors = Allowed.validate(d)
     assert not errors
-    d['b'] = None
+    d["b"] = None
     errors = Allowed.validate(d)
     assert not errors
-    d['b'] = 'foo'
+    d["b"] = "foo"
     errors = Allowed.validate(d)
-    assert 'b' in errors and len(errors) == 1
+    assert "b" in errors and len(errors) == 1
     d = dict(allow_data)
-    d['c'] = ''
+    d["c"] = ""
     errors = Allowed.validate(d)
     assert not errors
-    d['c'] = None
+    d["c"] = None
     errors = Allowed.validate(d)
     assert not errors
-    d['c'] = 'foo'
+    d["c"] = "foo"
     errors = Allowed.validate(d)
-    assert 'c' in errors and len(errors) == 1
+    assert "c" in errors and len(errors) == 1
     #: processing validators
-    assert Proc.a.validate('Asd')[0] == 'asd'
-    assert Proc.b.validate('Asd')[0] == 'ASD'
-    assert Proc.d.validate('Two Words')[0] == 'two-words'
-    psw = str(Proc.e.validate('somepassword')[0])
-    assert psw[:23] == 'pbkdf2(1000,20,sha512)$'
-    assert psw[23:] != 'somepassword'
-    psw = str(Proc.f.validate('somepassword')[0])
-    assert psw[:4] == 'md5$'
-    assert psw[4:] != 'somepassword'
+    assert Proc.a.validate("Asd")[0] == "asd"
+    assert Proc.b.validate("Asd")[0] == "ASD"
+    assert Proc.d.validate("Two Words")[0] == "two-words"
+    psw = str(Proc.e.validate("somepassword")[0])
+    assert psw[:23] == "pbkdf2(1000,20,sha512)$"
+    assert psw[23:] != "somepassword"
+    psw = str(Proc.f.validate("somepassword")[0])
+    assert psw[:4] == "md5$"
+    assert psw[4:] != "somepassword"
     #: 'presence'
-    mario = {'name': 'mario'}
+    mario = {"name": "mario"}
     errors = Person.validate(mario)
-    assert 'surname' in errors
+    assert "surname" in errors
     assert len(errors) == 1
     #: 'presence' with reference, 'unique'
-    thing = {'name': 'a', 'person': 5, 'color': 'blue', 'uid': 'lol'}
+    thing = {"name": "a", "person": 5, "color": "blue", "uid": "lol"}
     errors = Thing.validate(thing)
-    assert 'person' in errors
+    assert "person" in errors
     assert len(errors) == 1
-    mario = {'name': 'mario', 'surname': 'draghi'}
+    mario = {"name": "mario", "surname": "draghi"}
     mario = Person.create(mario)
     assert len(mario.errors.keys()) == 0
     assert mario.id == 1
-    thing = {'name': 'euro', 'person': mario.id, 'color': 'red', 'uid': 'lol'}
+    thing = {"name": "euro", "person": mario.id, "color": "red", "uid": "lol"}
     thing = Thing.create(thing)
     assert len(thing.errors.keys()) == 0
-    thing = {'name': 'euro2', 'person': mario.id, 'color': 'red', 'uid': 'lol'}
+    thing = {"name": "euro2", "person": mario.id, "color": "red", "uid": "lol"}
     errors = Thing.validate(thing)
     assert len(errors) == 1
-    assert 'uid' in errors
+    assert "uid" in errors
 
 
 def test_multi(db):
     p = db.Person(name="mario")
     base_data = {
-        'date': '{0:%d/%m/%Y}'.format(datetime.utcnow()+timedelta(days=1)),
-        'type': 'a',
-        'inside': 'asd',
-        'number': 1,
-        'yep': 'asd',
-        'psw': 'password',
-        'person': p.id
+        "date": "{0:%d/%m/%Y}".format(datetime.utcnow() + timedelta(days=1)),
+        "type": "a",
+        "inside": "asd",
+        "number": 1,
+        "yep": "asd",
+        "psw": "password",
+        "person": p.id,
     }
     #: everything ok
     res = Mixed.create(base_data)
@@ -593,67 +591,67 @@ def test_multi(db):
     assert len(res.errors.keys()) == 0
     #: invalid belongs
     vals = dict(base_data)
-    del vals['person']
+    del vals["person"]
     res = Mixed.create(vals)
     assert res.id is None
     assert len(res.errors.keys()) == 1
-    assert 'person' in res.errors
+    assert "person" in res.errors
     #: invalid date range
     vals = dict(base_data)
-    vals['date'] = '{0:%d/%m/%Y}'.format(datetime.utcnow()-timedelta(days=2))
+    vals["date"] = "{0:%d/%m/%Y}".format(datetime.utcnow() - timedelta(days=2))
     res = Mixed.create(vals)
     assert res.id is None
     assert len(res.errors.keys()) == 1
-    assert 'date' in res.errors
+    assert "date" in res.errors
     #: invalid date format
-    vals['date'] = '76-12-1249'
+    vals["date"] = "76-12-1249"
     res = Mixed.create(vals)
     assert res.id is None
     assert len(res.errors.keys()) == 1
-    assert 'date' in res.errors
+    assert "date" in res.errors
     #: invalid in
     vals = dict(base_data)
-    vals['type'] = ' '
+    vals["type"] = " "
     res = Mixed.create(vals)
     assert res.id is None
     assert len(res.errors.keys()) == 1
-    assert 'type' in res.errors
+    assert "type" in res.errors
     #: empty number
     vals = dict(base_data)
-    vals['number'] = None
+    vals["number"] = None
     res = Mixed.create(vals)
     assert res.id == 2
     assert len(res.errors.keys()) == 0
     #: invalid number
     vals = dict(base_data)
-    vals['number'] = 'asd'
+    vals["number"] = "asd"
     res = Mixed.create(vals)
     assert res.id is None
     assert len(res.errors.keys()) == 1
-    assert 'number' in res.errors
+    assert "number" in res.errors
     #: invalid empty
     vals = dict(base_data)
-    vals['dont'] = '2'
+    vals["dont"] = "2"
     res = Mixed.create(vals)
     assert res.id is None
     assert len(res.errors.keys()) == 1
-    assert 'dont' in res.errors
+    assert "dont" in res.errors
     #: invalid presence
     vals = dict(base_data)
-    vals['yep'] = ''
+    vals["yep"] = ""
     res = Mixed.create(vals)
     assert res.id is None
     assert len(res.errors.keys()) == 1
-    assert 'yep' in res.errors
+    assert "yep" in res.errors
     #: invalid password
     vals = dict(base_data)
-    vals['psw'] = ''
+    vals["psw"] = ""
     res = Mixed.create(vals)
     assert res.id is None
     assert len(res.errors.keys()) == 1
-    assert 'psw' in res.errors
-    vals['psw'] = 'aksjfalsdkjflkasjdflkajsldkjfalslkdfjaslkdjf'
+    assert "psw" in res.errors
+    vals["psw"] = "aksjfalsdkjflkasjdflkajsldkjfalslkdfjaslkdjf"
     res = Mixed.create(vals)
     assert res.id is None
     assert len(res.errors.keys()) == 1
-    assert 'psw' in res.errors
+    assert "psw" in res.errors

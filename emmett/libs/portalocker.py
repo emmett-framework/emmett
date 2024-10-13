@@ -43,22 +43,23 @@ Version: $Id: portalocker.py,v 1.3 2001/05/29 18:47:55 Administrator Exp $
 
 os_locking = None
 try:
-    import google.appengine
-    os_locking = 'gae'
-except:
+    os_locking = "gae"
+except Exception:
     try:
         import fcntl
-        os_locking = 'posix'
-    except:
+
+        os_locking = "posix"
+    except Exception:
         try:
+            import pywintypes
             import win32con
             import win32file
-            import pywintypes
-            os_locking = 'windows'
-        except:
+
+            os_locking = "windows"
+        except Exception:
             pass
 
-if os_locking == 'windows':
+if os_locking == "windows":
     LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
     LOCK_SH = 0  # the default
     LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
@@ -69,14 +70,14 @@ if os_locking == 'windows':
 
     def lock(file, flags):
         hfile = win32file._get_osfhandle(file.fileno())
-        win32file.LockFileEx(hfile, flags, 0, 0x7fff0000, __overlapped)
+        win32file.LockFileEx(hfile, flags, 0, 0x7FFF0000, __overlapped)
 
     def unlock(file):
         hfile = win32file._get_osfhandle(file.fileno())
-        win32file.UnlockFileEx(hfile, 0, 0x7fff0000, __overlapped)
+        win32file.UnlockFileEx(hfile, 0, 0x7FFF0000, __overlapped)
 
 
-elif os_locking == 'posix':
+elif os_locking == "posix":
     LOCK_EX = fcntl.LOCK_EX
     LOCK_SH = fcntl.LOCK_SH
     LOCK_NB = fcntl.LOCK_NB
@@ -89,9 +90,9 @@ elif os_locking == 'posix':
 
 
 else:
-    #if platform.system() == 'Windows':
+    # if platform.system() == 'Windows':
     #    logger.error('no file locking, you must install the win32 extensions from: http://sourceforge.net/projects/pywin32/files/')
-    #elif os_locking != 'gae':
+    # elif os_locking != 'gae':
     #    logger.debug('no file locking, this will cause problems')
 
     LOCK_EX = None
@@ -106,18 +107,18 @@ else:
 
 
 class LockedFile(object):
-    def __init__(self, filename, mode='rb'):
+    def __init__(self, filename, mode="rb"):
         self.filename = filename
         self.mode = mode
         self.file = None
-        if 'r' in mode:
-            kwargs = {'encoding': 'utf8'} if 'b' not in mode else {}
+        if "r" in mode:
+            kwargs = {"encoding": "utf8"} if "b" not in mode else {}
             self.file = open(filename, mode, **kwargs)
             lock(self.file, LOCK_SH)
-        elif 'w' in mode or 'a' in mode:
-            self.file = open(filename, mode.replace('w', 'a'))
+        elif "w" in mode or "a" in mode:
+            self.file = open(filename, mode.replace("w", "a"))
             lock(self.file, LOCK_EX)
-            if 'a' not in mode:
+            if "a" not in mode:
                 self.file.seek(0)
                 self.file.truncate()
         else:
@@ -148,13 +149,13 @@ class LockedFile(object):
 
 
 def read_locked(filename):
-    fp = LockedFile(filename, 'r')
+    fp = LockedFile(filename, "r")
     data = fp.read()
     fp.close()
     return data
 
 
 def write_locked(filename, data):
-    fp = LockedFile(filename, 'wb')
+    fp = LockedFile(filename, "wb")
     data = fp.write(data)
     fp.close()

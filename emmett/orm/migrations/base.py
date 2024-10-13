@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.migrations.base
-    --------------------------
+emmett.orm.migrations.base
+--------------------------
 
-    Provides base migrations objects.
+Provides base migrations objects.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations
@@ -14,9 +14,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable, Dict, Type
 
 from ...datastructures import sdict
-from .. import Database, Model, Field
-from .engine import MetaEngine, Engine
+from .. import Database, Field, Model
+from .engine import Engine, MetaEngine
 from .helpers import WrappedOperation, _feasible_as_dbms_default
+
 
 if TYPE_CHECKING:
     from .operations import Operation
@@ -32,13 +33,11 @@ class Migration:
     skip_on_compare: bool = False
 
     @classmethod
-    def register_operation(
-        cls,
-        name: str
-    ) -> Callable[[Type[Operation]], Type[Operation]]:
+    def register_operation(cls, name: str) -> Callable[[Type[Operation]], Type[Operation]]:
         def wrap(op_cls: Type[Operation]) -> Type[Operation]:
             cls._registered_ops_[name] = op_cls
             return op_cls
+
         return wrap
 
     def __init__(self, app: Any, db: Database, is_meta: bool = False):
@@ -56,14 +55,7 @@ class Migration:
 
 
 class Column(sdict):
-    def __init__(
-        self,
-        name: str,
-        type: str = 'string',
-        unique: bool = False,
-        notnull: bool = False,
-        **kwargs: Any
-    ):
+    def __init__(self, name: str, type: str = "string", unique: bool = False, notnull: bool = False, **kwargs: Any):
         self.name = name
         self.type = type
         self.unique = unique
@@ -76,7 +68,7 @@ class Column(sdict):
         if self.name not in db[tablename]._model_._belongs_ref_:
             return
         ref = db[tablename]._model_._belongs_ref_[self.name]
-        if ref.ftype != 'id':
+        if ref.ftype != "id":
             self.type = ref.ftype
             self.length = db[ref.model][ref.fk].length
             self.on_delete = None
@@ -90,7 +82,7 @@ class Column(sdict):
             field.notnull,
             length=field.length,
             ondelete=field.ondelete,
-            **field._ormkw
+            **field._ormkw,
         )
         if _feasible_as_dbms_default(field.default):
             rv.default = field.default
@@ -98,7 +90,4 @@ class Column(sdict):
         return rv
 
     def __repr__(self) -> str:
-        return "%s(%s)" % (
-            self.__class__.__name__,
-            ", ".join(["%s=%r" % (k, v) for k, v in self.items()])
-        )
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(["%s=%r" % (k, v) for k, v in self.items()]))

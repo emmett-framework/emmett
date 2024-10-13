@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-    tests.migrations
-    ----------------
+tests.migrations
+----------------
 
-    Test Emmett migrations engine
+Test Emmett migrations engine
 """
 
 import uuid
@@ -11,9 +11,9 @@ import uuid
 import pytest
 
 from emmett import App
-from emmett.orm import Database, Model, Field, belongs_to, refers_to
-from emmett.orm.migrations.engine import MetaEngine, Engine
-from emmett.orm.migrations.generation import MetaData, Comparator
+from emmett.orm import Database, Field, Model, belongs_to, refers_to
+from emmett.orm.migrations.engine import Engine, MetaEngine
+from emmett.orm.migrations.generation import Comparator, MetaData
 
 
 class FakeEngine(Engine):
@@ -23,10 +23,10 @@ class FakeEngine(Engine):
         self.sql_history.append(sql)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def app():
     rv = App(__name__)
-    rv.config.db.uri = 'sqlite:memory'
+    rv.config.db.uri = "sqlite:memory"
     return rv
 
 
@@ -57,6 +57,7 @@ def _make_sql(db, op):
 class StepOneThing(Model):
     name = Field()
     value = Field.float()
+
 
 _step_one_sql = """CREATE TABLE "step_one_things"(
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -105,6 +106,7 @@ class StepTwoThing(Model):
     value = Field.float(default=8.8)
     available = Field.bool(default=True)
 
+
 _step_two_sql = """CREATE TABLE "step_two_things"(
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
     "name" CHAR(512) NOT NULL,
@@ -135,6 +137,7 @@ class StepThreeThingTwo(Model):
 class StepThreeThingThree(Model):
     tablename = "step_three_thing_ones"
     b = Field()
+
 
 _step_three_sql = 'ALTER TABLE "step_three_thing_ones" ADD "b" CHAR(512);'
 _step_three_sql_drop = 'ALTER TABLE "step_three_thing_ones" DROP COLUMN "a";'
@@ -178,6 +181,7 @@ class StepFourThingEdit(Model):
     available = Field.bool(default=True)
     asd = Field.int()
 
+
 _step_four_sql = """ALTER TABLE "step_four_things" ALTER COLUMN "name" DROP NOT NULL;
 ALTER TABLE "step_four_things" ALTER COLUMN "value" DROP DEFAULT;
 ALTER TABLE "step_four_things" ALTER COLUMN "asd" TYPE INTEGER;"""
@@ -202,32 +206,24 @@ class StepFiveThing(Model):
     value = Field.int()
     created_at = Field.datetime()
 
-    indexes = {
-        'name': True,
-        ('name', 'value'): True
-    }
+    indexes = {"name": True, ("name", "value"): True}
 
 
 class StepFiveThingEdit(StepFiveThing):
     tablename = "step_five_things"
 
-    indexes = {
-        'name': False,
-        'name_created': {
-            'fields': 'name',
-            'expressions': lambda m: m.created_at.coalesce(None)}
-    }
+    indexes = {"name": False, "name_created": {"fields": "name", "expressions": lambda m: m.created_at.coalesce(None)}}
 
 
 _step_five_sql_before = [
     'CREATE UNIQUE INDEX "step_five_things_widx__code_unique" ON "step_five_things" ("code");',
     'CREATE INDEX "step_five_things_widx__name" ON "step_five_things" ("name");',
-    'CREATE INDEX "step_five_things_widx__name_value" ON "step_five_things" ("name","value");'
+    'CREATE INDEX "step_five_things_widx__name_value" ON "step_five_things" ("name","value");',
 ]
 
 _step_five_sql_after = [
     'DROP INDEX "step_five_things_widx__name";',
-    'CREATE INDEX "step_five_things_widx__name_created" ON "step_five_things" ("name",COALESCE("created_at",NULL));'
+    'CREATE INDEX "step_five_things_widx__name_created" ON "step_five_things" ("name",COALESCE("created_at",NULL));',
 ]
 
 
@@ -255,7 +251,7 @@ class StepSixThing(Model):
 
 
 class StepSixRelate(Model):
-    belongs_to('step_six_thing')
+    belongs_to("step_six_thing")
     name = Field()
 
 
@@ -268,11 +264,13 @@ _step_six_sql_t2 = """CREATE TABLE "step_six_relates"(
     "name" CHAR(512),
     "step_six_thing" CHAR(512)
 );"""
-_step_six_sql_fk = "".join([
-    'ALTER TABLE "step_six_relates" ADD CONSTRAINT ',
-    '"step_six_relates_ecnt__fk__stepsixthings_stepsixthing" FOREIGN KEY ',
-    '("step_six_thing") REFERENCES "step_six_things"("id") ON DELETE CASCADE;'
-])
+_step_six_sql_fk = "".join(
+    [
+        'ALTER TABLE "step_six_relates" ADD CONSTRAINT ',
+        '"step_six_relates_ecnt__fk__stepsixthings_stepsixthing" FOREIGN KEY ',
+        '("step_six_thing") REFERENCES "step_six_things"("id") ON DELETE CASCADE;',
+    ]
+)
 
 
 def test_step_six_id_types(app):
@@ -286,22 +284,17 @@ def test_step_six_id_types(app):
 
 
 class StepSevenThing(Model):
-    primary_keys = ['foo', 'bar']
+    primary_keys = ["foo", "bar"]
 
     foo = Field()
     bar = Field()
 
 
 class StepSevenRelate(Model):
-    refers_to({'foo': 'StepSevenThing.foo'}, {'bar': 'StepSevenThing.bar'})
+    refers_to({"foo": "StepSevenThing.foo"}, {"bar": "StepSevenThing.bar"})
     name = Field()
 
-    foreign_keys = {
-        "test": {
-            "fields": ["foo", "bar"],
-            "foreign_fields": ["foo", "bar"]
-        }
-    }
+    foreign_keys = {"test": {"fields": ["foo", "bar"], "foreign_fields": ["foo", "bar"]}}
 
 
 _step_seven_sql_t1 = """CREATE TABLE "step_seven_things"(
@@ -315,11 +308,13 @@ _step_seven_sql_t2 = """CREATE TABLE "step_seven_relates"(
     "foo" CHAR(512),
     "bar" CHAR(512)
 );"""
-_step_seven_sql_fk = "".join([
-    'ALTER TABLE "step_seven_relates" ADD CONSTRAINT ',
-    '"step_seven_relates_ecnt__fk__stepseventhings_foo_bar" FOREIGN KEY ("foo","bar") ',
-    'REFERENCES "step_seven_things"("foo","bar") ON DELETE CASCADE;',
-])
+_step_seven_sql_fk = "".join(
+    [
+        'ALTER TABLE "step_seven_relates" ADD CONSTRAINT ',
+        '"step_seven_relates_ecnt__fk__stepseventhings_foo_bar" FOREIGN KEY ("foo","bar") ',
+        'REFERENCES "step_seven_things"("foo","bar") ON DELETE CASCADE;',
+    ]
+)
 
 
 def test_step_seven_composed_pks(app):

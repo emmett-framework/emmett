@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.tools.auth.models
-    ------------------------
+emmett.tools.auth.models
+------------------------
 
-    Provides models for the authorization system.
+Provides models for the authorization system.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
+from ..._shortcuts import uuid
 from ...ctx import current
 from ...locals import now, request
-from ...orm import Model, Field, before_insert, rowmethod
-from ...security import uuid
+from ...orm import Field, Model, before_insert, rowmethod
 
 
 class TimestampedModel(Model):
@@ -21,8 +21,7 @@ class TimestampedModel(Model):
 
 
 class AuthModel(Model):
-    _additional_inheritable_dict_attrs_ = [
-        'form_registration_rw', 'form_profile_rw']
+    _additional_inheritable_dict_attrs_ = ["form_registration_rw", "form_profile_rw"]
     auth = None
 
     @classmethod
@@ -33,8 +32,7 @@ class AuthModel(Model):
             else:
                 attr_name, default = attr, {}
             if not isinstance(default, dict):
-                raise SyntaxError(
-                    "{} is not a dictionary".format(attr_name))
+                raise SyntaxError("{} is not a dictionary".format(attr_name))
             setattr(cls, attr_name, default)
 
     @classmethod
@@ -57,33 +55,32 @@ class AuthModel(Model):
             setattr(cls, attr_name, attrs)
 
     def __super_method(self, name):
-        return getattr(super(AuthModel, self), '_Model__' + name)
+        return getattr(super(AuthModel, self), "_Model__" + name)
 
     def _define_(self):
         self.__hide_all()
-        self.__super_method('define_indexes')()
-        self.__super_method('define_validation')()
-        self.__super_method('define_access')()
-        self.__super_method('define_defaults')()
-        self.__super_method('define_updates')()
-        self.__super_method('define_representation')()
-        self.__super_method('define_computations')()
-        self.__super_method('define_callbacks')()
-        self.__super_method('define_scopes')()
-        self.__super_method('define_query_helpers')()
-        self.__super_method('define_form_utils')()
+        self.__super_method("define_indexes")()
+        self.__super_method("define_validation")()
+        self.__super_method("define_access")()
+        self.__super_method("define_defaults")()
+        self.__super_method("define_updates")()
+        self.__super_method("define_representation")()
+        self.__super_method("define_computations")()
+        self.__super_method("define_callbacks")()
+        self.__super_method("define_scopes")()
+        self.__super_method("define_query_helpers")()
+        self.__super_method("define_form_utils")()
         self.__define_authform_utils()
         self.setup()
 
-    #def __define_extra_fields(self):
+    # def __define_extra_fields(self):
     #    self.auth.settings.extra_fields['auth_user'] = self.fields
 
     def __hide_all(self):
-        alwaysvisible = ['first_name', 'last_name', 'password', 'email']
+        alwaysvisible = ["first_name", "last_name", "password", "email"]
         for field in self.table.fields:
             if field not in alwaysvisible:
-                self.table[field].writable = self.table[field].readable = \
-                    False
+                self.table[field].writable = self.table[field].readable = False
 
     def __base_visibility(self):
         rv = {}
@@ -93,8 +90,9 @@ class AuthModel(Model):
 
     def __define_authform_utils(self):
         settings = {
-            'form_registration_rw': {'writable': [], 'readable': []},
-            'form_profile_rw': {'writable': [], 'readable': []}}
+            "form_registration_rw": {"writable": [], "readable": []},
+            "form_profile_rw": {"writable": [], "readable": []},
+        }
         for config_dict in settings.keys():
             rw_data = self.__base_visibility()
             rw_data.update(**self.fields_rw)
@@ -105,17 +103,18 @@ class AuthModel(Model):
                 else:
                     readable = writable = value
                 if readable:
-                    settings[config_dict]['readable'].append(key)
+                    settings[config_dict]["readable"].append(key)
                 if writable:
-                    settings[config_dict]['writable'].append(key)
-        setattr(self, '_merged_form_rw_', {
-            'registration': settings['form_registration_rw'],
-            'profile': settings['form_profile_rw']})
+                    settings[config_dict]["writable"].append(key)
+        self._merged_form_rw_ = {
+            "registration": settings["form_registration_rw"],
+            "profile": settings["form_profile_rw"],
+        }
 
 
 class AuthUserBasic(AuthModel, TimestampedModel):
     tablename = "auth_users"
-    format = '%(email)s (%(id)s)'
+    format = "%(email)s (%(id)s)"
     #: injected by Auth
     #  has_many(
     #      {'auth_memberships': 'AuthMembership'},
@@ -126,55 +125,48 @@ class AuthUserBasic(AuthModel, TimestampedModel):
 
     email = Field(length=255, unique=True)
     password = Field.password(length=512)
-    registration_key = Field(length=512, rw=False, default='')
-    reset_password_key = Field(length=512, rw=False, default='')
-    registration_id = Field(length=512, rw=False, default='')
+    registration_key = Field(length=512, rw=False, default="")
+    reset_password_key = Field(length=512, rw=False, default="")
+    registration_id = Field(length=512, rw=False, default="")
 
-    form_labels = {
-        'email': 'E-mail',
-        'password': 'Password'
-    }
+    form_labels = {"email": "E-mail", "password": "Password"}
 
-    form_profile_rw = {
-        'email': (True, False),
-        'password': False
-    }
+    form_profile_rw = {"email": (True, False), "password": False}
 
     @before_insert
     def set_registration_key(self, fields):
-        if self.auth.config.registration_verification and not \
-                fields.get('registration_key'):
-            fields['registration_key'] = uuid()
+        if self.auth.config.registration_verification and not fields.get("registration_key"):
+            fields["registration_key"] = uuid()
         elif self.auth.config.registration_approval:
-            fields['registration_key'] = 'pending'
+            fields["registration_key"] = "pending"
 
-    @rowmethod('disable')
+    @rowmethod("disable")
     def _set_disabled(self, row):
-        return row.update_record(registration_key='disabled')
+        return row.update_record(registration_key="disabled")
 
-    @rowmethod('block')
+    @rowmethod("block")
     def _set_blocked(self, row):
-        return row.update_record(registration_key='blocked')
+        return row.update_record(registration_key="blocked")
 
-    @rowmethod('allow')
+    @rowmethod("allow")
     def _set_allowed(self, row):
-        return row.update_record(registration_key='')
+        return row.update_record(registration_key="")
 
 
 class AuthUser(AuthUserBasic):
-    format = '%(first_name)s %(last_name)s (%(id)s)'
+    format = "%(first_name)s %(last_name)s (%(id)s)"
 
     first_name = Field(length=128, notnull=True)
     last_name = Field(length=128, notnull=True)
 
     form_labels = {
-        'first_name': 'First name',
-        'last_name': 'Last name',
+        "first_name": "First name",
+        "last_name": "Last name",
     }
 
 
 class AuthGroup(TimestampedModel):
-    format = '%(role)s (%(id)s)'
+    format = "%(role)s (%(id)s)"
     #: injected by Auth
     #  has_many(
     #      {'auth_memberships': 'AuthMembership'},
@@ -182,13 +174,10 @@ class AuthGroup(TimestampedModel):
     #      {'users': {'via': 'memberships'}}
     #  )
 
-    role = Field(length=255, default='', unique=True)
+    role = Field(length=255, default="", unique=True)
     description = Field.text()
 
-    form_labels = {
-        'role': 'Role',
-        'description': 'Description'
-    }
+    form_labels = {"role": "Role", "description": "Description"}
 
 
 class AuthMembership(TimestampedModel):
@@ -201,19 +190,13 @@ class AuthPermission(TimestampedModel):
     #: injected by Auth
     #  belongs_to({'auth_group': 'AuthGroup'})
 
-    name = Field(length=512, default='default', notnull=True)
+    name = Field(length=512, default="default", notnull=True)
     table_name = Field(length=512)
     record_id = Field.int(default=0)
 
-    validation = {
-        'record_id': {'in': {'range': (0, 10**9)}}
-    }
+    validation = {"record_id": {"in": {"range": (0, 10**9)}}}
 
-    form_labels = {
-        'name': 'Name',
-        'table_name': 'Object or table name',
-        'record_id': 'Record ID'
-    }
+    form_labels = {"name": "Name", "table_name": "Object or table name", "record_id": "Record ID"}
 
 
 class AuthEvent(TimestampedModel):
@@ -225,15 +208,10 @@ class AuthEvent(TimestampedModel):
     description = Field.text(notnull=True)
 
     default_values = {
-        'client_ip': lambda:
-            request.client if hasattr(current, 'request') else 'unavailable',
-        'origin': 'auth',
-        'description': ''
+        "client_ip": lambda: request.client if hasattr(current, "request") else "unavailable",
+        "origin": "auth",
+        "description": "",
     }
 
     #: labels injected by Auth
-    form_labels = {
-        'client_ip': 'Client IP',
-        'origin': 'Origin',
-        'description': 'Description'
-    }
+    form_labels = {"client_ip": "Client IP", "origin": "Origin", "description": "Description"}

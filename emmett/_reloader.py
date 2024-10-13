@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-    emmett._reloader
-    ----------------
+emmett._reloader
+----------------
 
-    Provides auto-reloading utilities.
+Provides auto-reloading utilities.
 
-    :copyright: 2014 Giovanni Barillari
+:copyright: 2014 Giovanni Barillari
 
-    Adapted from werkzeug code (http://werkzeug.pocoo.org)
-    :copyright: (c) 2015 by Armin Ronacher.
+Adapted from werkzeug code (http://werkzeug.pocoo.org)
+:copyright: (c) 2015 by Armin Ronacher.
 
-    :license: BSD-3-Clause
+:license: BSD-3-Clause
 """
 
 import multiprocessing
@@ -19,14 +19,12 @@ import signal
 import subprocess
 import sys
 import time
-
 from itertools import chain
 from typing import Optional
 
 import click
-
-from ._internal import locate_app
-from .server import run as _server_run
+from emmett_core._internal import locate_app
+from emmett_core.server import run as _server_run
 
 
 def _iter_module_files():
@@ -37,7 +35,7 @@ def _iter_module_files():
     for module in list(sys.modules.values()):
         if module is None:
             continue
-        filename = getattr(module, '__file__', None)
+        filename = getattr(module, "__file__", None)
         if filename:
             old = None
             while not os.path.isfile(filename):
@@ -58,15 +56,9 @@ def _get_args_for_reloading():
     """
     rv = [sys.executable]
     py_script = sys.argv[0]
-    if (
-        os.name == 'nt' and not os.path.exists(py_script) and
-        os.path.exists(py_script + '.exe')
-    ):
-        py_script += '.exe'
-    if (
-        os.path.splitext(rv[0])[1] == '.exe' and
-        os.path.splitext(py_script)[1] == '.exe'
-    ):
+    if os.name == "nt" and not os.path.exists(py_script) and os.path.exists(py_script + ".exe"):
+        py_script += ".exe"
+    if os.path.splitext(rv[0])[1] == ".exe" and os.path.splitext(py_script)[1] == ".exe":
         rv.pop(0)
     rv.append(py_script)
     rv.extend(sys.argv[1:])
@@ -82,8 +74,7 @@ class ReloaderLoop(object):
     _sleep = staticmethod(time.sleep)
 
     def __init__(self, extra_files=None, interval=1):
-        self.extra_files = set(
-            os.path.abspath(x) for x in extra_files or ())
+        self.extra_files = {os.path.abspath(x) for x in extra_files or ()}
         self.interval = interval
 
     def run(self):
@@ -94,10 +85,10 @@ class ReloaderLoop(object):
         but running the reloader thread.
         """
         while 1:
-            click.secho('> Restarting (%s mode)' % self.name, fg='yellow')
+            click.secho("> Restarting (%s mode)" % self.name, fg="yellow")
             args = _get_args_for_reloading()
             new_environ = os.environ.copy()
-            new_environ['EMMETT_RUN_MAIN'] = 'true'
+            new_environ["EMMETT_RUN_MAIN"] = "true"
 
             # a weird bug on windows. sometimes unicode strings end up in the
             # environment and subprocess.call does not like this, encode them
@@ -107,20 +98,20 @@ class ReloaderLoop(object):
             #         if isinstance(value, unicode):
             #             new_environ[key] = value.encode('iso-8859-1')
 
-            exit_code = subprocess.call(args, env=new_environ)
+            exit_code = subprocess.call(args, env=new_environ)  # noqa: S603
             if exit_code != 3:
                 return exit_code
 
     def trigger_reload(self, process, filename):
         filename = os.path.abspath(filename)
-        click.secho('> Detected change in %r, reloading' % filename, fg='cyan')
+        click.secho("> Detected change in %r, reloading" % filename, fg="cyan")
         os.kill(process.pid, signal.SIGTERM)
         process.join()
         sys.exit(3)
 
 
 class StatReloaderLoop(ReloaderLoop):
-    name = 'stat'
+    name = "stat"
 
     def run(self, process):
         mtimes = {}
@@ -141,18 +132,18 @@ class StatReloaderLoop(ReloaderLoop):
 
 
 reloader_loops = {
-    'stat': StatReloaderLoop,
+    "stat": StatReloaderLoop,
 }
 
-reloader_loops['auto'] = reloader_loops['stat']
+reloader_loops["auto"] = reloader_loops["stat"]
 
 
 def run_with_reloader(
     interface,
     app_target,
-    host='127.0.0.1',
+    host="127.0.0.1",
     port=8000,
-    loop='auto',
+    loop="auto",
     log_level=None,
     log_access=False,
     threads=1,
@@ -161,15 +152,17 @@ def run_with_reloader(
     ssl_keyfile: Optional[str] = None,
     extra_files=None,
     interval=1,
-    reloader_type='auto'
+    reloader_type="auto",
 ):
     reloader = reloader_loops[reloader_type](extra_files, interval)
     signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
 
     try:
-        if os.environ.get('EMMETT_RUN_MAIN') == 'true':
+        if os.environ.get("EMMETT_RUN_MAIN") == "true":
+            from .app import App
+
             # FIXME: find a better way to have app files in stat checker
-            locate_app(*app_target)
+            locate_app(App, *app_target)
 
             process = multiprocessing.Process(
                 target=_server_run,
@@ -184,7 +177,7 @@ def run_with_reloader(
                     "threading_mode": threading_mode,
                     "ssl_certfile": ssl_certfile,
                     "ssl_keyfile": ssl_keyfile,
-                }
+                },
             )
             process.start()
             reloader.run(process)

@@ -1,20 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-    tests.orm_row
-    -------------
+tests.orm_row
+-------------
 
-    Test ORM row objects
+Test ORM row objects
 """
 
 import pickle
-import pytest
-
 from uuid import uuid4
 
-from emmett import App, sdict, now
-from emmett.orm import (
-    Database, Model, Field, belongs_to, has_many, refers_to, rowattr, rowmethod
-)
+import pytest
+
+from emmett import App, now, sdict
+from emmett.orm import Database, Field, Model, belongs_to, has_many, refers_to, rowattr, rowmethod
 from emmett.orm.errors import ValidationError
 from emmett.orm.helpers import RowReferenceMixin
 from emmett.orm.migrations.utils import generate_runtime_migration
@@ -70,20 +68,15 @@ class Crypted(Model):
     bar = Field.password()
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def _db():
     app = App(__name__)
-    db = Database(
-        app,
-        config=sdict(
-            uri=f'sqlite://{uuid4().hex}.db',
-            auto_connect=True
-        )
-    )
+    db = Database(app, config=sdict(uri=f"sqlite://{uuid4().hex}.db", auto_connect=True))
     db.define_models(One, Two, Three, Override, Crypted)
     return db
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def db(_db):
     migration = generate_runtime_migration(_db)
     migration.up()
@@ -96,80 +89,80 @@ def test_rowclass(db):
     db.Two.insert(one=ret, foo="test1", bar="test2")
 
     ret._allocate_()
-    assert type(ret._refrecord) == One._instance_()._rowclass_
+    assert type(ret._refrecord) is One._instance_()._rowclass_
 
     row = One.get(ret.id)
-    assert type(row) == One._instance_()._rowclass_
+    assert type(row) is One._instance_()._rowclass_
 
     row = One.first()
-    assert type(row) == One._instance_()._rowclass_
+    assert type(row) is One._instance_()._rowclass_
 
     row = db(db.One).select().first()
-    assert type(row) == One._instance_()._rowclass_
+    assert type(row) is One._instance_()._rowclass_
 
     row = db(db.One).select(db.One.ALL).first()
-    assert type(row) == One._instance_()._rowclass_
+    assert type(row) is One._instance_()._rowclass_
 
     row = One.all().select().first()
-    assert type(row) == One._instance_()._rowclass_
+    assert type(row) is One._instance_()._rowclass_
 
     row = One.where(lambda m: m.id != None).select().first()
-    assert type(row) == One._instance_()._rowclass_
+    assert type(row) is One._instance_()._rowclass_
 
     row = db(db.One).select().first()
-    assert type(row) == One._instance_()._rowclass_
+    assert type(row) is One._instance_()._rowclass_
 
     row = db(db.One).select(db.One.ALL).first()
-    assert type(row) == One._instance_()._rowclass_
+    assert type(row) is One._instance_()._rowclass_
 
     row = One.all().select(One.bar).first()
-    assert type(row) == Row
+    assert type(row) is Row
 
     row = db(db.One).select(One.bar).first()
-    assert type(row) == Row
+    assert type(row) is Row
 
     row = One.all().join("twos").select().first()
-    assert type(row) == One._instance_()._rowclass_
-    assert type(row.twos().first()) == Two._instance_()._rowclass_
+    assert type(row) is One._instance_()._rowclass_
+    assert type(row.twos().first()) is Two._instance_()._rowclass_
 
     row = One.all().join("twos").select(One.table.ALL, Two.table.ALL).first()
-    assert type(row) == One._instance_()._rowclass_
-    assert type(row.twos().first()) == Two._instance_()._rowclass_
+    assert type(row) is One._instance_()._rowclass_
+    assert type(row.twos().first()) is Two._instance_()._rowclass_
 
     row = One.all().join("twos").select(One.foo, Two.foo).first()
-    assert type(row) == Row
-    assert type(row.ones) == Row
-    assert type(row.twos) == Row
+    assert type(row) is Row
+    assert type(row.ones) is Row
+    assert type(row.twos) is Row
 
     row = db(Two.one == One.id).select().first()
-    assert type(row) == Row
-    assert type(row.ones) == One._instance_()._rowclass_
-    assert type(row.twos) == Two._instance_()._rowclass_
+    assert type(row) is Row
+    assert type(row.ones) is One._instance_()._rowclass_
+    assert type(row.twos) is Two._instance_()._rowclass_
 
     row = db(Two.one == One.id).select(One.table.ALL, Two.foo).first()
-    assert type(row) == Row
-    assert type(row.ones) == One._instance_()._rowclass_
-    assert type(row.twos) == Row
+    assert type(row) is Row
+    assert type(row.ones) is One._instance_()._rowclass_
+    assert type(row.twos) is Row
 
     row = db(Two.one == One.id).select(One.foo, Two.foo).first()
-    assert type(row) == Row
-    assert type(row.ones) == Row
-    assert type(row.twos) == Row
+    assert type(row) is Row
+    assert type(row.ones) is Row
+    assert type(row.twos) is Row
 
     for row in db(Two.one == One.id).iterselect():
-        assert type(row) == Row
-        assert type(row.ones) == One._instance_()._rowclass_
-        assert type(row.twos) == Two._instance_()._rowclass_
+        assert type(row) is Row
+        assert type(row.ones) is One._instance_()._rowclass_
+        assert type(row.twos) is Two._instance_()._rowclass_
 
     for row in db(Two.one == One.id).iterselect(One.table.ALL, Two.foo):
-        assert type(row) == Row
-        assert type(row.ones) == One._instance_()._rowclass_
-        assert type(row.twos) == Row
+        assert type(row) is Row
+        assert type(row.ones) is One._instance_()._rowclass_
+        assert type(row.twos) is Row
 
     for row in db(Two.one == One.id).iterselect(One.foo, Two.foo):
-        assert type(row) == Row
-        assert type(row.ones) == Row
-        assert type(row.twos) == Row
+        assert type(row) is Row
+        assert type(row.ones) is Row
+        assert type(row.twos) is Row
 
 
 def test_concrete(db):

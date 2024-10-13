@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.helpers
-    ------------------
+emmett.orm.helpers
+------------------
 
-    Provides ORM helpers.
+Provides ORM helpers.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations
@@ -15,23 +15,23 @@ import copyreg
 import operator
 import re
 import time
-
 from functools import reduce, wraps
 from typing import TYPE_CHECKING, Any, Callable
 
+from emmett_core.utils import cachedprop
 from pydal._globals import THREAD_LOCAL
 from pydal.helpers.classes import ExecutionHandler
 from pydal.objects import Field as _Field
 
 from ..datastructures import sdict
-from ..utils import cachedprop
+
 
 if TYPE_CHECKING:
     from .objects import Table
 
 
 class RowReferenceMeta:
-    __slots__ = ['table', 'pk', 'caster']
+    __slots__ = ["table", "pk", "caster"]
 
     def __init__(self, table: Table, caster: Callable[[Any], Any]):
         self.table = table
@@ -39,15 +39,14 @@ class RowReferenceMeta:
         self.caster = caster
 
     def fetch(self, val):
-        return self.table._db(self.table._id == self.caster(val)).select(
-            limitby=(0, 1),
-            orderby_on_limitby=False
-        ).first()
+        return (
+            self.table._db(self.table._id == self.caster(val)).select(limitby=(0, 1), orderby_on_limitby=False).first()
+        )
 
 
 class RowReferenceMultiMeta:
-    __slots__ = ['table', 'pks', 'pks_idx', 'caster', 'casters']
-    _casters = {'integer': int, 'string': str}
+    __slots__ = ["table", "pks", "pks_idx", "caster", "casters"]
+    _casters = {"integer": int, "string": str}
 
     def __init__(self, table: Table) -> None:
         self.table = table
@@ -58,15 +57,10 @@ class RowReferenceMultiMeta:
 
     def fetch(self, val):
         query = reduce(
-            operator.and_, [
-                self.table[pk] == self.casters[pk](self.caster.__getitem__(val, idx))
-                for pk, idx in self.pks_idx.items()
-            ]
+            operator.and_,
+            [self.table[pk] == self.casters[pk](self.caster.__getitem__(val, idx)) for pk, idx in self.pks_idx.items()],
         )
-        return self.table._db(query).select(
-            limitby=(0, 1),
-            orderby_on_limitby=False
-        ).first()
+        return self.table._db(query).select(limitby=(0, 1), orderby_on_limitby=False).first()
 
 
 class RowReferenceMixin:
@@ -75,8 +69,7 @@ class RowReferenceMixin:
             self._refrecord = self._refmeta.fetch(self)
         if not self._refrecord:
             raise RuntimeError(
-                "Using a recursive select but encountered a broken " +
-                "reference: %s %r" % (self._table, self)
+                "Using a recursive select but encountered a broken " + "reference: %s %r" % (self._table, self)
             )
 
     def __getattr__(self, key: str) -> Any:
@@ -92,7 +85,7 @@ class RowReferenceMixin:
         return self.__getattr__(key, default)
 
     def __setattr__(self, key: str, value: Any):
-        if key.startswith('_'):
+        if key.startswith("_"):
             self._refmeta.caster.__setattr__(self, key, value)
             return
         self._allocate_()
@@ -118,16 +111,16 @@ class RowReferenceMixin:
 class RowReferenceInt(RowReferenceMixin, int):
     def __new__(cls, id, table: Table, *args: Any, **kwargs: Any):
         rv = super().__new__(cls, id, *args, **kwargs)
-        int.__setattr__(rv, '_refmeta', RowReferenceMeta(table, int))
-        int.__setattr__(rv, '_refrecord', None)
+        int.__setattr__(rv, "_refmeta", RowReferenceMeta(table, int))
+        int.__setattr__(rv, "_refrecord", None)
         return rv
 
 
 class RowReferenceStr(RowReferenceMixin, str):
     def __new__(cls, id, table: Table, *args: Any, **kwargs: Any):
         rv = super().__new__(cls, id, *args, **kwargs)
-        str.__setattr__(rv, '_refmeta', RowReferenceMeta(table, str))
-        str.__setattr__(rv, '_refrecord', None)
+        str.__setattr__(rv, "_refmeta", RowReferenceMeta(table, str))
+        str.__setattr__(rv, "_refrecord", None)
         return rv
 
 
@@ -135,15 +128,13 @@ class RowReferenceMulti(RowReferenceMixin, tuple):
     def __new__(cls, id, table: Table, *args: Any, **kwargs: Any):
         tupid = tuple(id[key] for key in table._primarykey)
         rv = super().__new__(cls, tupid, *args, **kwargs)
-        tuple.__setattr__(rv, '_refmeta', RowReferenceMultiMeta(table))
-        tuple.__setattr__(rv, '_refrecord', None)
+        tuple.__setattr__(rv, "_refmeta", RowReferenceMultiMeta(table))
+        tuple.__setattr__(rv, "_refrecord", None)
         return rv
 
     def __getattr__(self, key: str) -> Any:
         if key in self._refmeta.pks:
-            return self._refmeta.casters[key](
-                tuple.__getitem__(self, self._refmeta.pks_idx[key])
-            )
+            return self._refmeta.casters[key](tuple.__getitem__(self, self._refmeta.pks_idx[key]))
         if key in self._refmeta.table:
             self._allocate_()
         if self._refrecord:
@@ -152,9 +143,7 @@ class RowReferenceMulti(RowReferenceMixin, tuple):
 
     def __getitem__(self, key):
         if key in self._refmeta.pks:
-            return self._refmeta.casters[key](
-                tuple.__getitem__(self, self._refmeta.pks_idx[key])
-            )
+            return self._refmeta.casters[key](tuple.__getitem__(self, self._refmeta.pks_idx[key]))
         self._allocate_()
         return self._refrecord.get(key, None)
 
@@ -167,22 +156,22 @@ class GeoFieldWrapper(str):
         "POLYGON": "Polygon",
         "MULTIPOINT": "MultiPoint",
         "MULTILINESTRING": "MultiLineString",
-        "MULTIPOLYGON": "MultiPolygon"
+        "MULTIPOLYGON": "MultiPolygon",
     }
 
     def __new__(cls, value, *args: Any, **kwargs: Any):
         geometry, raw_coords = value.strip()[:-1].split("(", 1)
         rv = super().__new__(cls, value, *args, **kwargs)
         coords = cls._parse_coords_block(raw_coords)
-        str.__setattr__(rv, '_geometry', geometry.strip())
-        str.__setattr__(rv, '_coordinates', coords)
+        str.__setattr__(rv, "_geometry", geometry.strip())
+        str.__setattr__(rv, "_coordinates", coords)
         return rv
 
     @classmethod
     def _parse_coords_block(cls, v):
         groups = []
         parens_match = cls._rule_parens.match(v)
-        parens = parens_match.group(1) if parens_match else ''
+        parens = parens_match.group(1) if parens_match else ""
         if parens:
             for element in v.split(parens):
                 if not element:
@@ -192,9 +181,7 @@ class GeoFieldWrapper(str):
                 groups.append(f"{parens}{element}"[1:shift])
         if not groups:
             return cls._parse_coords_group(v)
-        return tuple(
-            cls._parse_coords_block(group) for group in groups
-        )
+        return tuple(cls._parse_coords_block(group) for group in groups)
 
     @staticmethod
     def _parse_coords_group(v):
@@ -225,17 +212,13 @@ class GeoFieldWrapper(str):
     @property
     def groups(self):
         if not self._geometry.startswith("MULTI"):
-            return tuple()
+            return ()
         return tuple(
-            self.__class__(f"{self._geometry[5:]}({self._repr_coords(coords)[0]})")
-            for coords in self._coordinates
+            self.__class__(f"{self._geometry[5:]}({self._repr_coords(coords)[0]})") for coords in self._coordinates
         )
 
     def __json__(self):
-        return {
-            "type": self._json_geom_map[self._geometry],
-            "coordinates": self._coordinates
-        }
+        return {"type": self._json_geom_map[self._geometry], "coordinates": self._coordinates}
 
 
 class PasswordFieldWrapper(str):
@@ -244,27 +227,24 @@ class PasswordFieldWrapper(str):
 
 class Reference(object):
     def __init__(self, *args, **params):
-        self.reference = [arg for arg in args]
+        self.reference = list(args)
         self.params = params
         self.refobj[id(self)] = self
 
     def __call__(self, func):
-        if self.__class__.__name__ not in ['has_one', 'has_many']:
-            raise SyntaxError(
-                '%s cannot be used as a decorator' % self.__class__.__name__)
+        if self.__class__.__name__ not in ["has_one", "has_many"]:
+            raise SyntaxError("%s cannot be used as a decorator" % self.__class__.__name__)
         if not callable(func):
-            raise SyntaxError('Argument must be callable')
+            raise SyntaxError("Argument must be callable")
         if self.reference:
-            raise SyntaxError(
-                "When using %s as decorator, you must use the 'field' option" %
-                self.__class__.__name__)
-        new_reference = {func.__name__: {'method': func}}
-        field = self.params.get('field')
+            raise SyntaxError("When using %s as decorator, you must use the 'field' option" % self.__class__.__name__)
+        new_reference = {func.__name__: {"method": func}}
+        field = self.params.get("field")
         if field:
-            new_reference[func.__name__]['field'] = field
-        cast = self.params.get('cast')
+            new_reference[func.__name__]["field"] = field
+        cast = self.params.get("cast")
         if cast:
-            new_reference[func.__name__]['cast'] = cast
+            new_reference[func.__name__]["cast"] = cast
         self.reference = [new_reference]
         return self
 
@@ -345,10 +325,11 @@ class RelationBuilder(object):
 
     def belongs_query(self):
         return reduce(
-            operator.and_, [
+            operator.and_,
+            [
                 self.model.table[local] == self.model.db[self.ref.model][foreign]
                 for local, foreign in self.ref.coupled_fields
-            ]
+            ],
         )
 
     @staticmethod
@@ -361,17 +342,10 @@ class RelationBuilder(object):
                     components.append(element.cast(ref.cast))
                 else:
                     components.append(element)
-        return reduce(
-            operator.and_, [
-                field == components[idx]
-                for idx, field in enumerate(ref.fields_instances)
-            ]
-        )
+        return reduce(operator.and_, [field == components[idx] for idx, field in enumerate(ref.fields_instances)])
 
     def _many(self, ref, rid):
-        return ref.dbset.where(
-            self._patch_query_with_scopes(ref, self.many_query(ref, rid))
-        ).query
+        return ref.dbset.where(self._patch_query_with_scopes(ref, self.many_query(ref, rid))).query
 
     def many(self, row=None):
         return self._many(self.ref, self._make_refid(row))
@@ -381,17 +355,11 @@ class RelationBuilder(object):
         rid = self._make_refid(row)
         sname = self.model.__class__.__name__
         stack = []
-        midrel = self.model._hasmany_ref_.get(
-            self.ref.via,
-            self.model._hasone_ref_.get(self.ref.via)
-        )
+        midrel = self.model._hasmany_ref_.get(self.ref.via, self.model._hasone_ref_.get(self.ref.via))
         stack.append(self.ref)
         while midrel.via is not None:
             stack.insert(0, midrel)
-            midrel = self.model._hasmany_ref_.get(
-                midrel.via,
-                self.model._hasone_ref_.get(midrel.via)
-            )
+            midrel = self.model._hasmany_ref_.get(midrel.via, self.model._hasone_ref_.get(midrel.via))
         query = self._many(midrel, rid)
         step_model = midrel.table_name
         sel_field = db[step_model].ALL
@@ -405,12 +373,11 @@ class RelationBuilder(object):
                 last_belongs = step_model
                 last_via = via
                 _query = reduce(
-                    operator.and_, [
-                        (
-                            db[belongs_model.model][foreign] ==
-                            db[step_model][local]
-                        ) for local, foreign in belongs_model.coupled_fields
-                    ]
+                    operator.and_,
+                    [
+                        (db[belongs_model.model][foreign] == db[step_model][local])
+                        for local, foreign in belongs_model.coupled_fields
+                    ],
                 )
                 sel_field = db[belongs_model.model].ALL
                 step_model = belongs_model.model
@@ -418,10 +385,7 @@ class RelationBuilder(object):
                 #: shortcut way
                 last_belongs = None
                 rname = via.field or via.name
-                midrel = db[step_model]._model_._hasmany_ref_.get(
-                    rname,
-                    db[step_model]._model_._hasone_ref_.get(rname)
-                )
+                midrel = db[step_model]._model_._hasmany_ref_.get(rname, db[step_model]._model_._hasone_ref_.get(rname))
                 if midrel.via:
                     nested = RelationBuilder(midrel, midrel.model_class)
                     nested_data = nested.via()
@@ -429,19 +393,13 @@ class RelationBuilder(object):
                     step_model = midrel.model_class.tablename
                 else:
                     _query = self._many(
-                        midrel, [
-                            db[step_model][step_field]
-                            for step_field in (
-                                db[step_model]._model_.primary_keys or ["id"]
-                            )
-                        ]
+                        midrel,
+                        [db[step_model][step_field] for step_field in (db[step_model]._model_.primary_keys or ["id"])],
                     )
                     step_model = midrel.table_name
                 sel_field = db[step_model].ALL
             query = query & _query
-        query = via.dbset.where(
-            self._patch_query_with_scopes_on(via, query, step_model)
-        ).query
+        query = via.dbset.where(self._patch_query_with_scopes_on(via, query, step_model)).query
         return query, sel_field, sname, rid, last_belongs, last_via
 
 
@@ -464,8 +422,7 @@ class Callback(object):
 
 class TimingHandler(ExecutionHandler):
     def _timings(self):
-        THREAD_LOCAL._emtdal_timings_ = getattr(
-            THREAD_LOCAL, '_emtdal_timings_', [])
+        THREAD_LOCAL._emtdal_timings_ = getattr(THREAD_LOCAL, "_emtdal_timings_", [])
         return THREAD_LOCAL._emtdal_timings_
 
     @cachedprop
@@ -481,7 +438,7 @@ class TimingHandler(ExecutionHandler):
 
 
 class ConnectionContext:
-    __slots__ = ['db', 'conn', 'with_transaction', 'reuse_if_open']
+    __slots__ = ["db", "conn", "with_transaction", "reuse_if_open"]
 
     def __init__(self, db, with_transaction=True, reuse_if_open=True):
         self.db = db
@@ -490,10 +447,7 @@ class ConnectionContext:
         self.reuse_if_open = reuse_if_open
 
     def __enter__(self):
-        self.conn = self.db.connection_open(
-            with_transaction=self.with_transaction,
-            reuse_if_open=self.reuse_if_open
-        )
+        self.conn = self.db.connection_open(with_transaction=self.with_transaction, reuse_if_open=self.reuse_if_open)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -503,8 +457,7 @@ class ConnectionContext:
 
     async def __aenter__(self):
         self.conn = await self.db.connection_open_loop(
-            with_transaction=self.with_transaction,
-            reuse_if_open=self.reuse_if_open
+            with_transaction=self.with_transaction, reuse_if_open=self.reuse_if_open
         )
         return self
 
@@ -515,7 +468,7 @@ class ConnectionContext:
 
 
 def decamelize(name):
-    return "_".join(re.findall('[A-Z][^A-Z]*', name)).lower()
+    return "_".join(re.findall("[A-Z][^A-Z]*", name)).lower()
 
 
 def camelize(name):
@@ -529,17 +482,16 @@ def make_tablename(classname):
 def wrap_scope_on_set(dbset, model_instance, scope):
     @wraps(scope)
     def wrapped(*args, **kwargs):
-        return dbset.where(
-            scope(model_instance, *args, **kwargs),
-            model=model_instance.__class__)
+        return dbset.where(scope(model_instance, *args, **kwargs), model=model_instance.__class__)
+
     return wrapped
 
 
 def wrap_scope_on_model(scope):
     @wraps(scope)
     def wrapped(cls, *args, **kwargs):
-        return cls.db.where(
-            scope(cls._instance_(), *args, **kwargs), model=cls)
+        return cls.db.where(scope(cls._instance_(), *args, **kwargs), model=cls)
+
     return wrapped
 
 
@@ -547,27 +499,22 @@ def wrap_virtual_on_model(model, virtual):
     @wraps(virtual)
     def wrapped(row, *args, **kwargs):
         return virtual(model, row, *args, **kwargs)
+
     return wrapped
 
 
 def typed_row_reference(id: Any, table: Table):
     field_type = table._id.type if table._id else None
-    return {
-        'id': RowReferenceInt,
-        'integer': RowReferenceInt,
-        'string': RowReferenceStr,
-        None: RowReferenceMulti
-    }[field_type](id, table)
+    return {"id": RowReferenceInt, "integer": RowReferenceInt, "string": RowReferenceStr, None: RowReferenceMulti}[
+        field_type
+    ](id, table)
 
 
 def typed_row_reference_from_record(record: Any, model: Any):
     field_type = model.table._id.type if model.table._id else None
-    refcls = {
-        'id': RowReferenceInt,
-        'integer': RowReferenceInt,
-        'string': RowReferenceStr,
-        None: RowReferenceMulti
-    }[field_type]
+    refcls = {"id": RowReferenceInt, "integer": RowReferenceInt, "string": RowReferenceStr, None: RowReferenceMulti}[
+        field_type
+    ]
     if len(model._fieldset_pk) > 1:
         id = {pk: record[pk] for pk in model._fieldset_pk}
     else:
@@ -578,7 +525,7 @@ def typed_row_reference_from_record(record: Any, model: Any):
 
 
 def _rowref_pickler(obj):
-    return obj._refmeta.caster, (obj.__pure__(), )
+    return obj._refmeta.caster, (obj.__pure__(),)
 
 
 copyreg.pickle(RowReferenceInt, _rowref_pickler)

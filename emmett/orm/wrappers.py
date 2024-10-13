@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.wrappers
-    -------------------
+emmett.orm.wrappers
+-------------------
 
-    Provides ORM wrappers utilities.
+Provides ORM wrappers utilities.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from .helpers import RelationBuilder
-from .objects import HasOneSet, HasOneViaSet, HasManySet, HasManyViaSet
+from .objects import HasManySet, HasManyViaSet, HasOneSet, HasOneViaSet
 
 
 class Wrapper(object):

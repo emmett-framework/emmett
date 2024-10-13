@@ -1,6 +1,21 @@
 Emmett changelog
 ================
 
+Version 2.6
+-----------
+
+Released on October 14th 2024, codename Gutenberg
+
+- Added Python 3.13 support
+- Re-implemented router matching algorithm in Rust
+- Re-implemented multipart parsing in Rust
+- Added `Response` wrap methods
+- Refactored `Request.files` implementation
+- Support iteration on `Request.body`
+- Added `iter`, `aiter`, `http` and `snippet` to routes' outputs
+- Testing client is now using RSGI protocol in place of ASGI
+- Logger now uses stdout in place of files under default configuration
+
 Version 2.5
 -----------
 

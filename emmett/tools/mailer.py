@@ -1,73 +1,77 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.tools.mailer
-    -------------------
+emmett.tools.mailer
+-------------------
 
-    Provides mail facilities for Emmett.
+Provides mail facilities for Emmett.
 
-    :copyright: 2014 Giovanni Barillari
+:copyright: 2014 Giovanni Barillari
 
-    Based on the code of flask-mail
-    :copyright: (c) 2010 by Dan Jacob.
+Based on the code of flask-mail
+:copyright: (c) 2010 by Dan Jacob.
 
-    :license: BSD-3-Clause
+:license: BSD-3-Clause
 """
 
 import smtplib
 import time
-
 from contextlib import contextmanager
 from email import charset as _charsetreg, policy
 from email.encoders import encode_base64
+from email.header import Header
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.header import Header
-from email.utils import formatdate, formataddr, make_msgid, parseaddr
+from email.utils import formataddr, formatdate, make_msgid, parseaddr
 from functools import wraps
+
+from emmett_core.utils import cachedprop
 
 from ..extensions import Extension
 from ..libs.contenttype import contenttype
-from ..utils import cachedprop
 
-_charsetreg.add_charset('utf-8', _charsetreg.SHORTEST, None, 'utf-8')
+
+_charsetreg.add_charset("utf-8", _charsetreg.SHORTEST, None, "utf-8")
 message_policy = policy.SMTP
 
 
 def _has_newline(line):
-    if line and ('\r' in line or '\n' in line):
+    if line and ("\r" in line or "\n" in line):
         return True
     return False
 
 
-def sanitize_subject(subject, encoding='utf-8'):
+def sanitize_subject(subject, encoding="utf-8"):
     try:
-        subject.encode('ascii')
+        subject.encode("ascii")
     except UnicodeEncodeError:
         subject = Header(subject, encoding).encode()
     return subject
 
 
-def sanitize_address(address, encoding='utf-8'):
+def sanitize_address(address, encoding="utf-8"):
     if isinstance(address, str):
-        address = parseaddr(address)
+        try:
+            address = parseaddr(address, strict=False)
+        except Exception:
+            address = parseaddr(address)
     name, address = address
     name = Header(name, encoding).encode()
     try:
-        address.encode('ascii')
+        address.encode("ascii")
     except UnicodeEncodeError:
-        if '@' in address:
-            localpart, domain = address.split('@', 1)
+        if "@" in address:
+            localpart, domain = address.split("@", 1)
             localpart = str(Header(localpart, encoding))
-            domain = domain.encode('idna').decode('ascii')
-            address = '@'.join([localpart, domain])
+            domain = domain.encode("idna").decode("ascii")
+            address = "@".join([localpart, domain])
         else:
             address = Header(address, encoding).encode()
     return formataddr((name, address))
 
 
-def sanitize_addresses(addresses, encoding='utf-8'):
-    return map(lambda address: sanitize_address(address, encoding), addresses)
+def sanitize_addresses(addresses, encoding="utf-8"):
+    return map(lambda address: sanitize_address(address, encoding), addresses)  # noqa: C417
 
 
 class MailServer(object):
@@ -98,32 +102,43 @@ class MailServer(object):
         self.host.sendmail(
             sanitize_address(message.sender),
             list(sanitize_addresses(message.all_recipients)),
-            str(message).encode('utf8'),
+            str(message).encode("utf8"),
             message.mail_options,
-            message.rcpt_options)
+            message.rcpt_options,
+        )
         return True
 
 
 class Attachment(object):
-    def __init__(
-        self, filename=None, data=None, content_type=None, disposition=None,
-        headers=None
-    ):
+    def __init__(self, filename=None, data=None, content_type=None, disposition=None, headers=None):
         if not content_type and filename:
             content_type = contenttype(filename).split(";")[0]
         self.filename = filename
         self.content_type = content_type or contenttype(filename).split(";")[0]
         self.data = data
-        self.disposition = disposition or 'attachment'
+        self.disposition = disposition or "attachment"
         self.headers = headers or {}
 
 
 class Mail(object):
     def __init__(
-        self, ext, subject='', recipients=None, body=None, html=None,
-        alts=None, sender=None, cc=None, bcc=None, attachments=None,
-        reply_to=None, date=None, charset='utf-8', extra_headers=None,
-        mail_options=None, rcpt_options=None
+        self,
+        ext,
+        subject="",
+        recipients=None,
+        body=None,
+        html=None,
+        alts=None,
+        sender=None,
+        cc=None,
+        bcc=None,
+        attachments=None,
+        reply_to=None,
+        date=None,
+        charset="utf-8",
+        extra_headers=None,
+        mail_options=None,
+        rcpt_options=None,
     ):
         sender = sender or ext.config.sender
         if isinstance(sender, tuple):
@@ -145,7 +160,7 @@ class Mail(object):
         self.mail_options = mail_options or []
         self.rcpt_options = rcpt_options or []
         self.attachments = attachments or []
-        for attr in ['recipients', 'cc', 'bcc']:
+        for attr in ["recipients", "cc", "bcc"]:
             if not isinstance(getattr(self, attr), list):
                 setattr(self, attr, [getattr(self, attr)])
 
@@ -155,14 +170,14 @@ class Mail(object):
 
     @property
     def html(self):
-        return self.alts.get('html')
+        return self.alts.get("html")
 
     @html.setter
     def html(self, value):
         if value is None:
-            self.alts.pop('html', None)
+            self.alts.pop("html", None)
         else:
-            self.alts['html'] = value
+            self.alts["html"] = value
 
     def has_bad_headers(self):
         headers = [self.sender, self.reply_to] + self.recipients
@@ -171,10 +186,10 @@ class Mail(object):
                 return True
         if self.subject:
             if _has_newline(self.subject):
-                for linenum, line in enumerate(self.subject.split('\r\n')):
+                for linenum, line in enumerate(self.subject.split("\r\n")):
                     if not line:
                         return True
-                    if linenum > 0 and line[0] not in '\t ':
+                    if linenum > 0 and line[0] not in "\t ":
                         return True
                     if _has_newline(line):
                         return True
@@ -182,7 +197,7 @@ class Mail(object):
                         return True
         return False
 
-    def _mimetext(self, text, subtype='plain'):
+    def _mimetext(self, text, subtype="plain"):
         return MIMEText(text, _subtype=subtype, _charset=self.charset)
 
     @cachedprop
@@ -198,38 +213,34 @@ class Mail(object):
         else:
             # Anything else
             msg = MIMEMultipart()
-            alternative = MIMEMultipart('alternative')
-            alternative.attach(self._mimetext(self.body, 'plain'))
+            alternative = MIMEMultipart("alternative")
+            alternative.attach(self._mimetext(self.body, "plain"))
             for mimetype, content in self.alts.items():
                 alternative.attach(self._mimetext(content, mimetype))
             msg.attach(alternative)
         if self.subject:
-            msg['Subject'] = sanitize_subject(self.subject, self.charset)
-        msg['From'] = sanitize_address(self.sender, self.charset)
-        msg['To'] = ', '.join(
-            list(set(sanitize_addresses(self.recipients, self.charset))))
-        msg['Date'] = formatdate(self.date, localtime=True)
-        msg['Message-ID'] = self.msgId
+            msg["Subject"] = sanitize_subject(self.subject, self.charset)
+        msg["From"] = sanitize_address(self.sender, self.charset)
+        msg["To"] = ", ".join(list(set(sanitize_addresses(self.recipients, self.charset))))
+        msg["Date"] = formatdate(self.date, localtime=True)
+        msg["Message-ID"] = self.msgId
         if self.cc:
-            msg['Cc'] = ', '.join(
-                list(set(sanitize_addresses(self.cc, self.charset))))
+            msg["Cc"] = ", ".join(list(set(sanitize_addresses(self.cc, self.charset))))
         if self.reply_to:
-            msg['Reply-To'] = sanitize_address(self.reply_to, self.charset)
+            msg["Reply-To"] = sanitize_address(self.reply_to, self.charset)
         if self.extra_headers:
             for k, v in self.extra_headers.items():
                 msg[k] = v
         for attachment in attachments:
-            f = MIMEBase(*attachment.content_type.split('/'))
+            f = MIMEBase(*attachment.content_type.split("/"))
             f.set_payload(attachment.data)
             encode_base64(f)
             filename = attachment.filename
             try:
-                filename and filename.encode('ascii')
+                filename and filename.encode("ascii")
             except UnicodeEncodeError:
-                filename = ('UTF8', '', filename)
-            f.add_header(
-                'Content-Disposition', attachment.disposition,
-                filename=filename)
+                filename = ("UTF8", "", filename)
+            f.add_header("Content-Disposition", attachment.disposition, filename=filename)
             for key, value in attachment.headers.items():
                 f.add_header(key, value)
             msg.attach(f)
@@ -246,27 +257,23 @@ class Mail(object):
     def add_recipient(self, recipient):
         self.recipients.append(recipient)
 
-    def attach(
-        self, filename=None, data=None, content_type=None, disposition=None,
-        headers=None
-    ):
-        self.attachments.append(
-            Attachment(filename, data, content_type, disposition, headers))
+    def attach(self, filename=None, data=None, content_type=None, disposition=None, headers=None):
+        self.attachments.append(Attachment(filename, data, content_type, disposition, headers))
 
 
 class MailExtension(Extension):
-    namespace = 'mailer'
+    namespace = "mailer"
 
     default_config = {
-        'server': '127.0.0.1',
-        'username': None,
-        'password': None,
-        'port': 25,
-        'use_tls': False,
-        'use_ssl': False,
-        'sender': None,
-        'debug': False,
-        'suppress': False
+        "server": "127.0.0.1",
+        "username": None,
+        "password": None,
+        "port": 25,
+        "use_tls": False,
+        "use_ssl": False,
+        "sender": None,
+        "debug": False,
+        "suppress": False,
     }
 
     def on_load(self):
@@ -345,4 +352,5 @@ def _wrap_dispatcher(dispatcher):
     @wraps(dispatcher)
     def wrapped(ext, *args, **kwargs):
         return dispatcher(*args, **kwargs)
+
     return wrapped

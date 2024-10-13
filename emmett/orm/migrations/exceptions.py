@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.migrations.exceptions
-    --------------------------------
+emmett.orm.migrations.exceptions
+--------------------------------
 
-    Provides exceptions for migration operations.
+Provides exceptions for migration operations.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 
@@ -19,8 +19,7 @@ class RangeNotAncestorError(RevisionError):
         self.lower = lower
         self.upper = upper
         super(RangeNotAncestorError, self).__init__(
-            "Revision %s is not an ancestor of revision %s" %
-            (lower or "base", upper or "base")
+            "Revision %s is not an ancestor of revision %s" % (lower or "base", upper or "base")
         )
 
 
@@ -29,8 +28,7 @@ class MultipleHeads(RevisionError):
         self.heads = heads
         self.argument = argument
         super(MultipleHeads, self).__init__(
-            "Multiple heads are present for given argument '%s'; "
-            "%s" % (argument, ", ".join(heads))
+            "Multiple heads are present for given argument '%s'; " "%s" % (argument, ", ".join(heads))
         )
 
 

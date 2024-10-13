@@ -1,3 +1,4 @@
+from . import _internal
 from .app import App, AppModule
 from .cache import Cache
 from .ctx import current
@@ -8,5 +9,5 @@ from .html import asis
 from .http import redirect
 from .locals import T, now, request, response, session, websocket
 from .orm import Field
-from .pipeline import Pipe, Injector
+from .pipeline import Injector, Pipe
 from .routing.urls import url

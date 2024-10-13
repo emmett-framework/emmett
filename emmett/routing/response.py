@@ -1,146 +1,72 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.routing.response
-    -----------------------
+emmett.routing.response
+-----------------------
 
-    Provides response builders for http routes.
+Provides response builders for http routes.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, Union
+from typing import Any, Dict, Tuple, Union
 
+from emmett_core.http.response import HTTPResponse, HTTPStringResponse
+from emmett_core.routing.response import ResponseProcessor
 from renoir.errors import TemplateMissingError
 
 from ..ctx import current
 from ..helpers import load_component
 from ..html import asis
-from ..http import HTTPResponse, HTTP, HTTPBytes
-from ..wrappers.response import Response
-from .rules import HTTPRoutingRule
 from .urls import url
 
-_html_content_type = 'text/html; charset=utf-8'
 
-
-class MetaResponseBuilder:
-    def __init__(self, route: HTTPRoutingRule):
-        self.route = route
-
-    def __call__(self, output: Any, response: Response) -> HTTPResponse:
-        raise NotImplementedError
-
-
-class ResponseBuilder(MetaResponseBuilder):
-    http_cls = HTTP
-
-    def __call__(self, output: Any, response: Response) -> HTTP:
-        return self.http_cls(
-            response.status,
-            output,
-            headers=response.headers,
-            cookies=response.cookies
-        )
-
-
-class EmptyResponseBuilder(ResponseBuilder):
-    http_cls = HTTPResponse
-
-    def __call__(self, output: Any, response: Response) -> HTTPResponse:
-        return self.http_cls(
-            response.status,
-            headers=response.headers,
-            cookies=response.cookies
-        )
-
-
-class ResponseProcessor(ResponseBuilder):
-    def process(self, output: Any, response: Response):
-        raise NotImplementedError
-
-    def __call__(self, output: Any, response: Response) -> HTTP:
-        return self.http_cls(
-            response.status,
-            self.process(output, response),
-            headers=response.headers,
-            cookies=response.cookies
-        )
-
-
-class BytesResponseBuilder(MetaResponseBuilder):
-    http_cls = HTTPBytes
-
-    def __call__(self, output: Any, response: Response) -> HTTPBytes:
-        return self.http_cls(
-            response.status,
-            output,
-            headers=response.headers,
-            cookies=response.cookies
-        )
+_html_content_type = "text/html; charset=utf-8"
 
 
 class TemplateResponseBuilder(ResponseProcessor):
-    def process(
-        self,
-        output: Union[Dict[str, Any], None],
-        response: Response
-    ) -> str:
-        response.headers._data['content-type'] = _html_content_type
-        base_ctx = {
-            'current': current,
-            'url': url,
-            'asis': asis,
-            'load_component': load_component
-        }
+    def process(self, output: Union[Dict[str, Any], None], response) -> str:
+        response.headers._data["content-type"] = _html_content_type
+        base_ctx = {"current": current, "url": url, "asis": asis, "load_component": load_component}
         output = base_ctx if output is None else {**base_ctx, **output}
         try:
-            return self.route.app.templater.render(
-                self.route.template, output
-            )
+            return self.route.app.templater.render(self.route.template, output)
         except TemplateMissingError as exc:
-            raise HTTP(
-                404,
-                body="{}\n".format(exc.message),
-                cookies=response.cookies
-            )
+            raise HTTPStringResponse(404, body="{}\n".format(exc.message), cookies=response.cookies)
+
+
+class SnippetResponseBuilder(ResponseProcessor):
+    def process(self, output: Tuple[str, Union[Dict[str, Any], None]], response) -> str:
+        response.headers._data["content-type"] = _html_content_type
+        template, output = output
+        base_ctx = {"current": current, "url": url, "asis": asis, "load_component": load_component}
+        output = base_ctx if output is None else {**base_ctx, **output}
+        return self.route.app.templater._render(template, f"_snippet.{current.request.name}", output)
 
 
 class AutoResponseBuilder(ResponseProcessor):
-    def process(self, output: Any, response: Response) -> str:
-        is_template = False
+    def process(self, output: Any, response) -> str:
+        is_template, snippet = False, None
+        if isinstance(output, tuple):
+            snippet, output = output
         if isinstance(output, dict):
             is_template = True
-            output = {
-                **{
-                    'current': current,
-                    'url': url,
-                    'asis': asis,
-                    'load_component': load_component
-                },
-                **output
-            }
+            output = {**{"current": current, "url": url, "asis": asis, "load_component": load_component}, **output}
         elif output is None:
-            output = {
-                'current': current,
-                'url': url,
-                'asis': asis,
-                'load_component': load_component
-            }
+            is_template = True
+            output = {"current": current, "url": url, "asis": asis, "load_component": load_component}
         if is_template:
-            response.headers._data['content-type'] = _html_content_type
+            response.headers._data["content-type"] = _html_content_type
+            if snippet is not None:
+                return self.route.app.templater._render(snippet, f"_snippet.{current.request.name}", output)
             try:
-                return self.route.app.templater.render(
-                    self.route.template, output
-                )
+                return self.route.app.templater.render(self.route.template, output)
             except TemplateMissingError as exc:
-                raise HTTP(
-                    404,
-                    body="{}\n".format(exc.message),
-                    cookies=response.cookies
-                )
+                raise HTTPStringResponse(404, body="{}\n".format(exc.message), cookies=response.cookies)
         elif isinstance(output, str):
+            return output
+        elif isinstance(output, HTTPResponse):
             return output
         return str(output)

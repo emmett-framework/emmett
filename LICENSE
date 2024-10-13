@@ -26,21 +26,3 @@ PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
-Some parts in Emmett's components are derived from web2py framework,
-and contains the original copyright credits:
-  Copyrighted (c) by Massimo Di Pierro (2007-2013)
-
-Due to the original license limitations, some of these components are
-distributed under LGPLv3 license, in particular:
-
-  * emmett/security.py
-  * emmett/validators
-
-For futher details, check out the web2py's license:
-  https://github.com/web2py/web2py/blob/master/LICENSE
-
-
-Emmett also contains third party software in the 'libs' directory: each
-file/module in this directory is distributed under its original license.

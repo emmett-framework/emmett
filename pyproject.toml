@@ -1,17 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "emmett"
-
-[tool.poetry]
-name = "emmett"
-version = "2.5.13"
+version = "2.6.0"
 description = "The web framework for inventors"
-authors = ["Giovanni Barillari <g@baro.dev>"]
-license = "BSD-3-Clause"
-
 readme = "README.md"
-homepage = "https://emmett.sh"
-repository = "https://github.com/emmett-framework/emmett"
-documentation = "https://emmett.sh/docs"
+license = "BSD-3-Clause"
+requires-python = ">=3.8"
+
+authors = [
+    { name = "Giovanni Barillari", email = "g@baro.dev" }
+]
 
 keywords = ["web", "asyncio"]
 classifiers = [
@@ -27,55 +28,122 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 
-packages = [
-    {include = "emmett/**/*.*", format = "sdist" },
-    {include = "tests", format = "sdist"}
-]
-include = [
-    "CHANGES.md",
-    "LICENSE",
-    "docs/**/*"
+dependencies = [
+    "click>=6.0",
+    "emmett-core[granian,rapidjson]~=1.0.1",
+    "pendulum~=3.0.0",
+    "pydal@git+https://github.com/gi0baro/pydal@emmett",
+    "pyyaml~=6.0",
+    "renoir~=1.6",
+    "severus~=1.1",
 ]
 
-[tool.poetry.scripts]
+[project.optional-dependencies]
+orjson = ["orjson~=3.10"]
+uvicorn = [
+    "uvicorn~=0.19",
+    "h11>=0.12",
+    "websockets~=10.0",
+    "httptools~=0.6; sys_platform != 'win32'"
+]
+
+[project.urls]
+Homepage = 'https://emmett.sh'
+Documentation = 'https://emmett.sh/docs'
+Funding = 'https://github.com/sponsors/gi0baro'
+Source = 'https://github.com/emmett-framework/emmett'
+Issues = 'https://github.com/emmett-framework/emmett/issues'
+
+[project.scripts]
 emmett = "emmett.cli:main"
 
-[tool.poetry.dependencies]
-python = "^3.8"
-click = ">=6.0"
-granian = "~1.5.0"
-emmett-crypto = "^0.6"
-pendulum = "~3.0.0"
-pyDAL = "17.3"
-python-rapidjson = "^1.14"
-pyyaml = "^6.0"
-renoir = "^1.6"
-severus = "^1.1"
+[tool.hatch.build.targets.sdist]
+include = [
+    '/README.md',
+    '/CHANGES.md',
+    '/LICENSE',
+    '/docs',
+    '/emmett',
+    '/tests',
+]
 
-orjson = { version = "~3.10", optional = true }
+[tool.hatch.metadata]
+allow-direct-references = true
 
-uvicorn = { version = "^0.19.0", optional = true }
-h11 = { version = ">= 0.12.0", optional = true }
-websockets = { version = "^10.0", optional = true }
-httptools = { version = "~0.6.0", optional = true, markers = "sys_platform != 'win32'" }
+[tool.ruff]
+line-length = 120
 
-[tool.poetry.dev-dependencies]
-ipaddress = "^1.0"
-pytest = "^7.1"
-pytest-asyncio = "^0.15"
-psycopg2-binary = "^2.9.3"
+[tool.ruff.format]
+quote-style = 'double'
 
-[tool.poetry.extras]
-orjson = ["orjson"]
-uvicorn = ["uvicorn", "h11", "httptools", "websockets"]
+[tool.ruff.lint]
+extend-select = [
+    # E and F are enabled by default
+    'B',      # flake8-bugbear
+    'C4',     # flake8-comprehensions
+    'C90',    # mccabe
+    'I',      # isort
+    'N',      # pep8-naming
+    'Q',      # flake8-quotes
+    'RUF100', # ruff (unused noqa)
+    'S',      # flake8-bandit
+    'W',      # pycodestyle
+]
+extend-ignore = [
+    'B006', # mutable function args are fine
+    'B008', # function calls in args defaults are fine
+    'B009', # getattr with constants is fine
+    'B034', # re.split won't confuse us
+    'B904', # rising without from is fine
+    'E731', # assigning lambdas is fine
+    'F403', # import * is fine
+    'N801', # leave to us class naming
+    'N802', # leave to us method naming
+    'N806', # leave to us var naming
+    'N811', # leave to us var naming
+    'N814', # leave to us var naming
+    'N818', # leave to us exceptions naming
+    'S101', # assert is fine
+    'S104', # leave to us security
+    'S105', # leave to us security
+    'S106', # leave to us security
+    'S107', # leave to us security
+    'S110', # pass on exceptions is fine
+    'S301', # leave to us security
+    'S324', # leave to us security
+]
+mccabe = { max-complexity = 44 }
 
-[tool.poetry.urls]
-"Issue Tracker" = "https://github.com/emmett-framework/emmett/issues"
+[tool.ruff.lint.isort]
+combine-as-imports = true
+lines-after-imports = 2
+known-first-party = ['emmett', 'tests']
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.ruff.lint.per-file-ignores]
+'emmett/__init__.py' = ['F401']
+'emmett/http.py' = ['F401']
+'emmett/orm/__init__.py' = ['F401']
+'emmett/orm/engines/__init__.py' = ['F401']
+'emmett/orm/migrations/__init__.py' = ['F401']
+'emmett/orm/migrations/revisions.py' = ['B018']
+'emmett/tools/__init__.py' = ['F401']
+'emmett/tools/auth/__init__.py' = ['F401']
+'emmett/validators/__init__.py' = ['F401']
+'tests/**' = ['B017', 'B018', 'E711', 'E712', 'E741', 'F841', 'S110', 'S501']
+
+[tool.pytest.ini_options]
+asyncio_mode = 'auto'
+
+[tool.uv]
+dev-dependencies = [
+    "ipaddress>=1.0",
+    "pytest>=7.1",
+    "pytest-asyncio>=0.15",
+    "psycopg2-binary~=2.9",
+    "ruff~=0.5.0",
+]

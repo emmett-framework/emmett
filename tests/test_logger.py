@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-    tests.logger
-    ------------
+tests.logger
+------------
 
-    Test Emmett logging module
+Test Emmett logging module
 """
 
 import logging
 
-from emmett import App, logger, sdict
+from emmett_core import log as logger
+
+from emmett import App, sdict
 
 
 def _call_create_logger(app):
@@ -17,18 +19,14 @@ def _call_create_logger(app):
 
 def test_user_assign_valid_level():
     app = App(__name__)
-    app.config.logging.pytest = sdict(
-        level='info'
-    )
+    app.config.logging.pytest = sdict(level="info")
     result = _call_create_logger(app)
     assert result.handlers[-1].level == logging.INFO
 
 
 def test_user_assign_invaild_level():
     app = App(__name__)
-    app.config.logging.pytest = sdict(
-        level='invalid'
-    )
+    app.config.logging.pytest = sdict(level="invalid")
     result = _call_create_logger(app)
     assert result.handlers[-1].level == logging.WARNING
 

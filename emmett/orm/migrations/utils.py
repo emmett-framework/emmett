@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-    emmett.orm.migrations.utilities
-    -------------------------------
+emmett.orm.migrations.utilities
+-------------------------------
 
-    Provides some migration utilities.
+Provides some migration utilities.
 
-    :copyright: 2014 Giovanni Barillari
-    :license: BSD-3-Clause
+:copyright: 2014 Giovanni Barillari
+:license: BSD-3-Clause
 """
 
 from ..base import Database
@@ -22,7 +22,7 @@ class RuntimeGenerator(Generator):
 
 class RuntimeMigration(MigrationOp):
     def __init__(self, engine: Engine, ops: UpgradeOps):
-        super().__init__('runtime', ops, ops.reverse(), 'runtime')
+        super().__init__("runtime", ops, ops.reverse(), "runtime")
         self.engine = engine
         for op in self.upgrade_ops.ops:
             op.engine = self.engine
