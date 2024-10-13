@@ -16,6 +16,7 @@ import socket
 from datetime import date, datetime, time
 
 import pendulum
+from emmett_core.utils import cachedprop as cachedprop
 from pendulum.parsing import _parse as _pendulum_parse
 
 from .datastructures import sdict
