@@ -38,12 +38,9 @@ async def todo():
     return {'tasks': tasks}
 ```
 
-[![pip version](https://img.shields.io/pypi/v/emmett.svg?style=flat)](https://pypi.python.org/pypi/emmett)
-![Tests Status](https://github.com/emmett-framework/emmett/workflows/Tests/badge.svg)
-
 ## Documentation
 
-The documentation is available at [https://emmett.sh/docs](https://emmett.sh/docs).
+The documentation is available at [https://emmett.sh/docs](https://emmett.sh/docs).    
 The sources are available under the [docs folder](https://github.com/emmett-framework/emmett/tree/master/docs).
 
 ## Examples
@@ -76,6 +73,4 @@ We would be very glad if you contributed to the project in one or all of these w
 
 Emmett is released under the BSD License.
 
-However, due to original license limitations, some components are included 
-in Emmett under their original licenses. Please check the LICENSE file for 
-more details.
+However, due to original license limitations, contents under [validators](https://github.com/emmett-framework/emmett/tree/master/emmett/validators) and [libs](https://github.com/emmett-framework/emmett/tree/master/emmett/libs) are included in Emmett under their original licenses. Please check the source code for more details.
