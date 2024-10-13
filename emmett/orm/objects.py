@@ -1246,7 +1246,7 @@ class StructuredRow(Row):
         return self._fields == other._fields and self.__dict__ == other.__dict__
 
     def __copy__(self):
-        return StructuredRow(self._fields, __concrete=self._concrete, **self.__dict__)
+        return self.__class__(dict(self._fields), __concrete=self._concrete, **self.__dict__)
 
     def keys(self):
         for pool in (self._fields, self.__dict__):
@@ -1294,8 +1294,7 @@ class StructuredRow(Row):
             fields[key] = self._fields[key]
         return self.__class__(fields, __concrete=self._concrete, **self.__dict__)
 
-    def clone_changed(self):
-        return self.__class__({**self._fields}, __concrete=self._concrete, **self.__dict__)
+    clone_changed = __copy__
 
     @property
     def validation_errors(self):
