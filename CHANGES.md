@@ -1,10 +1,10 @@
 Emmett changelog
 ================
 
-Next
-----
+Version 2.6
+-----------
 
-(Release date to be defined, codename to be selected)
+Released on October 14th 2024, codename Gutenberg
 
 - Added Python 3.13 support
 - Re-implemented router matching algorithm in Rust
