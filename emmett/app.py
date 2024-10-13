@@ -424,6 +424,10 @@ class App(_App):
     def command_group(self):
         return self.cli.group
 
+    def make_shell_context(self, context):
+        context["app"] = self
+        return context
+
     def render_template(self, filename: str) -> str:
         ctx = {"current": current, "url": url, "asis": asis, "load_component": load_component}
         return self.templater.render(filename, ctx)
