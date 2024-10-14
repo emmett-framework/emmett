@@ -36,8 +36,8 @@ classifiers = [
 dependencies = [
     "click>=6.0",
     "emmett-core[granian,rapidjson]~=1.0.1",
+    "emmett-pydal==17.3.1",
     "pendulum~=3.0.0",
-    "pydal@git+https://github.com/gi0baro/pydal@emmett",
     "pyyaml~=6.0",
     "renoir~=1.6",
     "severus~=1.1",
@@ -71,9 +71,6 @@ include = [
     '/emmett',
     '/tests',
 ]
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.ruff]
 line-length = 120
