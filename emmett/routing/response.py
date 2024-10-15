@@ -65,8 +65,6 @@ class AutoResponseBuilder(ResponseProcessor):
                 return self.route.app.templater.render(self.route.template, output)
             except TemplateMissingError as exc:
                 raise HTTPStringResponse(404, body="{}\n".format(exc.message), cookies=response.cookies)
-        elif isinstance(output, str):
-            return output
-        elif isinstance(output, HTTPResponse):
+        if isinstance(output, str):
             return output
         return str(output)
