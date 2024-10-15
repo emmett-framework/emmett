@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "emmett"
-version = "2.6.0"
+version = "2.6.1"
 description = "The web framework for inventors"
 readme = "README.md"
 license = "BSD-3-Clause"
@@ -35,7 +35,7 @@ classifiers = [
 
 dependencies = [
     "click>=6.0",
-    "emmett-core[granian,rapidjson]~=1.0.1",
+    "emmett-core[granian,rapidjson]~=1.0.2",
     "emmett-pydal==17.3.1",
     "pendulum~=3.0.0",
     "pyyaml~=6.0",
