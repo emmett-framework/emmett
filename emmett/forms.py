@@ -394,7 +394,7 @@ class ModelForm(BaseForm):
                             self.params[field.name] = self.record[field.name]
                     continue
                 else:
-                    source_file, original_filename = upload.stream, upload.filename
+                    source_file, original_filename = upload, upload.filename
                 newfilename = field.store(source_file, original_filename, field.uploadfolder)
                 if isinstance(field.uploadfield, str):
                     self.params[field.uploadfield] = source_file.read()
