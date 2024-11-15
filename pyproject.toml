@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "emmett"
-version = "2.6.1"
+version = "2.6.2"
 description = "The web framework for inventors"
 readme = "README.md"
 license = "BSD-3-Clause"
