@@ -15,6 +15,7 @@ Based on the code of Flask (http://flask.pocoo.org)
 
 import code
 import os
+import pathlib
 import re
 import sys
 import types
@@ -232,8 +233,18 @@ class EmmettGroup(click.Group):
 @click.option(
     "--loop", type=click.Choice(["auto", "asyncio", "uvloop"]), default="auto", help="Event loop implementation."
 )
-@click.option("--ssl-certfile", type=str, default=None, help="SSL certificate file")
-@click.option("--ssl-keyfile", type=str, default=None, help="SSL key file")
+@click.option(
+    "--ssl-certfile",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=pathlib.Path),
+    default=None,
+    help="SSL certificate file",
+)
+@click.option(
+    "--ssl-keyfile",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=pathlib.Path),
+    default=None,
+    help="SSL key file",
+)
 @click.option("--reloader/--no-reloader", is_flag=True, default=True, help="Runs with reloader.")
 @pass_script_info
 def develop_command(info, host, port, interface, loop, ssl_certfile, ssl_keyfile, reloader):
@@ -296,8 +307,18 @@ def develop_command(info, host, port, interface, loop, ssl_certfile, ssl_keyfile
 @click.option("--access-log/--no-access-log", is_flag=True, default=False, help="Enable access log.")
 @click.option("--backlog", type=int, default=2048, help="Maximum number of connections to hold in backlog")
 @click.option("--backpressure", type=int, help="Maximum number of requests to process concurrently (per worker)")
-@click.option("--ssl-certfile", type=str, default=None, help="SSL certificate file")
-@click.option("--ssl-keyfile", type=str, default=None, help="SSL key file")
+@click.option(
+    "--ssl-certfile",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=pathlib.Path),
+    default=None,
+    help="SSL certificate file",
+)
+@click.option(
+    "--ssl-keyfile",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, path_type=pathlib.Path),
+    default=None,
+    help="SSL key file",
+)
 @pass_script_info
 def serve_command(
     info,
