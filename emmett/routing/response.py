@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Tuple, Union
 
-from emmett_core.http.response import HTTPResponse, HTTPStringResponse
+from emmett_core.http.response import HTTPStringResponse
 from emmett_core.routing.response import ResponseProcessor
 from renoir.errors import TemplateMissingError
 

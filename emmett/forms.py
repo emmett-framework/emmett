@@ -384,8 +384,8 @@ class ModelForm(BaseForm):
             #: handle uploads
             for field in filter(lambda f: f.type == "upload", self.writable_fields):
                 upload = self.files[field.name]
-                del_field = field.name + "__del"
-                if not upload.filename:
+                if not upload:
+                    del_field = field.name + "__del"
                     if self.input_params.get(del_field, False):
                         self.params[field.name] = self.table[field.name].default or ""
                         # TODO: do we want to physically delete file?
