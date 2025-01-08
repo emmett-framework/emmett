@@ -15,12 +15,12 @@ from hashlib import md5
 from importlib import resources
 from typing import Awaitable, Callable
 
-from emmett_core.http.response import HTTPBytesResponse, HTTPResponse
-from emmett_core.protocols.asgi.handlers import HTTPHandler as _HTTPHandler, WSHandler as _WSHandler
+from emmett_core.http.response import HTTPBytesResponse, HTTPResponse, HTTPStringResponse
+from emmett_core.protocols.asgi.handlers import HTTPHandler as _HTTPHandler, RequestCancelled, WSHandler as _WSHandler
 from emmett_core.protocols.asgi.typing import Receive, Scope, Send
 from emmett_core.utils import cachedprop
 
-from ..ctx import current
+from ..ctx import RequestContext, WSContext, current
 from ..debug import debug_handler, smart_traceback
 from ..libs.contenttype import contenttype
 from ..wrappers.response import Response
@@ -70,7 +70,53 @@ class HTTPHandler(_HTTPHandler):
         current.response.headers._data["content-type"] = "text/html; charset=utf-8"
         return debug_handler(smart_traceback(self.app))
 
+    async def dynamic_handler(self, scope: Scope, receive: Receive, send: Send) -> HTTPResponse:
+        request = Request(
+            scope,
+            receive,
+            send,
+            max_content_length=self.app.config.request_max_content_length,
+            max_multipart_size=self.app.config.request_multipart_max_size,
+            body_timeout=self.app.config.request_body_timeout,
+        )
+        response = Response()
+        ctx = RequestContext(self.app, request, response)
+        ctx_token = current._init_(ctx)
+        try:
+            http = await self.router.dispatch(request, response)
+        except HTTPResponse as http_exception:
+            http = http_exception
+            #: render error with handlers if in app
+            error_handler = self.app.error_handlers.get(http.status_code)
+            if error_handler:
+                http = HTTPStringResponse(
+                    http.status_code, await error_handler(), headers=response.headers, cookies=response.cookies
+                )
+        except RequestCancelled:
+            raise
+        except Exception:
+            self.app.log.exception("Application exception:")
+            http = HTTPStringResponse(500, await self.error_handler(), headers=response.headers)
+        finally:
+            current._close_(ctx_token)
+        return http
+
+    async def _exception_handler(self) -> str:
+        current.response.headers._data["content-type"] = "text/plain"
+        return "Internal error"
+
 
 class WSHandler(_WSHandler):
     __slots__ = []
     wrapper_cls = Websocket
+
+    async def dynamic_handler(self, scope: Scope, send: Send):
+        ctx = WSContext(self.app, Websocket(scope, scope["emt.input"].get, send))
+        ctx_token = current._init_(ctx)
+        try:
+            await self.router.dispatch(ctx.websocket)
+        finally:
+            if not scope.get("emt._flow_cancel", False) and ctx.websocket._accepted:
+                await send({"type": "websocket.close", "code": 1000})
+                scope["emt._ws_closed"] = True
+            current._close_(ctx_token)
