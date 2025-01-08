@@ -11,18 +11,15 @@ Provides RSGI handlers.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import Awaitable, Callable
 
-from emmett_core.http.response import HTTPResponse
-from emmett_core.protocols.rsgi.handlers import HTTPHandler as _HTTPHandler, WSHandler as _WSHandler
+from emmett_core.http.response import HTTPResponse, HTTPStringResponse
+from emmett_core.protocols.rsgi.handlers import HTTPHandler as _HTTPHandler, WSHandler as _WSHandler, WSTransport
 from emmett_core.utils import cachedprop
-from granian.rsgi import (
-    HTTPProtocol,
-    Scope,
-)
 
-from ..ctx import current
+from ..ctx import RequestContext, WSContext, current
 from ..debug import debug_handler, smart_traceback
 from ..wrappers.response import Response
 from .wrappers import Request, Websocket
@@ -37,7 +34,7 @@ class HTTPHandler(_HTTPHandler):
     def error_handler(self) -> Callable[[], Awaitable[str]]:
         return self._debug_handler if self.app.debug else self.exception_handler
 
-    def _static_handler(self, scope: Scope, protocol: HTTPProtocol, path: str) -> Awaitable[HTTPResponse]:
+    def _static_handler(self, scope, protocol, path: str) -> Awaitable[HTTPResponse]:
         #: handle internal assets
         if path.startswith("/__emmett__"):
             file_name = path[12:]
@@ -57,6 +54,51 @@ class HTTPHandler(_HTTPHandler):
         current.response.headers._data["content-type"] = "text/html; charset=utf-8"
         return debug_handler(smart_traceback(self.app))
 
+    async def dynamic_handler(self, scope, protocol, path: str) -> HTTPResponse:
+        request = Request(
+            scope,
+            path,
+            protocol,
+            max_content_length=self.app.config.request_max_content_length,
+            max_multipart_size=self.app.config.request_multipart_max_size,
+            body_timeout=self.app.config.request_body_timeout,
+        )
+        response = Response()
+        ctx = RequestContext(self.app, request, response)
+        ctx_token = current._init_(ctx)
+        try:
+            http = await self.router.dispatch(request, response)
+        except HTTPResponse as http_exception:
+            http = http_exception
+            #: render error with handlers if in app
+            error_handler = self.app.error_handlers.get(http.status_code)
+            if error_handler:
+                http = HTTPStringResponse(
+                    http.status_code, await error_handler(), headers=response.headers, cookies=response.cookies
+                )
+        except Exception:
+            self.app.log.exception("Application exception:")
+            http = HTTPStringResponse(500, await self.error_handler(), headers=response.headers)
+        finally:
+            current._close_(ctx_token)
+        return http
+
 
 class WSHandler(_WSHandler):
     wrapper_cls = Websocket
+
+    async def dynamic_handler(self, scope, transport: WSTransport, path: str):
+        ctx = WSContext(self.app, Websocket(scope, path, transport))
+        ctx_token = current._init_(ctx)
+        try:
+            await self.router.dispatch(ctx.websocket)
+        except HTTPResponse as http:
+            transport.status = http.status_code
+        except asyncio.CancelledError:
+            if not transport.interrupted:
+                self.app.log.exception("Application exception:")
+        except Exception:
+            transport.status = 500
+            self.app.log.exception("Application exception:")
+        finally:
+            current._close_(ctx_token)
