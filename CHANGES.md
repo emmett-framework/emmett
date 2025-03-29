@@ -1,6 +1,13 @@
 Emmett changelog
 ================
 
+Next
+----
+
+(Release date to be defined, codename to be selected)
+
+- Dropped Python 3.8 support
+
 Version 2.6
 -----------
 

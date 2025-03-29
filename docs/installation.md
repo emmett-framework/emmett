@@ -4,7 +4,7 @@ Installation
 
 So, how do you get Emmett on your computer quickly? There are many ways you could do that, but the most kick-ass method is virtualenv, so let’s have a look at that first.
 
-You will need Python version 3.8 or higher in order to get Emmett working.
+You will need Python version 3.9 or higher in order to get Emmett working.
 
 virtualenv
 ----------
