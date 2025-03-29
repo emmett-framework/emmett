@@ -12,9 +12,8 @@ from emmett_core.protocols.rsgi.test_client.scope import ScopeBuilder
 
 from emmett.ctx import RequestContext, WSContext, current
 from emmett.datastructures import sdict
-from emmett.rsgi.wrappers import Request, Websocket
+from emmett.rsgi.wrappers import Request, Response, Websocket
 from emmett.serializers import Serializers
-from emmett.wrappers.response import Response
 
 
 json_dump = Serializers.get_for("json")
@@ -24,7 +23,7 @@ class FakeRequestContext(RequestContext):
     def __init__(self, app, scope):
         self.app = app
         self.request = Request(scope, scope.path, None, None)
-        self.response = Response()
+        self.response = Response(None)
         self.session = None
 
 

@@ -17,7 +17,7 @@ from emmett_core.utils import cachedprop
 class Request(_Request):
     __slots__ = []
 
-    method: str
+    # method: str
 
     @cachedprop
     def now(self) -> pendulum.DateTime:

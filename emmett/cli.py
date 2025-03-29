@@ -231,7 +231,16 @@ class EmmettGroup(click.Group):
 @click.option("--port", "-p", type=int, default=8000, help="The port to bind to.")
 @click.option("--interface", type=click.Choice(["rsgi", "asgi"]), default="rsgi", help="Application interface.")
 @click.option(
-    "--loop", type=click.Choice(["auto", "asyncio", "uvloop"]), default="auto", help="Event loop implementation."
+    "--loop",
+    type=click.Choice(["auto", "asyncio", "rloop", "uvloop"]),
+    default="auto",
+    help="Event loop implementation.",
+)
+@click.option(
+    "--task-impl",
+    type=click.Choice(["asyncio", "rust"]),
+    default="asyncio",
+    help="Async task implementation to use.",
 )
 @click.option(
     "--ssl-certfile",
@@ -247,7 +256,7 @@ class EmmettGroup(click.Group):
 )
 @click.option("--reloader/--no-reloader", is_flag=True, default=True, help="Runs with reloader.")
 @pass_script_info
-def develop_command(info, host, port, interface, loop, ssl_certfile, ssl_keyfile, reloader):
+def develop_command(info, host, port, interface, loop, task_impl, ssl_certfile, ssl_keyfile, reloader):
     os.environ["EMMETT_RUN_ENV"] = "true"
     app_target = info._get_import_name()
 
@@ -280,9 +289,10 @@ def develop_command(info, host, port, interface, loop, ssl_certfile, ssl_keyfile
         host=host,
         port=port,
         loop=loop,
+        task_impl=task_impl,
         log_level="debug",
         log_access=True,
-        threading_mode="workers",
+        runtime_mode="st",
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,
     )
@@ -293,16 +303,24 @@ def develop_command(info, host, port, interface, loop, ssl_certfile, ssl_keyfile
 @click.option("--port", "-p", type=int, default=8000, help="The port to bind to.")
 @click.option("--workers", "-w", type=int, default=1, help="Number of worker processes. Defaults to 1.")
 @click.option("--threads", type=int, default=1, help="Number of worker threads.")
-@click.option(
-    "--threading-mode", type=click.Choice(["runtime", "workers"]), default="workers", help="Server threading mode."
-)
+@click.option("--blocking-threads", type=int, default=None, help="Number of worker blocking threads.")
+@click.option("--runtime-mode", type=click.Choice(["st", "mt"]), default="st", help="Server runtime mode.")
 @click.option("--interface", type=click.Choice(["rsgi", "asgi"]), default="rsgi", help="Application interface.")
 @click.option("--http", type=click.Choice(["auto", "1", "2"]), default="auto", help="HTTP version.")
+@click.option("--http-read-timeout", type=int, default=10_000, help="HTTP read timeout (in ms).")
 @click.option("--ws/--no-ws", is_flag=True, default=True, help="Enable websockets support.")
 @click.option(
-    "--loop", type=click.Choice(["auto", "asyncio", "uvloop"]), default="auto", help="Event loop implementation."
+    "--loop",
+    type=click.Choice(["auto", "asyncio", "rloop", "uvloop"]),
+    default="auto",
+    help="Event loop implementation.",
 )
-@click.option("--opt/--no-opt", is_flag=True, default=False, help="Enable loop optimizations.")
+@click.option(
+    "--task-impl",
+    type=click.Choice(["asyncio", "rust"]),
+    default="asyncio",
+    help="Async task implementation to use.",
+)
 @click.option("--log-level", type=click.Choice(LOG_LEVELS.keys()), default="info", help="Logging level.")
 @click.option("--access-log/--no-access-log", is_flag=True, default=False, help="Enable access log.")
 @click.option("--backlog", type=int, default=2048, help="Maximum number of connections to hold in backlog")
@@ -326,12 +344,14 @@ def serve_command(
     port,
     workers,
     threads,
-    threading_mode,
+    blocking_threads,
+    runtime_mode,
     interface,
     http,
+    http_read_timeout,
     ws,
     loop,
-    opt,
+    task_impl,
     log_level,
     access_log,
     backlog,
@@ -346,15 +366,17 @@ def serve_command(
         host=host,
         port=port,
         loop=loop,
-        loop_opt=opt,
+        task_impl=task_impl,
         log_level=log_level,
         log_access=access_log,
         workers=workers,
-        threads=threads,
-        threading_mode=threading_mode,
+        runtime_threads=threads,
+        runtime_blocking_threads=blocking_threads,
+        runtime_mode=runtime_mode,
         backlog=backlog,
         backpressure=backpressure,
         http=http,
+        http_read_timeout=http_read_timeout,
         enable_websockets=ws,
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,

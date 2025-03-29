@@ -15,7 +15,6 @@ from helpers import FakeRequestContext
 
 from emmett import App, abort, url
 from emmett.ctx import current
-from emmett.datastructures import sdict
 from emmett.http import HTTPResponse
 
 
@@ -175,7 +174,7 @@ async def test_route_args(app):
         # assert args['d'] == 'foo'
         # assert args['e'] == 'foo1'
         # assert args['f'] == 'bar/baz'
-        await app._router_http.dispatch(ctx.request, sdict())
+        await app._router_http.dispatch(ctx.request, ctx.response)
         assert ctx.request.name == "test_routing.test_route_complex"
         args = current._reqargs
         assert args["a"] == 1

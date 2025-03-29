@@ -27,9 +27,7 @@ from ..html import htmlescape
 _re_dbstream = re.compile(r"(?P<table>.*?)\.(?P<field>.*?)\..*")
 
 
-class Response(_Response):
-    __slots__ = ()
-
+class ResponseMixin:
     @cachedprop
     def meta(self) -> sdict[str, Any]:
         return sdict()
@@ -71,3 +69,7 @@ class Response(_Response):
         if isinstance(path_or_stream, str):
             return self.wrap_file(path_or_stream)
         return self.wrap_io(path_or_stream)
+
+
+class Response(ResponseMixin, _Response):
+    __slots__ = []

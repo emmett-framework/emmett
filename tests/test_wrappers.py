@@ -9,8 +9,7 @@ Test Emmett wrappers module
 from emmett_core.protocols.rsgi.test_client.scope import ScopeBuilder
 from helpers import current_ctx
 
-from emmett.rsgi.wrappers import Request
-from emmett.wrappers.response import Response
+from emmett.rsgi.wrappers import Request, Response
 
 
 def test_request():
@@ -25,7 +24,7 @@ def test_request():
 
 
 def test_response():
-    response = Response()
+    response = Response(None)
 
     assert response.status == 200
     assert response.headers["content-type"] == "text/plain"

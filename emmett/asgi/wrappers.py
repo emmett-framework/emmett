@@ -10,8 +10,10 @@ Provides ASGI request and websocket wrappers
 """
 
 import pendulum
-from emmett_core.protocols.asgi.wrappers import Request as _Request, Websocket as Websocket
+from emmett_core.protocols.asgi.wrappers import Request as _Request, Response as _Response, Websocket as Websocket
 from emmett_core.utils import cachedprop
+
+from ..wrappers.response import ResponseMixin
 
 
 class Request(_Request):
@@ -24,3 +26,7 @@ class Request(_Request):
     @cachedprop
     def now_local(self) -> pendulum.DateTime:
         return self.now.in_timezone(pendulum.local_timezone())  # type: ignore
+
+
+class Response(ResponseMixin, _Response):
+    __slots__ = []
