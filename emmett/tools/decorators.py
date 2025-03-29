@@ -13,10 +13,13 @@ from emmett_core.pipeline.dyn import (
     ServicePipeBuilder as _ServicePipeBuilder,
     requires as _requires,
     service as _service,
+    sse as _sse,
+    stream as _stream,
 )
 
 from ..pipeline import RequirePipe
 from .service import JSONServicePipe, XMLServicePipe
+from .stream import SSEPipe, StreamPipe
 
 
 class ServicePipeBuilder(_ServicePipeBuilder):
@@ -25,6 +28,14 @@ class ServicePipeBuilder(_ServicePipeBuilder):
 
 class requires(_requires):
     _pipe_cls = RequirePipe
+
+
+class stream(_stream):
+    _pipe_cls = StreamPipe
+
+
+class sse(_sse):
+    _pipe_cls = SSEPipe
 
 
 class service(_service):
