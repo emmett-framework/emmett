@@ -7,6 +7,11 @@ Next
 (Release date to be defined, codename to be selected)
 
 - Dropped Python 3.8 support
+- Use RSGI spec 1.5
+- Updated Granian server dependency
+- Added `Response.stream` helper
+- Added `stream` and `StreamPipe` helpers to `tools` module
+- Added Server-Sent-Events helper to `tools.sse`
 
 Version 2.6
 -----------
