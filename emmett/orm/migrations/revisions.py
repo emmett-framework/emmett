@@ -290,9 +290,7 @@ class RevisionsMap(object):
                 todo.extend(map_[rev_id] for rev_id in fn(rev))
                 yield rev
             if check and per_target.intersection(targets).difference([target]):
-                raise RevisionError(
-                    "Requested revision %s overlaps with " "other requested revisions" % target.revision
-                )
+                raise RevisionError("Requested revision %s overlaps with other requested revisions" % target.revision)
 
     def _iterate_revisions(self, upper, lower, inclusive=True, implicit_base=False):
         #: iterate revisions from upper to lower.

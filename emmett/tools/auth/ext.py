@@ -168,7 +168,7 @@ class AuthExtension(Extension):
             self.config.hmac_key = uuid()
         self._hmac_key = self.config.hmac_alg + ":" + self.config.hmac_key
         if "MailExtension" not in self.app.ext:
-            self.app.log.warn("No mailer seems to be configured. The auth features " "requiring mailer won't work.")
+            self.app.log.warn("No mailer seems to be configured. The auth features requiring mailer won't work.")
         self.__ensure_config()
         self.relation_names = self.__get_relnames()
 

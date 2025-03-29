@@ -73,7 +73,7 @@ def app():
     def test_route_any(a):
         return "Test Router"
 
-    @app.route("/test_complex" "/<int:a>" "/<float:b>" "/<date:c>" "/<alpha:d>" "/<str:e>" "/<any:f>")
+    @app.route("/test_complex/<int:a>/<float:b>/<date:c>/<alpha:d>/<str:e>/<any:f>")
     def test_route_complex(a, b, c, d, e, f):
         current._reqargs = {"a": a, "b": b, "c": c, "d": d, "e": e, "f": f}
         return "Test Router"

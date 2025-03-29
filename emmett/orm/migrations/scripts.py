@@ -102,14 +102,14 @@ class ScriptDir(object):
 
     def get_upgrade_revs(self, destination, current_rev):
         with self._catch_revision_errors(
-            ancestor="Destination %(end)s is not a valid upgrade " "target from current head(s)", end=destination
+            ancestor="Destination %(end)s is not a valid upgrade target from current head(s)", end=destination
         ):
             revs = self.revision_map.iterate_revisions(destination, current_rev, implicit_base=True)
             return reversed(list(revs))
 
     def get_downgrade_revs(self, destination, current_rev):
         with self._catch_revision_errors(
-            ancestor="Destination %(end)s is not a valid downgrade " "target from current head(s)", end=destination
+            ancestor="Destination %(end)s is not a valid downgrade target from current head(s)", end=destination
         ):
             revs = self.revision_map.iterate_revisions(current_rev, destination)
             return list(revs)

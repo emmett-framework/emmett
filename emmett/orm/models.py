@@ -358,7 +358,7 @@ class Model(metaclass=MetaModel):
     def _define_relations_(self):
         self._virtual_relations_ = OrderedDict()
         self._compound_relations_ = {}
-        bad_args_error = "belongs_to, has_one and has_many " "only accept strings or dicts as arguments"
+        bad_args_error = "belongs_to, has_one and has_many only accept strings or dicts as arguments"
         #: belongs_to and refers_to are mapped with 'reference' type Field
         _references = []
         _reference_keys = ["_all_belongs_ref_", "_all_refers_ref_"]
@@ -908,7 +908,7 @@ class Model(metaclass=MetaModel):
                 elif isinstance(args[0], dict) and not kwargs:
                     return cls.table(**args[0])
             if len(args) != len(inst._fieldset_pk):
-                raise SyntaxError(f"{cls.__name__}.get requires the same number of arguments " "as its primary keys")
+                raise SyntaxError(f"{cls.__name__}.get requires the same number of arguments as its primary keys")
             pks = inst.primary_keys or ["id"]
             return cls.table(**{pks[idx]: val for idx, val in enumerate(args)})
         return cls.table(**kwargs)

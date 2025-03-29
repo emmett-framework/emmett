@@ -28,7 +28,7 @@ class MultipleHeads(RevisionError):
         self.heads = heads
         self.argument = argument
         super(MultipleHeads, self).__init__(
-            "Multiple heads are present for given argument '%s'; " "%s" % (argument, ", ".join(heads))
+            "Multiple heads are present for given argument '%s'; %s" % (argument, ", ".join(heads))
         )
 
 
