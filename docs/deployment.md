@@ -8,7 +8,7 @@ If you want to use an ASGI server not listed in this section, please refer to it
 Included server
 ---------------
 
-*Changed in version 2.5*
+*Changed in version 2.7*
 
 Emmett comes with [Granian](https://github.com/emmett-framework/granian) as its HTTP server. In order to run your application in production you can just use the included `serve` command:
 
@@ -22,13 +22,16 @@ You can inspect all the available options of the `serve` command using the `--he
 | port | 8000 | Bind port |
 | workers | 1 | Number of worker processes |
 | threads | 1 | Number of threads |
-| threading-mode | workers | Threading implementation (possible values: runtime,workers) |
+| blocking-trheads | 1 | Number of blocking threads |
+| runtime-mode | st | Runtime implementation (possible values: st,mt) |
 | interface | rsgi | Server interface (possible values: rsgi,asgi) |
 | http | auto | HTTP protocol version (possible values: auto,1,2) |
+| http-read-timeout | 10000 | HTTP read timeout (in milliseconds) |
 | ws/no-ws | ws | Enable/disable websockets support |
-| loop | auto | Loop implementation (possible values: auto,asyncio,uvloop) |
+| loop | auto | Loop implementation (possible values: auto,asyncio,rloop,uvloop) |
 | log-level | info | Logging level (possible values: debug,info,warning,error,critical) |
 | backlog | 2048 | Maximum connection queue |
+| backpressure | | Maximum number of requests to process concurrently |
 | ssl-certfile | | Path to SSL certificate file |
 | ssl-keyfile | | Path to SSL key file |
 

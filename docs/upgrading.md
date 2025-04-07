@@ -13,6 +13,34 @@ Just as a remind, you can update Emmett using *pip*:
 $ pip install -U emmett
 ```
 
+Version 2.7
+-----------
+
+Emmett 2.7 introduces some changes you should be aware of, and some new features you might be interested into.
+
+This release drops support for Python 3.8.
+
+### Breaking changes
+
+#### Serve command arguments
+
+As Emmett 2.7 updates the minimum [Granian](https://github.com/emmett-framework/granian) dependency version, the previous `threading-mode` argument of the `serve` command is now moved to `runtime-mode`.
+In case you specified this argument in previous Emmett versions, please update your code using the following conversion table:
+
+| previous value | new value |
+| --- | --- |
+| `--threading-mode runtime` | `--runtime-mode mt` |
+| `--threading-mode workers` | `--runtime-mode st` |
+
+The serve command also includes some new params you might want to use. Please check the [relevant chapter](./deployment#included-server) of the documentation for more information.
+
+### New feautures
+
+- [RSGI](https://github.com/emmett-framework/granian/blob/master/docs/spec/RSGI.md) spec 1.5
+- Response [streaming utilities](./response#streaming-responses)
+- First class support for [Server-Sent Events](./response#server-sent-events)
+- Pipes `on_stream` [method](./pipeline#requests-and-sockets)
+
 Version 2.6
 -----------
 
