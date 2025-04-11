@@ -368,7 +368,7 @@ from emmett import Injector
 class DateInjector(Injector):
     namespace = "dates"
 
-    def pretty(d):
+    def pretty(self, d):
         # your prettydate code
 
 app.injectors = [DateInjector()]
@@ -388,7 +388,7 @@ You can also expose all the contents of your injectors without specifying the na
 from emmett import Injector
 
 class CommonInjector(Injector):
-    def pretty_date(d):
+    def pretty_date(self, d):
         # your prettydate code
 
 app.injectors = [CommonInjector()]
