@@ -1,14 +1,15 @@
 Emmett changelog
 ================
 
-Next
-----
+Version 2.7
+-----------
 
-(Release date to be defined, codename to be selected)
+Released on April 11th 2025, codename Hopper
 
 - Dropped Python 3.8 support
 - Use RSGI spec 1.5
 - Added `Response.stream` helper
+- Added `Pipe.on_stream` method
 - Added `stream` and `StreamPipe` helpers to `tools` module
 - Added Server-Sent-Events helper to `tools.sse`
 - Made `uvloop` dependency optional
