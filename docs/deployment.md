@@ -3,12 +3,10 @@ Deployment
 
 Depending on your setup and preferences, there are multiple ways to run Emmett applications. In this chapter, we'll try to document the most common ones.
 
-If you want to use an ASGI server not listed in this section, please refer to its documentation, remembering that your Emmett application object is the actual ASGI application (following spec version 3.0).
-
 Included server
 ---------------
 
-*Changed in version 2.5*
+*Changed in version 2.7*
 
 Emmett comes with [Granian](https://github.com/emmett-framework/granian) as its HTTP server. In order to run your application in production you can just use the included `serve` command:
 
@@ -22,35 +20,27 @@ You can inspect all the available options of the `serve` command using the `--he
 | port | 8000 | Bind port |
 | workers | 1 | Number of worker processes |
 | threads | 1 | Number of threads |
-| threading-mode | workers | Threading implementation (possible values: runtime,workers) |
+| blocking-trheads | 1 | Number of blocking threads |
+| runtime-mode | st | Runtime implementation (possible values: st,mt) |
 | interface | rsgi | Server interface (possible values: rsgi,asgi) |
 | http | auto | HTTP protocol version (possible values: auto,1,2) |
+| http-read-timeout | 10000 | HTTP read timeout (in milliseconds) |
 | ws/no-ws | ws | Enable/disable websockets support |
-| loop | auto | Loop implementation (possible values: auto,asyncio,uvloop) |
+| loop | auto | Loop implementation (possible values: auto,asyncio,rloop,uvloop) |
 | log-level | info | Logging level (possible values: debug,info,warning,error,critical) |
 | backlog | 2048 | Maximum connection queue |
+| backpressure | | Maximum number of requests to process concurrently |
 | ssl-certfile | | Path to SSL certificate file |
 | ssl-keyfile | | Path to SSL key file |
 
-Uvicorn
--------
+Other ASGI servers
+------------------
 
-*Changed in version 2.5*
+*Changed in version 2.7*
 
-In case you want to stick with a more popular option, Emmett also comes with included support for [Uvicorn](https://github.com/encode/uvicorn).
+Since an Emmett application object is also an [ASGI](https://asgi.readthedocs.io/en/latest/) application, you can serve your project with any [ASGI compliant server](https://asgi.readthedocs.io/en/latest/implementations.html#servers).
 
-You can just use the `emmett[uvicorn]` extra during installation and rely on the `uvicorn` command to serve your application.
-
-Gunicorn
---------
-
-The included server might suit most of the common demands, but whenever you need additional features, you can use [Gunicorn](https://gunicorn.org).
-
-Emmett includes a Gunicorn worker class allowing you to run ASGI applications with the Emmett's environment, while also giving you Gunicorn's fully-featured process management:
-
-    gunicorn myapp:app -w 4 -k emmett.asgi.workers.EmmettWorker
-
-This allows you to increase or decrease the number of worker processes on the fly, restart worker processes gracefully, or perform server upgrades without downtime.
+To serve your project with such servers, just refer to the specific server documentation an point it to your application object.
 
 Docker
 ------

@@ -49,7 +49,7 @@ The *bloggy* example described in the [Tutorial](https://emmett.sh/docs/latest/t
 
 ## Status of the project
 
-Emmett is production ready and is compatible with Python 3.8 and above versions.
+Emmett is production ready and is compatible with Python 3.9 and above versions.
 
 Emmett follows a *semantic versioning* for its releases, with a `{major}.{minor}.{patch}` scheme for versions numbers, where:
 

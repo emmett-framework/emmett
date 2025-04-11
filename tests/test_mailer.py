@@ -226,8 +226,8 @@ def test_plain_message_with_unicode_attachments(mailer):
     msg.attach(data=b"this is a test", content_type="text/plain", filename="ünicöde ←→ ✓.txt")
     parsed = email.message_from_string(str(msg))
     assert re.sub(r"\s+", " ", parsed.get_payload()[1].get("Content-Disposition")) in [
-        "attachment; filename*=\"UTF8''" '%C3%BCnic%C3%B6de%20%E2%86%90%E2%86%92%20%E2%9C%93.txt"',
-        "attachment; filename*=UTF8''" "%C3%BCnic%C3%B6de%20%E2%86%90%E2%86%92%20%E2%9C%93.txt",
+        "attachment; filename*=\"UTF8''%C3%BCnic%C3%B6de%20%E2%86%90%E2%86%92%20%E2%9C%93.txt\"",
+        "attachment; filename*=UTF8''%C3%BCnic%C3%B6de%20%E2%86%90%E2%86%92%20%E2%9C%93.txt",
     ]
 
 

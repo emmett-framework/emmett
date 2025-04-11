@@ -23,8 +23,7 @@ from emmett_core.utils import cachedprop
 from ..ctx import RequestContext, WSContext, current
 from ..debug import debug_handler, smart_traceback
 from ..libs.contenttype import contenttype
-from ..wrappers.response import Response
-from .wrappers import Request, Websocket
+from .wrappers import Request, Response, Websocket
 
 
 class HTTPHandler(_HTTPHandler):
@@ -79,7 +78,7 @@ class HTTPHandler(_HTTPHandler):
             max_multipart_size=self.app.config.request_multipart_max_size,
             body_timeout=self.app.config.request_body_timeout,
         )
-        response = Response()
+        response = Response(send)
         ctx = RequestContext(self.app, request, response)
         ctx_token = current._init_(ctx)
         try:

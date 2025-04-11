@@ -6,12 +6,12 @@ from emmett_core.protocols.rsgi.test_client.client import (
 
 from .ctx import current
 from .rsgi.handlers import HTTPHandler
-from .wrappers.response import Response
+from .rsgi.wrappers import Response
 
 
 class ClientContextResponse(Response):
     def __init__(self, original_response: Response):
-        super().__init__()
+        super().__init__(original_response._proto)
         self.status = original_response.status
         self.headers._data.update(original_response.headers._data)
         self.cookies.update(original_response.cookies.copy())

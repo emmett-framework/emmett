@@ -235,16 +235,27 @@ async def foo_monthly(start, end):
 Requests and sockets
 --------------------
 
-*Added in version 2.0*
+*Changed in version 2.7*
 
 The `Pipe`'s methods we saw until now are commonly handled by Emmett on all the routes you define, without distinction between routes handling requests and routes handling websockets.
 
-But since handling the former or the latter ones make a great difference in terms of *flow*, `Pipe`s objects also have two dedicated methods for websockets only, and in particular:
+But since handling the former or the latter ones make a great difference in terms of *flow*, `Pipe`s objects also have one dedicated method for requests and two dedicated methods for websockets only, in particular:
 
+- on\_stream
 - on\_receive
 - on\_send
 
-These two methods accepts only one argument: the message; and they will be called sequentially when receiving or sending messages. Here is an example:
+The `on_stream` method accepts no arguments and it will be called sequentially when a [response stream](./response#streaming-responses) starts. Here is an example:
+
+```python
+from emmett import response
+
+class MyStreamPipe(Pipe):
+    def on_stream(self):
+        response.headers["x-my-stream"] = "true"
+```
+
+The `on_receive` and `on_send` methods accept only one argument instead: the message. These methods will be called sequentially when receiving or sending messages. Here is an example:
 
 ```python
 class WSPipe(Pipe):
@@ -284,6 +295,7 @@ To summarize, here is the complete table of methods available on Emmett pipes:
 | pipe | pipe\_request | pipe\_ws |
 | on\_pipe\_success | | |
 | on\_pipe\_failure | | |
+| | on\_stream | |
 | | | on\_receive |
 | | | on\_send |
 
@@ -356,7 +368,7 @@ from emmett import Injector
 class DateInjector(Injector):
     namespace = "dates"
 
-    def pretty(d):
+    def pretty(self, d):
         # your prettydate code
 
 app.injectors = [DateInjector()]
@@ -376,7 +388,7 @@ You can also expose all the contents of your injectors without specifying the na
 from emmett import Injector
 
 class CommonInjector(Injector):
-    def pretty_date(d):
+    def pretty_date(self, d):
         # your prettydate code
 
 app.injectors = [CommonInjector()]

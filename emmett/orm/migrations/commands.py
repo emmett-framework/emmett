@@ -307,7 +307,7 @@ def new(app, dals, message, head):
 def history(app, dals, rev_range, verbose):
     if rev_range is not None:
         if ":" not in rev_range:
-            raise Exception("History range requires [start]:[end], " "[start]:, or :[end]")
+            raise Exception("History range requires [start]:[end], [start]:, or :[end]")
         base, head = rev_range.strip().split(":")
     else:
         base = head = None

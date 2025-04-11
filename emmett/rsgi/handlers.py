@@ -17,12 +17,12 @@ from typing import Awaitable, Callable
 
 from emmett_core.http.response import HTTPResponse, HTTPStringResponse
 from emmett_core.protocols.rsgi.handlers import HTTPHandler as _HTTPHandler, WSHandler as _WSHandler, WSTransport
+from emmett_core.protocols.rsgi.helpers import noop_response
 from emmett_core.utils import cachedprop
 
 from ..ctx import RequestContext, WSContext, current
 from ..debug import debug_handler, smart_traceback
-from ..wrappers.response import Response
-from .wrappers import Request, Websocket
+from .wrappers import Request, Response, Websocket
 
 
 class HTTPHandler(_HTTPHandler):
@@ -63,7 +63,7 @@ class HTTPHandler(_HTTPHandler):
             max_multipart_size=self.app.config.request_multipart_max_size,
             body_timeout=self.app.config.request_body_timeout,
         )
-        response = Response()
+        response = Response(protocol)
         ctx = RequestContext(self.app, request, response)
         ctx_token = current._init_(ctx)
         try:
@@ -76,6 +76,8 @@ class HTTPHandler(_HTTPHandler):
                 http = HTTPStringResponse(
                     http.status_code, await error_handler(), headers=response.headers, cookies=response.cookies
                 )
+        except asyncio.CancelledError:
+            http = noop_response
         except Exception:
             self.app.log.exception("Application exception:")
             http = HTTPStringResponse(500, await self.error_handler(), headers=response.headers)

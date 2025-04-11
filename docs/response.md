@@ -114,6 +114,8 @@ async def response_aiter():
     return response.wrap_aiter(aiterator())
 ```
 
+> **Note:** both `wrap_iter` and `wrap_aiter` perform the iteration outside of the [pipeline](./pipeline). Whenever you need to stream contents and keep the pipeline open or use the global context, you should use the [stream utilities](#streaming-responses) instead.
+
 ### File responses
 
 You can produce responses from file using two different methods in Emmett:
@@ -129,9 +131,73 @@ async def file(name):
 
 @app.route("/io/<name:str>")
 async def io(name):
-    with open(f"assets/{name}", "r") as f:
+    with open(f"assets/{name}", "rb") as f:
         return response.wrap_io(f)
 ```
+
+Streaming responses
+-------------------
+
+*New in version 2.7*
+
+Emmett `Response` object provides a `stream` awaitable method in order to stream content from a generator while keeping the [pipeline](./pipeline) open:
+
+```python
+async def iterator():
+    for _ in range(3):
+        yield b"hello"
+
+@app.route()
+async def response_stream():
+    response.status = 200
+    return await response.stream(iterator())
+```
+
+### Streaming utilities
+
+On top of the `Response.stream` method, Emmett also provides a `StreamPipe` pipe and a `stream` decorator, so you can define your route function as the generator:
+
+```python
+from emmett.tools import StreamPipe, stream
+
+# the following routes behave the same
+@app.route(pipeline=[StreamPipe()])
+async def stream_1():
+    for _ in range(3):
+        yield b"hello"
+
+@app.route()
+@stream()
+async def stream_2():
+    for _ in range(3):
+        yield b"hello"
+```
+
+As you can't change the `Response` object directly in the route anymore, both `StreamPipe` and `stream` accept the same parameters to do so, specifically:
+
+| parameter | type | default |
+| --- | --- | --- |
+| status | `int` | 200 |
+| headers | `dict[str, str]` | `{}` |
+| cookies | `dict[str, Any]` | `{}` |
+
+> **Note:** while `status` will overwrite the existing value, both `headers` and `cookies` will be merged on top of the existing `Response` ones.
+
+### Server-Sent Events
+
+Emmett also provides some specific utilities to stream [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events):
+
+```python
+from emmett.tools import sse
+
+@app.route()
+@sse()
+async def sse_stream():
+    for _ in range(3):
+        yield sse.Event(data={"msg": "hello"})
+```
+
+The `sse` decorator is based on the `stream` one but already configures some headers for you, like the `content-type` and caching. You can still use the same parameters of the `stream` decorator to customise the response.
 
 Message flashing
 ----------------
