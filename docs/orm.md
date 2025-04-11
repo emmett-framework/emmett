@@ -13,7 +13,7 @@ This is the list of the supported database engines, where we included the name u
 | Supported DBMS | adapter name | python driver |
 | --- | --- | --- |
 | SQLite | sqlite | |
-| PostgreSQL | postgres | psycopg2, pg8000, zxjdbc |
+| PostgreSQL | postgres | psycopg2, pyscopg 3 (experimental), pg8000, zxjdbc |
 | MySQL | mysql | pymysql, mysqldb |
 | MSSQL | mssql | pyodbc |
 | MongoDB | mongo | pymongo |
