@@ -46,12 +46,6 @@ dependencies = [
 orjson = ["orjson~=3.10"]
 rloop = ['rloop~=0.1; sys_platform != "win32"']
 uvloop = ['uvloop>=0.18.0; sys_platform != "win32" and platform_python_implementation == "CPython"']
-uvicorn = [
-    "uvicorn~=0.19",
-    "h11>=0.12",
-    "websockets~=10.0",
-    "httptools~=0.6; sys_platform != 'win32'"
-]
 
 [project.urls]
 Homepage = 'https://emmett.sh'

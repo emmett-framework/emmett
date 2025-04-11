@@ -34,6 +34,16 @@ In case you specified this argument in previous Emmett versions, please update y
 
 The serve command also includes some new params you might want to use. Please check the [relevant chapter](./deployment#included-server) of the documentation for more information.
 
+#### Removed uvicorn extra dependency
+
+Prior to 2.7, Emmett provided the `uvicorn` extra dependency. Given the additional work required to keep such dependency extras in sync with other projects release cycles, we no longer offer this facility.
+
+You can still use Uvicorn to serve your Emmett application, you simply need to manage that dependency yourself. See also the [deployment chapter](./deployment) of the documentation.
+
+#### Uvloop is now an optional dependency
+
+Emmett 2.7 doesn't require [uvloop](https://github.com/MagicStack/uvloop) anymore. This dependency is now optional and gated under the `uvloop` extra. If you want to keep using uvloop, you can add it to your project dependencies or switch your Emmett dependency spec to `emmett[uvloop]`.
+
 ### New feautures
 
 - [RSGI](https://github.com/emmett-framework/granian/blob/master/docs/spec/RSGI.md) spec 1.5
