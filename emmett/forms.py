@@ -368,7 +368,7 @@ class ModelForm(BaseForm):
             if field.name in errors:
                 self.errors[field.name] = errors[field.name]
             elif field.type == "upload":
-                self.files[field.name] = fields[field.name]
+                self.files[field.name] = fields.get(field.name)
             else:
                 self.params[field.name] = fields[field.name]
 
