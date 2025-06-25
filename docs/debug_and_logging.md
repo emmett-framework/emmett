@@ -38,11 +38,15 @@ The debugger will also try to display the line that generated the exception in t
 Logging application errors
 --------------------------
 
-When your application runs on production, Emmett – obviously – won't display the debug page, but will collect the full traceback and store it in logs. In fact, with the default configuration, a file called *production.log* will be created in the *logs* folder inside your application folder. It will log every message labeled as *warning* level or more severe.
+When your application runs on production, Emmett – obviously – won't display the debug page,
+but will collect the full traceback and store it in logs.    
+With the default configuration, your application will log to the standard output every message labeled as
+*warning* level or more severe.
 
 But how does Emmett logging works?   
 
-It uses the standard Python logging module, and provides a shortcut that you can use with the `log` attribute of your `App`. This becomes handy when you want to add some messages inside your code, because you can just call:
+It uses the standard Python logging module, and provides a shortcut that you can use with the `log` attribute
+of your `App`. This becomes handy when you want to add some messages inside your code, because you can just call:
 
 ```python
 app.log.debug('This is a debug message')
@@ -50,11 +54,13 @@ app.log.info('This is an info message')
 app.log.warning('This is a warning message')
 ```
 
-Basically, the `log` attribute of your app is a Python `Logger` with some handlers configured. As we said above, Emmett automatically logs exceptions calling your `app.log.exception()`.
+Basically, the `log` attribute of your app is a Python `Logger` with some handlers configured.
+As we said above, Emmett automatically logs exceptions calling your `app.log.exception()`.
 
 ### Configuring application logs
 
-You probably want to configure logging for your application to fit your needs. To do that, just use your `app.config` object:
+You probably want to configure logging for your application to fit your needs.
+To do that, just use your `app.config` object:
 
 ```python
 from emmett import App, sdict
@@ -63,18 +69,22 @@ app = App(__name__)
 
 app.config.logging.myfile = sdict(
     level="info",
-    max_size=100*1024*1024
+    file=sdict(
+        max_size=100*1024*1024
+    )
 )
 ```
 
-With this example, you will generate a *myfile.log* which will grow to 100MB in size and log all messages with an *info* level or higher. This is the complete list of parameters you can set for a logging file:
+With this example, you will generate a *myfile.log* which will grow to 100MB in size and log all messages
+with an *info* level or higher. This is the complete list of parameters you can set for a logging file:
 
 | name | description |
 | --- | --- |
-| max\_size | max size for the logging files (default `5*1024*1024`) |
-| file\_no | number of old files to keep with rotation (default `4`) |
 | level | logging level (default `'warning'`) |
 | format | format for messages (default `'[%(asctime)s] %(levelname)s in %(module)s: %(message)s'`) |
 | on\_app\_debug | tells Emmett to log the messages also when application is in debug mode (default `False`) |
+| file | a `sdict` to tell Emmett to log to files instead of stdout |
+| file.max_size | max size for the files (default `5*1024*1024` – 5MB) |
+| file.no | number of old files to keep within the rotation (default `4`) |
 
 That's it.
