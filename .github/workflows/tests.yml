@@ -16,25 +16,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.9, '3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
 
     services:
       postgres:
-        image: postgis/postgis:12-3.2
+        image: postgis/postgis:18-3.6
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test
         ports:
         - 5432:5432
 
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+    - uses: actions/checkout@v6
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v7
     - name: Install dependencies
       run: |
         uv sync --dev
@@ -49,18 +47,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # FIXME: skipping 3.9 due to issues with `psycopg2-binary`
-        # python-version: [3.9, '3.10', '3.11', '3.12', '3.13']
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
 
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+    - uses: actions/checkout@v6
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v7
     - name: Install dependencies
       run: |
         uv sync --dev
@@ -73,16 +67,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.9, '3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
 
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+    - uses: actions/checkout@v6
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v7
     - name: Install dependencies
       run: |
         uv sync --dev

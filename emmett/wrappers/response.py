@@ -67,7 +67,7 @@ class ResponseMixin:
         except IOError:
             abort(404)
         if isinstance(path_or_stream, str):
-            return self.wrap_file(path_or_stream)
+            return super().wrap_file(path_or_stream)
         return self.wrap_io(path_or_stream)
 
 

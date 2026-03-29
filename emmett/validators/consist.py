@@ -613,7 +613,7 @@ class isIPv4(Validator):
             numbers = []
             for item in temp:
                 number = 0
-                for i, j in zip(self.numbers, item):
+                for i, j in zip(self.numbers, item, strict=False):
                     number += i * int(j)
                 numbers.append(number)
             if n == 0:
@@ -628,10 +628,10 @@ class isIPv4(Validator):
     def __call__(self, value):
         if self.regex.match(value):
             number = 0
-            for i, j in zip(self.numbers, value.split(".")):
+            for i, j in zip(self.numbers, value.split("."), strict=False):
                 number += i * int(j)
             ok = False
-            for bottom, top in zip(self.minip, self.maxip):
+            for bottom, top in zip(self.minip, self.maxip, strict=False):
                 if self.invert != (bottom <= number <= top):
                     ok = True
             if not (self.is_localhost is None or self.is_localhost == (number == self.localhost)):
