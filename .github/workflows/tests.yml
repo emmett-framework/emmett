@@ -20,7 +20,7 @@ jobs:
 
     services:
       postgres:
-        image: postgis/postgis:12-3.2
+        image: postgis/postgis:18-3.6
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test
