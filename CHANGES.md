@@ -1,6 +1,16 @@
 Emmett changelog
 ================
 
+Version 2.8
+-----------
+
+Released on March 29th 2026, codename Inoue
+
+- Dropped Python 3.9 support
+- Use RSGI spec 1.6
+- Added support for ranges on file responses
+- Fixed `psycopg` 3 driver implementation in ORM
+
 Version 2.7
 -----------
 
