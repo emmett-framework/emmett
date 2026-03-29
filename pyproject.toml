@@ -8,7 +8,7 @@ version = "2.7.2"
 description = "The web framework for inventors"
 readme = "README.md"
 license = "BSD-3-Clause"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 authors = [
     { name = "Giovanni Barillari", email = "g@baro.dev" }
@@ -23,18 +23,18 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 
 dependencies = [
     "click>=6.0",
-    "emmett-core[granian,rapidjson]~=1.3.0",
+    "emmett-core[granian,rapidjson]~=1.4.1",
     "emmett-pydal==17.3.3",
     "pendulum~=3.0",
     "pyyaml~=6.0",
