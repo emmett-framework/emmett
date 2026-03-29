@@ -34,7 +34,7 @@ classifiers = [
 
 dependencies = [
     "click>=6.0",
-    "emmett-core[granian,rapidjson]~=1.4.1",
+    "emmett-core[granian]~=1.4.1",
     "emmett-pydal==17.3.3",
     "pendulum~=3.0",
     "pyyaml~=6.0",
@@ -43,7 +43,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-orjson = ["orjson~=3.10"]
+orjson = ['orjson~=3.10']
+rapidjson = ['python-rapidjson~=1.20']
 rloop = ['rloop~=0.1; sys_platform != "win32"']
 uvloop = ['uvloop>=0.18.0; sys_platform != "win32" and platform_python_implementation == "CPython"']
 
