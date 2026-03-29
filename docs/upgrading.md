@@ -13,6 +13,26 @@ Just as a remind, you can update Emmett using *pip*:
 $ pip install -U emmett
 ```
 
+Version 2.8
+-----------
+
+Emmett 2.8 introduces some changes you should be aware of, and few new features.
+
+This release drops support for Python 3.9.
+
+### Breaking changes
+
+#### Rapidjson is now an optional dependency
+
+Emmett 2.8 doesn't require [python-rapidjson](https://pypi.org/project/python-rapidjson/) anymore. This dependency is now optional and gated under the `rapidjson` extra. If you want keep using RapidJSON, you can add it to your project dependencies or switch your Emmett dependency spec to `emmett[rapidjson]`.
+
+### New features
+
+- [RSGI](https://github.com/emmett-framework/granian/blob/master/docs/spec/RSGI.md) spec 1.6
+- Support for ranges on file responses
+
+Emmett 2.8 also introduces official support for Python 3.14.
+
 Version 2.7
 -----------
 
