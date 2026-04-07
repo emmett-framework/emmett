@@ -25,6 +25,9 @@ from ..debug import debug_handler, smart_traceback
 from .wrappers import Request, Response, Websocket
 
 
+_pkg_assets_path = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "assets"))
+
+
 class HTTPHandler(_HTTPHandler):
     __slots__ = []
     wapper_cls = Request
@@ -40,7 +43,9 @@ class HTTPHandler(_HTTPHandler):
             file_name = path[12:]
             if not file_name:
                 return self._http_response(404)
-            static_file = os.path.join(os.path.dirname(__file__), "..", "assets", file_name)
+            static_file = os.path.realpath(os.path.join(_pkg_assets_path, file_name))
+            if not static_file.startswith(_pkg_assets_path):
+                return self._http_response(404)
             if os.path.splitext(static_file)[1] == "html":
                 return self._http_response(404)
             return self._static_response(static_file)
