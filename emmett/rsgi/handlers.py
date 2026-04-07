@@ -40,7 +40,10 @@ class HTTPHandler(_HTTPHandler):
             file_name = path[12:]
             if not file_name:
                 return self._http_response(404)
-            static_file = os.path.join(os.path.dirname(__file__), "..", "assets", file_name)
+            assets_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "assets"))
+            static_file = os.path.realpath(os.path.join(assets_dir, file_name))
+            if not static_file.startswith(assets_dir + os.sep):
+                return self._http_response(404)
             if os.path.splitext(static_file)[1] == "html":
                 return self._http_response(404)
             return self._static_response(static_file)
