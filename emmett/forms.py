@@ -363,14 +363,14 @@ class ModelForm(BaseForm):
             ):
                 fields.pop(field.name)
         record.update(fields)
-        errors = record.validation_errors
+        errors = self.model.validate(record, write_values=True)
         for field in self.writable_fields:
             if field.name in errors:
                 self.errors[field.name] = errors[field.name]
             elif field.type == "upload":
                 self.files[field.name] = fields.get(field.name)
             else:
-                self.params[field.name] = fields[field.name]
+                self.params[field.name] = record[field.name]
 
     async def _process(self, **kwargs):
         #: send record id to validators if needed
