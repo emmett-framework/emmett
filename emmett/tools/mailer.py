@@ -154,7 +154,7 @@ class Mail(object):
         self.alts = dict(alts or {})
         self.html = html
         self.date = date
-        self.msgId = make_msgid()
+        self.msgId = make_msgid(domain=ext.config.msgid_domain or parseaddr(sender or "")[1].rpartition("@")[2] or None)
         self.charset = charset
         self.extra_headers = extra_headers
         self.mail_options = mail_options or []
@@ -272,6 +272,7 @@ class MailExtension(Extension):
         "use_tls": False,
         "use_ssl": False,
         "sender": None,
+        "msgid_domain": None,
         "debug": False,
         "suppress": False,
     }
