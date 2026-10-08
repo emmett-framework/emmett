@@ -12,7 +12,7 @@ The migration engine is instead based on *revisions*: this will use migration fi
 Emmett provides different migration commands, that can be used in order to generate, apply and revert migrations on your database. Moreover, to avoid you the pain of writing a lot of migration code aside with your models, Emmett will automatically generate the migration scripts for you starting from your models' code.    
 In the next sections we will describe all of this using the *bloggy* application we saw in the [tutorial chapter](../tutorial) as an example.
 
-> **Note:** we **strongly reccomend** you to not enable automatic migrations on applications that run on production environments. The automatic migrations and the ones performed by the migration engine have some slight differences; while we will document operations supported by the second system, the detection performed by the automatic one depends on the [pydal](https://github.com/web2py/pydal) library, and are not officially supported by the Emmett development. If you need more informations about this you should check the [web2py docs](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Migrations).
+> **Note:** we **strongly recommend** you to not enable automatic migrations on applications that run on production environments. The automatic migrations and the ones performed by the migration engine have some slight differences; while we will document operations supported by the second system, the detection performed by the automatic one depends on the [pydal](https://github.com/web2py/pydal) library, and are not officially supported by the Emmett development. If you need more informations about this you should check the [web2py docs](http://www.web2py.com/books/default/chapter/29/06/the-database-abstraction-layer#Migrations).
 
 Generating your first migration
 -------------------------------
@@ -132,7 +132,7 @@ $ emmett migrations up
 > Performing upgrades against sqlite://dummy.db
 > Performing upgrade: <base> -> 4ceb82ecd8e4 (head), First migration
 > Adding revision 4ceb82ecd8e4 to schema
-> Succesfully upgraded to revision 4ceb82ecd8e4: First migration
+> Successfully upgraded to revision 4ceb82ecd8e4: First migration
 ```
 
 As you can see, the command prints out some information regarding the operations it runs: it says on which database the operations are performed, which migrations are used to upgrade the database and which revision is stored on the schema. In this case the migration was performed successfully, in fact we can check the current revision of the database:
@@ -203,7 +203,7 @@ $ emmett migrations up
 > Performing upgrades against sqlite://dummy.db
 > Performing upgrade: 4ceb82ecd8e4 -> 4dee31071bf8 (head), Add tags
 > Updating schema revision from 4ceb82ecd8e4 to 4dee31071bf8
-> Succesfully upgraded to revision 4dee31071bf8: Add tags
+> Successfully upgraded to revision 4dee31071bf8: Add tags
 ```
 
 As we increase the number of migrations for our application, the *history* command can be useful to check out them as an ordered list:
@@ -227,10 +227,10 @@ $ emmett migrations down -r base
 > Performing downgrades against sqlite://dummy.db
 > Performing downgrade: 4ceb82ecd8e4 -> 4dee31071bf8 (head), Add tags
 > Updating schema revision from 4dee31071bf8 to 4ceb82ecd8e4
-> Succesfully downgraded from revision 4dee31071bf8: Add tags
+> Successfully downgraded from revision 4dee31071bf8: Add tags
 > Performing downgrade: <base> -> 4ceb82ecd8e4, First migration
 > Removing revision 4ceb82ecd8e4 from schema
-> Succesfully downgraded from revision 4ceb82ecd8e4: First migration
+> Successfully downgraded from revision 4ceb82ecd8e4: First migration
 ```
 
 The `-r` option is required and has to be the revision to be downgraded. Whenever you specify a revision identifier that is not the current *head* state, Emmett will downgrade every revision applied after the revision you specified and the one you specified too.    
@@ -455,7 +455,7 @@ $ emmett migrations set -r 69a284b840cf
 > Setting revision to 69a284b840cf against sqlite://dummy.db
 Do you want to continue? [y/N]: y
 > Updating schema revision from 8422706ae767 to 69a284b840cf
-> Succesfully set revision to 69a284b840cf: Generated migration
+> Successfully set revision to 69a284b840cf: Generated migration
 ```
 
 DBMS support
