@@ -171,4 +171,4 @@ def db():
     migration.down()
 ```
 
-As you can see, we called the `generate_runtime_migration` method with our application database instance, applied the generated migration before yielding the database instace, and reverted the migration immediately after. Every test function we'll write using this fixture, will have a migrated database to test.
+As you can see, we called the `generate_runtime_migration` method with our application database instance, applied the generated migration before yielding the database instance, and reverted the migration immediately after. Every test function we'll write using this fixture, will have a migrated database to test.

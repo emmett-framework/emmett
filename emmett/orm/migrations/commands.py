@@ -204,7 +204,7 @@ class Command:
                         click.echo(
                             "".join(
                                 [
-                                    click.style("> Succesfully upgraded to revision ", fg="green"),
+                                    click.style("> Successfully upgraded to revision ", fg="green"),
                                     click.style(revision.revision, fg="cyan", bold=True),
                                     click.style(f": {revision.doc}", fg="green"),
                                 ]
@@ -243,7 +243,7 @@ class Command:
                         click.echo(
                             "".join(
                                 [
-                                    click.style("> Succesfully downgraded from revision ", fg="green"),
+                                    click.style("> Successfully downgraded from revision ", fg="green"),
                                     click.style(revision.revision, fg="cyan", bold=True),
                                     click.style(f": {revision.doc}", fg="green"),
                                 ]
@@ -288,7 +288,7 @@ class Command:
                 click.echo(
                     "".join(
                         [
-                            click.style("> Succesfully set revision to ", fg="green"),
+                            click.style("> Successfully set revision to ", fg="green"),
                             click.style(target_revision.revision, fg="cyan", bold=True),
                             click.style(f": {target_revision.doc}", fg="green"),
                         ]
