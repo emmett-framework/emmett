@@ -72,7 +72,9 @@ class AuthExtension(Extension):
         "session_long_expiration": 3600 * 24 * 30,
         "registration_verification": True,
         "registration_approval": False,
+        "custom_statuses": [],
     }
+    _builtin_statuses = frozenset({"pending", "disabled", "blocked"})
     default_messages = {
         "approval_pending": "Registration is pending approval",
         "verification_pending": "Registration needs verification",
@@ -167,6 +169,8 @@ class AuthExtension(Extension):
             )
             self.config.hmac_key = uuid()
         self._hmac_key = self.config.hmac_alg + ":" + self.config.hmac_key
+        self._registration_statuses = self._builtin_statuses | frozenset(self.config.custom_statuses)
+        self._reset_blocking_statuses = self._registration_statuses - {"disabled"}
         if "MailExtension" not in self.app.ext:
             self.app.log.warn("No mailer seems to be configured. The auth features requiring mailer won't work.")
         self.__ensure_config()

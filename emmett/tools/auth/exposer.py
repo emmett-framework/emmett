@@ -210,7 +210,7 @@ class AuthModule(AppModule):
     async def _email_verification(self, key):
         rv = {"message": None}
         user = self.config.models["user"].get(registration_key=key)
-        if not user:
+        if not user or user.registration_key in self.ext._registration_statuses:
             redirect(self.url("login"))
         if self.config.registration_approval:
             user.update_record(registration_key="pending")
@@ -240,7 +240,7 @@ class AuthModule(AppModule):
             if row.registration_key == "pending":
                 form.errors.email = messages["approval_pending"]
                 return
-            if row.registration_key == "blocked":
+            if row.registration_key in self.ext._reset_blocking_statuses:
                 form.errors.email = messages["login_disabled"]
                 return
             res["user"] = row
@@ -272,6 +272,8 @@ class AuthModule(AppModule):
         rv = {"message": None}
         redirect_after = request.query_params._after
         user = self.ext.get_user_by_reset_key(key)
+        if user and user.registration_key in self.ext._reset_blocking_statuses:
+            user = None
         if not user:
             rv["message"] = self.config.messages["reset_key_invalid"]
             self.flash(rv["message"])
@@ -281,7 +283,13 @@ class AuthModule(AppModule):
             return rv
         rv["form"] = await self.ext.forms.password_reset(onvalidation=_validate_form)
         if rv["form"].accepted:
-            user.update_record(password=str(rv["form"].params.password), registration_key="", reset_password_key="")
+            status = (user.registration_key or "").strip()
+            unverified = status and status not in self.ext._registration_statuses
+            user.update_record(
+                password=str(rv["form"].params.password),
+                registration_key="pending" if unverified and self.config.registration_approval else "",
+                reset_password_key="",
+            )
             rv["message"] = self.config.messages["password_changed"]
             self.flash(rv["message"])
             self.ext.log_event(self.config.messages["password_reset_log"], {"id": user.id}, user=user)
