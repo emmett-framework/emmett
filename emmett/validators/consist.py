@@ -410,7 +410,7 @@ class _isGenericUrl(Validator):
                         # ports, check to see if adding a valid scheme fixes
                         # the problem (but only do this if it doesn't have
                         # one already!)
-                        if value.find("://") < 0 and None in self.allowed_schemes:
+                        if scheme != "javascript" and value.find("://") < 0 and None in self.allowed_schemes:
                             schemeToUse = self.prepend_scheme or "http"
                             prependTest = self.__call__(schemeToUse + "://" + value)
                             # if the prepend test succeeded
