@@ -12,6 +12,7 @@ Provides the routes layer for the auth system.
 from __future__ import annotations
 
 from typing import Any, List, Optional
+from urllib.parse import urlsplit
 
 from emmett_core.routing.cache import RouteCacheRule
 
@@ -113,6 +114,18 @@ class AuthModule(AppModule):
     def _flash(self, message):
         return flash(message, "auth")
 
+    def _after_from_param(self):
+        value = request.query_params._after
+        if not isinstance(value, str) or not value.isprintable() or "\\" in value:
+            return None
+        try:
+            host = urlsplit(value).netloc.lower()
+        except ValueError:
+            return None
+        if host:
+            return value if host == request.host or host in self.ext._redirect_allowed_hosts else None
+        return value if value.startswith("/") and not value.startswith("//") else None
+
     #: routes
     async def _login(self):
         def _validate_form(form):
@@ -150,7 +163,7 @@ class AuthModule(AppModule):
         self.ext.log_event(self.config.messages["logout_log"], {"id": self.auth.user.id})
         session.auth = None
         self.flash(self.config.messages["logged_out"])
-        redirect_after = request.query_params._after
+        redirect_after = self._after_from_param()
         if redirect_after:
             redirect(redirect_after)
         self._callbacks["after_logout"]()
@@ -224,7 +237,7 @@ class AuthModule(AppModule):
         if self.auth.user:
             self.auth.user.registration_key = user.registration_key
         self.ext.log_event(self.config.messages["email_verification_log"], {"id": user.id})
-        redirect_after = request.query_params._after
+        redirect_after = self._after_from_param()
         if redirect_after:
             redirect(redirect_after)
         self._callbacks["after_email_verification"](user)
@@ -270,7 +283,7 @@ class AuthModule(AppModule):
                 form.errors.password2 = "password mismatch"
 
         rv = {"message": None}
-        redirect_after = request.query_params._after
+        redirect_after = self._after_from_param()
         user = self.ext.get_user_by_reset_key(key)
         if user and user.registration_key in self.ext._reset_blocking_statuses:
             user = None
@@ -316,7 +329,7 @@ class AuthModule(AppModule):
             rv["message"] = self.config.messages["password_changed"]
             self.flash(rv["message"])
             self.ext.log_event(self.config.messages["password_change_log"], {"id": row.id})
-            redirect_after = request.query_params._after
+            redirect_after = self._after_from_param()
             if redirect_after:
                 redirect(redirect_after)
             self._callbacks["after_password_change"]()

@@ -73,6 +73,7 @@ class AuthExtension(Extension):
         "registration_verification": True,
         "registration_approval": False,
         "custom_statuses": [],
+        "redirect_allowed_hosts": [],
     }
     _builtin_statuses = frozenset({"pending", "disabled", "blocked"})
     default_messages = {
@@ -171,6 +172,7 @@ class AuthExtension(Extension):
         self._hmac_key = self.config.hmac_alg + ":" + self.config.hmac_key
         self._registration_statuses = self._builtin_statuses | frozenset(self.config.custom_statuses)
         self._reset_blocking_statuses = self._registration_statuses - {"disabled"}
+        self._redirect_allowed_hosts = frozenset(host.lower() for host in self.config.redirect_allowed_hosts)
         if "MailExtension" not in self.app.ext:
             self.app.log.warn("No mailer seems to be configured. The auth features requiring mailer won't work.")
         self.__ensure_config()
