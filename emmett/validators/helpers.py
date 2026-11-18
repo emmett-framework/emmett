@@ -380,7 +380,6 @@ unofficial_url_schemes = [
     "ircs",
     "itms",
     "jar",
-    "javascript",
     "keyparc",
     "lastfm",
     "ldaps",

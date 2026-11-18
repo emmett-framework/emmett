@@ -22,6 +22,7 @@ from emmett.tools.mailer import Mailer, sanitize_address
 def app():
     rv = App(__name__)
     rv.config.mailer.sender = "support@example.com"
+    rv.config.mailer.msgid_domain = "example.com"
     return rv
 
 
